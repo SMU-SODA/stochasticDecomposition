@@ -34,6 +34,10 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		return 1;
 	}
 
+#ifdef DECOMPOSE_CHECK
+	printDecomposeSummary(tim, (*prob));
+#endif
+
 	/* ensure that we have a linear programs at all stages */
 	t = 0;
 	while ( t < tim->numStages ) {

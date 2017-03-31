@@ -1,0 +1,35 @@
+// absolute path to input directory
+INPUTDIR	../spInput/
+
+// absolute path to output directory
+OUTPUTDIR	../../spOutput
+
+// Forward pass seed
+FORWPASS_SEED	9495518635394380
+
+// Maximum number of iterations
+MAX_ITER   5000
+
+// Minimum iterations
+MIN_ITER   1000
+
+// Tolerance level used to differentiate floating point numbers */
+TOLERANCE    0.000001
+
+// Fraction of observations used in backward pass
+BACKPASS_PCT	1
+
+// Backpass observation seed
+BACKPASS_SEED	5339672949292608
+
+// Set EVAL_FLAG to 1 to get the an estimated objective function value for the final incumbent.
+EVAL_FLAG 1
+
+// Random number seed for resampling omegas during evaluation
+EVAL_SEED	1354874229869110
+
+// Obj. eval. is accurate to within this much, w/95% confidence
+EVAL_ERROR 0.01
+
+// Optimality gap
+OPT_GAP	0.01

@@ -8,7 +8,7 @@
 #ifndef PROB_H_
 #define PROB_H_
 
-#undef INPUT_CHECK
+#define DECOMPOSE_CHECK
 
 /* Structure that holds various dimensions of the stage problem */
 typedef struct {
@@ -79,5 +79,6 @@ vector calcLowerBound(oneProblem *orig, timeType *tim);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void freeOmegastuff(omegastuff *omegas);
+void printDecomposeSummary(timeType *tim, probType **prob);
 
 #endif /* PROB_H_ */

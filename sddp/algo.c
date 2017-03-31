@@ -16,16 +16,16 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 	vector	 observ;
 
 	/* complete necessary initialization for the algorithm */
-	setupAlgo(orig, stoc, tim, &prob, &cell);
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
+		goto TERMINATE;
 
 	/* allocate memory to hold an observation */
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega, double)) )
 		errMsg("allocation", "algo", "observ", 0);
 
-
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
-	cleanupAlgo(prob, cell);
+	cleanupAlgo(prob, cell, tim->numStages);
 	mem_free(observ);
 
 	return 0;

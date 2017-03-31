@@ -88,7 +88,7 @@ typedef struct {
 	armaType *arma;
 }stocType;
 
-/* subroutines in input.c */
+/* subroutines in smps.c */
 int readFiles(string inputDir, string probName, oneProblem **orig, timeType **tim, stocType **stoc);
 oneProblem *readCore(string inputDir, string probName);
 timeType *readTime(string inputDir, string probName, oneProblem *orig);

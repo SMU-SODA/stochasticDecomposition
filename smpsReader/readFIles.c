@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Successfully read '%s' SMPS files for '%s' algorithm.\n", probName, algoName);
 
-#ifdef TRACE
+#ifdef INPUT_CHECK
 	/* print the summary of problems that have been read */
 	printReadSummary(orig, tim, stoc);
 #endif
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Successfully decomposed the problem '%s' for '%s' algorithm.\n", probName, algoName);
 
-#ifdef TRACE
+#ifdef DECOMPOSE_CHECK
 	printDecomposeSummary(tim, prob);
 #endif
 

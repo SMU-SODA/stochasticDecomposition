@@ -728,13 +728,14 @@ void freeOmegastuff(omegastuff *omegas) {
 
 }//END freeOmegastuff()
 
-void printDecomposeSummary(timeType *tim, probType **prob){
+void printDecomposeSummary(timeType *tim, probType **prob) {
 	int t;
 
 	printf("===============================================================================================================================\n");
 	printf("Number of stages                   = %d\n", tim->numStages);
 	for ( t = 0; t < tim->numStages; t++ ) {
 		printf("-------------------------------------------------------------------------------------------------------------------------------\n");
+		printf("Stage %d\n", t);
 		printf("Number of decision variables       = %d\t\t", prob[t]->sp->mac);
 		printf("(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
 		printf("Number of constraints              = %d\n", prob[t]->sp->mar);

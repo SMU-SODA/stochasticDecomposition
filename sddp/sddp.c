@@ -51,16 +51,16 @@ int main (int argc, char *argv[]) {
 	/* launch the algorithm */
 	status = algo(orig, stoc, tim);
 	if ( status ) {
-		errMsg("allocation", "main", "failed to solve the problem using Time-staged SD", 0);
+		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
 		goto TERMINATE;
 	}
 
 	/* release structures and close solver environment */
 	TERMINATE:
-	closeSolver();
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	closeSolver();
 
 	return 0;
 }//END main()
