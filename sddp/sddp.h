@@ -13,7 +13,8 @@
 #include "smps.h"
 #include "prob.h"
 
-#define MODIFY_CHECK
+#undef CELL_SETUP
+#undef ALGO_RUN
 #undef STOC_CHECK
 #undef CUT_CHECK
 
@@ -92,6 +93,7 @@ typedef struct {
 	vector		rhs;			/* right-hand side after state information update */
 	vector		candidU;		/* candidate solution for the stage */
 	vector		*incumbU;		/* a list of incumbent solutions for the stage. Used only when regularization is employed. */
+	double		candidEst;		/* objective function value at candidate */
 	vector		pi;				/* dual solution for the stage */
 	cutsType	*cuts;			/* optimality cuts added */
 	omegaType	*omega;			/* structure to hold observations */
@@ -103,12 +105,13 @@ typedef struct {
 /* subroutines in sddp.c */
 void parseCmdLine(string probName);
 int readConfig(string inputDir);
+void printAlgoDetails(int item);
 
 /* subroutines in algo.c */
 void printProbDetails(probType **p);
 int algo (oneProblem *orig, stocType *stoc, timeType *tim);
-int forwardPass(probType **prob, cellType **cell);
-int backwardPass(probType **prob, cellType **cell);
+int forwardPass(probType **prob, cellType **cell, int numStages);
+int backwardPass(probType **prob, cellType **cell, int numStages);
 void printProbDetails(probType **p);
 
 /* subroutines in setup.c */
@@ -146,7 +149,7 @@ int computeIstar(numType *num, coordType *coord, lambdaType *lambda, sigmaType *
 int formOptCut(probType *prob, cellType *cell, intvec iStar, LPptr lp, int numRows, int numCols, cutsType *cuts, vector U);
 int addCut(LPptr lp, cutsType *cuts, int numRows, int numCols, int betaLen, intvec betaIndices, oneCut *cut);
 
-/* subroutine in optimal.c */
-BOOL optimal(probType **prob, cellType **cell);
+/* subroutine in evaluate.c */
+BOOL optimal(probType **prob, cellType **cell, int numStages);
 
 #endif /* SDDP_H_ */

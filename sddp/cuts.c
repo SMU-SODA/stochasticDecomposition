@@ -38,6 +38,11 @@ int formOptCut(probType *prob, cellType *cell, intvec iStar, LPptr lp, int numRo
 		i++;
 	}
 
+#ifdef CUT_CHECK
+
+
+#endif
+
 	/* add cut to cuts structure, decision simulation and stage dual approximation problems for previous stage */
 	idxCut = addCut(lp, cuts, numRows, numCols, prob->num->cntCcols, prob->coord->colsC, cut);
 	if ( idxCut < 0 ) {

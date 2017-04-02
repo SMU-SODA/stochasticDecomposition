@@ -10,8 +10,8 @@ FORWPASS_SEED	9495518635394380
 // Maximum number of iterations
 MAX_ITER   5000
 
-// Minimum iterations
-MIN_ITER   1000
+// Minimum number of iterations before optimality tests are conducted
+MIN_ITER   100
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.000001
@@ -31,5 +31,5 @@ EVAL_SEED	1354874229869110
 // Obj. eval. is accurate to within this much, w/95% confidence
 EVAL_ERROR 0.01
 
-// Optimality gap
+// Optimality gap (relative to the mean value)
 OPT_GAP	0.01

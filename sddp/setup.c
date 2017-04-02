@@ -182,6 +182,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
 				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
 			/* TODO: incumbent solutions */
+			cell[t]->candidEst = 0.0;
 
 			/* cuts structure */
 			if ( !(cell[t]->cuts = (cutsType *) mem_malloc(sizeof(cutsType))) )
@@ -191,7 +192,8 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			cell[t]->cuts->cnt = 0;
 		}
 		else {
-			cell[t]->candidU = NULL;
+			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
 			cell[t]->incumbU = NULL;
 			cell[t]->cuts 	 = NULL;
 		}
@@ -232,6 +234,12 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			errMsg("solver", "newCell", "failed to setup cell problem on solver",0);
 			return NULL;
 		}
+
+#if CELL_SETUP
+		char fname[NAMESIZE];
+		sprintf(fname, "cell%d.lp", t);
+		writeProblem(cell[t]->sp->lp, fname);
+#endif
 	}
 
 	return cell;

@@ -289,7 +289,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		prob[t]->bBar->cnt++;
 	}
 
-#ifdef SETUP_CHECK
+#ifdef DECOMPOSE_CHECK
 	/* write stage problems in LP format to verify decomposition */
 	char fname[BLOCKSIZE];
 	for ( t = 0; t < tim->numStages; t++) {
