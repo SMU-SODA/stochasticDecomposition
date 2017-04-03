@@ -27,4 +27,20 @@ typedef struct {
 	double		OPT_GAP;
 }configType;
 
+typedef struct {
+	int			k;
+
+}cellType;
+
+/* sdlp.c */
+void parseCmdLine(string probName);
+int readConfig(string inputDir);
+
+/* algo.c */
+void cleanupAlgo(probType **prob, cellType **cell, int T);
+
+/* setup.c */
+int algo(oneProblem *orig, stocType *stoc, timeType *tim);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
+
 #endif /* SDLP_H_ */

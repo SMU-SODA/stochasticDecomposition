@@ -2,7 +2,7 @@
 INPUTDIR	../spInput/
 
 // absolute path to output directory
-OUTPUTDIR	../../spOutput
+OUTPUTDIR	../../spOutput/
 
 // Forward pass seed
 FORWPASS_SEED	9495518635394380
