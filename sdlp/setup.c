@@ -210,15 +210,15 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 				errMsg("allocation", "newCell", "cell[t]->pi", 0);
 
 			/* stochastic elements of the cell */
-			cell[t]->omega = newOmega(t-1, stoc);
+			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
 			if ( cell[t]->omega == NULL ) {
 				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
 				return NULL;
 			}
 
-			cell[t]->lambda = newLambda(cell[t]->omega->cnt);
-			cell[t]->sigma 	= newSigma(cell[t]->omega->cnt, 0);
-			cell[t]->delta = newDelta(cell[t]->omega->cnt);
+			cell[t]->lambda = newLambda(config.MAX_ITER);
+			cell[t]->sigma 	= newSigma(config.MAX_ITER, 0);
+			cell[t]->delta = newDelta(config.MAX_ITER);
 		}
 		else {
 			cell[t]->pi 	= NULL;
@@ -249,4 +249,25 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 	return cell;
 }//END newCell()
 
+void freeCellType (probType **prob, cellType **cell, int T) {
+	int t;
 
+	if (cell) {
+		for ( t = 0; t < T; t++ ) {
+			if ( cell[t] ) {
+				if (cell[t]->sp) freeOneProblem(cell[t]->sp);
+				if (cell[t]->candidU) mem_free(cell[t]->candidU);
+				if (cell[t]->pi) mem_free(cell[t]->pi);
+				if (cell[t]->rhs) mem_free(cell[t]->rhs);
+				if (cell[t]->cuts) freeCutsType(cell[t]->cuts);
+				if (cell[t]->lambda) freeLambdaType(cell[t]->lambda, TRUE);
+				if (cell[t]->sigma) freeSigmaType(cell[t]->sigma, TRUE);
+				if (cell[t]->delta) freeDeltaType(cell[t]->delta, cell[t]->omega->cnt, TRUE);
+				if (cell[t]->omega) freeOmegaType(cell[t]->omega);
+				mem_free (cell[t]);
+			}
+		}
+		mem_free(cell);
+	}
+
+}//END freeCellType
