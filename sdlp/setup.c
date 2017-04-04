@@ -229,21 +229,35 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			cell[t]->delta  = NULL;
 		}
 
-		/* Load the cell problem onto solver: this problem will be used in forward pass */
-		cell[t]->sp->lp = setupProblem(cell[t]->sp->name, cell[t]->sp->type, cell[t]->sp->mac, cell[t]->sp->mar,
-				cell[t]->sp->objsen, cell[t]->sp->objx, cell[t]->sp->rhsx, cell[t]->sp->senx, cell[t]->sp->matbeg,
-				cell[t]->sp->matcnt, cell[t]->sp->matind, cell[t]->sp->matval, cell[t]->sp->bdl, cell[t]->sp->bdu,
-				NULL, cell[t]->sp->cname, cell[t]->sp->rname, cell[t]->sp->ctype);
-		if ( cell[t]->sp->lp == NULL ) {
-			errMsg("solver", "newCell", "failed to setup cell problem on solver",0);
-			return NULL;
+
+		if ( t != T - 1 ) {
+			/* Load the cell problem onto solver: this problem will be used in forward pass */
+			cell[t]->sp->lp = setupProblem(cell[t]->sp->name, cell[t]->sp->type, cell[t]->sp->mac, cell[t]->sp->mar,
+					cell[t]->sp->objsen, cell[t]->sp->objx, cell[t]->sp->rhsx, cell[t]->sp->senx, cell[t]->sp->matbeg,
+					cell[t]->sp->matcnt, cell[t]->sp->matind, cell[t]->sp->matval, cell[t]->sp->bdl, cell[t]->sp->bdu,
+					NULL, cell[t]->sp->cname, cell[t]->sp->rname, cell[t]->sp->ctype);
+			if ( cell[t]->sp->lp == NULL ) {
+				errMsg("solver", "newCell", "failed to setup cell decision simulation problem on solver",0);
+				return NULL;
+			}
+#if CELL_SETUP
+			char fname[NAMESIZE];
+			sprintf(fname, "cell%d.lp", t);
+			writeProblem(cell[t]->sp->lp, fname);
+#endif
 		}
 
-#if CELL_SETUP
-		char fname[NAMESIZE];
-		sprintf(fname, "cell%d.lp", t);
-		writeProblem(cell[t]->sp->lp, fname);
-#endif
+		if ( t != 0 ) {
+			/* Load the cell problem onto solver: this problem will be used in the backward pass */
+			cell[t]->sda = setupProblem(cell[t]->sp->name, cell[t]->sp->type, cell[t]->sp->mac, cell[t]->sp->mar,
+					cell[t]->sp->objsen, cell[t]->sp->objx, cell[t]->sp->rhsx, cell[t]->sp->senx, cell[t]->sp->matbeg,
+					cell[t]->sp->matcnt, cell[t]->sp->matind, cell[t]->sp->matval, cell[t]->sp->bdl, cell[t]->sp->bdu,
+					NULL, cell[t]->sp->cname, cell[t]->sp->rname, cell[t]->sp->ctype);
+			if ( cell[t]->sda == NULL ) {
+				errMsg("solver", "newCell", "failed to stage dual approximation problem on solver",0);
+				return NULL;
+			}
+		}
 	}
 
 	return cell;

@@ -14,7 +14,6 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#undef ALGO_RUN
 #undef STOC_CHECK
 #undef CUT_CHECK
 

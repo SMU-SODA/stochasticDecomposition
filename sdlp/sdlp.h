@@ -34,6 +34,8 @@ typedef struct {
 
 typedef struct {
 	int		cnt;
+	int		idx;
+	BOOL	newObs;
 	intvec	weights;
 	vector	*vals;
 }omegaType;
@@ -50,17 +52,26 @@ typedef struct {
 }pixbCType;
 
 typedef struct {
-	int 	cnt;
-	intvec	lambdaIdx;
+	int 		cnt;
+	intvec		ck;
+	intvec		lambdaIdx;
 	pixbCType	*vals;
 }sigmaType;
 
 typedef struct {
-	pixbCType	*vals;
+	pixbCType	**vals;
 }deltaType;
 
+/* When calculating istar for a cut, it is useful to have two separate references into the sigma and delta structures, since each dual vector
+ * is stored in two places -- part in sigma and part in delta.  The final entry in cut->istar[] will just be the _sigma_ field of this structure. */
 typedef struct {
-	int		ck;
+	int delta;
+	int sigma;
+} iType;
+
+typedef struct {
+	int		numObs;
+	int		numIstar;
 	intvec	iStar;
 	double	alpha;
 	vector 	beta;
@@ -76,7 +87,8 @@ typedef struct {
 	int			k;				/* number of iterations */
 	double		lb;				/* a lower bound computed using mean values for random variables */
 	int			lbType;			/* TRIVIAL if lower bound is zero, and NONTRIVIAL if it is nonzero */
-	oneProblem 	*sp;			/* stage subproblem, a copy of probType stage problem */
+	oneProblem 	*sp;			/* stage subproblem used for decision simulation, a copy of probType stage problem */
+	void		*sda;			/* stage dual approximation problem pointer to be used by solver */
 	vector		rhs;			/* right-hand side after state information update */
 	vector		candidU;		/* candidate solution for the stage */
 	vector		*incumbU;		/* a list of incumbent solutions for the stage. Used only when regularization is employed. */
@@ -96,9 +108,11 @@ int readConfig(string inputDir);
 /* algo.c */
 int algo(oneProblem *orig, stocType *stoc, timeType *tim);
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages);
-int backwardPass(probType **prob, cellType **cell, int numStages);
+int backwardPass(probType **prob, cellType **cell, vector observ, int numStages);
 void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vector rhs);
 int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vector candidut, vector endoRHS);
+int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
+int computeMu(LPptr lp, int numCols, double *mubBar);
 void printAlgoDetails(int item);void cleanupAlgo(probType **prob, cellType **cell, int T);
 void printAlgoDetails(int item);
 
@@ -108,14 +122,21 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T);
 void freeCellType (probType **prob, cellType **cell, int T);
 
 /* stocupdt.c */
+int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar,
+		lambdaType *lambda, sigmaType *sigma, BOOL *newSigmaFlag, deltaType *delta, omegaType *omega, int numObs);
 int calcOmega(omegastuff *omegas, omegaType *omega, vector observ);
+int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BOOL *newLambdaFlag);
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+		int idxLambda, BOOL newLambdaFlag, int numObs, sigmaType *sigma, BOOL *newSigmaFlag);
+void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta);
+void calcDeltaRow(int numIter, numType *num, coordType *coord, lambdaType *lambda, int idxLambda, omegaType *omega, deltaType *delta);
 omegaType *newOmega(int t, stocType *stoc, int numObs);
 lambdaType *newLambda(int numIter);
 sigmaType *newSigma(int numIter, int numPi);
 deltaType *newDelta(int numObs);
 void freeLambdaType(lambdaType *lambda, BOOL all);
 void freeSigmaType(sigmaType *sigma, BOOL all);
-void freeDeltaType(deltaType *delta, int numObs, BOOL all);
+void freeDeltaType(deltaType *delta, int numObs, int numLambda);
 void freeOmegaType(omegaType *omega);
 
 /* cuts.c */

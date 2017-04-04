@@ -42,7 +42,7 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
 		}
 
 		/* backward pass */
-		if (backwardPass(prob, cell, tim->numStages)) {
+		if (backwardPass(prob, cell, observ, tim->numStages)) {
 			errMsg("algorithm", "algo", "failed in backward pass", 0);
 			goto TERMINATE;
 		}
@@ -57,7 +57,7 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
 }//END algo()
 
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
-	int		t, status, stat1, obs;
+	int		t, status, obs;
 
 	/************************************************* setup and solve stage problems *****************************************************/
 	/* since primal solution for terminal stage are not used we do not solve it here. Rather we solve it on the backward pass */
@@ -66,15 +66,14 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 
 		/* update the right-hand side with state information for non-root stages */
 		if ( t != 0 ) {
-			/* generate omega */
-			obs = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+			/* update omega structure with the new observation */
+			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
 
 			/* change the right-hand side with endogenous state information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
 
 			/* change the right-hand side with exogenous state information */
-			status = computeExoRHS(cell[t]->sp->lp, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs);
-			if ( status ) {
+			if ( computeExoRHS(cell[t]->sp->lp, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs)) {
 				errMsg("allocation", "forwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
 				return 1;
 			}
@@ -87,15 +86,13 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 #endif
 
 		/* solve the stage problem */
-		status = solveProblem(cell[t]->sp->lp, cell[t]->sp->name, PROB_LP, &stat1);
-		if (status) {
+		if ( solveProblem(cell[t]->sp->lp, cell[t]->sp->name, PROB_LP, &status) ) {
 			errMsg("solver", "forwardPass", "failed to solve stage problem", 0);
 			return 1;
 		}
 
 		/* obtain the current primal solution */
-		stat1 = getPrimal(cell[t]->sp->lp, cell[t]->candidU, prob[t]->num->cols);
-		if ( stat1 ) {
+		if ( getPrimal(cell[t]->sp->lp, cell[t]->candidU, prob[t]->num->cols) ) {
 			errMsg("solver", "forwardPass", "failed to obtain primal solution for the stage problem", 0);
 			return 1;
 		}
@@ -107,8 +104,47 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 	return 0;
 }//END forwardPass
 
-int backwardPass(probType **prob, cellType **cell, int numStages) {
+int backwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
+	double	mubBar;
+	int 	t, obs, numRows, idxSigma, idxCut;
+	BOOL	newSigmaFlag;
 
+	for ( t = numStages-1; t > 0; t-- ) {
+		numRows = prob[t]->num->rows;
+		if ( t == numStages-1 ) {
+			/* update omega structure with the new observation, as this is not done in forward pass */
+			cell[t]->k++; numRows++;
+			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+		}
+
+		/* change the right-hand side with endogenous state */
+		computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
+		/* change the right-hand side with exogensous state */
+		if ( computeExoRHS(cell[t]->sda, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs) ){
+			errMsg("allocation", "backwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
+			return 1;
+		}
+
+		/* solve the stage dual approximation and obtain the dual solutions */
+		if ( dualUpdates(cell[t]->sda, cell[t]->sp->name, numRows, prob[t]->num->cols, cell[t]->pi, &mubBar)) {
+			errMsg("algorithm", "backwardPass","failed to complete dual updates", 0);
+			return 1;
+		}
+
+		/* update all the stochastic components, indicate that the updates with respect to new node have been completed */
+		idxSigma = stocUpdate(config.MAX_ITER, prob[t]->num, prob[t]->coord, prob[t]->Cbar, prob[t]->bBar, cell[t]->pi, mubBar,
+					cell[t]->lambda, cell[t]->sigma, &newSigmaFlag, cell[t]->delta, cell[t]->omega, cell[t]->k);
+
+		/* form new optimality cut */
+		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->tda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU, cell[t-1]->lb,
+				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts);
+		if ( idxCut < 0 ) {
+			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
+			return 1;
+		}
+
+
+	}
 
 	return 0;
 }//END backwardPass()
@@ -163,6 +199,80 @@ int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vecto
 	return 0;
 }//END computeRHS()
 
+int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar) {
+	int 	status;
+
+	/* solve the terminal stage problem as a linear program */
+	if ( solveProblem(lp, name, PROB_LP, &status) ) {
+		errMsg("solver", "backPass", "failed to solve terminal stage problem", 0);
+		return 1;
+	}
+
+#ifdef STOC_CHECK
+	printf("Objective function value = %lf\t", getObjective(lp, PROB_LP));
+#endif
+
+	/* obtain the dual solution */
+	if (getDual(lp, pi, numRows) ) {
+		errMsg("solver", "backwardPass", "failed to obtain optimal dual solutions to TDA problem", 0);
+		return 1;
+	}
+
+	/* compute \bar{\mu} */
+	if (computeMu(lp, numCols, mubBar) ) {
+		errMsg("algorithm", "backwardPass", "failed to compute mu for stochastic updates", 0);
+		return 1;
+	}
+
+	return 0;
+}//END dualUpdates()
+
+int computeMu(LPptr lp, int numCols, double *mubBar) {
+	vector	dj, u;
+	intvec	cstat;
+	int		n;
+
+	(*mubBar) = 0.0;
+
+	if ( !(dj = (vector) arr_alloc(numCols+1, double)))
+		errMsg("allocation", "computeMu", "dual slacks", 0);
+	if ( !(u = (vector) arr_alloc(numCols+1, double)))
+		errMsg("allocation", "computeMu", "TDA solutions", 0);
+
+	if ( getPrimal(lp, u, numCols) ) {
+		errMsg("solver", "forOptPass", "failed to obtain primal solution", 0);
+		return 1;
+	}
+	if (getDualSlacks(lp, dj, numCols) ) {
+		errMsg("solver", "computeMu", "failed to obtain dual slacks", 0);
+		return 1;
+	}
+
+	/* extra column for eta if the stage problem is a QP */
+	if ( !(cstat = (intvec) arr_alloc(numCols+2, int)) )
+		errMsg("allocation", "computeMu", "column status", 0);
+	if (getBasis(lp, cstat+1, NULL)) {
+		errMsg("solver", "computeMu", "failed to get column status", 0);
+		return 1;
+	}
+
+	for (n = 1; n <= numCols;  n++) {
+		switch (cstat[n]) {
+		case AT_LOWER:
+			(*mubBar) += dj[n]*u[n];
+			break;
+		case AT_UPPER:
+			(*mubBar) += dj[n]*u[n];
+			break;
+		default:
+			break;
+		}
+	}
+
+	mem_free(u); mem_free(cstat); mem_free(dj);
+
+	return 0;
+}//END computeMu()
 
 void cleanupAlgo(probType **prob, cellType **cell, int T) {
 

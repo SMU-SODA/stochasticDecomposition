@@ -115,7 +115,7 @@ int backwardPass(probType **prob, cellType **cell, int numStages) {
 				/* change the right-hand side with exogenous information */
 				status = computeExoRHS(cell[t]->sp->lp, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs);
 				if ( status ) {
-					errMsg("allocation", "forwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
+					errMsg("allocation", "backwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
 					return 1;
 				}
 
@@ -128,7 +128,7 @@ int backwardPass(probType **prob, cellType **cell, int numStages) {
 				/* solve the problem */
 				status = solveProblem(cell[t]->sp->lp, cell[t]->sp->name, PROB_LP, &stat1);
 				if (status) {
-					errMsg("solver", "forwardPass", "failed to solve stage problem", 0);
+					errMsg("solver", "backwardPass", "failed to solve stage problem", 0);
 					return 1;
 				}
 
