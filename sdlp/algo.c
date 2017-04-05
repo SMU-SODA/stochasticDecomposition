@@ -79,6 +79,13 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			}
 		}
 
+		/* change coefficients of eta column */
+		status = changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb);
+		if ( status ) {
+			errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
+			return 1;
+		}
+
 #ifdef ALGO_RUN
 		char fname[NAMESIZE];
 		sprintf(fname, "fProb%d_%d.lp", t, cell[t]->k);
@@ -105,7 +112,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 }//END forwardPass
 
 int backwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
-	double	mubBar;
+	double	mubBar, futureVal;
 	int 	t, obs, numRows, idxSigma, idxCut;
 	BOOL	newSigmaFlag;
 
@@ -115,7 +122,10 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 			/* update omega structure with the new observation, as this is not done in forward pass */
 			cell[t]->k++; numRows++;
 			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+			futureVal = 0.0;
 		}
+		else
+			futureVal = cell[t]->cuts->vals[cell[t]->cuts->cnt-1]->alpha;
 
 		/* change the right-hand side with endogenous state */
 		computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
@@ -132,12 +142,12 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 		}
 
 		/* update all the stochastic components, indicate that the updates with respect to new node have been completed */
-		idxSigma = stocUpdate(config.MAX_ITER, prob[t]->num, prob[t]->coord, prob[t]->Cbar, prob[t]->bBar, cell[t]->pi, mubBar,
+		idxSigma = stocUpdate(config.MAX_ITER, prob[t]->num, prob[t]->coord, prob[t]->Cbar, prob[t]->bBar, cell[t]->pi, mubBar, futureVal,
 					cell[t]->lambda, cell[t]->sigma, &newSigmaFlag, cell[t]->delta, cell[t]->omega, cell[t]->k);
 
 		/* form new optimality cut */
-		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->tda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU, cell[t-1]->lb,
-				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts);
+		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
+				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts, t == (numStages - 1));
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
 			return 1;
@@ -198,6 +208,59 @@ int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vecto
 	mem_free(rhs); mem_free(indices);
 	return 0;
 }//END computeRHS()
+
+int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, double lb) {
+	vector	coef;
+	double	etaCoef[1], etaBds[1];
+	int 	status, c, etaCol[1];
+	char	bdsType[1];
+
+	etaCol[0] = numCols;
+	bdsType[0] = 'L';
+
+	/* array of coefficients for the \eta column. */
+	if (!(coef = (vector) arr_alloc(cuts->cnt, double)))
+		errMsg("allocation", "chgEtaCol", "coef", 0);
+
+	for (c = 0; c < cuts->cnt; c++) {
+		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+		coef[cuts->vals[c]->rowNum - numRows] = (double) (k-1) / (double) cuts->vals[c]->numObs;
+	}
+
+	/* change the eta column in the stage problem, which corresponds to the eta variable, starting with the row after the D matrix
+	 * and ending with the row of the last cut. */
+	if ( changeCol(lp, numCols, coef, numRows, numRows+ cuts->cnt) ) {
+		errMsg("solver", "chgEtaCol", "failed to change eta column in the stage problem", 0);
+		return 1;
+	}
+
+	/* if feasibility cut is added without any general cut, eta's lower bound should be changed to lower bound computed from mean value solution
+	 * and its objective function coefficient should be zero. Once a general cut is encountered, revert to 1.0 for objective coefficient and -\infty
+	 * for lower bound on eta */
+	if ( cuts->cnt <= 1) {
+		if ( cuts->cnt > 0 ) {
+			etaCoef[0] = 1.0;
+			etaBds[0]  = -INFBOUND;
+		}
+		else {
+			etaCoef[0] = 0.0;
+			etaBds[0] = lb;
+		}
+		status = changeObjx(lp, 1, etaCol, etaCoef);
+		if ( status ) {
+			errMsg("solver", "changeEtaCol", "failed to change the objective coefficient of eta column in objective function value", 0);
+			return 1;
+		}
+		status = changeBDS(lp, 1, etaCol, bdsType, etaBds);
+		if ( status ) {
+			errMsg("solver", "changeEtaCol", "failed to change the bound for eta column", 0);
+			return 1;
+		}
+	}
+
+	mem_free(coef);
+	return 0;
+}//END chgEtaCol()
 
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar) {
 	int 	status;
@@ -284,7 +347,7 @@ void cleanupAlgo(probType **prob, cellType **cell, int T) {
 void printAlgoDetails(int item) {
 
 	printf("\n-------------------------------------------------------------------------------------------------------------\n");
-	printf("Starting stochastic dual dynamic programming algorithm\n");
+	printf("Starting stochastic dynamic linear programming algorithm\n");
 	printf("Minimum iterations: %d\n", config.MIN_ITER);
 	printf("-------------------------------------------------------------------------------------------------------------\n");
 

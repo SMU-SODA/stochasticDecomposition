@@ -11,8 +11,8 @@
 
 #include "sdlp.h"
 
-int formCandidCut(LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt, double lb,
-		int numRows, int numCols, int maxCuts) {
+int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
+		int numRows, int numCols, int maxCuts, BOOL isTerminal) {
 	oneCut 	*cut;
 	int		idxCut, status;
 
@@ -24,14 +24,14 @@ int formCandidCut(LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vec
 	}
 
 	/* compute cut coefficients */
-	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, xt, cell->k, cut, lb);
+	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, xt, cell->k, cut, isTerminal);
 	if (status ) {
 		errMsg("algorithm", "formNewCut", "failed to create the stage cut", 0);
 		return -1;
 	}
 
 	/* add cut to cuts structure, decision simulation and stage dual approximation problems for previous stage */
-	idxCut = addCut(sda, sda, cuts, numRows, numCols, maxCuts, prob->num->cntCcols, prob->coord->colsC, cut);
+	idxCut = addCut(lp, sda, cuts, numRows, numCols, maxCuts, prob->num->cntCcols, prob->coord->colsC, cut);
 	if ( idxCut < 0 ) {
 		errMsg("algorithm", "formCandidCut", "failed to add the cut stage problem", 0);
 		return -1;
@@ -61,7 +61,7 @@ oneCut *newCut(int numIstar, int numObs, int betaLen){
 }//END newCut()
 
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
-		vector xt, int numObs, oneCut *cut, double lb) {
+		vector xt, int numObs, oneCut *cut, BOOL isTerminal) {
 	vector 	pixC, beta;
 	int		cnt, i;
 	iType	iStar;
@@ -78,14 +78,13 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 
 	for (cnt = 0; cnt < omega->cnt; cnt++) {
 		/* For each observation, find the Pi which maximizes height at X. */
-		iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs);
+		iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal);
 
 		/* identify the best stochastic element for all observations */
 		cut->iStar[cnt] = iStar.sigma;
 
 		/* Average using these pi's to calculate the cut coefficients. Here we are multiplying the coefficients by the number of times the observations
 		 * are encountered: Intercept term first */
-		/* TODO: the future cut information has not been accounted yet */
 		cut->alpha += (sigma->vals[iStar.sigma].pib + delta->vals[iStar.delta][cnt].pib)* omega->weights[cnt];
 
 		/* Slope term next */
@@ -106,7 +105,7 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 	return 0;
 }//END stageCut()
 
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs) {
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal) {
 	iType 	iStar;
 	int 	n, m, deltaIdx;
 	double	arg, argmax;
@@ -117,15 +116,15 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 		deltaIdx = sigma->lambdaIdx[n];
 
 		/* Start with (\pi^\top \bar{b}) + (\pi^\top x \tilde{\omega}) - (\bar{C}_t^\top \pi)*x_t */
-		/* TODO: the future cut information has not been accounted yet */
 		arg = sigma->vals[n].pib + delta->vals[deltaIdx][cnt].pib - pixC[n];
 
 		/* Subtract (\tilde{C}_t^\top \pi)*u_t */
 		for (m = 1; m <= num->rvColCnt; m++)
 			arg -= delta->vals[deltaIdx][cnt].piC[m] * xt[coord->rvCols[m]];
 
-		/* TODO: Weigh the older dual solutions by the iteration count, this is done for all non-terminal stages */
-		arg = (arg * ((double) sigma->ck[n]))/(double) numObs;
+		/* Weigh the older dual solutions by the iteration count, this is done for all non-terminal stages */
+		if ( !(isTerminal) )
+			arg = (arg * ((double) sigma->ck[n]))/(double) numObs;
 
 		if (arg > argmax) {
 			argmax = arg;

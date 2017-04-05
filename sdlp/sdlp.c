@@ -17,9 +17,9 @@ configType	config;			/* algorithm tuning parameters */
 int main (int argc, char *argv[]) {
 	int 	status;
 	char 	inputDir[2*BLOCKSIZE], probName[NAMESIZE];
-	oneProblem *orig;
-	timeType *tim;
-	stocType *stoc;
+	oneProblem *orig = NULL;
+	timeType *tim = NULL;
+	stocType *stoc = NULL;
 
 	/* open solver environment */
 	openSolver();
@@ -77,7 +77,7 @@ int readConfig(string inputDir) {
 	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
 	int 	status;
 
-	fptr = fopen("config.sddp", "r");
+	fptr = fopen("config.sdlp", "r");
 	if ( fptr == NULL ) {
 		errMsg("read", "readConfig", "failed to open configuration file", 0);
 		return 1;
@@ -90,7 +90,7 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%s", inputDir);
 		else if (!(strcmp(line, "OUTPUTDIR")))
 			fscanf(fptr, "%s", outputDir);
-		else if (!(strcmp(line, "FORWPASS_SEED")))
+		else if (!(strcmp(line, "RUN_SEED")))
 			fscanf(fptr, "%lld", &config.RUN_SEED);
 		else if (!(strcmp(line, "MAX_ITER")))
 			fscanf(fptr, "%d", &config.MAX_ITER);

@@ -17,6 +17,8 @@
 #include "prob.h"
 
 #undef CELL_SETUP
+#define ALGO_RUN
+#undef STOC_CHECK
 
 #define		TRIVIAL		0
 #define		NONTRIVIAL	1
@@ -94,9 +96,10 @@ typedef struct {
 	vector		*incumbU;		/* a list of incumbent solutions for the stage. Used only when regularization is employed. */
 	double		candidEst;		/* objective function value at candidate */
 	vector		pi;				/* dual solution for the stage */
+	int			maxCuts;		/* maximum number of cuts to be included in the cost-to-go function approximation */
 	cutsType	*cuts;			/* optimality cuts added */
 	omegaType	*omega;			/* structure to hold observations */
-	lambdaType	*lambda;		/* structure to hold dual information with for rows with random variables (roght-hand side or transfer matrix) */
+	lambdaType	*lambda;		/* structure to hold dual information with for rows with random variables (right-hand side or transfer matrix) */
 	sigmaType	*sigma;			/* structure to hold "dual multiplied by deterministic part" */
 	deltaType	*delta;			/* structure to hold "dual multiplied by stochastic part */
 }cellType;
@@ -122,11 +125,11 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T);
 void freeCellType (probType **prob, cellType **cell, int T);
 
 /* stocupdt.c */
-int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar,
+int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar, double futureVal,
 		lambdaType *lambda, sigmaType *sigma, BOOL *newSigmaFlag, deltaType *delta, omegaType *omega, int numObs);
 int calcOmega(omegastuff *omegas, omegaType *omega, vector observ);
 int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BOOL *newLambdaFlag);
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar, double futureVal,
 		int idxLambda, BOOL newLambdaFlag, int numObs, sigmaType *sigma, BOOL *newSigmaFlag);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta);
 void calcDeltaRow(int numIter, numType *num, coordType *coord, lambdaType *lambda, int idxLambda, omegaType *omega, deltaType *delta);
@@ -140,6 +143,13 @@ void freeDeltaType(deltaType *delta, int numObs, int numLambda);
 void freeOmegaType(omegaType *omega);
 
 /* cuts.c */
+int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
+		int numRows, int numCols, int maxCuts, BOOL isTerminal);
+oneCut *newCut(int numIstar, int numObs, int betaLen);
+int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
+		vector xt, int numObs, oneCut *cut, BOOL isTerminal);
+int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut);
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal);
 void freeCutsType(cutsType *cuts);
 void freeOneCut(oneCut *cut);
 

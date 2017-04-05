@@ -40,7 +40,7 @@ int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
 	return n;
 }//END calcOmega
 
-int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar,
+int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar, double futureVal,
 		lambdaType *lambda, sigmaType *sigma, BOOL *newSigmaFlag, deltaType *delta, omegaType *omega, int numObs) {
 	int 	idxLambda, idxSigma;
 	BOOL	newLambdaFlag;
@@ -53,7 +53,7 @@ int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, 
 	idxLambda = calcLambda(num, coord, lambda, pi, &newLambdaFlag);
 
 	/* update the dual information with respect to bBar and Cbar */
-	idxSigma = calcSigma(num, coord, bBar, Cbar, pi, mubBar, idxLambda, newLambdaFlag, numObs, sigma, newSigmaFlag);
+	idxSigma = calcSigma(num, coord, bBar, Cbar, pi, mubBar, futureVal, idxLambda, newLambdaFlag, numObs, sigma, newSigmaFlag);
 
 	/* need to calculate new row only if new lambda is observed in lambdaType */
 	if (newLambdaFlag)
@@ -97,14 +97,14 @@ int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BO
 	return lambda->cnt++;
 }//END calcLambda()
 
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar, double futureVal,
 		int idxLambda, BOOL newLambdaFlag, int numObs, sigmaType *sigma, BOOL *newSigmaFlag) {
 	double pibBar;
 	vector	piCBar, temp;
 	int		cnt;
 
 	/* sigma = \pi_t^\top \bar{b}_t - \bar{C}_t^\top \pi_t */
-	pibBar = vXvSparse(pi, bBar) + mubBar;
+	pibBar = vXvSparse(pi, bBar) + mubBar + futureVal;
 
 	temp = vxMSparse(pi, CBar, num->prevCols);
 	piCBar = reduceVector(temp, coord->colsC, num->cntCcols);

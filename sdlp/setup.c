@@ -194,12 +194,14 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			if ( !(cell[t]->cuts->vals = (oneCut **) arr_alloc(config.MAX_ITER, oneCut *)) )
 				errMsg("allocation", "newCell", "cell[t]->cuts->vals", 0);
 			cell[t]->cuts->cnt = 0;
+			cell[t]->maxCuts = config.MAX_ITER;
 		}
 		else {
 			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
 				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
 			cell[t]->incumbU = NULL;
 			cell[t]->cuts 	 = NULL;
+			cell[t]->maxCuts = 0;
 		}
 
 		if ( t > 0 ) {

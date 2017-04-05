@@ -17,9 +17,9 @@ configType	config;			/* algorithm tuning parameters */
 int main (int argc, char *argv[]) {
 	int 	status;
 	char 	inputDir[2*BLOCKSIZE], probName[NAMESIZE];
-	oneProblem *orig;
-	timeType *tim;
-	stocType *stoc;
+	oneProblem *orig = NULL;
+	timeType *tim = NULL;
+	stocType *stoc = NULL;
 
 	/* open solver environment */
 	openSolver();
