@@ -15,7 +15,7 @@ extern configType config;
 int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
 	int n;
 
-	for ( n = 0; n < omegas->numRV; n++ )
+	for ( n = 1; n <= omegas->numRV; n++ )
 		observ[n] -= omegas->mean[n];
 
 	n = 0;
@@ -28,7 +28,8 @@ int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
 		/* new observation encountered, store its values */
 		if ( !(omega->vals[n] = (vector) arr_alloc(omegas->numRV+1,double)) )
 			errMsg("allocation", "forwardPass", "cell[t]->omega->vals[n]", 0);
-		copyVector(observ, omega->vals[n], omegas->numRV, 0);
+		copyVector(observ, omega->vals[n], omegas->numRV, TRUE);
+		omega->vals[n][0] = oneNorm(omega->vals[n]+1, omegas->numRV);
 		omega->weights[omega->cnt] = 1;
 		omega->newObs = FALSE;
 		return omega->cnt++;

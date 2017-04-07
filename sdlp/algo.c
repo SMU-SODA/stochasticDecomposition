@@ -113,30 +113,33 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 
 int backwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
 	double	mubBar, futureVal;
-	int 	t, obs, numRows, idxSigma, idxCut;
+	int 	t, extraRows = 0, idxSigma, idxCut;
 	BOOL	newSigmaFlag;
 
 	for ( t = numStages-1; t > 0; t-- ) {
-		numRows = prob[t]->num->rows;
 		if ( t == numStages-1 ) {
 			/* update omega structure with the new observation, as this is not done in forward pass */
-			cell[t]->k++; numRows++;
-			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+			cell[t]->k++;
+			cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+
+			/* change the right-hand side with endogenous state */
+			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
+
+			/* change the right-hand side with exogensous state */
+			if ( computeExoRHS(cell[t]->sda, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[cell[t]->omega->idx],
+					cell[t-1]->candidU, cell[t]->rhs) ){
+				errMsg("allocation", "backwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
+				return 1;
+			}
+
 			futureVal = 0.0;
 		}
 		else
 			futureVal = cell[t]->cuts->vals[cell[t]->cuts->cnt-1]->alpha;
 
-		/* change the right-hand side with endogenous state */
-		computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
-		/* change the right-hand side with exogensous state */
-		if ( computeExoRHS(cell[t]->sda, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs) ){
-			errMsg("allocation", "backwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
-			return 1;
-		}
 
 		/* solve the stage dual approximation and obtain the dual solutions */
-		if ( dualUpdates(cell[t]->sda, cell[t]->sp->name, numRows, prob[t]->num->cols, cell[t]->pi, &mubBar)) {
+		if ( dualUpdates(cell[t]->sda, cell[t]->sp->name, prob[t]->num->rows+extraRows, prob[t]->num->cols, cell[t]->pi, &mubBar)) {
 			errMsg("algorithm", "backwardPass","failed to complete dual updates", 0);
 			return 1;
 		}
@@ -152,8 +155,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
 			return 1;
 		}
-
-
+		extraRows = 1;
 	}
 
 	return 0;
@@ -171,19 +173,15 @@ void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vect
 
 }//END computeEndoRHS()
 
-int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vector candidut, vector endoRHS) {
+int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vector candidut, vector rhs) {
 	sparseVector bOmega;
 	sparseMatrix COmega;
-	vector		 rhs;
 	intvec 		 indices;
 	int 		 n, offset, status;
 
 	if ( !(indices = (intvec) arr_alloc(num->rows, int)))
 		errMsg("allocation", "computeRHS", "indices", 0);
-	if ( !(rhs = (vector) arr_alloc(num->rows+1, double)))
-		errMsg("allocation", "computeRHS", "rhs", 0);
 	for ( n = 0; n < num->rows; n++) {
-		rhs[n+1] = endoRHS[n+1];
 		indices[n]= n;
 	}
 
@@ -205,9 +203,9 @@ int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vecto
 		return 1;
 	}
 
-	mem_free(rhs); mem_free(indices);
+	mem_free(indices);
 	return 0;
-}//END computeRHS()
+}//END computeExoRHS()
 
 int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, double lb) {
 	vector	coef;

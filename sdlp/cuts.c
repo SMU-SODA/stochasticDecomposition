@@ -152,17 +152,23 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 		return -1;
 	}
 
-	if ( addRow(lp, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) )
+	if ( addRow(lp, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) ) {
 		errMsg("solver", "addCut", "failed to add the new cut to solver problem", 0);
+		return -1;
+	}
 	if ( sda != NULL ) {
 		if ( cuts->cnt >= 1 )
 			/* remove the previous timestage dual approximation before adding the new one */
-			if ( removeRow(sda, numRows, numRows) )
+			if ( removeRow(sda, numRows, numRows) ) {
 				errMsg("solver", "addCut", "failed to add the new cut to solver problem", 0);
+				return -1;
+			}
 
 		/* add current approximation */
-		if ( addRow(sda, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) )
+		if ( addRow(sda, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) ) {
 			errMsg("solver", "addCut", "failed to add the new cut to solver problem", 0);
+			return -1;
+		}
 	}
 
 	cut->rowNum = numRows + cuts->cnt;

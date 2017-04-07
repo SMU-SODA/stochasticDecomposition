@@ -16,6 +16,7 @@
 #undef CELL_SETUP
 #undef STOC_CHECK
 #undef CUT_CHECK
+#define ALGO_RUN
 
 #define		TRIVIAL		0
 #define		NONTRIVIAL	1

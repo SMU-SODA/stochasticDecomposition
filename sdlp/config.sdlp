@@ -1,0 +1,29 @@
+// absolute path to input directory
+INPUTDIR	../spInput/
+
+// absolute path to output directory
+OUTPUTDIR	../../spOutput/
+
+// Maximum number of iterations
+MAX_ITER   5
+
+// Minimum iterations
+MIN_ITER   3
+
+// Tolerance level used to differentiate floating point numbers */
+TOLERANCE    0.00001
+
+// Run seed
+RUN_SEED	9495518635394380
+
+// Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
+EVAL_FLAG 0
+
+// Random number seed for resampling omegas during evaluation
+EVAL_SEED	1354874229869110
+
+// Obj. eval. is accurate to within this much, w/95% confidence
+EVAL_ERROR 0.01
+
+// Optimality gap (relative to the mean value)
+OPT_GAP	0.01
