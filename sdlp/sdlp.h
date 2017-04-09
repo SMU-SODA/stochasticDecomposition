@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#define ALGO_RUN
+#undef ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -113,12 +113,13 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim);
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages);
 int backwardPass(probType **prob, cellType **cell, vector observ, int numStages);
 void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vector rhs);
-int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vector candidut, vector rhs);
+int computeExoRHS(LPptr lp, LPptr sda, coordType *coord, numType *num, vector observ, vector candidut, vector rhs);
 int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, double lb);
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
 int computeMu(LPptr lp, int numCols, double *mubBar);
-void printAlgoDetails(int item);void cleanupAlgo(probType **prob, cellType **cell, int T);
 void printAlgoDetails(int item);
+void printSolutionDetails (probType **prob, cellType **cell, int numStages);
+void cleanupAlgo(probType **prob, cellType **cell, int T);
 
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
@@ -138,8 +139,8 @@ omegaType *newOmega(int t, stocType *stoc, int numObs);
 lambdaType *newLambda(int numIter);
 sigmaType *newSigma(int numIter, int numPi);
 deltaType *newDelta(int numObs);
-void freeLambdaType(lambdaType *lambda, BOOL all);
-void freeSigmaType(sigmaType *sigma, BOOL all);
+void freeLambdaType(lambdaType *lambda);
+void freeSigmaType(sigmaType *sigma);
 void freeDeltaType(deltaType *delta, int numObs, int numLambda);
 void freeOmegaType(omegaType *omega);
 

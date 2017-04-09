@@ -16,11 +16,11 @@ int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
 	int n;
 
 	for ( n = 1; n <= omegas->numRV; n++ )
-		observ[n] -= omegas->mean[n];
+		observ[n-1] -= omegas->mean[n];
 
 	n = 0;
 	while ( n < omega->cnt ) {
-		if ( equalVector(observ, omega->vals[n], omegas->numRV, config.TOLERANCE) )
+		if ( equalVector(observ-1, omega->vals[n], omegas->numRV, config.TOLERANCE) )
 			break;
 		n++;
 	}
@@ -28,15 +28,15 @@ int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
 		/* new observation encountered, store its values */
 		if ( !(omega->vals[n] = (vector) arr_alloc(omegas->numRV+1,double)) )
 			errMsg("allocation", "forwardPass", "cell[t]->omega->vals[n]", 0);
-		copyVector(observ, omega->vals[n], omegas->numRV, TRUE);
+		copyVector(observ, omega->vals[n], omegas->numRV, FALSE);
 		omega->vals[n][0] = oneNorm(omega->vals[n]+1, omegas->numRV);
 		omega->weights[omega->cnt] = 1;
-		omega->newObs = FALSE;
+		omega->newObs = TRUE;
 		return omega->cnt++;
 	}
 
 	omega->weights[n]++;
-	omega->newObs = TRUE;
+	omega->newObs = FALSE;
 
 	return n;
 }//END calcOmega
@@ -59,14 +59,6 @@ int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, 
 	/* need to calculate new row only if new lambda is observed in lambdaType */
 	if (newLambdaFlag)
 		calcDeltaRow(maxIter, num, coord, lambda, idxLambda, omega, delta);
-
-#ifdef STOC_CHECK
-	double obj;
-	obj = cell->sigma->vals[idxSigma].pib - vXv(cell->sigma->vals[idxSigma].piC, candidU, prob->coord->colsC, prob->num->cntCcols);
-	obj += cell->delta->vals[obs].pib - vXv(cell->delta->vals[obs].piC, cell->omega->vals[obs], prob->coord->rvCols, prob->num->rvColCnt);
-	printf("Objective function estimate = %lf\n", obj);
-#endif
-
 
 	return idxSigma;
 }//END stocUpdate()
@@ -133,30 +125,32 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 }//END calcSigma()
 
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta) {
-	int		idxPi, m, idxOmega;
+	int		idxLambda, m, idxOmega;
 	vector	pixC;
 
 	idxOmega = omega->idx;
 
-	if ( !(pixC = (vector) arr_alloc(num->rvColCnt+1, double)) )
-		errMsg("allocation", "calcDeltaRow", "pixC", 0);
+	for ( idxLambda = 0; idxLambda < lambda->cnt; idxLambda++ ) {
+		if ( num->rvColCnt > 0 ) {
+			if ( !(pixC = (vector) arr_alloc(num->rvColCnt+1, double)) )
+				errMsg("allocation", "calcDeltaCol", "pixC", 0);
+		}
+		else
+			pixC = NULL;
 
-	for ( idxPi = 0; idxPi < lambda->cnt; idxPi++ ) {
-		delta->vals[idxPi][idxOmega].pib = 0;
+		delta->vals[idxLambda][idxOmega].pib = 0;
 		for ( m = 1; m <= num->rvRowCnt; m++ )
-			delta->vals[idxPi][idxOmega].pib += lambda->vals[idxPi][m]*omega->vals[idxOmega][m];
+			delta->vals[idxLambda][idxOmega].pib += lambda->vals[idxLambda][m]*omega->vals[idxOmega][m];
 
 		for ( m = num->rvRowCnt+1; m <= num->numRV; m++ )
-			pixC[m-num->rvRowCnt] = lambda->vals[idxPi][m]*omega->vals[idxOmega][m];
-		delta->vals[idxPi][idxOmega].piC = pixC;
+			pixC[m-num->rvRowCnt] = lambda->vals[idxLambda][m]*omega->vals[idxOmega][m];
+		delta->vals[idxLambda][idxOmega].piC = pixC;
 	}
-
-	mem_free(pixC);
 
 }//END calcDeltaCol()
 
 void calcDeltaRow(int numIter, numType *num, coordType *coord, lambdaType *lambda, int idxLambda, omegaType *omega, deltaType *delta) {
-	int 	obs, m;
+	int 	idxOmega, m;
 	vector 	pixC;
 #ifdef TRACE
 	trPrint("calcDeltaRow", 1);
@@ -165,20 +159,24 @@ void calcDeltaRow(int numIter, numType *num, coordType *coord, lambdaType *lambd
 
 	/* allocate memory to a new row in delta structure */
 	if ( !(delta->vals[idxLambda] = (pixbCType *) arr_alloc(numIter, pixbCType)) )
-		errMsg("allocation", "calcDeltaCol", "delta->vals[obs]", 0);
-
-	if ( !(pixC = (vector) arr_alloc(num->rvColCnt, double)) )
-		errMsg("allocation", "calcDeltaRow", "pixC", 0);
+		errMsg("allocation", "calcDeltaRow", "delta->vals[obs]", 0);
 
 	/* For all observations, calculate \pi \times b and \pi \times C */
-	for (obs = 0; obs < omega->cnt; obs++) {
-		delta->vals[idxLambda][obs].pib = 0;
+	for (idxOmega = 0; idxOmega < omega->cnt; idxOmega++) {
+		if ( num->rvColCnt > 0 ) {
+			if ( !(pixC = (vector) arr_alloc(num->rvColCnt+1, double)) )
+				errMsg("allocation", "calcDeltaCol", "pixC", 0);
+		}
+		else
+			pixC = NULL;
+
+		delta->vals[idxLambda][idxOmega].pib = 0;
 		for ( m = 1; m <= num->rvRowCnt; m++ )
-			delta->vals[idxLambda][obs].pib += lambda->vals[idxLambda][m]*omega->vals[obs][m];
+			delta->vals[idxLambda][idxOmega].pib += lambda->vals[idxLambda][m]*omega->vals[idxOmega][m];
 
 		for ( m = num->rvRowCnt+1; m <= num->numRV; m++ )
-			pixC[m-num->rvRowCnt] = lambda->vals[idxLambda][m]*omega->vals[obs][m];
-		delta->vals[idxLambda][obs].piC = pixC;
+			pixC[m-num->rvRowCnt] = lambda->vals[idxLambda][m]*omega->vals[idxOmega][m];
+		delta->vals[idxLambda][idxOmega].piC = pixC;
 	}
 
 	mem_free(pixC);
@@ -239,35 +237,29 @@ deltaType *newDelta(int numIter) {
 	return delta;
 }//END newDelta()
 
-void freeLambdaType(lambdaType *lambda, BOOL all) {
+void freeLambdaType(lambdaType *lambda) {
 	int n;
 
-	if (all) {
-		mem_free(lambda->vals);
-		mem_free(lambda);
-	}
-	else {
+	if ( lambda->vals ) {
 		for ( n = 0; n < lambda->cnt; n++ )
 			if (lambda->vals[n]) mem_free(lambda->vals[n]);
-		lambda->cnt = 0;
+		mem_free(lambda->vals);
 	}
+	mem_free(lambda);
 
 }//END freeLambdaType()
 
-void freeSigmaType(sigmaType *sigma, BOOL all) {
+void freeSigmaType(sigmaType *sigma) {
 	int n;
 
-	if ( all ) {
-		if (sigma->vals) mem_free(sigma->vals);
-		if (sigma->lambdaIdx) mem_free(sigma->lambdaIdx);
-		if (sigma->ck) mem_free(sigma->ck);
-		mem_free(sigma);
-	}
-	else {
+	if (sigma->lambdaIdx) mem_free(sigma->lambdaIdx);
+	if (sigma->ck) mem_free(sigma->ck);
+	if ( sigma->vals) {
 		for ( n = 0; n < sigma->cnt; n++ )
 			if (sigma->vals[n].piC) mem_free(sigma->vals[n].piC);
-		sigma->cnt = 0;
+		mem_free(sigma->vals);
 	}
+	mem_free(sigma);
 
 }//END freeSigmaType()
 
@@ -278,11 +270,14 @@ void freeDeltaType(deltaType *delta, int numObs, int numLambda) {
 		for ( n = 0; n < numLambda; n++ ) {
 			if ( delta->vals[n] ) {
 				for ( m = 0; m < numObs; m++ )
-					if (delta->vals[n][m].piC) mem_free(delta->vals[n][m].piC);
+					if ( delta->vals[n][m].piC ) {
+						mem_free(delta->vals[n][m].piC);
+						delta->vals[n][m].piC = NULL;
+					}
 				mem_free(delta->vals[n]);
 			}
-			mem_free(delta->vals);
 		}
+			mem_free(delta->vals);
 	}
 	mem_free(delta);
 

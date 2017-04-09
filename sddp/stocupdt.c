@@ -34,7 +34,7 @@ int stocUpdate(probType *prob, cellType *cell, vector candidU, int obs) {
 	idxLambda = calcLambda(prob->num, prob->coord, cell->lambda, cell->pi, &newLambdaFlag);
 
 	/* update the dual information with respect to bBar and Cbar */
-	idxSigma = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, candidU, cell->cuts, cell->pi, mubBar, newLambdaFlag, idxLambda, cell->sigma);
+	idxSigma = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar,  cell->cuts, cell->pi, mubBar, newLambdaFlag, idxLambda, cell->sigma);
 
 	calcDelta(prob->num, cell->lambda->vals[idxLambda], cell->omega, obs, cell->delta);
 
@@ -75,7 +75,7 @@ int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BO
 	return lambda->cnt++;
 }//END calcLambda()
 
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector xt, cutsType *cuts, vector pi, double mubBar, BOOL newLambdaFlag,
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, cutsType *cuts, vector pi, double mubBar, BOOL newLambdaFlag,
 		int idxLambda, sigmaType *sigma) {
 	vector 	piCBar, temp;
 	double 	pibBar;

@@ -5,10 +5,9 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   5
-
+MAX_ITER   100
 // Minimum iterations
-MIN_ITER   3
+MIN_ITER   10
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.00001

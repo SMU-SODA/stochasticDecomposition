@@ -127,7 +127,7 @@ void freeOneCut(oneCut *cut);
 int stocUpdate(probType *prob, cellType *cell, vector candidU, int obs);
 int computeMu(LPptr lp, int numCols, double *mubBar);
 int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BOOL *newLambdaFlag);
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector xt, cutsType *cuts, vector pi, double mubBar, BOOL newLambdaFlag,
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, cutsType *cuts, vector pi, double mubBar, BOOL newLambdaFlag,
 		int idxLambda, sigmaType *sigma);
 void calcDelta(numType *num, vector lambdaPi, omegaType *omega, int obs, deltaType *delta);
 omegaType *newOmega(int t, stocType *stoc);

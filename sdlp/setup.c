@@ -248,6 +248,8 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			writeProblem(cell[t]->sp->lp, fname);
 #endif
 		}
+		else
+			cell[t]->sp->lp = NULL;
 
 		if ( t != 0 ) {
 			/* Load the cell problem onto solver: this problem will be used in the backward pass */
@@ -260,6 +262,8 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 				return NULL;
 			}
 		}
+		else
+			cell[t]->sda = NULL;
 	}
 
 	return cell;
@@ -276,9 +280,9 @@ void freeCellType (probType **prob, cellType **cell, int T) {
 				if (cell[t]->pi) mem_free(cell[t]->pi);
 				if (cell[t]->rhs) mem_free(cell[t]->rhs);
 				if (cell[t]->cuts) freeCutsType(cell[t]->cuts);
-				if (cell[t]->lambda) freeLambdaType(cell[t]->lambda, TRUE);
-				if (cell[t]->sigma) freeSigmaType(cell[t]->sigma, TRUE);
-				if (cell[t]->delta) freeDeltaType(cell[t]->delta, cell[t]->omega->cnt, TRUE);
+				if (cell[t]->delta) freeDeltaType(cell[t]->delta, cell[t]->omega->cnt, cell[t]->lambda->cnt);
+				if (cell[t]->lambda) freeLambdaType(cell[t]->lambda);
+				if (cell[t]->sigma) freeSigmaType(cell[t]->sigma);
 				if (cell[t]->omega) freeOmegaType(cell[t]->omega);
 				mem_free (cell[t]);
 			}

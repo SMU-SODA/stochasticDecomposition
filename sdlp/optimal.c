@@ -15,7 +15,7 @@ extern configType config;
 
 BOOL optimal(probType **prob, cellType **cell, int T) {
 
-	if ( cell[0]->k > config.MAX_ITER )
+	if ( cell[0]->k >= config.MAX_ITER )
 		return TRUE;
 
 	return FALSE;

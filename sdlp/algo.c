@@ -48,6 +48,10 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
 		}
 	}
 
+	printf("Successfully completed SDLP algorithm.\n");
+	printSolutionDetails(prob, cell, tim->numStages);
+
+
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
 	cleanupAlgo(prob, cell, tim->numStages);
@@ -67,13 +71,13 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 		/* update the right-hand side with state information for non-root stages */
 		if ( t != 0 ) {
 			/* update omega structure with the new observation */
-			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg);
 
 			/* change the right-hand side with endogenous state information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
 
 			/* change the right-hand side with exogenous state information */
-			if ( computeExoRHS(cell[t]->sp->lp, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs)) {
+			if ( computeExoRHS(cell[t]->sp->lp, cell[t]->sda, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[obs], cell[t-1]->candidU, cell[t]->rhs)) {
 				errMsg("allocation", "forwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
 				return 1;
 			}
@@ -120,13 +124,13 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 		if ( t == numStages-1 ) {
 			/* update omega structure with the new observation, as this is not done in forward pass */
 			cell[t]->k++;
-			cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg-1);
+			cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg);
 
 			/* change the right-hand side with endogenous state */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
 
 			/* change the right-hand side with exogensous state */
-			if ( computeExoRHS(cell[t]->sda, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[cell[t]->omega->idx],
+			if ( computeExoRHS(cell[t]->sda, NULL, prob[t]->coord, prob[t]->num, cell[t]->omega->vals[cell[t]->omega->idx],
 					cell[t-1]->candidU, cell[t]->rhs) ){
 				errMsg("allocation", "backwardPass", "failed to change the right-hand side with uncertainty and state information", 0);
 				return 1;
@@ -137,16 +141,29 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 		else
 			futureVal = cell[t]->cuts->vals[cell[t]->cuts->cnt-1]->alpha;
 
+#ifdef ALGO_RUN
+		char fname[NAMESIZE];
+		sprintf(fname, "bProb%d_%d.lp", t, cell[t]->k);
+		writeProblem(cell[t]->sda, fname);
+#endif
 
 		/* solve the stage dual approximation and obtain the dual solutions */
 		if ( dualUpdates(cell[t]->sda, cell[t]->sp->name, prob[t]->num->rows+extraRows, prob[t]->num->cols, cell[t]->pi, &mubBar)) {
-			errMsg("algorithm", "backwardPass","failed to complete dual updates", 0);
+			errMsg("algorithm", "backwardPass","failed to complete d%ual updates", 0);
 			return 1;
 		}
 
 		/* update all the stochastic components, indicate that the updates with respect to new node have been completed */
 		idxSigma = stocUpdate(config.MAX_ITER, prob[t]->num, prob[t]->coord, prob[t]->Cbar, prob[t]->bBar, cell[t]->pi, mubBar, futureVal,
 					cell[t]->lambda, cell[t]->sigma, &newSigmaFlag, cell[t]->delta, cell[t]->omega, cell[t]->k);
+
+#ifdef STOC_CHECK
+	double obj;
+	obj = cell[t]->sigma->vals[idxSigma].pib - vXv(cell[t]->sigma->vals[idxSigma].piC, cell[t-1]->candidU, prob[t]->coord->colsC, prob[t]->num->cntCcols);
+	obj += cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].pib - vXv(cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].piC,
+			cell[t]->omega->vals[cell[t]->omega->idx], prob[t]->coord->rvCols, prob[t]->num->rvColCnt);
+	printf("Objective function estimate = %lf\n", obj);
+#endif
 
 		/* form new optimality cut */
 		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
@@ -173,7 +190,7 @@ void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vect
 
 }//END computeEndoRHS()
 
-int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vector candidut, vector rhs) {
+int computeExoRHS(LPptr lp, LPptr sda, coordType *coord, numType *num, vector observ, vector candidut, vector rhs) {
 	sparseVector bOmega;
 	sparseMatrix COmega;
 	intvec 		 indices;
@@ -196,11 +213,20 @@ int computeExoRHS(LPptr lp, coordType *coord, numType *num, vector observ, vecto
 	/* randomness in transfer matrix */
 	rhs = MSparsexvSub(&COmega, candidut, rhs);
 
-	/* change the right hand side in the solver for stage problem */
+	/* change the right hand side in the solver for stage decision simulation problem */
 	status = changeRHS(lp, num->rows, indices, rhs+1);
 	if ( status ) {
 		errMsg("solver", "computeRHS", "failed to change right-hand side in solver", 0);
 		return 1;
+	}
+
+	if ( sda != NULL ) {
+		/* change the right-hand side in the solver for the stage dual approximation problem */
+		status = changeRHS(sda, num->rows, indices, rhs+1);
+		if ( status ) {
+			errMsg("solver", "computeRHS", "failed to change right-hand side in solver", 0);
+			return 1;
+		}
 	}
 
 	mem_free(indices);
@@ -350,3 +376,19 @@ void printAlgoDetails(int item) {
 	printf("-------------------------------------------------------------------------------------------------------------\n");
 
 }//END printAlgoDetails()
+
+void printSolutionDetails (probType **prob, cellType **cell, int numStages) {
+	int t, n;
+
+	printf("Number of iterations                      = %d\n", cell[0]->k);
+	printf("Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+
+	/* Details of stochastic elements */
+	for (t = 1; t < numStages; t++ ) {
+		printf("Number of observations encountered = %d\n", cell[t]->omega->cnt);
+		for ( n = 0; n < cell[t]->omega->cnt; n++) {
+			printf("%lf\t%lf\n", cell[t]->omega->vals[n][1] + prob[t]->omegas->mean[1], (double) cell[t]->omega->weights[n]/cell[t]->k);
+		}
+	}
+
+}//END printSolutionDetails()
