@@ -674,6 +674,12 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 			return NULL;
 		}
 	}
+
+#if 1
+	for ( t = 1; t < tim->numStages; t++ )
+		lb[t] = lb[0];
+#endif
+
 	return lb;
 }//END calcLowerBound()
 

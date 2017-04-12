@@ -84,11 +84,17 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 		}
 
 		/* change coefficients of eta column */
-		status = changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb);
-		if ( status ) {
+		if ( changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb) ) {
 			errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
 			return 1;
 		}
+
+		/* if the stage lower bound is non-trivial, then update the right-hand side of minorants to show that */
+		if ( cell[t]->lbType == NONTRIVIAL )
+			if ( updateRHS(cell[t]->sp->lp, cell[t]->cuts, cell[t]->lb, cell[t+1]->k) ) {
+				errMsg("algorithm", "forwardPass", "failed to change right-hand side to reflect non-trivial lower bound", 0);
+				return 1;
+			}
 
 #ifdef ALGO_RUN
 		char fname[NAMESIZE];
@@ -285,6 +291,32 @@ int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, doub
 	mem_free(coef);
 	return 0;
 }//END chgEtaCol()
+
+int updateRHS(LPptr lp, cutsType *cuts, double lb, int numObs) {
+	vector rhs;
+	intvec indices;
+	int cnt;
+
+	if ( !(rhs = (vector) arr_alloc(cuts->cnt, double)) )
+		errMsg("allocation", "updateRHS", "rhs", 0);
+	if ( !(indices = (intvec) arr_alloc(cuts->cnt, int)) )
+		errMsg("allocation", "updateRHS", "indices", 0);
+
+	for ( cnt = 0; cnt < cuts->cnt; cnt++ ) {
+		rhs[cnt] = cuts->vals[cnt]->alpha + ((double) numObs / (double) cuts->vals[cnt]->numObs - 1) * lb;
+		indices[cnt] = cuts->vals[cnt]->rowNum;
+	}
+
+	if ( changeRHS(lp, cuts->cnt, indices, rhs) ) {
+		errMsg("solver", "updateRHS", "failed to change the right-hand side", 0);
+		return 1;
+	}
+
+	mem_free(rhs);
+	mem_free(indices);
+
+	return 0;
+}//END updateRHS
 
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar) {
 	int 	status;

@@ -115,6 +115,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vector rhs);
 int computeExoRHS(LPptr lp, LPptr sda, coordType *coord, numType *num, vector observ, vector candidut, vector rhs);
 int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, double lb);
+int updateRHS(LPptr lp, cutsType *cuts, double lb, int numObs);
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
 int computeMu(LPptr lp, int numCols, double *mubBar);
 void printAlgoDetails(int item);
