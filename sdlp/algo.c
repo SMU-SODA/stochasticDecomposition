@@ -61,6 +61,7 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
 }//END algo()
 
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
+	vector  incumbU;
 	int		t, status, obs;
 
 	/************************************************* setup and solve stage problems *****************************************************/
@@ -83,18 +84,44 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			}
 		}
 
+		if ( config.QUADRATIC ) {
+			/* select the incumbent solution to be used */
+			incumbU = selectIncumb(t, cell[t]->incumb);
+
+			/* If decision simulation problem is solved as a quadratic program, then update the right-hand side and bounds using current incumbent
+			 * solution */
+			if ( changeQPrhs(cell[t]->sp->lp, prob[t+1]->coord->colsC, prob[t+1]->num->cntCcols, prob[t]->num->rows,
+					prob[t]->Dbar, prob[t]->bBar, cell[t]->cuts, incumbU, cell[t]->rhs, cell[t]->k, cell[t]->lb) ) {
+				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
+				return 1;
+			}
+
+			if ( changeQPbds(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->sp->bdl, prob[t]->sp->bdu, incumbU) ) {
+				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
+				return 1;
+			}
+
+			/* update the proximal term for the subproblem */
+			if ( constructQP(cell[t]->sp->lp, prob[t]->num->cols, cell[t]->incumb->quadScalar) ) {
+				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
+				return 1;
+			}
+
+		}
+		else if (cell[t]->lbType == NONTRIVIAL ) {
+			/* if the decision simulation problem is solved as a linear program and it has non-trivial lower bound, then update the right-hand side of
+			 * minorants to reflect this. This update for when decision simulation problem is solved as quadratic program is performed in changeQPrhs */
+			if ( updateCutsRHS(cell[t]->sp->lp, cell[t]->cuts, cell[t]->lb, cell[t+1]->k) ) {
+				errMsg("algorithm", "forwardPass", "failed to change right-hand side to reflect non-trivial lower bound", 0);
+				return 1;
+			}
+		}
+
 		/* change coefficients of eta column */
 		if ( changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb) ) {
 			errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
 			return 1;
 		}
-
-		/* if the stage lower bound is non-trivial, then update the right-hand side of minorants to show that */
-		if ( cell[t]->lbType == NONTRIVIAL )
-			if ( updateRHS(cell[t]->sp->lp, cell[t]->cuts, cell[t]->lb, cell[t+1]->k) ) {
-				errMsg("algorithm", "forwardPass", "failed to change right-hand side to reflect non-trivial lower bound", 0);
-				return 1;
-			}
 
 #ifdef ALGO_RUN
 		char fname[NAMESIZE];
@@ -113,6 +140,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			errMsg("solver", "forwardPass", "failed to obtain primal solution for the stage problem", 0);
 			return 1;
 		}
+
 
 		/* obtain the primal objective function value */
 		cell[t]->candidEst = getObjective(cell[t]->sp->lp, PROB_LP);
@@ -292,7 +320,7 @@ int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, doub
 	return 0;
 }//END chgEtaCol()
 
-int updateRHS(LPptr lp, cutsType *cuts, double lb, int numObs) {
+int updateCutsRHS(LPptr lp, cutsType *cuts, double lb, int numObs) {
 	vector rhs;
 	intvec indices;
 	int cnt;
@@ -316,7 +344,7 @@ int updateRHS(LPptr lp, cutsType *cuts, double lb, int numObs) {
 	mem_free(indices);
 
 	return 0;
-}//END updateRHS
+}//END updateCutsRHS
 
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar) {
 	int 	status;

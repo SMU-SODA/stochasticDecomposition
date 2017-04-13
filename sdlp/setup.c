@@ -185,8 +185,13 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 			/* candidate solution */
 			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
 				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
-			/* TODO: incumbent solutions */
 			cell[t]->candidEst = 0.0;
+
+			/* incumbent solutions */
+			if ( t == 0)
+				cell[t]->incumb = newIncumb(1);
+			else
+				cell[t]->incumb = newIncumb(config.MAX_ITER);
 
 			/* cuts structure */
 			if ( !(cell[t]->cuts = (cutsType *) mem_malloc(sizeof(cutsType))) )
@@ -199,7 +204,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 		else {
 			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
 				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
-			cell[t]->incumbU = NULL;
+			cell[t]->incumb = NULL;
 			cell[t]->cuts 	 = NULL;
 			cell[t]->maxCuts = 0;
 		}
@@ -269,8 +274,35 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 	return cell;
 }//END newCell()
 
+incumbType *newIncumb(int maxIncumb) {
+	incumbType *incumb;
+
+	if ( !(incumb = (incumbType *) mem_malloc(sizeof(incumbType))) )
+		errMsg("allocation", "newIncumb", "incumb", 0);
+	if ( !(incumb->vals = (vector *) arr_alloc(maxIncumb, vector)) )
+		errMsg("allocation", "newIncumb", "incumb->vals", 0);
+	if ( !(incumb->est = (vector) arr_alloc(maxIncumb, double)) )
+		errMsg("allocation", "newIncumb", "incumb->est", 0);
+	incumb->cnt = 0;
+
+	return incumb;
+}//END newIncumb()
+
+void freeIncumb(incumbType *incumb) {
+	int n;
+
+	if ( incumb->vals ) {
+		for ( n = 0; n < incumb->cnt; n++ )
+			if ( incumb->vals[n] ) mem_free(incumb->vals[n]);
+		mem_free(incumb->vals);
+	}
+	if ( incumb->est ) mem_free(incumb->est);
+	mem_free(incumb);
+
+}//END freeIncumb()
+
 void freeCellType (probType **prob, cellType **cell, int T) {
-	int t;
+	int t, n;
 
 	if (cell) {
 		for ( t = 0; t < T; t++ ) {
@@ -279,6 +311,7 @@ void freeCellType (probType **prob, cellType **cell, int T) {
 				if (cell[t]->candidU) mem_free(cell[t]->candidU);
 				if (cell[t]->pi) mem_free(cell[t]->pi);
 				if (cell[t]->rhs) mem_free(cell[t]->rhs);
+				if (cell[t]->incumb) freeIncumb(cell[t]->incumb);
 				if (cell[t]->cuts) freeCutsType(cell[t]->cuts);
 				if (cell[t]->delta) freeDeltaType(cell[t]->delta, cell[t]->omega->cnt, cell[t]->lambda->cnt);
 				if (cell[t]->lambda) freeLambdaType(cell[t]->lambda);

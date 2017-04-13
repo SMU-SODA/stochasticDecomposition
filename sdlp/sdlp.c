@@ -98,6 +98,8 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%d", &config.MIN_ITER);
 		else if (!(strcmp(line, "TOLERANCE")))
 			fscanf(fptr, "%lf", &config.TOLERANCE);
+		else if (!(strcmp(line, "QUADRATIC")))
+			fscanf(fptr, "%d", config.QUADRATIC);
 		else if (!(strcmp(line, "EVAL_FLAG")))
 			fscanf(fptr, "%d", &config.EVAL_FLAG);
 		else if (!(strcmp(line, "EVAL_SEED")))

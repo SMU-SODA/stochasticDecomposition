@@ -6,11 +6,14 @@ OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
 MAX_ITER   2000
+
 // Minimum iterations
 MIN_ITER   10
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.00001
+
+// Flag to indicate how forward decision simulation problems are solved. 0 for LP/1 for QP.
 
 // Run seed
 RUN_SEED	9495518635394380

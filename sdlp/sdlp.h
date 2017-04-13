@@ -28,6 +28,7 @@ typedef struct {
 	int			MIN_ITER;
 	double  	TOLERANCE;
 	long long 	RUN_SEED;
+	int			QUADRATIC;
 	int			EVAL_FLAG;
 	long long 	EVAL_SEED;
 	double		EVAL_ERROR;
@@ -86,6 +87,13 @@ typedef struct {
 }cutsType;
 
 typedef struct {
+	int		cnt;
+	vector	*vals;
+	vector	est;
+	double  quadScalar;
+}incumbType;
+
+typedef struct {
 	int			k;				/* number of iterations */
 	double		lb;				/* a lower bound computed using mean values for random variables */
 	int			lbType;			/* TRIVIAL if lower bound is zero, and NONTRIVIAL if it is nonzero */
@@ -93,8 +101,8 @@ typedef struct {
 	void		*sda;			/* stage dual approximation problem pointer to be used by solver */
 	vector		rhs;			/* right-hand side after state information update */
 	vector		candidU;		/* candidate solution for the stage */
-	vector		*incumbU;		/* a list of incumbent solutions for the stage. Used only when regularization is employed. */
-	double		candidEst;		/* objective function value at candidate */
+	double		candidEst;		/* objective function estimate at candidate */
+	incumbType	*incumb;		/* structure to hold all relevant information regarding incumbent solutions */
 	vector		pi;				/* dual solution for the stage */
 	int			maxCuts;		/* maximum number of cuts to be included in the cost-to-go function approximation */
 	cutsType	*cuts;			/* optimality cuts added */
@@ -115,7 +123,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vector rhs);
 int computeExoRHS(LPptr lp, LPptr sda, coordType *coord, numType *num, vector observ, vector candidut, vector rhs);
 int changeEtaCol(LPptr lp, int numCols, int numRows, int k, cutsType *cuts, double lb);
-int updateRHS(LPptr lp, cutsType *cuts, double lb, int numObs);
+int updateCutsRHS(LPptr lp, cutsType *cuts, double lb, int numObs);
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
 int computeMu(LPptr lp, int numCols, double *mubBar);
 void printAlgoDetails(int item);
@@ -125,6 +133,7 @@ void cleanupAlgo(probType **prob, cellType **cell, int T);
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
 cellType **newCell(stocType *stoc, probType **prob, vector lb, int T);
+incumbType *newIncumb(int maxIncumb);
 void freeCellType (probType **prob, cellType **cell, int T);
 
 /* stocupdt.c */
@@ -155,6 +164,15 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal);
 void freeCutsType(cutsType *cuts);
 void freeOneCut(oneCut *cut);
+
+/* quad.c */
+int constructQP(LPptr lp, int numCols, double regSigma);
+int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatrix *Dbar, sparseVector *bBar, cutsType *cuts, vector X, vector rhs,
+		int numObs, double lb);
+int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector X);
+
+/* policy.c */
+vector selectIncumb(int t, incumbType *incumb);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType **cell, int T);
