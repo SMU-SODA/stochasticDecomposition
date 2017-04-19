@@ -106,11 +106,12 @@ typedef struct {
 void parseCmdLine(string probName);
 int readConfig(string inputDir);
 void printAlgoDetails(int item);
+void printSolutionDetails(probType **prob, cellType **cell, int numStages);
 
 /* subroutines in algo.c */
 void printProbDetails(probType **p);
 int algo (oneProblem *orig, stocType *stoc, timeType *tim);
-int forwardPass(probType **prob, cellType **cell, int numStages);
+int forwardPass(stocType *stoc, probType **prob, cellType **cell, int numStages);
 int backwardPass(probType **prob, cellType **cell, int numStages);
 void printProbDetails(probType **p);
 
@@ -150,6 +151,6 @@ int formOptCut(probType *prob, cellType *cell, intvec iStar, LPptr lp, int numRo
 int addCut(LPptr lp, cutsType *cuts, int numRows, int numCols, int betaLen, intvec betaIndices, oneCut *cut);
 
 /* subroutine in evaluate.c */
-BOOL optimal(probType **prob, cellType **cell, int numStages);
+BOOL optimal(stocType *stoc, probType **prob, cellType **cell, int numStages);
 
 #endif /* SDDP_H_ */

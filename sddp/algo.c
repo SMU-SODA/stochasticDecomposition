@@ -22,11 +22,11 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 	printAlgoDetails(0);
 	while (TRUE) {
 		/* if optimality conditions have been satisfied then break the while loop and exit. */
-		if ( optimal(prob, cell, tim->numStages) )
+		if ( optimal(stoc, prob, cell, tim->numStages) )
 			break;
 
 		/* forward pass */
-		if (forwardPass(prob, cell, tim->numStages)) {
+		if (forwardPass(stoc, prob, cell, tim->numStages)) {
 			errMsg("algorithm", "algo","failed in forward pass", 0);
 			goto TERMINATE;
 		}
@@ -38,6 +38,9 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 		}
 	}
 
+	/* print solution details */
+	printf("Successfully completed stochastic dual dynamic programming algorithm.\n");
+
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
 	cleanupAlgo(prob, cell, tim->numStages);
@@ -45,7 +48,7 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 	return 0;
 }//END algo()
 
-int forwardPass(probType **prob, cellType **cell, int numStages) {
+int forwardPass(stocType *stoc, probType **prob, cellType **cell, int numStages) {
 	int		t, status, stat1, obs;
 
 	/************************************************* setup and solve stage problems *****************************************************/
@@ -55,8 +58,8 @@ int forwardPass(probType **prob, cellType **cell, int numStages) {
 
 		/* update the right-hand side with state information for non-root stages */
 		if ( t != 0 ) {
-			/* generate omega */
-			obs = randInteger(&config.FORWPASS_SEED, cell[t]->omega->cnt);
+			/* generate omega index to be used */
+			obs = generateOmegaIdx(stoc, &config.FORWPASS_SEED);
 
 			/* change the right-hand side with endogenous state information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
@@ -164,6 +167,11 @@ int backwardPass(probType **prob, cellType **cell, int numStages) {
 		printf("Cut estimate = %lf\n", obj);
 #endif
 
+#if 1
+		printf(" --- Stage %d ---\n", t);
+		printSolutionDetails(prob, cell, numStages);
+#endif
+
 		/* clean up the stochastic elements */
 		freeLambdaType(cell[t]->lambda, FALSE);
 		freeSigmaType(cell[t]->sigma, FALSE);
@@ -231,3 +239,30 @@ void printAlgoDetails(int item) {
 	printf("-------------------------------------------------------------------------------------------------------------\n");
 
 }//END printAlgoDetails()
+
+void printSolutionDetails(probType **prob, cellType **cell, int numStages) {
+	int t, n;
+
+	printf("\n=============================================================================================================\n");
+	printf("Number of iterations                      = %d\n", cell[0]->k);
+	printf("Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+
+	/* Details of stochastic elements */
+	for (t = 1; t < numStages; t++ ) {
+//		printf("Number of observations encountered = %d\n", cell[t]->omega->cnt);
+//		for ( n = 0; n < cell[t]->omega->cnt; n++)
+//			printf("%lf\t%lf\n", cell[t]->omega->vals[n][1] + prob[t]->omegas->mean[1], cell[t]->omega->probs[n]);
+
+		printf("Number of lambda's encountered = %d\n", cell[t]->lambda->cnt);
+		for ( n = 0; n < cell[t]->lambda->cnt; n++)
+			printVector(cell[t]->lambda->vals[n], prob[t]->num->rvRowCnt, NULL);
+
+		printf("Number of sigma's encountered = %d\n", cell[t]->sigma->cnt);
+		for ( n = 0; n < cell[t]->sigma->cnt; n++ ) {
+			printf("(%d) %lf; ", cell[t]->sigma->lambdaIdx[n], cell[t]->sigma->vals[n].pib);
+			printVector(cell[t]->sigma->vals[n].piC, prob[t]->num->cntCcols, NULL);
+		}
+	}
+	printf("=============================================================================================================\n");
+
+}//END printSolutionDetails()

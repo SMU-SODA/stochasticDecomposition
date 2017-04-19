@@ -13,7 +13,7 @@
 
 extern configType config;
 
-BOOL optimal(probType **prob, cellType **cell, int numStages) {
+BOOL optimal(stocType *stoc, probType **prob, cellType **cell, int numStages) {
 	int 	t, status, stat1, count, obs;
 	double 	lb, ub, cx, mean, stdev, vari, temp, gap;
 
@@ -33,7 +33,8 @@ BOOL optimal(probType **prob, cellType **cell, int numStages) {
 		ub = 0.0;
 		for ( t =  1; t < numStages; t++ ) {
 			/* simulate an observation */
-			obs = randInteger(&config.EVAL_SEED, cell[t]->omega->cnt);
+			//	obs = randInteger(&config.EVAL_SEED, cell[t]->omega->cnt);
+			obs = generateOmegaIdx(stoc, &config.FORWPASS_SEED);
 
 			/* change right-hand side with endogenous information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);

@@ -11,7 +11,7 @@ FORWPASS_SEED	9495518635394380
 MAX_ITER   5000
 
 // Minimum number of iterations before optimality tests are conducted
-MIN_ITER   100
+MIN_ITER   20
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.000001
