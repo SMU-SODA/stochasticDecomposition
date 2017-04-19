@@ -60,7 +60,7 @@ typedef struct{
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
 	coordType		*coord;			/* structure which holds the necessary coordinates of the problem */
-	omegastuff		*omegas;		/* exogenous information relevant to the problem */
+	omegastuff		*omegas;		/* exogenous information relevant to the problem */
 	sparseVector	*aBar;			/* dynamics vector a_{t+} */
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */

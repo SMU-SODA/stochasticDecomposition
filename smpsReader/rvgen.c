@@ -8,6 +8,28 @@
 #include <utils.h>
 #include <smps.h>
 
+/* Currently works only for BLOCKS-DISCRETE. This subroutine generates the index of block according to the distribution provided in the stoch file. */
+int generateOmegaIdx(stocType *stoc, long long *seed) {
+	double 	val, cumm;
+	int		m, groupID = 0;
+
+	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
+		if ( strstr(stoc->type, "DISCRETE") != NULL  ) {
+			val = scalit(0,1, seed);
+			cumm = 0;
+			for ( m = 0; val > cumm; m++ )
+				cumm += stoc->probs[groupID][m];
+			return (m-1);
+		}
+		else
+			printf("Not yet\n");
+	}
+	else
+		printf("Not yet\n");
+
+	return 0;
+}//END generateOmegaIdx()
+
 void generateOmega(stocType *stoc, vector observ, long long *seed) {
 	int n, offset = 0;
 
