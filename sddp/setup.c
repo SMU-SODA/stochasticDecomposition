@@ -212,9 +212,16 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 				return NULL;
 			}
 
+#if 0
 			cell[t]->lambda = newLambda(cell[t]->omega->cnt);
 			cell[t]->sigma 	= newSigma(cell[t]->omega->cnt, 0);
 			cell[t]->delta = newDelta(cell[t]->omega->cnt);
+#else if
+			cell[t]->lambda = newLambda(config.MAX_ITER);
+			cell[t]->sigma 	= newSigma(config.MAX_ITER, 0);
+			cell[t]->delta = newDelta(config.MAX_ITER);
+#endif
+
 		}
 		else {
 			cell[t]->pi 	= NULL;

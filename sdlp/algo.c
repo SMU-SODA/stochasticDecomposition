@@ -12,8 +12,9 @@
 #include "sdlp.h"
 
 extern configType config;
+extern string outputDir;
 
-int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
+int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 	probType **prob = NULL;
 	cellType **cell = NULL;
 	vector	 observ;
@@ -48,8 +49,8 @@ int algo(oneProblem *orig, stocType *stoc, timeType *tim) {
 		}
 	}
 
-	printf("Successfully completed SDLP algorithm.\n");
-	printSolutionDetails(prob, cell, tim->numStages);
+	printf("Successfully completed excecution of SDLP algorithm on %s.\n", probName);
+	printSolutionDetails(probName, prob, cell, tim->numStages);
 
 
 	/* release memory allocated to different structures used in the algorithm */
@@ -74,7 +75,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			/* update omega structure with the new observation */
 			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg);
 
-			/* change the right-hand side with endogenous state information */
+			/* copy the deterministic right-hand side and change it with endogenous state information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
 
 			/* change the right-hand side with exogenous state information */
@@ -83,10 +84,13 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 				return 1;
 			}
 		}
+		else
+			/* copy the deterministic right-hand side */
+			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, NULL, cell[t]->rhs);
 
 		if ( config.QUADRATIC ) {
 			/* select the incumbent solution to be used */
-			incumbU = selectIncumb(t, cell[t]->incumb);
+			incumbU = selectIncumb(cell[t]->incumb);
 
 			/* If decision simulation problem is solved as a quadratic program, then update the right-hand side and bounds using current incumbent
 			 * solution */
@@ -219,8 +223,9 @@ void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vect
 	for ( n = 1; n <= bBar->cnt; n++ )
 		rhs[bBar->col[n]] = bBar->val[n];
 
-	/* transfer matrix: fixed part */
-	rhs = MSparsexvSub(Cbar, candidU, rhs);
+	if ( candidU != NULL )
+		/* transfer matrix: fixed part */
+		rhs = MSparsexvSub(Cbar, candidU, rhs);
 
 }//END computeEndoRHS()
 
@@ -437,18 +442,49 @@ void printAlgoDetails(int item) {
 
 }//END printAlgoDetails()
 
-void printSolutionDetails (probType **prob, cellType **cell, int numStages) {
+void printSolutionDetails (string probName, probType **prob, cellType **cell, int numStages) {
 	int t, n;
+	FILE *fPtr;
 
-	printf("Number of iterations                      = %d\n", cell[0]->k);
-	printf("Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+	fPtr = openFile(outputDir, "detailedSDLPsols.dat", "w");
 
-	/* Details of stochastic elements */
+	fprintf(fPtr, "\n=============================================================================================================\n");
+	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
+	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+
 	for (t = 1; t < numStages; t++ ) {
-		printf("Number of observations encountered = %d\n", cell[t]->omega->cnt);
-		for ( n = 0; n < cell[t]->omega->cnt; n++) {
-			printf("%lf\t%lf\n", cell[t]->omega->vals[n][1] + prob[t]->omegas->mean[1], (double) cell[t]->omega->weights[n]/cell[t]->k);
+		/* Details of stochastic elements */
+		fprintf(fPtr, "-------------------------------------------------------------------------------------------------------------\n");
+		fprintf(fPtr, "                                         --- Stage %d ---                                                    \n", t);
+		fprintf(fPtr, "-------------------------------------------------------------------------------------------------------------\n");
+		fprintf(fPtr, "Number of observations encountered = %d\n", cell[t]->omega->cnt);
+		for ( n = 0; n < cell[t]->omega->cnt; n++)
+			fprintf(fPtr, "%lf\t%lf\n", cell[t]->omega->vals[n][1] + prob[t]->omegas->mean[1], (double) cell[t]->omega->weights[n]/cell[t]->k);
+		fprintf(fPtr, "\n");
+
+		fprintf(fPtr, "Number of lambda's encountered = %d\n", cell[t]->lambda->cnt);
+		for ( n = 0; n < cell[t]->lambda->cnt; n++){
+			fprintf(fPtr, "%d: ", n);
+			printVector(cell[t]->lambda->vals[n], prob[t]->num->rvRowCnt, fPtr);
+		}
+		fprintf(fPtr, "\n");
+
+		fprintf(fPtr, "Number of sigma's encountered = %d\n", cell[t]->sigma->cnt);
+		for ( n = 0; n < cell[t]->sigma->cnt; n++ ) {
+			fprintf(fPtr, "%d: (%d,%d);\t%lf\t; ", n, cell[t]->sigma->ck[n], cell[t]->sigma->lambdaIdx[n], cell[t]->sigma->vals[n].pib);
+			printVector(cell[t]->sigma->vals[n].piC, prob[t]->num->cntCcols, fPtr);
+		}
+		fprintf(fPtr, "\n");
+
+		/* details of approximation */
+		fprintf(fPtr, "Number of minorants in the approximation = %d\n", cell[t-1]->cuts->cnt);
+		for ( n = 0; n < cell[t-1]->cuts->cnt; n++ ) {
+			fprintf(fPtr, "(%d) ", cell[t-1]->cuts->vals[n]->numObs);
+			printIntvec(cell[t-1]->cuts->vals[n]->iStar-1, cell[t-1]->cuts->vals[n]->numIstar, fPtr);
 		}
 	}
+	fprintf(fPtr, "=============================================================================================================\n");
+
+	fclose(fPtr);
 
 }//END printSolutionDetails()

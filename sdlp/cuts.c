@@ -178,6 +178,37 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 	return cuts->cnt++;
 }//END addCut()
 
+double maxCutHeight(cutsType *cuts, double lb, int iter, intvec Ccols, int betaLen, vector xt) {
+	double Sm, ht;
+	int cnt;
+
+	Sm = cutHeight(cuts->vals[0], lb, iter, Ccols, betaLen, xt);
+	for (cnt = 1; cnt < cuts->cnt; cnt++) {
+		ht = cutHeight(cuts->vals[cnt], lb, iter, Ccols, betaLen, xt);
+		if (Sm < ht)
+			Sm = ht;
+	}
+
+	return Sm;
+}//END maxCutHeight()
+
+double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, vector xt) {
+	double height;
+	double t_over_k = ((double) cut->numObs/ (double) numObs);
+
+	/* A cut is calculated as Alpha - Beta x X */
+	height = cut->alpha - vXv(cut->beta, xt, Ccols, betaLen);
+
+	/* Weight cut based on number of observations used to form it */
+	height *= t_over_k;
+
+	/* account for non-trivial lower bound. */
+	height += (1 - t_over_k) * lb;
+
+	return height;
+}//END cutHeight
+
+
 void freeCutsType(cutsType *cuts) {
 	int n;
 

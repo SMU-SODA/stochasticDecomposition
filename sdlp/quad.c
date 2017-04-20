@@ -45,9 +45,9 @@ int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatri
 	intvec indices;
 	int		n;
 
-	if ( !(qpRHS = (vector) arr_alloc(numRows, double)) )
+	if ( !(qpRHS = (vector) arr_alloc(numRows+cuts->cnt+1, double)) )
 		errMsg("allocation", "computeQPrhs", "qpRHS", 0);
-	if ( !(indices = (intvec) arr_alloc(numRows, int)))
+	if ( !(indices = (intvec) arr_alloc(numRows+cuts->cnt, int)))
 		errMsg("allocation", "computeQPrhs", "indices", 0);
 
 	/* change the right-hand side to \bar{b}_t - D_t \hat{u}_t */
@@ -60,9 +60,16 @@ int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatri
 	qpRHS = MSparsexvSub(Dbar, X, qpRHS);
 
 	/* changing cut right-hand side of stage subproblem */
-	for ( n = 0; n < cuts->cnt; n++ )
-		qpRHS[cuts->vals[n]->rowNum+1] = cuts->vals[n]->alpha - vXv(cuts->vals[n]->beta, X, betaCols, betaLen) +
+	for ( n = 0; n < cuts->cnt; n++ ) {
+		qpRHS[numRows+n+1] = cuts->vals[n]->alpha - vXv(cuts->vals[n]->beta, X, betaCols, betaLen) +
 		((double) numObs / (double) cuts->vals[n]->numObs - 1) * lb;;
+		indices[numRows+n] = cuts->vals[n]->rowNum;
+	}
+
+	if ( changeRHS(lp, numRows+cuts->cnt, indices, qpRHS+1) ) {
+		errMsg("solver", "chnageQPrhs", "failed to change the right-hand side", 0);
+		return 1;
+	}
 
 	mem_free(indices);
 	mem_free(qpRHS);

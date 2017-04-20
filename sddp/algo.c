@@ -9,7 +9,9 @@
  */
 
 #include "sddp.h"
+
 extern configType config;
+extern string outputDir;
 
 int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 	probType **prob = NULL;
@@ -40,6 +42,7 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 
 	/* print solution details */
 	printf("Successfully completed stochastic dual dynamic programming algorithm.\n");
+	printSolutionDetails(tim->numStages, -1, prob, cell);
 
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
@@ -167,15 +170,16 @@ int backwardPass(probType **prob, cellType **cell, int numStages) {
 		printf("Cut estimate = %lf\n", obj);
 #endif
 
-#if 1
-		printf(" --- Stage %d ---\n", t);
-		printSolutionDetails(prob, cell, numStages);
+#if 0
+		printSolutionDetails(numStages, t, prob, cell);
 #endif
 
+#if 0
 		/* clean up the stochastic elements */
 		freeLambdaType(cell[t]->lambda, FALSE);
 		freeSigmaType(cell[t]->sigma, FALSE);
 		freeDeltaType(cell[t]->delta, cell[t]->omega->cnt, FALSE);
+#endif
 	}
 
 	return 0;
@@ -240,29 +244,55 @@ void printAlgoDetails(int item) {
 
 }//END printAlgoDetails()
 
-void printSolutionDetails(probType **prob, cellType **cell, int numStages) {
-	int t, n;
+void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell) {
+	int n;
+	FILE *fPtr;
 
-	printf("\n=============================================================================================================\n");
-	printf("Number of iterations                      = %d\n", cell[0]->k);
-	printf("Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+	fPtr = openFile(outputDir, "detailedSDDPsols.dat", "a");
 
-	/* Details of stochastic elements */
-	for (t = 1; t < numStages; t++ ) {
-//		printf("Number of observations encountered = %d\n", cell[t]->omega->cnt);
-//		for ( n = 0; n < cell[t]->omega->cnt; n++)
-//			printf("%lf\t%lf\n", cell[t]->omega->vals[n][1] + prob[t]->omegas->mean[1], cell[t]->omega->probs[n]);
+	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
+	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
 
-		printf("Number of lambda's encountered = %d\n", cell[t]->lambda->cnt);
-		for ( n = 0; n < cell[t]->lambda->cnt; n++)
-			printVector(cell[t]->lambda->vals[n], prob[t]->num->rvRowCnt, NULL);
 
-		printf("Number of sigma's encountered = %d\n", cell[t]->sigma->cnt);
+	if ( t > 0 ) {
+		fprintf(fPtr, "\n=============================================================================================================\n");
+		fprintf(fPtr, "                                         --- Stage %d ---                                                    \n", t);
+		fprintf(fPtr, "-------------------------------------------------------------------------------------------------------------\n");
+		/* Details of stochastic elements */
+		fprintf(fPtr, "Number of lambda's encountered = %d\n", cell[t]->lambda->cnt);
+		for ( n = 0; n < cell[t]->lambda->cnt; n++){
+			fprintf(fPtr, "%d: ", n);
+			printVector(cell[t]->lambda->vals[n], prob[t]->num->rvRowCnt, fPtr);
+		}
+		fprintf(fPtr, "\n");
+
+		fprintf(fPtr, "Number of sigma's encountered = %d\n", cell[t]->sigma->cnt);
 		for ( n = 0; n < cell[t]->sigma->cnt; n++ ) {
-			printf("(%d) %lf; ", cell[t]->sigma->lambdaIdx[n], cell[t]->sigma->vals[n].pib);
-			printVector(cell[t]->sigma->vals[n].piC, prob[t]->num->cntCcols, NULL);
+			fprintf(fPtr, "%d: (%d);\t%lf\t; ", n, cell[t]->sigma->lambdaIdx[n], cell[t]->sigma->vals[n].pib);
+			printVector(cell[t]->sigma->vals[n].piC, prob[t]->num->cntCcols, fPtr);
+		}
+		fprintf(fPtr, "\n");
+	}
+	else {
+		for (t = 1; t < numStages; t++ ) {
+			fprintf(fPtr, "-------------------------------------------------------------------------------------------------------------\n");
+			fprintf(fPtr, "                                         --- Stage %d ---                                                    \n", t);
+			fprintf(fPtr, "-------------------------------------------------------------------------------------------------------------\n");
+			/* Details of stochastic elements */
+			fprintf(fPtr, "Number of lambda's encountered = %d\n", cell[t]->lambda->cnt);
+			for ( n = 0; n < cell[t]->lambda->cnt; n++){
+				fprintf(fPtr, "%d: ", n);
+				printVector(cell[t]->lambda->vals[n], prob[t]->num->rvRowCnt, fPtr);
+			}
+			fprintf(fPtr, "\n");
+
+			fprintf(fPtr, "Number of sigma's encountered = %d\n", cell[t]->sigma->cnt);
+			for ( n = 0; n < cell[t]->sigma->cnt; n++ ) {
+				fprintf(fPtr, "%d: (%d);\t%lf\t; ", n, cell[t]->sigma->lambdaIdx[n], cell[t]->sigma->vals[n].pib);
+				printVector(cell[t]->sigma->vals[n].piC, prob[t]->num->cntCcols, fPtr);
+			}
+			fprintf(fPtr, "\n");
 		}
 	}
-	printf("=============================================================================================================\n");
 
 }//END printSolutionDetails()

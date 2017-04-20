@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#undef ALGO_RUN
+#define ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -29,6 +29,9 @@ typedef struct {
 	double  	TOLERANCE;
 	long long 	RUN_SEED;
 	int			QUADRATIC;
+	double		MIN_QUAD_SCALAR;
+	double		MAX_QUAD_SCALAR;
+	int			POLICY;
 	int			EVAL_FLAG;
 	long long 	EVAL_SEED;
 	double		EVAL_ERROR;
@@ -117,7 +120,7 @@ void parseCmdLine(string probName);
 int readConfig(string inputDir);
 
 /* algo.c */
-int algo(oneProblem *orig, stocType *stoc, timeType *tim);
+int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim);
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages);
 int backwardPass(probType **prob, cellType **cell, vector observ, int numStages);
 void computeEndoRHS(sparseVector *bBar, sparseMatrix *Cbar, vector candidU, vector rhs);
@@ -127,13 +130,13 @@ int updateCutsRHS(LPptr lp, cutsType *cuts, double lb, int numObs);
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
 int computeMu(LPptr lp, int numCols, double *mubBar);
 void printAlgoDetails(int item);
-void printSolutionDetails (probType **prob, cellType **cell, int numStages);
+void printSolutionDetails (string probName, probType **prob, cellType **cell, int numStages);
 void cleanupAlgo(probType **prob, cellType **cell, int T);
 
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
-cellType **newCell(stocType *stoc, probType **prob, vector lb, int T);
-incumbType *newIncumb(int maxIncumb);
+cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, int T);
+incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX);
 void freeCellType (probType **prob, cellType **cell, int T);
 
 /* stocupdt.c */
@@ -162,6 +165,8 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal);
 int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut);
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal);
+double maxCutHeight(cutsType *cuts, double lb, int iter, intvec Ccols, int betaLen, vector xt);
+double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, vector xt);
 void freeCutsType(cutsType *cuts);
 void freeOneCut(oneCut *cut);
 
@@ -172,7 +177,7 @@ int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatri
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector X);
 
 /* policy.c */
-vector selectIncumb(int t, incumbType *incumb);
+vector selectIncumb(incumbType *incumb);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType **cell, int T);

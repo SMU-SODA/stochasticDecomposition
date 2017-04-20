@@ -50,7 +50,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	}
 
 	/* create the cells which will be used in the algorithms */
-	(*cell) = newCell(stoc, (*prob), lb, tim->numStages);
+	(*cell) = newCell(stoc, (*prob), lb, meanSol, tim->numStages);
 	if ( (*cell) == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to create the necessary cell structure", 0);
 		return 1;
@@ -61,9 +61,9 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	return 0;
 }//END setupAlgo()
 
-cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
+cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, int T) {
 	cellType 	**cell;
-	int			t, i, j, cnt, rOffset, cOffset;
+	int			t, i, j, cnt, rOffset = 0, cOffset = 0, xOffset = 0;;
 	char		*q;
 
 	if ( !(cell = (cellType **) arr_alloc(T, cellType *)) )
@@ -189,9 +189,10 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 
 			/* incumbent solutions */
 			if ( t == 0)
-				cell[t]->incumb = newIncumb(1);
+				cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols);
 			else
-				cell[t]->incumb = newIncumb(config.MAX_ITER);
+				cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols);
+			xOffset += prob[t]->num->cols;
 
 			/* cuts structure */
 			if ( !(cell[t]->cuts = (cutsType *) mem_malloc(sizeof(cutsType))) )
@@ -229,7 +230,8 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 		}
 		else {
 			cell[t]->pi 	= NULL;
-			cell[t]->rhs 	= NULL;
+			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->pi", 0);
 			cell[t]->omega	= NULL;
 			cell[t]->lambda = NULL;
 			cell[t]->sigma 	= NULL;
@@ -274,7 +276,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, int T) {
 	return cell;
 }//END newCell()
 
-incumbType *newIncumb(int maxIncumb) {
+incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX) {
 	incumbType *incumb;
 
 	if ( !(incumb = (incumbType *) mem_malloc(sizeof(incumbType))) )
@@ -283,7 +285,11 @@ incumbType *newIncumb(int maxIncumb) {
 		errMsg("allocation", "newIncumb", "incumb->vals", 0);
 	if ( !(incumb->est = (vector) arr_alloc(maxIncumb, double)) )
 		errMsg("allocation", "newIncumb", "incumb->est", 0);
-	incumb->cnt = 0;
+	incumb->quadScalar = config.MIN_QUAD_SCALAR;
+
+	/* initialize mean value solution as the first incumbent */
+	incumb->vals[0] = duplicVector(meanSol, lenX);
+	incumb->cnt = 1;
 
 	return incumb;
 }//END newIncumb()

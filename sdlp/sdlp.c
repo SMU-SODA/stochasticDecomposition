@@ -49,7 +49,7 @@ int main (int argc, char *argv[]) {
 	createOutputDir(outputDir, "sdlp", probName);
 
 	/* launch the algorithm */
-	status = algo(orig, stoc, tim);
+	status = algo(probName, orig, stoc, tim);
 	if ( status ) {
 		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
 		goto TERMINATE;
@@ -99,7 +99,13 @@ int readConfig(string inputDir) {
 		else if (!(strcmp(line, "TOLERANCE")))
 			fscanf(fptr, "%lf", &config.TOLERANCE);
 		else if (!(strcmp(line, "QUADRATIC")))
-			fscanf(fptr, "%d", config.QUADRATIC);
+			fscanf(fptr, "%d", &config.QUADRATIC);
+		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
+		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
+		else if (!(strcmp(line, "POLICY")))
+			fscanf(fptr, "%d", &config.POLICY);
 		else if (!(strcmp(line, "EVAL_FLAG")))
 			fscanf(fptr, "%d", &config.EVAL_FLAG);
 		else if (!(strcmp(line, "EVAL_SEED")))

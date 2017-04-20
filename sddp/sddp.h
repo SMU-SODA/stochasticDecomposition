@@ -106,7 +106,7 @@ typedef struct {
 void parseCmdLine(string probName);
 int readConfig(string inputDir);
 void printAlgoDetails(int item);
-void printSolutionDetails(probType **prob, cellType **cell, int numStages);
+void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell);
 
 /* subroutines in algo.c */
 void printProbDetails(probType **p);
