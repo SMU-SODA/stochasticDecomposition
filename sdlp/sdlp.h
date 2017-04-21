@@ -31,6 +31,9 @@ typedef struct {
 	int			QUADRATIC;
 	double		MIN_QUAD_SCALAR;
 	double		MAX_QUAD_SCALAR;
+	double		R1;
+	double		R2;
+	double		R3;
 	int			POLICY;
 	int			EVAL_FLAG;
 	long long 	EVAL_SEED;
@@ -94,6 +97,10 @@ typedef struct {
 	vector	*vals;
 	vector	est;
 	double  quadScalar;
+	double	improv;
+	double	normd_k;
+	double  normd_k_1;
+	BOOL	chg;
 }incumbType;
 
 typedef struct {
@@ -136,7 +143,7 @@ void cleanupAlgo(probType **prob, cellType **cell, int T);
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
 cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, int T);
-incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX);
+incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBar);
 void freeCellType (probType **prob, cellType **cell, int T);
 
 /* stocupdt.c */
@@ -177,7 +184,8 @@ int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatri
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector X);
 
 /* policy.c */
-vector selectIncumb(incumbType *incumb);
+int selectIncumb(incumbType *incumb);
+void checkImprovement(probType **prob, cellType **cell, int numStages);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType **cell, int T);

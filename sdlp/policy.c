@@ -13,11 +13,11 @@
 
 extern configType config;
 
-vector selectIncumb(incumbType *incumb) {
+int selectIncumb(incumbType *incumb) {
 
 	switch (config.POLICY) {
 	case 0:
-		return incumb->vals[0];
+		return 0;
 		break;
 	case 1:
 		printf("Not ready yet.\n");
@@ -33,10 +33,9 @@ vector selectIncumb(incumbType *incumb) {
 	return NULL;
 }//END selectIncumb()
 
-void checkImprove(cellType **cell, probType **prob, int numStages) {
+void checkImprovement(probType **prob, cellType **cell, int numStages) {
 	double	candidEst;
-	int t;
-	BOOL incumbChg;
+	int 	t;
 
 	for ( t = 0; t < numStages-1; t++ ) {
 		/* Calculate height at new candidate x with newest cut included */
@@ -53,30 +52,27 @@ void checkImprove(cellType **cell, probType **prob, int numStages) {
 			printf("Estimates Candidate = %lf\tIncumbent = %lf\n", candidEst, cell[t]->incumb->est[0]);
 #endif
 
-		if ((candidEst - cell[t]->incumb->est[0]) < (config.R1 * cell[t]->improv)) {
-		if ((candidEst - cell[t]->incumb->est[0]) < (config.R1 * cell[t]->improv)) {
+		if ((candidEst - cell[t]->incumb->est[0]) < (config.R1 * cell[t]->incumb->improv)) {
 			/* incumbent update is recommended */
-			updateIncumbent(cell[t], prob[t]->num->cols, candidEst);
-			incumbChg = cell[t]->incumbChg = TRUE;
-			if ( t == 0) {
-				printf("o"); fflush(stdout); }
-			else {
-				printf("+"); fflush(stdout); }
+			copyVector(cell[t]->candidU, cell[t]->incumb->vals[0], prob[t]->num->cols, TRUE);
+			cell[t]->incumb->est[0] = candidEst;
+
+			if (cell[t]->k > 1 && cell[t]->incumb->normd_k > config.TOLERANCE)
+				if (cell[t]->incumb->normd_k >= config.R3 * cell[t]->incumb->normd_k_1) {
+					cell[t]->incumb->quadScalar *= config.R2 * config.R3 * cell[t]->incumb->normd_k_1 / cell[t]->incumb->normd_k;
+
+					cell[t]->incumb->quadScalar = min(config.MAX_QUAD_SCALAR, cell[t]->incumb->quadScalar );
+					cell[t]->incumb->quadScalar = max(config.MIN_QUAD_SCALAR, cell[t]->incumb->quadScalar);
+				}
+
+			cell[t]->incumb->normd_k_1 = cell[t]->incumb->normd_k;
+			cell[t]->incumb->chg = TRUE;
 		}
 		else {
 			/* update quad_scalar when incumbent is not updated */
-			cell[t]->quadScalar = min(config.MAX_QUAD_SCALAR, cell[t]->quadScalar / config.R2);
-			cell[t]->normd_k_1 = cell[t]->normd_k;
-			incumbChg = cell[t]->incumbChg = FALSE;
-		}
-
-		if ( incumbChg ) {
-			while (++t < T-1 )
-				updateIncumbent(cell[t], prob[t]->num->cols, candidEst);
-			if ( t == 0) {
-				printf("o"); fflush(stdout); }
-			else {
-				printf("+"); fflush(stdout); }
+			cell[t]->incumb->quadScalar = min(config.MAX_QUAD_SCALAR, cell[t]->incumb->quadScalar / config.R2);
+			cell[t]->incumb->normd_k_1 = cell[t]->incumb->normd_k;
+			cell[t]->incumb->chg = FALSE;
 		}
 	}
 
@@ -87,6 +83,4 @@ void checkImprove(cellType **cell, probType **prob, int numStages) {
 		printf("\n");
 #endif
 
-
 }//END checkImprove()
-

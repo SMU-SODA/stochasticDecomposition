@@ -5,22 +5,31 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   100
+MAX_ITER   200
 
 // Minimum iterations
-MIN_ITER   10
+MIN_ITER   1
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.00001
 
 // Flag to indicate how forward decision simulation problems are solved. 0 for LP/1 for QP.
-QUADRATIC	0
+QUADRATIC	1
 
 // The Minimum value of the cell->quad_scalar. zl
 MIN_QUAD_SCALAR 0.001
 
 // The Maximum value of the cell->quad_scalar. zl
 MAX_QUAD_SCALAR 10000.0
+
+// Amount of improvement which must be observed in order to update incumbent X.
+R1 0.2
+
+// For updating the scaling factor.
+R2 0.95
+
+// For updating the scaling factor.
+R3 2
 
 // Determines the policy employed to select incumbent: Fixed - 0, Scenario-dependent - 1, linear mapping - 2
 POLICY	0

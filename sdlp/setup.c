@@ -189,9 +189,9 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 
 			/* incumbent solutions */
 			if ( t == 0)
-				cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols);
+				cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols, prob[t]->dBar);
 			else
-				cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols);
+				cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols, prob[t]->dBar);
 			xOffset += prob[t]->num->cols;
 
 			/* cuts structure */
@@ -201,6 +201,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 				errMsg("allocation", "newCell", "cell[t]->cuts->vals", 0);
 			cell[t]->cuts->cnt = 0;
 			cell[t]->maxCuts = config.MAX_ITER;
+
 		}
 		else {
 			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
@@ -276,7 +277,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 	return cell;
 }//END newCell()
 
-incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX) {
+incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBar) {
 	incumbType *incumb;
 
 	if ( !(incumb = (incumbType *) mem_malloc(sizeof(incumbType))) )
@@ -289,7 +290,12 @@ incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX) {
 
 	/* initialize mean value solution as the first incumbent */
 	incumb->vals[0] = duplicVector(meanSol, lenX);
+	incumb->est[0] = vXvSparse(incumb->vals[0], dBar);
 	incumb->cnt = 1;
+	incumb->chg = TRUE;
+	incumb->normd_k = 0.0;
+	incumb->normd_k_1 = 0.0;
+	incumb->improv = 0.0;
 
 	return incumb;
 }//END newIncumb()

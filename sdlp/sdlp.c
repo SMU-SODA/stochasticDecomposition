@@ -104,6 +104,12 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
 		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
 			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
+		else if (!(strcmp(line, "R1")))
+			fscanf(fptr, "%lf", &config.R1);
+		else if (!(strcmp(line, "R2")))
+			fscanf(fptr, "%lf", &config.R2);
+		else if (!(strcmp(line, "R3")))
+			fscanf(fptr, "%lf", &config.R3);
 		else if (!(strcmp(line, "POLICY")))
 			fscanf(fptr, "%d", &config.POLICY);
 		else if (!(strcmp(line, "EVAL_FLAG")))

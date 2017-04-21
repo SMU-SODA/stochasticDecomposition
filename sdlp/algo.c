@@ -47,6 +47,10 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 			errMsg("algorithm", "algo", "failed in backward pass", 0);
 			goto TERMINATE;
 		}
+
+		if ( config.QUADRATIC )
+			/* check to see if there is improvement */
+			checkImprovement(prob, cell, tim->numStages);
 	}
 
 	printf("Successfully completed excecution of SDLP algorithm on %s.\n", probName);
@@ -62,8 +66,7 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 }//END algo()
 
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
-	vector  incumbU;
-	int		t, status, obs;
+	int		t, status, obs, incumbIdx;
 
 	/************************************************* setup and solve stage problems *****************************************************/
 	/* since primal solution for terminal stage are not used we do not solve it here. Rather we solve it on the backward pass */
@@ -88,19 +91,19 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			/* copy the deterministic right-hand side */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, NULL, cell[t]->rhs);
 
-		if ( config.QUADRATIC ) {
+		if ( config.QUADRATIC && cell[t]->incumb->chg) {
 			/* select the incumbent solution to be used */
-			incumbU = selectIncumb(cell[t]->incumb);
+			incumbIdx = selectIncumb(cell[t]->incumb);
 
 			/* If decision simulation problem is solved as a quadratic program, then update the right-hand side and bounds using current incumbent
 			 * solution */
 			if ( changeQPrhs(cell[t]->sp->lp, prob[t+1]->coord->colsC, prob[t+1]->num->cntCcols, prob[t]->num->rows,
-					prob[t]->Dbar, prob[t]->bBar, cell[t]->cuts, incumbU, cell[t]->rhs, cell[t]->k, cell[t]->lb) ) {
+					prob[t]->Dbar, prob[t]->bBar, cell[t]->cuts, cell[t]->incumb->vals[incumbIdx], cell[t]->rhs, cell[t]->k, cell[t]->lb) ) {
 				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
 				return 1;
 			}
 
-			if ( changeQPbds(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->sp->bdl, prob[t]->sp->bdu, incumbU) ) {
+			if ( changeQPbds(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->sp->bdl, prob[t]->sp->bdu, cell[t]->incumb->vals[incumbIdx]) ) {
 				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
 				return 1;
 			}
@@ -120,6 +123,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 				return 1;
 			}
 		}
+		incumbIdx = 0;
 
 		/* change coefficients of eta column */
 		if ( changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb) ) {
@@ -145,6 +149,15 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			return 1;
 		}
 
+		if ( config.QUADRATIC ) {
+			/* find the norm of differences */
+			cell[t]->incumb->normd_k = vXv(cell[t]->candidU, cell[t]->candidU, NULL, prob[t]->num->cols);
+			if (cell[t]->k == 1)
+				cell[t]->incumb->normd_k_1 = cell[t]->incumb->normd_k;
+
+			/* primal solution is \Delta u = u - \hat{u}, change it to u */
+			addVectors(cell[t]->candidU, cell[t]->incumb->vals[incumbIdx], NULL, prob[t]->num->cols);
+		}
 
 		/* obtain the primal objective function value */
 		cell[t]->candidEst = getObjective(cell[t]->sp->lp, PROB_LP);
