@@ -120,6 +120,12 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%lf", &config.EVAL_ERROR);
 		else if (!(strcmp(line, "OPT_GAP")))
 			fscanf(fptr, "%lf", &config.OPT_GAP);
+		else if (!(strcmp(line, "M")))
+			fscanf(fptr, "%d", &config.M);
+		else if (!(strcmp(line, "PERCENT_PASS")))
+			fscanf(fptr, "%d", &config.PERCENT_PASS);
+		else if (!(strcmp(line, "PRE_EPSILON")))
+			fscanf(fptr, "%lf", &config.PRE_EPSILON);
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {

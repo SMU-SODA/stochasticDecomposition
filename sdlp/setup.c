@@ -181,44 +181,43 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 		}
 
 		/* Solution part of the cell structure: primal and dual. */
-		if ( t != T-1 ) {
-			/* candidate solution */
-			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
-				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
-			cell[t]->candidEst = 0.0;
+		/* candidate solution */
+		if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+			errMsg("allocation", "newCell", "cell[t]->candidU", 0);
+		cell[t]->candidEst = 0.0;
 
-			/* incumbent solutions */
-			if ( t == 0)
-				cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols, prob[t]->dBar);
-			else
-				cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols, prob[t]->dBar);
-			xOffset += prob[t]->num->cols;
+		if ( t != T-1 ) {
+			if ( config.QUADRATIC ) {
+				/* incumbent solutions */
+				if ( t == 0)
+					cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols, prob[t]->dBar);
+				else
+					cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols, prob[t]->dBar);
+				xOffset += prob[t]->num->cols;
+			}
+			else {
+				cell[t]->incumb = NULL;
+			}
 
 			/* cuts structure */
-			if ( !(cell[t]->cuts = (cutsType *) mem_malloc(sizeof(cutsType))) )
-				errMsg("allocation", "newCell", "cell[t]->cuts", 0);
-			if ( !(cell[t]->cuts->vals = (oneCut **) arr_alloc(config.MAX_ITER, oneCut *)) )
-				errMsg("allocation", "newCell", "cell[t]->cuts->vals", 0);
-			cell[t]->cuts->cnt = 0;
+			cell[t]->cuts = newCuts(config.MAX_ITER);
 			cell[t]->maxCuts = config.MAX_ITER;
-
 		}
 		else {
-			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
-				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
 			cell[t]->incumb = NULL;
 			cell[t]->cuts 	 = NULL;
 			cell[t]->maxCuts = 0;
 		}
+		if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+cell[t]->maxCuts+1, double)) )
+			errMsg("allocation", "newCell", "cell[t]->pi", 0);
+		if (!(cell[t]->dj = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+			errMsg("allocation", "newCell", "cell[t]->dj", 0);
+		if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+			errMsg("allocation", "newCell", "cell[t]->rhs", 0);
 
+		/* stochastic elements of the cell */
 		if ( t > 0 ) {
 			/* for non-root stages */
-			if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+config.MAX_ITER+1, double)) )
-				errMsg("allocation", "newCell", "cell[t]->pi", 0);
-			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
-				errMsg("allocation", "newCell", "cell[t]->pi", 0);
-
-			/* stochastic elements of the cell */
 			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
 			if ( cell[t]->omega == NULL ) {
 				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
@@ -230,9 +229,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 			cell[t]->delta = newDelta(config.MAX_ITER);
 		}
 		else {
-			cell[t]->pi 	= NULL;
-			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
-				errMsg("allocation", "newCell", "cell[t]->pi", 0);
+			/* root stage */
 			cell[t]->omega	= NULL;
 			cell[t]->lambda = NULL;
 			cell[t]->sigma 	= NULL;
@@ -322,6 +319,7 @@ void freeCellType (probType **prob, cellType **cell, int T) {
 				if (cell[t]->sp) freeOneProblem(cell[t]->sp);
 				if (cell[t]->candidU) mem_free(cell[t]->candidU);
 				if (cell[t]->pi) mem_free(cell[t]->pi);
+				if (cell[t]->dj) mem_free(cell[t]->dj);
 				if (cell[t]->rhs) mem_free(cell[t]->rhs);
 				if (cell[t]->incumb) freeIncumb(cell[t]->incumb);
 				if (cell[t]->cuts) freeCutsType(cell[t]->cuts);

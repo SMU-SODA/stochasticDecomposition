@@ -60,6 +60,20 @@ oneCut *newCut(int numIstar, int numObs, int betaLen){
 	return cut;
 }//END newCut()
 
+/* This function allocates memory for a new cut structure.  This entails the structure itself, and the _val_ array of oneCut pointers
+ * inside the structure.  The actual oneCut structures are allocated according to the numBeta parameter, via calls to new_cut(). */
+cutsType *newCuts(int maxCuts) {
+    cutsType *cuts;
+
+    if (!(cuts = (cutsType *) mem_malloc (sizeof(cutsType))))
+        errMsg("allocation", "newCuts", "cuts",0);
+    if (!(cuts->vals = (oneCut **) arr_alloc (maxCuts, oneCut)))
+        errMsg("allocation", "newCuts", "oneCuts",0);
+    cuts->cnt = 0;
+
+    return cuts;
+}//END newCuts
+
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal) {
 	vector 	pixC, beta;
@@ -148,7 +162,7 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 
 	/* make sure there is room to add a new cut */
 	if (cuts->cnt >= maxCuts) {
-		errMsg("algorithm", "addCut", "ran out of memory for fine cuts", 0);
+		errMsg("algorithm", "addCut", "ran out of memory for cuts", 0);
 		return -1;
 	}
 

@@ -157,6 +157,16 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 
 			/* primal solution is \Delta u = u - \hat{u}, change it to u */
 			addVectors(cell[t]->candidU, cell[t]->incumb->vals[incumbIdx], NULL, prob[t]->num->cols);
+
+			/* Get the dual solution too */
+			if ( getDual(cell[t]->sp->lp, cell[t]->pi, cell[t]->sp->mar) ) {
+				errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
+				return 1;
+			}
+			if ( getDualSlacks(cell[t]->sp->lp, cell[t]->dj, prob[t]->num->cols) ) {
+				errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
+				return 1;
+			}
 		}
 
 		/* obtain the primal objective function value */

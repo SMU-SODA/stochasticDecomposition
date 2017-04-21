@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#define ALGO_RUN
+#undef ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -39,6 +39,9 @@ typedef struct {
 	long long 	EVAL_SEED;
 	double		EVAL_ERROR;
 	double		OPT_GAP;
+	double 		PRE_EPSILON;
+	int			M;
+	int			PERCENT_PASS;
 }configType;
 
 typedef struct {
@@ -114,12 +117,15 @@ typedef struct {
 	double		candidEst;		/* objective function estimate at candidate */
 	incumbType	*incumb;		/* structure to hold all relevant information regarding incumbent solutions */
 	vector		pi;				/* dual solution for the stage */
+	vector		dj;				/* dual solution for the stage */
 	int			maxCuts;		/* maximum number of cuts to be included in the cost-to-go function approximation */
 	cutsType	*cuts;			/* optimality cuts added */
 	omegaType	*omega;			/* structure to hold observations */
 	lambdaType	*lambda;		/* structure to hold dual information with for rows with random variables (right-hand side or transfer matrix) */
 	sigmaType	*sigma;			/* structure to hold "dual multiplied by deterministic part" */
 	deltaType	*delta;			/* structure to hold "dual multiplied by stochastic part */
+	BOOL		optFlag;		/* flag indicates if the cell is optimal */
+	BOOL		dualStableFlag;	/* flag to indicate if the set of duals has stabalized */
 }cellType;
 
 /* sdlp.c */
@@ -168,6 +174,7 @@ void freeOmegaType(omegaType *omega);
 int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
 		int numRows, int numCols, int maxCuts, BOOL isTerminal);
 oneCut *newCut(int numIstar, int numObs, int betaLen);
+cutsType *newCuts(int maxCuts);
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal);
 int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut);
@@ -189,5 +196,13 @@ void checkImprovement(probType **prob, cellType **cell, int numStages);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType **cell, int T);
+BOOL preTest(cellType *cell);
+BOOL fullTest(probType **prob, cellType **cell);
+cutsType *chooseCuts(probType *prob, cellType *cell, cellType *root);
+void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, intvec observ, int k,
+		int lbType, int lb, int lenX);
+double calcTempLB(probType *p, cellType *c, cutsType *cuts, int cutCnt);
+void empiricalDistrib(omegaType *omega, intvec cdf);
+void sampleOmega(int *cdf, int *observ, int k);
 
 #endif /* SDLP_H_ */

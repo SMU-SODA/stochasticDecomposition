@@ -5,7 +5,7 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   200
+MAX_ITER   500
 
 // Minimum iterations
 MIN_ITER   1
@@ -48,3 +48,9 @@ EVAL_ERROR 0.01
 
 // Optimality gap (relative to the mean value)
 OPT_GAP	0.01
+
+// Number of resampling to take when checking optimality.
+M 50
+
+// Ratio used in pre_test for optimality: (Sm - Lm) / Fk  < PRE_EPSILON.
+PRE_EPSILON 0.01

@@ -30,7 +30,7 @@ int selectIncumb(incumbType *incumb) {
 		break;
 	}
 
-	return NULL;
+	return -1;
 }//END selectIncumb()
 
 void checkImprovement(probType **prob, cellType **cell, int numStages) {
