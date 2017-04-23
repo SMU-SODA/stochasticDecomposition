@@ -1010,9 +1010,8 @@ int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int m
 
 void freeOneProblem(oneProblem *p) {
 
-	if ( p->lp ) freeProblem(p->lp);
-
 	if(p){
+		if ( p->lp ) freeProblem(p->lp);
 		if(p->name) mem_free(p->name);
 		if(p->objx) mem_free(p->objx);
 		if(p->rhsx) mem_free(p->rhsx);
