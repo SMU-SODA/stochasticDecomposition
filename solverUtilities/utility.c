@@ -175,6 +175,21 @@ double twoNorm(vector a, vector b, int len) {
 	return norm;
 }//END twoNorm()
 
+double calcVariance(vector x, int lenX) {
+    double 	mean, vari, temp;
+    int 	cnt;
+
+    temp = 0.0;
+    vari = 0.0; mean = x[0];
+    for (cnt = 1; cnt < lenX; cnt++) {
+        temp = mean;
+        mean = mean + (x[cnt] - mean) / (double) (cnt + 1);
+        vari = (1 - 1 / (double) cnt) * vari + (cnt + 1) * (mean - temp) * (mean - temp);
+    }
+
+    return vari;
+}//END calcVariance()
+
 double vXv(vector a, vector b, intvec idxCol, int len) {
 	double ans = 0.0;
 	int n;

@@ -66,6 +66,7 @@ double str2float(char *string);
 int str2int(char *string);
 double oneNorm(vector a, int len);
 double twoNorm(vector a, vector b, int len);
+double calcVariance(vector x, int lenX);
 double vXv(vector a, vector b, intvec idxCol, int len);
 double vXvSparse(vector v, sparseVector *vSparse);
 vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans);
