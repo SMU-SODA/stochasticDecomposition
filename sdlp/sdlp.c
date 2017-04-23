@@ -126,6 +126,12 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%d", &config.PERCENT_PASS);
 		else if (!(strcmp(line, "PRE_EPSILON")))
 			fscanf(fptr, "%lf", &config.PRE_EPSILON);
+		else if (!(strcmp(line, "PI_EVAL_START")))
+			fscanf(fptr, "%d", &config.PI_EVAL_START);
+		else if (!(strcmp(line, "PI_CYCLE")))
+			fscanf(fptr, "%d", &config.PI_CYCLE);
+		else if (!(strcmp(line, "SCAN_LEN")))
+			fscanf(fptr, "%d", &config.SCAN_LEN);
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {

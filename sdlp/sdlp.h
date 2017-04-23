@@ -42,6 +42,9 @@ typedef struct {
 	double 		PRE_EPSILON;
 	int			M;
 	int			PERCENT_PASS;
+	int			PI_EVAL_START;
+	int			PI_CYCLE;
+	int			SCAN_LEN;
 }configType;
 
 typedef struct {
@@ -125,7 +128,8 @@ typedef struct {
 	sigmaType	*sigma;			/* structure to hold "dual multiplied by deterministic part" */
 	deltaType	*delta;			/* structure to hold "dual multiplied by stochastic part */
 	BOOL		optFlag;		/* flag indicates if the cell is optimal */
-	BOOL		dualStableFlag;	/* flag to indicate if the set of duals has stabalized */
+	BOOL		dualStableFlag;	/* flag to indicate if the set of duals has stabilized */
+	vector		piRatios;		/* vector which holds the objective function ratio to determine dual stability */
 }cellType;
 
 /* sdlp.c */
@@ -172,13 +176,14 @@ void freeOmegaType(omegaType *omega);
 
 /* cuts.c */
 int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
-		int numRows, int numCols, int maxCuts, BOOL isTerminal);
+		int numRows, int numCols, int maxCuts, BOOL isTerminal, int numStages);
 oneCut *newCut(int numIstar, int numObs, int betaLen);
 cutsType *newCuts(int maxCuts);
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
-		vector xt, int numObs, oneCut *cut, BOOL isTerminal);
+		vector xt, int numObs, oneCut *cut, BOOL isTerminal, int numStages, vector piRatios, BOOL *dualStableFlag);
 int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut);
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal);
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal,
+		double *argmax, BOOL piEval);
 double maxCutHeight(cutsType *cuts, double lb, int iter, intvec Ccols, int betaLen, vector xt);
 double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, vector xt);
 void freeCutsType(cutsType *cuts);

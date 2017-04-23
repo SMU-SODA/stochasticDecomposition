@@ -11,8 +11,10 @@
 
 #include "sdlp.h"
 
+extern configType config;
+
 int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
-		int numRows, int numCols, int maxCuts, BOOL isTerminal) {
+		int numRows, int numCols, int maxCuts, BOOL isTerminal, int numStages) {
 	oneCut 	*cut;
 	int		idxCut, status;
 
@@ -24,7 +26,8 @@ int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType 
 	}
 
 	/* compute cut coefficients */
-	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, xt, cell->k, cut, isTerminal);
+	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, xt, cell->k, cut, isTerminal, numStages,
+			cell->piRatios, &cell->dualStableFlag);
 	if (status ) {
 		errMsg("algorithm", "formNewCut", "failed to create the stage cut", 0);
 		return -1;
@@ -34,7 +37,7 @@ int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType 
 	idxCut = addCut(lp, sda, cuts, numRows, numCols, maxCuts, prob->num->cntCcols, prob->coord->colsC, cut);
 	if ( idxCut < 0 ) {
 		errMsg("algorithm", "formCandidCut", "failed to add the cut stage problem", 0);
-		return -1;
+		freeOneCut(cut); return -1;
 	}
 
 	return idxCut;
@@ -75,24 +78,38 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
-		vector xt, int numObs, oneCut *cut, BOOL isTerminal) {
+		vector xt, int numObs, oneCut *cut, BOOL isTerminal, int numStages, vector piRatios, BOOL *dualStableFlag) {
 	vector 	pixC, beta;
+	double	variance, estWindow, estAll, argmaxAll, argmaxWindow;
 	int		cnt, i;
 	iType	iStar;
+	BOOL 	piEvalFlag = FALSE;
 
 	if ( !(pixC = (vector) arr_alloc(sigma->cnt, double)) )
 		errMsg("allocation", "stageCut", "pixC", 0);
-	if ( !(beta = (vector) arr_alloc(num->prevCols, double)) )
+	if ( !(beta = (vector) arr_alloc(num->prevCols+1, double)) )
 		errMsg("allocation", "stageCut", "beta", 0);
+
+    /* Determine if dual stability needs to be checked */
+    if (numStages == 2 && numObs > config.PI_EVAL_START && !(numObs % config.PI_CYCLE))
+        piEvalFlag = TRUE;
 
 	/* calculate \bar{C}_t^\top \pi and \bar{C}_0^\top \pi, one at a time */
 	for ( cnt = 0; cnt < sigma->cnt; cnt++ )
 		for (i = 1; i <= num->cntCcols; i++)
 			pixC[cnt] += sigma->vals[cnt].piC[i] * xt[coord->colsC[i]];
 
+	estAll = 0.0; estWindow = 0.0;
 	for (cnt = 0; cnt < omega->cnt; cnt++) {
 		/* For each observation, find the Pi which maximizes height at X. */
-		iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal);
+		if ( piEvalFlag ) {
+			iStar   	= computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxAll, FALSE);
+			computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxWindow, TRUE);
+			estAll 		+= argmaxAll*omega->weights[cnt];
+			estWindow 	+= argmaxWindow*omega->weights[cnt];
+		}
+		else
+			iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxAll, FALSE);
 
 		/* identify the best stochastic element for all observations */
 		cut->iStar[cnt] = iStar.sigma;
@@ -108,6 +125,19 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 			beta[coord->rvCols[i]] += delta->vals[iStar.delta][cnt].piC[i] * omega->weights[cnt];
 	}
 
+	if (piEvalFlag == TRUE) {
+		piRatios[numObs % config.SCAN_LEN] = estWindow/ estAll;
+		if (numObs - config.PI_EVAL_START > config.SCAN_LEN)
+			variance = calcVariance(piRatios, config.SCAN_LEN);
+		else
+			variance = calcVariance(piRatios, numObs);
+
+		if (DBL_ABS(variance) >= .000002 || (piRatios[numObs % config.SCAN_LEN]) < 0.95)
+			*dualStableFlag = FALSE;
+		else
+			*dualStableFlag = TRUE;
+	}
+
 	/* Divide the coefficients by the number of observations to obtain the probability estimate */
 	cut->alpha = cut->alpha/numObs;
 	for (i = 1; i <= num->cntCcols; i++)
@@ -119,31 +149,40 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 	return 0;
 }//END stageCut()
 
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal) {
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal,
+		double *argmax, BOOL piEval) {
 	iType 	iStar;
-	int 	n, m, deltaIdx;
-	double	arg, argmax;
+	int 	n, m, deltaIdx, window;
+	double	arg;
 
-	argmax = -DBL_MAX;
+	/* if piEval is TRUE then compute argmax using only the pi's generated in the window, otherwise, use all the pi's */
+	if ( piEval )
+		window = (int) 0.9*numObs;
+	else
+		window = 0;
+
+	(*argmax) = -DBL_MAX;
 
 	for (n = 0; n < sigma->cnt; n++) {
-		deltaIdx = sigma->lambdaIdx[n];
+		if ( sigma->ck[n] >= window ) {
+			deltaIdx = sigma->lambdaIdx[n];
 
-		/* Start with (\pi^\top \bar{b}) + (\pi^\top x \tilde{\omega}) - (\bar{C}_t^\top \pi)*x_t */
-		arg = sigma->vals[n].pib + delta->vals[deltaIdx][cnt].pib - pixC[n];
+			/* Start with (\pi^\top \bar{b}) + (\pi^\top x \tilde{\omega}) - (\bar{C}_t^\top \pi)*x_t */
+			arg = sigma->vals[n].pib + delta->vals[deltaIdx][cnt].pib - pixC[n];
 
-		/* Subtract (\tilde{C}_t^\top \pi)*u_t */
-		for (m = 1; m <= num->rvColCnt; m++)
-			arg -= delta->vals[deltaIdx][cnt].piC[m] * xt[coord->rvCols[m]];
+			/* Subtract (\tilde{C}_t^\top \pi)*u_t */
+			for (m = 1; m <= num->rvColCnt; m++)
+				arg -= delta->vals[deltaIdx][cnt].piC[m] * xt[coord->rvCols[m]];
 
-		/* Weigh the older dual solutions by the iteration count, this is done for all non-terminal stages */
-		if ( !(isTerminal) )
-			arg = (arg * ((double) sigma->ck[n]))/(double) numObs;
+			/* Weigh the older dual solutions by the iteration count, this is done for all non-terminal stages */
+			if ( !(isTerminal) )
+				arg = (arg * ((double) sigma->ck[n]))/(double) numObs;
 
-		if (arg > argmax) {
-			argmax = arg;
-			iStar.sigma = n;
-			iStar.delta = deltaIdx;
+			if (arg > (*argmax)) {
+				(*argmax) = arg;
+				iStar.sigma = n;
+				iStar.delta = deltaIdx;
+			}
 		}
 	}
 
@@ -163,7 +202,7 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 	/* make sure there is room to add a new cut */
 	if (cuts->cnt >= maxCuts) {
 		errMsg("algorithm", "addCut", "ran out of memory for cuts", 0);
-		return -1;
+		mem_free(indices); return -1;
 	}
 
 	if ( addRow(lp, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) ) {

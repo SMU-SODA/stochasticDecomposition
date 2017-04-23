@@ -15,24 +15,24 @@ extern configType config;
 
 BOOL optimal(probType **prob, cellType **cell, int numStages) {
 
-	if ( numStages == 2 ) {
+	if ( numStages == 2 && cell[0]->k > config.MIN_ITER) {
 		/* apply two-stage statistical optimality conditions */
-		cell[0]->optFlag = FALSE;
-		if (cell[0]->k > config.MIN_ITER && cell[0]->dualStableFlag ) {
+		if (cell[0]->dualStableFlag ) {
 			if ( preTest(cell[0]) ) {
 				if ( fullTest(prob, cell) ) {
 					cell[0]->optFlag = TRUE;
 					printf("<"); fflush(stdout);
 					return TRUE;
 				}
-				else
+				else {
 					printf(">"); fflush(stdout);
+				}
 			}
 		}
-
 		return FALSE;
 	}
 
+	/* for multistage instances, use the trivial stopping rule. */
 	if ( cell[0]->k >= config.MAX_ITER )
 		return TRUE;
 

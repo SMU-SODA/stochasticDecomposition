@@ -236,6 +236,15 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 			cell[t]->delta  = NULL;
 		}
 
+		/* stopping rule parameters */
+		cell[t]->optFlag 		= FALSE;
+		cell[t]->dualStableFlag = FALSE;
+		if ( t != 0 ) {
+		    if ( !(cell[t]->piRatios = (vector) arr_alloc(config.SCAN_LEN, double)) )
+		        errMsg("allocation", "newCell", "cell->piRatios", 0);
+		}
+		else
+			cell[t]->piRatios = NULL;
 
 		if ( t != T - 1 ) {
 			/* Load the cell problem onto solver: this problem will be used in forward pass */
@@ -311,7 +320,7 @@ void freeIncumb(incumbType *incumb) {
 }//END freeIncumb()
 
 void freeCellType (probType **prob, cellType **cell, int T) {
-	int t, n;
+	int t;
 
 	if (cell) {
 		for ( t = 0; t < T; t++ ) {
@@ -327,6 +336,7 @@ void freeCellType (probType **prob, cellType **cell, int T) {
 				if (cell[t]->lambda) freeLambdaType(cell[t]->lambda);
 				if (cell[t]->sigma) freeSigmaType(cell[t]->sigma);
 				if (cell[t]->omega) freeOmegaType(cell[t]->omega);
+				if (cell[t]->piRatios) mem_free(cell[t]->piRatios);
 				mem_free (cell[t]);
 			}
 		}

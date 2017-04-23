@@ -5,7 +5,7 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   500
+MAX_ITER   5000
 
 // Minimum iterations
 MIN_ITER   1
@@ -54,3 +54,12 @@ M 50
 
 // Ratio used in pre_test for optimality: (Sm - Lm) / Fk  < PRE_EPSILON.
 PRE_EPSILON 0.01
+
+// Number of iterations before checking new pi's impact
+PI_EVAL_START 1
+
+// Number of iterations between evaluation of the impact of new dual vertex
+PI_CYCLE 1
+
+// NOMINAL TOLERANCE 256
+SCAN_LEN 64

@@ -228,7 +228,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 
 		/* form new optimality cut */
 		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
-				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts, t == (numStages - 1));
+				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts, t == (numStages - 1), numStages);
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
 			return 1;
