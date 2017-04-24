@@ -14,7 +14,7 @@
 extern configType config;
 
 int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
-		int numRows, int numCols, int maxCuts, BOOL isTerminal, int numStages) {
+		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts) {
 	oneCut 	*cut;
 	int		idxCut, status;
 
@@ -34,7 +34,8 @@ int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType 
 	}
 
 	/* add cut to cuts structure, decision simulation and stage dual approximation problems for previous stage */
-	idxCut = addCut(lp, sda, cuts, numRows, numCols, maxCuts, prob->num->cntCcols, prob->coord->colsC, cut);
+	idxCut = addCut(lp, sda, cuts, numRows, numCols, cell->k, prob->num->cntCcols, prob->coord->colsC, cut,
+			pi, incumbCuts);
 	if ( idxCut < 0 ) {
 		errMsg("algorithm", "formCandidCut", "failed to add the cut stage problem", 0);
 		freeOneCut(cut); return -1;
@@ -73,6 +74,7 @@ cutsType *newCuts(int maxCuts) {
     if (!(cuts->vals = (oneCut **) arr_alloc (maxCuts, oneCut)))
         errMsg("allocation", "newCuts", "oneCuts",0);
     cuts->cnt = 0;
+    cuts->maxCuts = maxCuts;
 
     return cuts;
 }//END newCuts
@@ -127,12 +129,12 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 
 	if (piEvalFlag == TRUE) {
 		piRatios[numObs % config.SCAN_LEN] = estWindow/ estAll;
-		if (numObs - config.PI_EVAL_START > config.SCAN_LEN)
+		if (numObs - config.PI_EVAL_START >= config.SCAN_LEN)
 			variance = calcVariance(piRatios, config.SCAN_LEN);
 		else
 			variance = calcVariance(piRatios, numObs);
 
-		if (DBL_ABS(variance) >= .000002 || (piRatios[numObs % config.SCAN_LEN]) < 0.95)
+		if ((DBL_ABS(variance) >= .000002) || (piRatios[numObs % config.SCAN_LEN] < 0.95) )
 			*dualStableFlag = FALSE;
 		else
 			*dualStableFlag = TRUE;
@@ -157,14 +159,14 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 
 	/* if piEval is TRUE then compute argmax using only the pi's generated in the window, otherwise, use all the pi's */
 	if ( piEval )
-		window = (int) 0.9*numObs;
+		window = (int) (0.9*numObs);
 	else
-		window = 0;
+		window = numObs;
 
 	(*argmax) = -DBL_MAX;
 
 	for (n = 0; n < sigma->cnt; n++) {
-		if ( sigma->ck[n] >= window ) {
+		if ( sigma->ck[n] <= window ) {
 			deltaIdx = sigma->lambdaIdx[n];
 
 			/* Start with (\pi^\top \bar{b}) + (\pi^\top x \tilde{\omega}) - (\bar{C}_t^\top \pi)*x_t */
@@ -189,7 +191,8 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 	return iStar;
 }//END computeIstar()
 
-int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut) {
+int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int numObs, int betaLen, intvec betaIndices, oneCut *cut,
+		vector pi, intvec incumbCuts) {
 	intvec	indices;
 	int		n;
 
@@ -200,9 +203,11 @@ int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int ma
 	indices[0] = numCols;
 
 	/* make sure there is room to add a new cut */
-	if (cuts->cnt >= maxCuts) {
-		errMsg("algorithm", "addCut", "ran out of memory for cuts", 0);
-		mem_free(indices); return -1;
+	if ( cuts->cnt >= cuts->maxCuts) {
+		if ( reduceCuts(lp, sda, cuts, numObs, incumbCuts, pi) ) {
+			errMsg("algorithm", "addCut", "failed to reduce cuts", 0);
+			mem_free(indices); return -1;
+		}
 	}
 
 	if ( addRow(lp, betaLen+1, cut->alpha, 'G', 0, indices, cut->beta) ) {
@@ -261,6 +266,73 @@ double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, 
 	return height;
 }//END cutHeight
 
+/* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
+int reduceCuts(LPptr lp, LPptr sda, cutsType *cuts, int numObs, intvec incumbCuts, vector pi) {
+	int minObs, oldestCut, idx;
+
+	if ( sda != NULL ) {
+		errMsg("algorithm", "reduceCuts", "no scheme to reduce cuts for non-root stages", 0);
+		return 1;
+	}
+
+	minObs 	  = numObs;
+	oldestCut = cuts->cnt;
+
+	/* identify the oldest loose cut */
+    for (idx = 0; idx < cuts->cnt; idx++) {
+		if ( idx == incumbCuts[0] )
+			/* avoid dropping incumbent cut*/
+			continue;
+
+		if (cuts->vals[idx]->numObs < minObs && DBL_ABS(pi[cuts->vals[idx]->rowNum + 1]) <= config.TOLERANCE ) {
+			minObs = cuts->vals[idx]->numObs;
+			oldestCut = idx;
+		}
+	}
+
+	/* if the oldest loose cut is the most recently added cut */
+	if ( oldestCut == cuts->cnt ) {
+		errMsg("algorithm", "reduceCuts", "failed to identify any cuts to drop", 0);
+		return 1;
+	}
+
+	/* drop the selected cut and swap the last cut into its place */
+	if ( dropCut(lp, cuts, oldestCut, incumbCuts) ) {
+		errMsg("algorithm", "reduceCuts", "failed to drop a cut", 0);
+		return 1;
+	}
+
+	return 0;
+}//END reduceCuts()
+
+/* This function removes a cut from both the cutType structure and the master problem constraint matrix.  In the cuts->val array, the last
+ * cut is swapped into the place of the exiting cut.  In the constraint matrix, the row is deleted, and the row numbers of all constraints
+ * below it are decremented. */
+int dropCut(LPptr lp, cutsType *cuts, int cutIdx, intvec incumbCuts) {
+
+	int idx, status, deletedRow;
+
+	deletedRow = cuts->vals[cutIdx]->rowNum;
+	/* Get rid of the indexed cut */
+	status = removeRow(lp, deletedRow, deletedRow);
+	if ( status ) {
+		errMsg("solver", "dropCut", "failed to remove a row from master problem", 0);
+		return 1;
+	}
+	freeOneCut(cuts->vals[cutIdx]);
+
+	/* Update the surviving cuts */
+	cuts->vals[cutIdx] = cuts->vals[--cuts->cnt];
+	for (idx = 0; idx < cuts->cnt; idx++)
+		if (cuts->vals[idx]->rowNum > deletedRow)
+			--cuts->vals[idx]->rowNum;
+
+    /* if the swapped cut happens to be the incumbent cut, then update its index */
+    if ( incumbCuts[0] == cuts->cnt )
+    	incumbCuts[0] = cutIdx;
+
+	return 0;
+}//END dropCut()
 
 void freeCutsType(cutsType *cuts) {
 	int n;

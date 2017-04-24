@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#undef ALGO_RUN
+#define ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -41,7 +41,7 @@ typedef struct {
 	double		OPT_GAP;
 	double 		PRE_EPSILON;
 	int			M;
-	int			PERCENT_PASS;
+	double		PERCENT_PASS;
 	int			PI_EVAL_START;
 	int			PI_CYCLE;
 	int			SCAN_LEN;
@@ -95,6 +95,7 @@ typedef struct {
 
 typedef struct {
 	int		cnt;
+	int		maxCuts;		/* maximum number of cuts to be included in the cost-to-go function approximation */
 	oneCut	**vals;
 }cutsType;
 
@@ -102,6 +103,7 @@ typedef struct {
 	int		cnt;
 	vector	*vals;
 	vector	est;
+	intvec	cutidx;
 	double  quadScalar;
 	double	improv;
 	double	normd_k;
@@ -121,7 +123,6 @@ typedef struct {
 	incumbType	*incumb;		/* structure to hold all relevant information regarding incumbent solutions */
 	vector		pi;				/* dual solution for the stage */
 	vector		dj;				/* dual solution for the stage */
-	int			maxCuts;		/* maximum number of cuts to be included in the cost-to-go function approximation */
 	cutsType	*cuts;			/* optimality cuts added */
 	omegaType	*omega;			/* structure to hold observations */
 	lambdaType	*lambda;		/* structure to hold dual information with for rows with random variables (right-hand side or transfer matrix) */
@@ -176,16 +177,19 @@ void freeOmegaType(omegaType *omega);
 
 /* cuts.c */
 int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
-		int numRows, int numCols, int maxCuts, BOOL isTerminal, int numStages);
+		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts);
 oneCut *newCut(int numIstar, int numObs, int betaLen);
 cutsType *newCuts(int maxCuts);
 int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal, int numStages, vector piRatios, BOOL *dualStableFlag);
-int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int maxCuts, int betaLen, intvec betaIndices, oneCut *cut);
+int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int numObs, int betaLen, intvec betaIndices, oneCut *cut,
+		vector pi, intvec incumbCuts);
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal,
 		double *argmax, BOOL piEval);
 double maxCutHeight(cutsType *cuts, double lb, int iter, intvec Ccols, int betaLen, vector xt);
 double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, vector xt);
+int reduceCuts(LPptr lp, LPptr sda, cutsType *cuts, int numObs, intvec incumbCuts, vector pi);
+int dropCut(LPptr lp, cutsType *cuts, int cutIdx, intvec incumbCuts);
 void freeCutsType(cutsType *cuts);
 void freeOneCut(oneCut *cut);
 
@@ -203,9 +207,9 @@ void checkImprovement(probType **prob, cellType **cell, int numStages);
 BOOL optimal(probType **prob, cellType **cell, int T);
 BOOL preTest(cellType *cell);
 BOOL fullTest(probType **prob, cellType **cell);
-cutsType *chooseCuts(probType *prob, cellType *cell, cellType *root);
+cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX);
 void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, intvec observ, int k,
-		int lbType, int lb, int lenX);
+		int lb, int lenX);
 double calcTempLB(probType *p, cellType *c, cutsType *cuts, int cutCnt);
 void empiricalDistrib(omegaType *omega, intvec cdf);
 void sampleOmega(int *cdf, int *observ, int k);

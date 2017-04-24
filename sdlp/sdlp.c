@@ -123,7 +123,7 @@ int readConfig(string inputDir) {
 		else if (!(strcmp(line, "M")))
 			fscanf(fptr, "%d", &config.M);
 		else if (!(strcmp(line, "PERCENT_PASS")))
-			fscanf(fptr, "%d", &config.PERCENT_PASS);
+			fscanf(fptr, "%lf", &config.PERCENT_PASS);
 		else if (!(strcmp(line, "PRE_EPSILON")))
 			fscanf(fptr, "%lf", &config.PRE_EPSILON);
 		else if (!(strcmp(line, "PI_EVAL_START")))

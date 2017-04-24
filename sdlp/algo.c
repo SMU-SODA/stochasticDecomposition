@@ -29,6 +29,9 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 
 	printAlgoDetails(0);
 	while (TRUE) {
+		if (cell[0]->k % 100 == 0)
+			printf("\nIteration %4d :: ", cell[0]->k+1); fflush(stdout);
+
 		/* if optimality conditions have been satisfied then break the while loop and exit. */
 		if ( optimal(prob, cell, tim->numStages) )
 			break;
@@ -53,7 +56,7 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 			checkImprovement(prob, cell, tim->numStages);
 	}
 
-	printf("Successfully completed excecution of SDLP algorithm on %s.\n", probName);
+	printf("\nSuccessfully completed excecution of SDLP algorithm on %s.\n", probName);
 	printSolutionDetails(probName, prob, cell, tim->numStages);
 
 
@@ -159,7 +162,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			addVectors(cell[t]->candidU, cell[t]->incumb->vals[incumbIdx], NULL, prob[t]->num->cols);
 
 			/* Get the dual solution too */
-			if ( getDual(cell[t]->sp->lp, cell[t]->pi, cell[t]->sp->mar) ) {
+			if ( getDual(cell[t]->sp->lp, cell[t]->pi, cell[t]->sp->mar+cell[t]->cuts->cnt) ) {
 				errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
 				return 1;
 			}
@@ -228,7 +231,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 
 		/* form new optimality cut */
 		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
-				prob[t-1]->num->rows, prob[t-1]->num->cols, cell[t-1]->maxCuts, t == (numStages - 1), numStages);
+				prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
 			return 1;

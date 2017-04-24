@@ -17,7 +17,7 @@ BOOL optimal(probType **prob, cellType **cell, int numStages) {
 
 	if ( numStages == 2 && cell[0]->k > config.MIN_ITER) {
 		/* apply two-stage statistical optimality conditions */
-		if (cell[0]->dualStableFlag ) {
+		if (cell[1]->dualStableFlag ) {
 			if ( preTest(cell[0]) ) {
 				if ( fullTest(prob, cell) ) {
 					cell[0]->optFlag = TRUE;
@@ -29,6 +29,8 @@ BOOL optimal(probType **prob, cellType **cell, int numStages) {
 				}
 			}
 		}
+		if ( cell[0]->k >= config.MAX_ITER )
+			return TRUE;
 		return FALSE;
 	}
 
@@ -63,7 +65,7 @@ BOOL fullTest(probType **prob, cellType **cell) {
 	int 	m, cutCnt, num_pass = 0;
 
 	/* (a) choose good cuts */
-	gCuts = chooseCuts(prob[0], cell[1], cell[0]);
+	gCuts = chooseCuts(cell[0]->cuts, cell[0]->pi, prob[0]->num->cols);
 
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(observ = (intvec) arr_alloc(cell[0]->k + 1, int)) )
@@ -75,12 +77,12 @@ BOOL fullTest(probType **prob, cellType **cell) {
 	for (m = 0; m < config.M; m++) {
 		cutCnt = 0.0;
 
-
 		/* (c) sample omegas */
 		sampleOmega(cdf, observ, cell[0]->k-1);
 
 		/* (d) reform the good cuts by plugging in the omegas */
-		reformCuts(cell[1]->sigma, cell[1]->delta, cell[1]->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell[0]->k-1, cell[0]->lbType, prob[0]->lb, prob[0]->num->cols);
+		reformCuts(cell[1]->sigma, cell[1]->delta, cell[1]->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell[0]->k-1,
+				prob[0]->lb, prob[0]->num->cols);
 
 		/* find the highest reformed cut at the incumbent solution */
 		est = maxCutHeight(gCuts, cell[0]->lb, cell[0]->k, prob[1]->coord->colsC, prob[1]->num->cntCcols, cell[0]->incumb->vals[0]);
@@ -131,34 +133,34 @@ BOOL fullTest(probType **prob, cellType **cell) {
  * are likely to provide good approximations of the recourse function at incumb_x, when they are reformed with new observations.
  * The function returns a new cut structure which contains room for cuts to be reformed. Only the _istar_ and _cut_obs_ fields of
  * each cut have been initialized. */
-cutsType *chooseCuts(probType *prob, cellType *cell, cellType *root) {
-	cutsType *cuts;
+cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
+	cutsType *rCuts;
 	int cnt;
 
-	cuts = newCuts(cell->maxCuts);
+	rCuts = newCuts(cuts->maxCuts);
 
-	for ( cnt = 0; cnt < root->cuts->cnt; cnt++ ) {
-		if (root->pi[root->cuts->vals[cnt]->rowNum + 1] > 0.00001) {
-			cuts->vals[cuts->cnt] = newCut(cell->cuts->vals[cnt]->numIstar, cell->cuts->vals[cnt]->numObs, prob->num->cols);
-			copyIntvec(cell->cuts->vals[cnt]->iStar, cuts->vals[cuts->cnt]->iStar, cell->cuts->vals[cnt]->numIstar);
-			cuts->vals[cuts->cnt]->rowNum = root->cuts->vals[cnt]->rowNum;
-			cuts->cnt++;
+	for ( cnt = 0; cnt < cuts->cnt; cnt++ ) {
+		if (pi[cuts->vals[cnt]->rowNum + 1] > 0.00001) {
+			rCuts->vals[rCuts->cnt] = newCut(cuts->vals[cnt]->numIstar, cuts->vals[cnt]->numObs, lenX);
+			copyIntvec(cuts->vals[cnt]->iStar, rCuts->vals[rCuts->cnt]->iStar, cuts->vals[cnt]->numIstar);
+			rCuts->vals[rCuts->cnt]->rowNum = cuts->vals[cnt]->rowNum;
+			rCuts->cnt++;
 		}
 	}
 
-	if (cuts->cnt == 0) {
-		freeCutsType(cuts);
-		cuts = NULL;
+	if (rCuts->cnt == 0) {
+		freeCutsType(rCuts);
+		rCuts = NULL;
 	}
 
-	return cuts;
+	return rCuts;
 }//END chooseCuts()
 
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored
  * in the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of
  * alpha & beta. */
 void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, intvec observ, int k,
-		int lbType, int lb, int lenX) {
+		int lb, int lenX) {
 	int cnt, obs, idx, count;
 	iType iStar;
 
@@ -173,7 +175,7 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 		/* Reform this cut based on resampled observations */
 		for (obs = 0; obs < k; obs++) {
 			/* Only sum values if the cut has an istar for this observation */
-			if (observ[obs] < gCuts->vals[cnt]->numObs) {
+			if (observ[obs] < gCuts->vals[cnt]->numIstar) {
 				iStar.sigma = gCuts->vals[cnt]->iStar[observ[obs]];
 				iStar.delta = sigma->lambdaIdx[iStar.sigma];
 
@@ -193,10 +195,7 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 		for (idx = 0; idx <= lenX; idx++)
 			gCuts->vals[cnt]->beta[idx] /= (double) k;
 
-		gCuts->vals[cnt]->alpha /= (double) k;
-
-		if (lbType == NONTRIVIAL)
-			gCuts->vals[cnt]->alpha += (1 - (double) count / (double) k) * lb;
+		gCuts->vals[cnt]->alpha = (gCuts->vals[cnt]->alpha/(double) k) + (1 - (double) count / (double) k) * lb;
 	}
 }//END reform_cuts
 

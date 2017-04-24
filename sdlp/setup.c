@@ -180,44 +180,64 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 			cell[t]->sp->matcnt[prob[t]->sp->mac] = 0;
 		}
 
-		/* Solution part of the cell structure: primal and dual. */
-		/* candidate solution */
-		if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
-			errMsg("allocation", "newCell", "cell[t]->candidU", 0);
-		cell[t]->candidEst = 0.0;
+		/* Solution and stochastic elements of the cell structure. */
+		if ( t == 0 ) {
+			/* Root stage */
+			/* 0.1 candidate solution */
+			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
+			cell[t]->candidEst = 0.0;
 
-		if ( t != T-1 ) {
+			/* 0.2 incumbent solutions */
 			if ( config.QUADRATIC ) {
-				/* incumbent solutions */
-				if ( t == 0)
-					cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols, prob[t]->dBar);
-				else
-					cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols, prob[t]->dBar);
+				cell[t]->incumb = newIncumb(1, meanSol, prob[t]->num->cols, prob[t]->dBar);
 				xOffset += prob[t]->num->cols;
 			}
-			else {
+			else
 				cell[t]->incumb = NULL;
-			}
 
-			/* cuts structure */
-			cell[t]->cuts = newCuts(config.MAX_ITER);
-			cell[t]->maxCuts = config.MAX_ITER;
+			/* 0.3 approximation minorants */
+			cell[t]->cuts = newCuts(3*prob[0]->num->cols + 3);
+
+			if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+cell[t]->cuts->maxCuts+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->pi", 0);
+			if (!(cell[t]->dj = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->dj", 0);
+			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->rhs", 0);
+
+			/* 0.4 stochastic elements */
+			cell[t]->omega	= NULL;
+			cell[t]->lambda = NULL;
+			cell[t]->sigma 	= NULL;
+			cell[t]->delta  = NULL;
+
+			/* 0.5 stopping rule parameters */
+			cell[t]->optFlag 		= FALSE;
+			cell[t]->dualStableFlag = FALSE;
+			cell[t]->piRatios = NULL;
 		}
-		else {
+		else if ( t == T-1 ) {
+			/* Terminal stage */
+			/* T.1 candidate solution */
+			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
+			cell[t]->candidEst = 0.0;
+
+			/* T.2 incumbent solutions */
 			cell[t]->incumb = NULL;
-			cell[t]->cuts 	 = NULL;
-			cell[t]->maxCuts = 0;
-		}
-		if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+cell[t]->maxCuts+1, double)) )
-			errMsg("allocation", "newCell", "cell[t]->pi", 0);
-		if (!(cell[t]->dj = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
-			errMsg("allocation", "newCell", "cell[t]->dj", 0);
-		if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
-			errMsg("allocation", "newCell", "cell[t]->rhs", 0);
 
-		/* stochastic elements of the cell */
-		if ( t > 0 ) {
-			/* for non-root stages */
+			/* T.3 approximation minorants */
+			cell[t]->cuts = NULL;
+
+			if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->pi", 0);
+			if (!(cell[t]->dj = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->dj", 0);
+			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->rhs", 0);
+
+			/* T.4 stochastic elements */
 			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
 			if ( cell[t]->omega == NULL ) {
 				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
@@ -227,24 +247,59 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 			cell[t]->lambda = newLambda(config.MAX_ITER);
 			cell[t]->sigma 	= newSigma(config.MAX_ITER, 0);
 			cell[t]->delta = newDelta(config.MAX_ITER);
+
+			/* T.5 stopping rule parameters */
+			cell[t]->optFlag 		= FALSE;
+			cell[t]->dualStableFlag = FALSE;
+			if ( !(cell[t]->piRatios = (vector) arr_alloc(config.SCAN_LEN, double)) )
+				errMsg("allocation", "newCell", "cell->piRatios", 0);
+			cell[t]->piRatios[0] = 1.0;
 		}
 		else {
-			/* root stage */
-			cell[t]->omega	= NULL;
-			cell[t]->lambda = NULL;
-			cell[t]->sigma 	= NULL;
-			cell[t]->delta  = NULL;
+			/* Non-root, non-terminal stages */
+			/* #.1 candidate solution */
+			if ( !(cell[t]->candidU = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->candidU", 0);
+			cell[t]->candidEst = 0.0;
+
+			/* #.2 incumbent solutions */
+			if ( config.QUADRATIC ) {
+				cell[t]->incumb = newIncumb(config.MAX_ITER, meanSol+xOffset, prob[t]->num->cols, prob[t]->dBar);
+				xOffset += prob[t]->num->cols;
+			}
+			else
+				cell[t]->incumb = NULL;
+
+			/* #.3 approximation minorants */
+			cell[t]->cuts = newCuts(config.MAX_ITER);
+
+			if (!(cell[t]->pi = (vector) arr_alloc(prob[t]->num->rows+cell[t]->cuts->maxCuts+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->pi", 0);
+			if (!(cell[t]->dj = (vector) arr_alloc(prob[t]->num->cols+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->dj", 0);
+			if (!(cell[t]->rhs = (vector) arr_alloc(prob[t]->num->rows+1, double)) )
+				errMsg("allocation", "newCell", "cell[t]->rhs", 0);
+
+			/* #.4 stochastic elements */
+			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
+			if ( cell[t]->omega == NULL ) {
+				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
+				return NULL;
+			}
+
+			cell[t]->lambda = newLambda(config.MAX_ITER);
+			cell[t]->sigma 	= newSigma(config.MAX_ITER, 0);
+			cell[t]->delta = newDelta(config.MAX_ITER);
+
+			/* #.5 stopping rule parameters */
+			cell[t]->optFlag 		= FALSE;
+			cell[t]->dualStableFlag = FALSE;
+			if ( !(cell[t]->piRatios = (vector) arr_alloc(config.SCAN_LEN, double)) )
+				errMsg("allocation", "newCell", "cell->piRatios", 0);
+			cell[t]->piRatios[0] = 1.0;
 		}
 
-		/* stopping rule parameters */
-		cell[t]->optFlag 		= FALSE;
-		cell[t]->dualStableFlag = FALSE;
-		if ( t != 0 ) {
-		    if ( !(cell[t]->piRatios = (vector) arr_alloc(config.SCAN_LEN, double)) )
-		        errMsg("allocation", "newCell", "cell->piRatios", 0);
-		}
-		else
-			cell[t]->piRatios = NULL;
+
 
 		if ( t != T - 1 ) {
 			/* Load the cell problem onto solver: this problem will be used in forward pass */
@@ -292,6 +347,8 @@ incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBa
 		errMsg("allocation", "newIncumb", "incumb->vals", 0);
 	if ( !(incumb->est = (vector) arr_alloc(maxIncumb, double)) )
 		errMsg("allocation", "newIncumb", "incumb->est", 0);
+	if ( !(incumb->cutidx = (intvec) arr_alloc(maxIncumb, double)) )
+		errMsg("allocation", "newIncumb", "incumb->cutidx", 0);
 	incumb->quadScalar = config.MIN_QUAD_SCALAR;
 
 	/* initialize mean value solution as the first incumbent */
@@ -302,6 +359,7 @@ incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBa
 	incumb->normd_k = 0.0;
 	incumb->normd_k_1 = 0.0;
 	incumb->improv = 0.0;
+	incumb->cutidx[0] = -1; //TODO
 
 	return incumb;
 }//END newIncumb()
@@ -315,6 +373,7 @@ void freeIncumb(incumbType *incumb) {
 		mem_free(incumb->vals);
 	}
 	if ( incumb->est ) mem_free(incumb->est);
+	if ( incumb->cutidx) mem_free(incumb->cutidx);
 	mem_free(incumb);
 
 }//END freeIncumb()

@@ -67,6 +67,7 @@ void checkImprovement(probType **prob, cellType **cell, int numStages) {
 
 			cell[t]->incumb->normd_k_1 = cell[t]->incumb->normd_k;
 			cell[t]->incumb->chg = TRUE;
+			printf("+"); fflush(stdout);
 		}
 		else {
 			/* update quad_scalar when incumbent is not updated */
