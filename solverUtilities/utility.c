@@ -150,6 +150,17 @@ int str2int(char *string) {
 	return val;
 }//END str2int()
 
+/* This function returns the minimum number of bits needed to represent a given number. */
+int getNumBits(int num) {
+  int 	hi_bit = 1;
+  int 	numBits;
+
+  for (numBits = 0; hi_bit <= num; numBits++)
+    hi_bit = hi_bit << 1;
+
+  return numBits;
+}//END getNumBits()
+
 
 double oneNorm(vector a, int len) {
 	int		cnt;

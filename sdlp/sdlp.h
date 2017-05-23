@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#define ALGO_RUN
+#undef ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -51,6 +51,7 @@ typedef struct {
 	int		cnt;
 	int		idx;
 	BOOL	newObs;
+	int		numCipher;
 	intvec	weights;
 	vector	*vals;
 }omegaType;

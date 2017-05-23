@@ -64,6 +64,7 @@ void *log_realloc(char *string, void *free_ptr, void *alloc_ptr, int size);
 
 double str2float(char *string);
 int str2int(char *string);
+int getNumBits(int num);
 double oneNorm(vector a, int len);
 double twoNorm(vector a, vector b, int len);
 double calcVariance(vector x, int lenX);

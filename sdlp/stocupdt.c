@@ -194,6 +194,7 @@ omegaType *newOmega(int t, stocType *stoc, int numObs) {
 	omega->cnt = 0;
 	omega->idx = 0;
 	omega->newObs = FALSE;
+	omega->numCipher = getNumBits(t*config.MAX_ITER);					/* assumed that there will be at most MAX_ITER observations at each stage. */
 
 	return omega;
 }//END newOmega()
@@ -236,6 +237,8 @@ deltaType *newDelta(int numIter) {
 
 	return delta;
 }//END newDelta()
+
+
 
 void freeLambdaType(lambdaType *lambda) {
 	int n;

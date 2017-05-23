@@ -5,7 +5,7 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   272
+MAX_ITER   500
 
 // Minimum iterations
 MIN_ITER   1

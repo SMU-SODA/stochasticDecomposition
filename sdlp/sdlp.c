@@ -10,7 +10,7 @@
 
 #include <sdlp.h>
 
-long 		MEM_USED = 0;	/* Amount of memory allocated each iteration */
+long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 string   	outputDir;		/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
