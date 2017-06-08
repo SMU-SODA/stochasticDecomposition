@@ -149,7 +149,8 @@ int updateCutsRHS(LPptr lp, cutsType *cuts, double lb, int numObs);
 int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, double *mubBar);
 int computeMu(LPptr lp, int numCols, double *mubBar);
 void printAlgoDetails(int item);
-void printSolutionDetails (string probName, probType **prob, cellType **cell, int numStages);
+void printSolutionShort(void *fPtr, string probName, probType **prob, cellType **cell, int numStages);
+void printSolutionDetails (void *fPtr, string probName, probType **prob, cellType **cell, int numStages);
 void cleanupAlgo(probType **prob, cellType **cell, int T);
 
 /* setup.c */

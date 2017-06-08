@@ -5,7 +5,7 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   500
+MAX_ITER   5000
 
 // Minimum iterations
 MIN_ITER   1
@@ -31,7 +31,7 @@ R2 0.95
 // For updating the scaling factor.
 R3 2
 
-// Determines the policy employed to select incumbent: Fixed - 0, Scenario-dependent - 1, linear mapping - 2
+// Determines the policy employed to select incumbent: Fixed = 0, Scenario-dependent = 1, linear mapping = 2
 POLICY	0
 
 // Run seed

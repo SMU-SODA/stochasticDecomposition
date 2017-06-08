@@ -85,3 +85,43 @@ void checkImprovement(probType **prob, cellType **cell, int numStages) {
 #endif
 
 }//END checkImprove()
+
+incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBar) {
+	incumbType *incumb;
+
+	if ( !(incumb = (incumbType *) mem_malloc(sizeof(incumbType))) )
+		errMsg("allocation", "newIncumb", "incumb", 0);
+	if ( !(incumb->vals = (vector *) arr_alloc(maxIncumb, vector)) )
+		errMsg("allocation", "newIncumb", "incumb->vals", 0);
+	if ( !(incumb->est = (vector) arr_alloc(maxIncumb, double)) )
+		errMsg("allocation", "newIncumb", "incumb->est", 0);
+	if ( !(incumb->cutidx = (intvec) arr_alloc(maxIncumb, double)) )
+		errMsg("allocation", "newIncumb", "incumb->cutidx", 0);
+	incumb->quadScalar = config.MIN_QUAD_SCALAR;
+
+	/* initialize mean value solution as the first incumbent */
+	incumb->vals[0] = duplicVector(meanSol, lenX);
+	incumb->est[0] = vXvSparse(incumb->vals[0], dBar);
+	incumb->cnt = 1;
+	incumb->chg = TRUE;
+	incumb->normd_k = 0.0;
+	incumb->normd_k_1 = 0.0;
+	incumb->improv = 0.0;
+	incumb->cutidx[0] = -1; //TODO
+
+	return incumb;
+}//END newIncumb()
+
+void freeIncumb(incumbType *incumb) {
+	int n;
+
+	if ( incumb->vals ) {
+		for ( n = 0; n < incumb->cnt; n++ )
+			if ( incumb->vals[n] ) mem_free(incumb->vals[n]);
+		mem_free(incumb->vals);
+	}
+	if ( incumb->est ) mem_free(incumb->est);
+	if ( incumb->cutidx) mem_free(incumb->cutidx);
+	mem_free(incumb);
+
+}//END freeIncumb()

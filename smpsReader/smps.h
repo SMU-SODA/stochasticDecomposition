@@ -103,8 +103,6 @@ void freeTimeType(timeType *tim);
 void freeStocType(stocType *stoc);
 void freeARMAtype(armaType *arma);
 
-void printReadSummary(oneProblem *orig, timeType *tim, stocType *stoc);
-
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
 void generateOmega(stocType *stoc, vector observ, long long *seed);

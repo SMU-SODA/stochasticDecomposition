@@ -588,7 +588,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 
 			/* extract bBar */
 			for (n = row; n < orig->mar; n++) {
-				bBar->val[bBar->cnt + 1] = orig->rhsx[n];
+				bBar->val[bBar->cnt + 1] = orig->rhsx[n]; // TODO: orig->rhsx needs to be updated with mean values and multiplication of stage dual with stage rows inconsistent
 				bBar->col[bBar->cnt + 1] = n - row + 1;
 				++bBar->cnt;
 			}
@@ -631,7 +631,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 				return NULL;
 			}
 
-#ifdef SETUP_CHECK
+#if 1
 			writeProblem(lpClone, "lowerBoundCalc.lp");
 #endif
 			/* solve the problem */

@@ -18,6 +18,7 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 	probType **prob = NULL;
 	cellType **cell = NULL;
 	vector	 observ;
+	FILE *solnFile;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
@@ -57,8 +58,11 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 	}
 
 	printf("\nSuccessfully completed excecution of SDLP algorithm on %s.\n", probName);
-	printSolutionDetails(probName, prob, cell, tim->numStages);
 
+	/* Print solution details */
+	solnFile = openFile(outputDir, "detailedSDLPsols.dat", "w");
+	printSolutionDetails(solnFile, probName, prob, cell, tim->numStages);
+	printSolutionShort(stdout, probName, prob, cell, tim->numStages);
 
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
@@ -468,11 +472,17 @@ void printAlgoDetails(int item) {
 
 }//END printAlgoDetails()
 
-void printSolutionDetails (string probName, probType **prob, cellType **cell, int numStages) {
-	int t, n;
-	FILE *fPtr;
+void printSolutionShort(void *fPtr, string probName, probType **prob, cellType **cell, int numStages) {
 
-	fPtr = openFile(outputDir, "detailedSDLPsols.dat", "w");
+	fprintf(fPtr, "\n=============================================================================================================\n");
+	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
+	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+
+
+}//END printSolutionShort()
+
+void printSolutionDetails (void *fPtr, string probName, probType **prob, cellType **cell, int numStages) {
+	int t, n;
 
 	fprintf(fPtr, "\n=============================================================================================================\n");
 	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
