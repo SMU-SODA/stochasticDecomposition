@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
+int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
 		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts) {
 	oneCut 	*cut;
 	int		idxCut, status;
@@ -44,6 +44,52 @@ int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType 
 	return idxCut;
 }//END formCandidCut()
 
+int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType *cuts, vector incumbU,
+		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts) {
+	double 	mubBar;
+	int 	extraRows = 0, idxSigma, idxCut;
+	BOOL	newSigmaFlag;
+
+	/* solve the subproblem with incumbent state as input */
+	computeEndoRHS(prob->bBar, prob->Cbar, incumbU, cell->rhs);
+	if ( computeExoRHS(cell->sda, NULL, prob->coord, prob->num, cell->omega->vals[cell->omega->idx],
+			incumbU, cell->rhs) ){
+		errMsg("allocation", "formIncumbCut", "failed to change the right-hand side with uncertainty and state information", 0);
+		return -1;
+	}
+	if ( dualUpdates(cell->sda, cell->sp->name, prob->num->rows+extraRows, prob->num->cols, cell->pi, &mubBar)) {
+		errMsg("algorithm", "backwardPass","failed to complete d%ual updates", 0);
+		return -1;
+	}
+
+	/* update all the stochastic components, indicate that the updates with respect to new node have been completed TODO: future value */
+	if (isTerminal )
+		idxSigma = stocUpdate(config.MAX_ITER, prob->num, prob->coord, prob->Cbar, prob->bBar, cell->pi, mubBar, 0.0,
+				cell->lambda, cell->sigma, &newSigmaFlag, cell->delta, cell->omega, cell->k);
+	else
+		idxSigma = stocUpdate(config.MAX_ITER, prob->num, prob->coord, prob->Cbar, prob->bBar, cell->pi, mubBar, cell->cuts->vals[cell->incumb->cutidx[0]]->alpha,
+				cell->lambda, cell->sigma, &newSigmaFlag, cell->delta, cell->omega, cell->k);
+
+#ifdef STOC_CHECK
+	double obj;
+	obj = cell->sigma->vals[idxSigma].pib - vXv(cell->sigma->vals[idxSigma].piC, incumbU, prob->coord->colsC, prob->num->cntCcols);
+	obj += cell->delta->vals[cell->sigma->lambdaIdx[idxSigma]][cell->omega->idx].pib - vXv(cell->delta->vals[cell->sigma->lambdaIdx[idxSigma]][cell->omega->idx].piC,
+			cell->omega->vals[cell->omega->idx], prob->coord->rvCols, prob->num->rvColCnt);
+	printf("Objective function estimate at incumbent solution = %lf\n", obj);
+#endif
+
+	/* form new incumbent cut */
+	idxCut = formCut(lp, sda, cell, prob, cuts, incumbU, numRows, numCols, isTerminal, numStages, pi, incumbCuts);
+	if ( idxCut < 0 ) {
+		errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
+		return 1;
+	}
+	incumbCuts[0] = idxCut;
+	cuts->vals[idxCut]->isIncumb = TRUE;
+
+	return 0;
+}//END formIncumbCut()
+
 /* subroutine to the allocate memory to oneCut structure and initialize its elements with default values */
 oneCut *newCut(int numIstar, int numObs, int betaLen){
 	oneCut *cut;
@@ -60,6 +106,8 @@ oneCut *newCut(int numIstar, int numObs, int betaLen){
 		errMsg("allocation", "newCut", "cut->beta", 0);
 	cut->alpha 	 = 0.0;
 	cut->beta[0] = 1.0;
+
+	cut->isIncumb = FALSE;
 
 	return cut;
 }//END newCut()

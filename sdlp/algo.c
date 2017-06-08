@@ -52,12 +52,16 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 			goto TERMINATE;
 		}
 
-		if ( config.QUADRATIC )
-			/* check to see if there is improvement */
+		if ( config.QUADRATIC ) {
+			/* check to see if there is an improvement */
 			checkImprovement(prob, cell, tim->numStages);
+
+		}
 	}
 
-	printf("\nSuccessfully completed excecution of SDLP algorithm on %s.\n", probName);
+	printf("\n\n-------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("Successfully completed excecution of SDLP algorithm on %s.\n", probName);
+	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
 
 	/* Print solution details */
 	solnFile = openFile(outputDir, "detailedSDLPsols.dat", "w");
@@ -230,17 +234,22 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 	obj = cell[t]->sigma->vals[idxSigma].pib - vXv(cell[t]->sigma->vals[idxSigma].piC, cell[t-1]->candidU, prob[t]->coord->colsC, prob[t]->num->cntCcols);
 	obj += cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].pib - vXv(cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].piC,
 			cell[t]->omega->vals[cell[t]->omega->idx], prob[t]->coord->rvCols, prob[t]->num->rvColCnt);
-	printf("Objective function estimate = %lf\n", obj);
+	printf("Objective function estimate at candidate solution = %lf\n", obj);
 #endif
 
 		/* form new optimality cut */
-		idxCut = formCandidCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
+		idxCut = formCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
 				prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
 			return 1;
 		}
 		extraRows = 1;
+
+		if ( numStages == 2 && (cell[t-1]->k % config.TAU == 0)) {
+			formIncumbCut(cell[t], prob[t], cell[t-1]->sp->lp, cell[t-1]->sda, cell[t-1]->cuts, cell[t-1]->candidU,
+					prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
+		}
 	}
 
 	return 0;
@@ -465,19 +474,19 @@ void cleanupAlgo(probType **prob, cellType **cell, int T) {
 
 void printAlgoDetails(int item) {
 
-	printf("\n-------------------------------------------------------------------------------------------------------------\n");
+	printf("\n-------------------------------------------------------------------------------------------------------------------------------\n");
 	printf("Starting stochastic dynamic linear programming algorithm\n");
 	printf("Minimum iterations: %d\n", config.MIN_ITER);
-	printf("-------------------------------------------------------------------------------------------------------------\n");
+	printf("-------------------------------------------------------------------------------------------------------------------------------\n");
 
 }//END printAlgoDetails()
 
 void printSolutionShort(void *fPtr, string probName, probType **prob, cellType **cell, int numStages) {
 
-	fprintf(fPtr, "\n=============================================================================================================\n");
+	fprintf(fPtr, "\n===============================================================================================================================\n");
 	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
-	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
-
+	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->incumb->est[0]);
+	fprintf(fPtr, "\n===============================================================================================================================\n");
 
 }//END printSolutionShort()
 
@@ -486,7 +495,7 @@ void printSolutionDetails (void *fPtr, string probName, probType **prob, cellTyp
 
 	fprintf(fPtr, "\n=============================================================================================================\n");
 	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
-	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);
+	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->incumb->est[0]);
 
 	for (t = 1; t < numStages; t++ ) {
 		/* Details of stochastic elements */

@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#undef ALGO_RUN
+#define ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -34,6 +34,7 @@ typedef struct {
 	double		R1;
 	double		R2;
 	double		R3;
+	int			TAU;
 	int			POLICY;
 	int			EVAL_FLAG;
 	long long 	EVAL_SEED;
@@ -92,6 +93,7 @@ typedef struct {
 	double	alpha;
 	vector 	beta;
 	int		rowNum;
+	BOOL	isIncumb;
 }oneCut;
 
 typedef struct {
@@ -178,7 +180,9 @@ void freeDeltaType(deltaType *delta, int numObs, int numLambda);
 void freeOmegaType(omegaType *omega);
 
 /* cuts.c */
-int formCandidCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
+int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts, vector xt,
+		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts);
+int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType *cuts, vector incumbU,
 		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts);
 oneCut *newCut(int numIstar, int numObs, int betaLen);
 cutsType *newCuts(int maxCuts);
