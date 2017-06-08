@@ -75,7 +75,7 @@ typedef struct{
 /* subroutines in prob.c */
 probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, double TOLERANCE);
 vector meanProblem(oneProblem *orig, stocType *stoc);
-vector calcLowerBound(oneProblem *orig, timeType *tim);
+vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
 void freeOmegastuff(omegastuff *omegas);

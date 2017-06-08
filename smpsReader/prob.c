@@ -524,10 +524,10 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	return xk;
 }//END meanProblem()
 
-vector calcLowerBound(oneProblem *orig, timeType *tim) {
+vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 	sparseVector	*bBar;
 	sparseMatrix	*Cbar;
-	vector		duals, lb, vals, beta;
+	vector		duals, vals, beta, lb;
 	intvec		indices;
 	double		alpha;
 	int 		status, stat1, t, col, row, m, n;
@@ -587,8 +587,13 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 			lpClone = cloneProblem(orig->lp);
 
 			/* extract bBar */
+			m = 0;
 			for (n = row; n < orig->mar; n++) {
-				bBar->val[bBar->cnt + 1] = orig->rhsx[n]; // TODO: orig->rhsx needs to be updated with mean values and multiplication of stage dual with stage rows inconsistent
+				/* if the element has randomness in right-hand side, then make sure it is accounted */
+				if ( n == stoc->row[m] && m < stoc->numOmega)
+					bBar->val[bBar->cnt + 1] = stoc->mean[m++];
+				else
+					bBar->val[bBar->cnt + 1] = orig->rhsx[n];
 				bBar->col[bBar->cnt + 1] = n - row + 1;
 				++bBar->cnt;
 			}
@@ -607,7 +612,9 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 			}
 
 			/* compute alpha and beta */
-			alpha = vXvSparse(duals, bBar);
+			alpha = 0.0;
+			for ( n = 1; n <= bBar->cnt; n++ )
+				alpha += duals[bBar->col[n]+row] * bBar->val[n];
 			for (n = 0; n <= col + 2; n++)
 				beta[n] = 0.0;
 			for (n = 1; n <= Cbar->cnt; n++)
@@ -631,7 +638,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 				return NULL;
 			}
 
-#if 1
+#ifdef SETUP_CHECK
 			writeProblem(lpClone, "lowerBoundCalc.lp");
 #endif
 			/* solve the problem */
@@ -642,8 +649,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 			}
 
 			/* get lower bound */
-			lb[t-1] = getObjective(lpClone, PROB_LP);
-			lb[t-1] += alpha;
+			lb[t-1] = getObjective(lpClone, PROB_LP) + alpha;
 
 			/* release the problem */
 			status = freeProblem(lpClone);
@@ -670,12 +676,12 @@ vector calcLowerBound(oneProblem *orig, timeType *tim) {
 	if ( orig->type == PROB_MILP ) {
 		status = changeProbType(orig->lp, PROB_MILP);
 		if ( status ) {
-			errMsg("solver", "meanProblem", "failed to relax the mixed-integer program", 0);
+			errMsg("solver", "calcLowerBound", "failed to relax the mean value problem", 0);
 			return NULL;
 		}
 	}
 
-#if 1
+#if 0
 	for ( t = 1; t < tim->numStages; t++ )
 		lb[t] = lb[0];
 #endif
