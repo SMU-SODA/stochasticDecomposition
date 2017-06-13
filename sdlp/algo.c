@@ -166,7 +166,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 #endif
 
 		/* solve the stage problem */
-		if ( solveProblem(cell[t]->sp->lp, cell[t]->sp->name, PROB_LP, &status) ) {
+		if ( solveProblem(cell[t]->sp->lp, cell[t]->sp->name, cell[t]->sp->type, &status) ) {
 			errMsg("solver", "forwardPass", "failed to solve stage problem", 0);
 			return 1;
 		}
@@ -267,7 +267,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 #endif
 
 		/* form new optimality cut */
-		idxCut = formCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->incumb->vals[cell[t-1]->incumb->idx],
+		idxCut = formCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
 				prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
@@ -276,7 +276,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 		extraRows = 1;
 
 		if ( numStages == 2 && (cell[t-1]->k % config.TAU == 0)) {
-			formIncumbCut(cell[t], prob[t], cell[t-1]->sp->lp, cell[t-1]->sda, cell[t-1]->cuts, cell[t-1]->candidU,
+			formIncumbCut(cell[t], prob[t], cell[t-1]->sp->lp, cell[t-1]->sda, cell[t-1]->cuts, cell[t-1]->incumb->vals[cell[t-1]->incumb->idx],
 					prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
 		}
 	}
@@ -429,7 +429,7 @@ int dualUpdates(LPptr lp, string name, int numRows, int numCols, vector pi, doub
 	}
 
 #ifdef STOC_CHECK
-	printf("Objective function value = %lf\t", getObjective(lp, PROB_LP));
+	printf("Objective function value = %lf\t", getObjective(lp, PROB_LP)); fflush(stdout);
 #endif
 
 	/* obtain the dual solution */
@@ -555,6 +555,12 @@ void printSolutionDetails (void *fPtr, string probName, probType **prob, cellTyp
 		for ( n = 0; n < cell[t-1]->cuts->cnt; n++ ) {
 			fprintf(fPtr, "(%d) ", cell[t-1]->cuts->vals[n]->numObs);
 			printIntvec(cell[t-1]->cuts->vals[n]->iStar-1, cell[t-1]->cuts->vals[n]->numIstar, fPtr);
+		}
+
+		/* details of incumbent */
+		if ( cell[t]->incumb != NULL ) {
+			fprintf(fPtr, "Number of incumbents generated = %d\n", cell[t]->incumb->cnt-1);
+			printVector(cell[t]->incumb->est, cell[t]->incumb->cnt-1, fPtr);
 		}
 	}
 	fprintf(fPtr, "=============================================================================================================\n");

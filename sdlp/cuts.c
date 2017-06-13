@@ -26,7 +26,7 @@ int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts,
 	}
 
 	/* compute cut coefficients */
-	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, xt, cell->k, cut, isTerminal, numStages,
+	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, cell->lb, xt, cell->k, cut, isTerminal, numStages,
 			cell->piRatios, &cell->dualStableFlag);
 	if (status ) {
 		errMsg("algorithm", "formNewCut", "failed to create the stage cut", 0);
@@ -127,7 +127,7 @@ cutsType *newCuts(int maxCuts) {
     return cuts;
 }//END newCuts
 
-int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
+int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, double lb,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal, int numStages, vector piRatios, BOOL *dualStableFlag) {
 	vector 	pixC, beta;
 	double	variance, estWindow, estAll, argmaxAll, argmaxWindow;
@@ -153,13 +153,13 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 	for (cnt = 0; cnt < omega->cnt; cnt++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if ( piEvalFlag ) {
-			iStar   	= computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxAll, FALSE);
-			computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxWindow, TRUE);
+			iStar   	= computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, lb, isTerminal, &argmaxAll, FALSE);
+			computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, lb, isTerminal, &argmaxWindow, TRUE);
 			estAll 		+= argmaxAll*omega->weights[cnt];
 			estWindow 	+= argmaxWindow*omega->weights[cnt];
 		}
 		else
-			iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, isTerminal, &argmaxAll, FALSE);
+			iStar = computeIstar(num, coord, sigma, delta, pixC, xt, cnt, numObs, lb, isTerminal, &argmaxAll, FALSE);
 
 		/* identify the best stochastic element for all observations */
 		cut->iStar[cnt] = iStar.sigma;
@@ -199,11 +199,11 @@ int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta,
 	return 0;
 }//END stageCut()
 
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal,
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, double lb, BOOL isTerminal,
 		double *argmax, BOOL piEval) {
 	iType 	iStar;
 	int 	n, m, deltaIdx, window;
-	double	arg;
+	double	arg, t_over_k;
 
 	/* if piEval is TRUE then compute argmax using only the pi's generated in the window, otherwise, use all the pi's */
 	if ( piEval )
@@ -225,8 +225,10 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 				arg -= delta->vals[deltaIdx][cnt].piC[m] * xt[coord->rvCols[m]];
 
 			/* Weigh the older dual solutions by the iteration count, this is done for all non-terminal stages */
-			if ( !(isTerminal) )
-				arg = (arg * ((double) sigma->ck[n]))/(double) numObs;
+			if ( !(isTerminal) ) {
+				t_over_k = ((double) sigma->ck[n]/ (double) numObs);
+				arg = arg * t_over_k + (1 - t_over_k)*lb;
+			}
 
 			if (arg > (*argmax)) {
 				(*argmax) = arg;

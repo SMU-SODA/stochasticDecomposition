@@ -68,7 +68,7 @@ void checkImprovement(probType **prob, cellType **cell, int numStages) {
 			copyVector(cell[t]->candidU, cell[t]->incumb->vals[cell[t]->incumb->idx], prob[t]->num->cols, TRUE);
 			cell[t]->incumb->est[cell[t]->incumb->idx] = candidEst;
 
-			if (cell[t]->k > 1 && cell[t]->incumb->normd_k > config.TOLERANCE)
+			if (cell[t]->k > 1 && cell[t]->incumb->normd_k > 1000*config.TOLERANCE)
 				if (cell[t]->incumb->normd_k >= config.R3 * cell[t]->incumb->normd_k_1) {
 					cell[t]->incumb->quadScalar *= config.R2 * config.R3 * cell[t]->incumb->normd_k_1 / cell[t]->incumb->normd_k;
 

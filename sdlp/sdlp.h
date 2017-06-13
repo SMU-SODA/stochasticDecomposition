@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#undef ALGO_RUN
+#define ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -194,11 +194,11 @@ int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType 
 		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts);
 oneCut *newCut(int numIstar, int numObs, int betaLen);
 cutsType *newCuts(int maxCuts);
-int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega,
+int stageCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, double lb,
 		vector xt, int numObs, oneCut *cut, BOOL isTerminal, int numStages, vector piRatios, BOOL *dualStableFlag);
 int addCut(LPptr lp, LPptr sda, cutsType *cuts, int numRows, int numCols, int numObs, int betaLen, intvec betaIndices, oneCut *cut,
 		vector pi, intvec incumbCuts);
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, BOOL isTerminal,
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector pixC, vector xt, int cnt, int numObs, double lb, BOOL isTerminal,
 		double *argmax, BOOL piEval);
 double maxCutHeight(cutsType *cuts, double lb, int iter, intvec Ccols, int betaLen, vector xt);
 double cutHeight(oneCut *cut, double lb, int numObs, intvec Ccols, int betaLen, vector xt);
