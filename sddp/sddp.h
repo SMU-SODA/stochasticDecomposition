@@ -106,7 +106,7 @@ typedef struct {
 void parseCmdLine(string probName);
 int readConfig(string inputDir);
 void printAlgoDetails(int item);
-void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell);
+void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell, FILE *fptr);
 
 /* subroutines in algo.c */
 void printProbDetails(probType **p);
@@ -118,7 +118,6 @@ void printProbDetails(probType **p);
 /* subroutines in setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType ***cell);
 cellType **newCell(stocType *stoc, probType **prob, vector lb, int T);
-vector calcLowerBound(oneProblem *orig, timeType *tim);
 void cleanupAlgo(probType **prob, cellType **cell, int T);
 void freeCellType (probType **prob, cellType **cell, int T);
 void freeCutsType(cutsType *cuts);

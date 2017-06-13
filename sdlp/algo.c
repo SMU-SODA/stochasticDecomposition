@@ -30,8 +30,12 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 
 	printAlgoDetails(0);
 	while (TRUE) {
-		if (cell[0]->k % 100 == 0)
-			printf("\nIteration %4d :: ", cell[0]->k+1); fflush(stdout);
+#if VERBOSE
+		printf("\nIteration %4d :: ", cell[0]->k+1); fflush(stdout);
+#else
+		if ( (cell[0]->k) % 100 == 0)
+			printf("\nIteration %4d :: ", cell[0]->k); fflush(stdout);
+#endif
 
 		/* if optimality conditions have been satisfied then break the while loop and exit. */
 		if ( optimal(prob, cell, tim->numStages) )
@@ -77,17 +81,26 @@ int algo(string probName, oneProblem *orig, stocType *stoc, timeType *tim) {
 }//END algo()
 
 int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
-	int		t, status, obs, incumbIdx;
+	long long pathIdx = 0;
+	int		t, status, obs, incumbIdx, pathOld = 0;
 
 	/************************************************* setup and solve stage problems *****************************************************/
 	/* since primal solution for terminal stage are not used we do not solve it here. Rather we solve it on the backward pass */
 	for ( t = 0; t < numStages-1; t++ ) {
 		cell[t]->k++;
+#if VERBOSE
+		printf("\nStage-%d :: ", t); fflush(stdout);
+#endif
 
 		/* update the right-hand side with state information for non-root stages */
 		if ( t != 0 ) {
 			/* update omega structure with the new observation */
-			obs = cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg);
+			pathOld = cell[t]->omega->pathCurrent;
+			obs = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg, pathIdx);
+			pathIdx = cell[t]->omega->pathIdx[cell[t]->omega->pathCurrent];
+			if ( pathOld != cell[t]->omega->pathCurrent )
+				/* Current path is different from the path observed in previous iteration */
+				cell[t]->incumb->chg = TRUE;
 
 			/* copy the deterministic right-hand side and change it with endogenous state information */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
@@ -102,10 +115,13 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			/* copy the deterministic right-hand side */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, NULL, cell[t]->rhs);
 
-		if ( config.QUADRATIC && cell[t]->incumb->chg) {
-			/* select the incumbent solution to be used */
-			incumbIdx = selectIncumb(cell[t]->incumb);
+		/* select the incumbent solution to be used */
+		incumbIdx = selectIncumb(cell[t]->incumb, cell[t]->omega);
+#if VERBOSE
+			printf("\tIncumbent chosen = %d.\t", incumbIdx); fflush(stdout);
+#endif
 
+		if ( config.QUADRATIC && cell[t]->incumb->chg ) {
 			/* If decision simulation problem is solved as a quadratic program, then update the right-hand side and bounds using current incumbent
 			 * solution */
 			if ( changeQPrhs(cell[t]->sp->lp, prob[t+1]->coord->colsC, prob[t+1]->num->cntCcols, prob[t]->num->rows,
@@ -124,7 +140,9 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 				errMsg("algorithm", "forwardPass", "failed to change the proximal parameter", 0);
 				return 1;
 			}
-
+#if VERBOSE
+			printf("Update complete.\n");
+#endif
 		}
 		else if (cell[t]->lbType == NONTRIVIAL ) {
 			/* if the decision simulation problem is solved as a linear program and it has non-trivial lower bound, then update the right-hand side of
@@ -134,7 +152,6 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 				return 1;
 			}
 		}
-		incumbIdx = 0;
 
 		/* change coefficients of eta column */
 		if ( changeEtaCol(cell[t]->sp->lp, prob[t]->num->cols, prob[t]->num->rows, cell[t]->k, cell[t]->cuts, cell[t]->lb) ) {
@@ -166,7 +183,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 			if (cell[t]->k == 1)
 				cell[t]->incumb->normd_k_1 = cell[t]->incumb->normd_k;
 
-			/* primal solution is \Delta u = u - \hat{u}, change it to u */
+			/* Primal solution is \Delta u = u - \hat{u}, change it to u */
 			addVectors(cell[t]->candidU, cell[t]->incumb->vals[incumbIdx], NULL, prob[t]->num->cols);
 
 			/* Get the dual solution too */
@@ -188,16 +205,28 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 }//END forwardPass
 
 int backwardPass(probType **prob, cellType **cell, vector observ, int numStages) {
+	long long pathIdx;
 	double	mubBar, futureVal;
 	int 	t, extraRows = 0, idxSigma, idxCut;
 	BOOL	newSigmaFlag;
 
+	if (numStages == 2)
+		pathIdx = 0;
+	else
+		pathIdx = cell[numStages-2]->omega->pathIdx[cell[numStages-2]->omega->pathCurrent];
+
 	for ( t = numStages-1; t > 0; t-- ) {
 		if ( t == numStages-1 ) {
+#if VERBOSE
+		printf("\nStage-%d :: ", t);
+#endif
 			/* update omega structure with the new observation, as this is not done in forward pass */
 			cell[t]->k++;
-			cell[t]->omega->idx = calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg);
+			calcOmega(prob[t]->omegas, cell[t]->omega, observ+prob[t]->omegas->beg, pathIdx);
 
+#if VERBOSE
+			printf("\n-------------------------------------------------------------------------------------------------------------------------------\n");
+#endif
 			/* change the right-hand side with endogenous state */
 			computeEndoRHS(prob[t]->bBar, prob[t]->Cbar, cell[t-1]->candidU, cell[t]->rhs);
 
@@ -238,7 +267,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 #endif
 
 		/* form new optimality cut */
-		idxCut = formCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->candidU,
+		idxCut = formCut(cell[t-1]->sp->lp, cell[t-1]->sda, cell[t], prob[t], cell[t-1]->cuts, cell[t-1]->incumb->vals[cell[t-1]->incumb->idx],
 				prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
 		if ( idxCut < 0 ) {
 			errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);

@@ -12,31 +12,66 @@
 
 extern configType config;
 
-int calcOmega(omegastuff *omegas, omegaType *omega, vector observ) {
-	int n;
+int calcOmega(omegastuff *omegas, omegaType *omega, vector observ, long long pathIdx) {
+	int n, m;
 
 	for ( n = 1; n <= omegas->numRV; n++ )
 		observ[n-1] -= omegas->mean[n];
 
 	n = 0;
 	while ( n < omega->cnt ) {
-		if ( equalVector(observ-1, omega->vals[n], omegas->numRV, config.TOLERANCE) )
-			break;
+		if ( equalVector(observ-1, omega->vals[n], omegas->numRV, config.TOLERANCE) ) {
+			/* A previously encountered observation */
+			omega->idx = n;
+			omega->weights[n]++;
+			omega->newObs = FALSE;
+
+#if VERBOSE
+			printf("\tOld observation (%d)", omega->idx); fflush(stdout);
+#endif
+
+			pathIdx = (pathIdx << omega->cipherShift) + n;
+			m = 0;
+			while ( m < omega->pathCnt ) {
+				if ( pathIdx == omega->pathIdx[m] ) {
+					/* Additionally, a previously encountered sample path */
+					omega->newPath = FALSE;
+					omega->pathCurrent = m;
+#if VERBOSE
+					printf("\tOld path (%d, %lld)", omega->pathCurrent, omega->pathIdx[omega->pathCurrent]); fflush(stdout);
+#endif
+					return n;
+				}
+				m++;
+			}
+			/* A new sample path encountered */
+			omega->pathCnt++;
+			omega->newPath = TRUE;
+			omega->pathCurrent = m;
+			omega->pathIdx[m] = pathIdx;
+#if VERBOSE
+			printf("\tNew path (%d, %lld)", omega->pathCurrent, omega->pathIdx[omega->pathCurrent]); fflush(stdout);
+#endif
+			return n;
+		}
 		n++;
 	}
-	if ( n == omega->cnt ) {
-		/* new observation encountered, store its values */
-		if ( !(omega->vals[n] = (vector) arr_alloc(omegas->numRV+1,double)) )
-			errMsg("allocation", "forwardPass", "cell[t]->omega->vals[n]", 0);
-		copyVector(observ, omega->vals[n], omegas->numRV, FALSE);
-		omega->vals[n][0] = oneNorm(omega->vals[n]+1, omegas->numRV);
-		omega->weights[omega->cnt] = 1;
-		omega->newObs = TRUE;
-		return omega->cnt++;
-	}
 
-	omega->weights[n]++;
-	omega->newObs = FALSE;
+	/* new observation encountered, store its values */
+	pathIdx = (pathIdx << omega->cipherShift) + n;
+	omega->cnt++; omega->idx = n;
+	if ( !(omega->vals[n] = (vector) arr_alloc(omegas->numRV+1,double)) )
+		errMsg("allocation", "forwardPass", "cell[t]->omega->vals[n]", 0);
+	copyVector(observ, omega->vals[n], omegas->numRV, FALSE);
+	omega->vals[n][0] = oneNorm(omega->vals[n]+1, omegas->numRV);
+	omega->weights[n] = 1;
+	omega->newObs = omega->newPath = TRUE;
+	omega->pathCurrent = omega->pathCnt++;
+	omega->pathIdx[omega->pathCurrent] = pathIdx;
+#if VERBOSE
+	printf("\tNew observation (%d)", omega->idx);
+	printf("\tNew path (%d, %lld)", omega->pathCurrent, omega->pathIdx[omega->pathCurrent]); fflush(stdout);
+#endif
 
 	return n;
 }//END calcOmega
@@ -191,10 +226,17 @@ omegaType *newOmega(int t, stocType *stoc, int numObs) {
 		errMsg("allocation", "newOmega", "omega->vals", 0);
 	if ( !(omega->weights = (intvec) arr_alloc(numObs, double)) )
 		errMsg("allocation", "newOmega", "omega->probs", 0);
-	omega->cnt = 0;
-	omega->idx = 0;
+	if ( !(omega->pathIdx = (long long *) arr_alloc(numObs, long long)) )
+		errMsg("allocation", "newOmega", "omega->pathIdx", 0);
+	omega->cnt    = 0;
+	omega->idx 	  = 0;
 	omega->newObs = FALSE;
-	omega->numCipher = getNumBits(t*config.MAX_ITER);					/* assumed that there will be at most MAX_ITER observations at each stage. */
+
+	omega->cipherShift = getNumBits(config.MAX_ITER);				/* assumed that there will be at most MAX_ITER observations at each stage. */
+	omega->cipherLen   = t*omega->cipherShift;
+
+	omega->pathCnt = 0;
+	omega->pathCurrent = 0;
 
 	return omega;
 }//END newOmega()
@@ -280,7 +322,7 @@ void freeDeltaType(deltaType *delta, int numObs, int numLambda) {
 				mem_free(delta->vals[n]);
 			}
 		}
-			mem_free(delta->vals);
+		mem_free(delta->vals);
 	}
 	mem_free(delta);
 
@@ -295,6 +337,7 @@ void freeOmegaType(omegaType *omega) {
 		mem_free(omega->vals);
 	}
 	if (omega->weights) mem_free(omega->weights);
+	if (omega->pathIdx) mem_free(omega->pathIdx);
 	mem_free(omega);
 
 }//END freeOmegaType

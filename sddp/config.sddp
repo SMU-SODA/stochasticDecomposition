@@ -11,13 +11,13 @@ FORWPASS_SEED	9495518635394380
 MAX_ITER   5000
 
 // Minimum number of iterations before optimality tests are conducted
-MIN_ITER   200
+MIN_ITER   50
 
 // Tolerance level used to differentiate floating point numbers */
 TOLERANCE    0.000001
 
 // Fraction of observations used in backward pass
-BACKPASS_PCT	1
+BACKPASS_PCT	.1
 
 // Backpass observation seed
 BACKPASS_SEED	5339672949292608

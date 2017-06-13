@@ -21,7 +21,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	}
 
 	/* calculate lower bounds for each stage */
-	lb = calcLowerBound(orig, tim);
+	lb = calcLowerBound(orig, tim, stoc);
 	if ( lb == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to compute lower bounds on stage problem", 0);
 		return 1;

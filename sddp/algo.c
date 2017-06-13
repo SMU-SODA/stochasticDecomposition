@@ -16,6 +16,7 @@ extern string outputDir;
 int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 	probType **prob = NULL;
 	cellType **cell = NULL;
+	FILE *fPtr;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
@@ -42,7 +43,9 @@ int algo (oneProblem *orig, stocType *stoc, timeType *tim) {
 
 	/* print solution details */
 	printf("Successfully completed stochastic dual dynamic programming algorithm.\n");
-	printSolutionDetails(tim->numStages, -1, prob, cell);
+	fPtr = openFile(outputDir, "detailedSDDPsols.dat", "a");
+	printSolutionDetails(tim->numStages, -1, prob, cell, stdout);
+	printSolutionDetails(tim->numStages, -1, prob, cell, fPtr);
 
 	/* release memory allocated to different structures used in the algorithm */
 	TERMINATE:
@@ -244,11 +247,8 @@ void printAlgoDetails(int item) {
 
 }//END printAlgoDetails()
 
-void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell) {
+void printSolutionDetails(int numStages, int t, probType **prob, cellType **cell, FILE *fPtr) {
 	int n;
-	FILE *fPtr;
-
-	fPtr = openFile(outputDir, "detailedSDDPsols.dat", "a");
 
 	fprintf(fPtr, "Number of iterations                      = %d\n", cell[0]->k);
 	fprintf(fPtr, "Objective function estimate at root stage = %lf\n", cell[0]->candidEst);

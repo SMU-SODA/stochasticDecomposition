@@ -17,7 +17,7 @@
 #include "prob.h"
 
 #undef CELL_SETUP
-#define ALGO_RUN
+#undef ALGO_RUN
 #undef STOC_CHECK
 
 #define		TRIVIAL		0
@@ -49,12 +49,17 @@ typedef struct {
 }configType;
 
 typedef struct {
-	int		cnt;
-	int		idx;
-	BOOL	newObs;
-	int		numCipher;
-	intvec	weights;
-	vector	*vals;
+	int			cnt;
+	int			idx;
+	BOOL		newObs;
+	int			cipherLen;
+	int			cipherShift;
+	int			pathCnt;
+	long long 	*pathIdx;
+	int 		pathCurrent;
+	BOOL		newPath;
+	intvec		weights;
+	vector		*vals;
 }omegaType;
 
 
@@ -104,9 +109,12 @@ typedef struct {
 
 typedef struct {
 	int		cnt;
+	int		len;
+	int		idx;
 	vector	*vals;
 	vector	est;
 	intvec	cutidx;
+	intvec  updtIter;
 	double  quadScalar;
 	double	improv;
 	double	normd_k;
@@ -164,7 +172,7 @@ void freeCellType (probType **prob, cellType **cell, int T);
 /* stocupdt.c */
 int stocUpdate(int maxIter, numType *num, coordType *coord, sparseMatrix *Cbar, sparseVector *bBar, vector pi, double mubBar, double futureVal,
 		lambdaType *lambda, sigmaType *sigma, BOOL *newSigmaFlag, deltaType *delta, omegaType *omega, int numObs);
-int calcOmega(omegastuff *omegas, omegaType *omega, vector observ);
+int calcOmega(omegastuff *omegas, omegaType *omega, vector observ, long long pathIdx);
 int calcLambda(numType *num, coordType *coord, lambdaType *lambda, vector pi, BOOL *newLambdaFlag);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar, double futureVal,
 		int idxLambda, BOOL newLambdaFlag, int numObs, sigmaType *sigma, BOOL *newSigmaFlag);
@@ -206,7 +214,7 @@ int changeQPrhs(LPptr lp, intvec betaCols, int betaLen, int numRows, sparseMatri
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector X);
 
 /* policy.c */
-int selectIncumb(incumbType *incumb);
+int selectIncumb(incumbType *incumb, omegaType *omega);
 void checkImprovement(probType **prob, cellType **cell, int numStages);
 
 /* optimal.c */

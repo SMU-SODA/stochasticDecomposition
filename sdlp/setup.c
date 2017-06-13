@@ -238,7 +238,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 				errMsg("allocation", "newCell", "cell[t]->rhs", 0);
 
 			/* T.4 stochastic elements */
-			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
+			cell[t]->omega = newOmega(t, stoc, config.MAX_ITER);
 			if ( cell[t]->omega == NULL ) {
 				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
 				return NULL;
@@ -281,7 +281,7 @@ cellType **newCell(stocType *stoc, probType **prob, vector lb, vector meanSol, i
 				errMsg("allocation", "newCell", "cell[t]->rhs", 0);
 
 			/* #.4 stochastic elements */
-			cell[t]->omega = newOmega(t-1, stoc, config.MAX_ITER);
+			cell[t]->omega = newOmega(t, stoc, config.MAX_ITER);
 			if ( cell[t]->omega == NULL ) {
 				errMsg("setup", "newCell", "failed to setup new omega structure", 0);
 				return NULL;

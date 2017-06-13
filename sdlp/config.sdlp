@@ -5,7 +5,7 @@ INPUTDIR	../spInput/
 OUTPUTDIR	../../spOutput/
 
 // Maximum number of iterations
-MAX_ITER   500
+MAX_ITER   1
 
 // Minimum iterations
 MIN_ITER   1
@@ -35,7 +35,7 @@ R3 2
 TAU 2
 
 // Determines the policy employed to select incumbent: Fixed = 0, Scenario-dependent = 1, linear mapping = 2
-POLICY	0
+POLICY	1
 
 // Run seed
 RUN_SEED	3554548844580680

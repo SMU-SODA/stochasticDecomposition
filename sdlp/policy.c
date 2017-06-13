@@ -13,14 +13,25 @@
 
 extern configType config;
 
-int selectIncumb(incumbType *incumb) {
+int selectIncumb(incumbType *incumb, omegaType *omega) {
 
 	switch (config.POLICY) {
 	case 0:
 		return 0;
 		break;
 	case 1:
-		printf("Not ready yet.\n");
+		if ( omega == NULL )
+			return 0;
+		else {
+			if ( omega->newPath ) {
+				incumb->vals[incumb->cnt] = duplicVector(incumb->vals[0], incumb->len);
+				incumb->idx = incumb->cnt++;
+				incumb->chg = TRUE;
+				return incumb->idx;
+			}
+			else
+				return omega->pathCurrent+1;
+		}
 		break;
 	case 2:
 		printf("Not ready yet.\n");
@@ -43,19 +54,19 @@ void checkImprovement(probType **prob, cellType **cell, int numStages) {
 		candidEst += vXvSparse(cell[t]->candidU, prob[t]->dBar);
 
 		/* Calculate height at current incumbent x with newest cut */
-		cell[t]->incumb->est[0] = maxCutHeight(cell[t]->cuts, cell[t]->lb, cell[t]->k, prob[t+1]->coord->colsC, prob[t+1]->num->cntCcols,
-				cell[t]->incumb->vals[0]);
-		cell[t]->incumb->est[0] += vXvSparse(cell[t]->incumb->vals[0], prob[t]->dBar);
+		cell[t]->incumb->est[cell[t]->incumb->idx] = maxCutHeight(cell[t]->cuts, cell[t]->lb, cell[t]->k, prob[t+1]->coord->colsC,
+				prob[t+1]->num->cntCcols, cell[t]->incumb->vals[0]);
+		cell[t]->incumb->est[cell[t]->incumb->idx] += vXvSparse(cell[t]->incumb->vals[0], prob[t]->dBar);
 
-#if 0
+#if VERBOSE
 		if ( t == 0 )
-			printf("Estimates Candidate = %lf\tIncumbent = %lf\n", candidEst, cell[t]->incumb->est[0]);
+			printf("\nEstimates Candidate = %lf\tIncumbent = %lf\n", candidEst, cell[t]->incumb->est[0]);
 #endif
 
-		if ((candidEst - cell[t]->incumb->est[0]) < (config.R1 * cell[t]->incumb->improv)) {
+		if ((candidEst - cell[t]->incumb->est[cell[t]->incumb->idx]) < (config.R1 * cell[t]->incumb->improv)) {
 			/* incumbent update is recommended */
-			copyVector(cell[t]->candidU, cell[t]->incumb->vals[0], prob[t]->num->cols, TRUE);
-			cell[t]->incumb->est[0] = candidEst;
+			copyVector(cell[t]->candidU, cell[t]->incumb->vals[cell[t]->incumb->idx], prob[t]->num->cols, TRUE);
+			cell[t]->incumb->est[cell[t]->incumb->idx] = candidEst;
 
 			if (cell[t]->k > 1 && cell[t]->incumb->normd_k > config.TOLERANCE)
 				if (cell[t]->incumb->normd_k >= config.R3 * cell[t]->incumb->normd_k_1) {
@@ -95,9 +106,12 @@ incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBa
 		errMsg("allocation", "newIncumb", "incumb->vals", 0);
 	if ( !(incumb->est = (vector) arr_alloc(maxIncumb, double)) )
 		errMsg("allocation", "newIncumb", "incumb->est", 0);
-	if ( !(incumb->cutidx = (intvec) arr_alloc(maxIncumb, double)) )
+	if ( !(incumb->cutidx = (intvec) arr_alloc(maxIncumb, int)) )
 		errMsg("allocation", "newIncumb", "incumb->cutidx", 0);
+	if ( !(incumb->updtIter = (intvec) arr_alloc(maxIncumb, int)) )
+		errMsg("allocation", "newIncumb", "incumb->updtIter", 0);
 	incumb->quadScalar = config.MIN_QUAD_SCALAR;
+	incumb->len = lenX;
 
 	/* initialize mean value solution as the first incumbent */
 	incumb->vals[0] = duplicVector(meanSol, lenX);
@@ -107,6 +121,7 @@ incumbType *newIncumb(int maxIncumb, vector meanSol, int lenX, sparseVector *dBa
 	incumb->normd_k = 0.0;
 	incumb->normd_k_1 = 0.0;
 	incumb->improv = 0.0;
+	incumb->idx = 0;
 	incumb->cutidx[0] = -1; //TODO
 
 	return incumb;
@@ -122,6 +137,7 @@ void freeIncumb(incumbType *incumb) {
 	}
 	if ( incumb->est ) mem_free(incumb->est);
 	if ( incumb->cutidx) mem_free(incumb->cutidx);
+	if ( incumb->updtIter ) mem_free(incumb->updtIter);
 	mem_free(incumb);
 
 }//END freeIncumb()
