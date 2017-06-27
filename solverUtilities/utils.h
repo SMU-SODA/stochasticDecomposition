@@ -16,7 +16,7 @@
 #include <float.h>
 #include <sys/stat.h>
 
-#define 	NAMESIZE			16
+#define 	NAMESIZE			32
 #define		BLOCKSIZE			256
 #define		MAXBITS				sizeof(int) * 8
 #define		GE					'G'

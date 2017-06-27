@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 	parseCmdLine(argc, argv, algoName, probName, inputDir);
 
 	/* set up input and output directories for algorithm and problem being solved */
-	sprintf(inputDir, "%s%s/", inputDir, algoName);
+	sprintf(inputDir, "%s/", inputDir);
 	outputDir = (string) mem_malloc(BLOCKSIZE*sizeof(char));
 	setupDir(algoName, probName);
 
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* calculate lower bounds for each stage */
-	lb = calcLowerBound(orig, tim);
+	lb = calcLowerBound(orig, tim, stoc);
 	if ( lb == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to compute lower bounds on stage problem", 0);
 		return 1;
@@ -81,10 +81,11 @@ int main(int argc, char *argv[]) {
 
 	TERMINATE:
 	/* release problem structures */
+	freeProbType(prob, tim->numStages);
 	freeOneProblem(orig);
 	freeStocType(stoc);
 	freeTimeType(tim);
-	mem_free(outputDir);
+	mem_free(outputDir); mem_free(meanSol); mem_free(lb);
 	/* close solver environment and release all structures */
 	closeSolver();
 
@@ -128,10 +129,10 @@ void parseCmdLine(int argc, string *argv, string algoName, string probName, stri
 void setupDir(string algoName, string probName) {
 	char buffer[2*BLOCKSIZE];
 
-	sprintf(outputDir, "./outputDir/%s/", algoName);
+	sprintf(outputDir, "../../spOutput/%s/", algoName);
 	sprintf(buffer, "mkdir %s", outputDir);
 	system(buffer);
-	sprintf(outputDir, "./outputDir/%s/%s/", algoName, probName);
+	sprintf(outputDir, "../../spOutput/%s/%s/", algoName, probName);
 	sprintf(buffer, "mkdir %s", outputDir);
 	if (system(buffer)){
 		sprintf(buffer, "rm -r %s*", outputDir);

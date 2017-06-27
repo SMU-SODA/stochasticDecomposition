@@ -97,6 +97,7 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
 int readBlk(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
 int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas);
+int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
 
 void freeOneProblem(oneProblem *p);
 void freeTimeType(timeType *tim);

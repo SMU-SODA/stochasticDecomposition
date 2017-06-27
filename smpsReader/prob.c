@@ -293,16 +293,16 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 	/* write stage problems in LP format to verify decomposition */
 	char fname[BLOCKSIZE];
 	for ( t = 0; t < tim->numStages; t++) {
-	    if ( !(prob[t]->sp->lp = setupProblem(prob[t]->sp->name, prob[t]->sp->type, prob[t]->sp->mac, prob[t]->sp->mar, prob[t]->sp->objsen, prob[t]->sp->objx, prob[t]->sp->rhsx, prob[t]->sp->senx,
-	    		prob[t]->sp->matbeg, prob[t]->sp->matcnt, prob[t]->sp->matind, prob[t]->sp->matval, prob[t]->sp->bdl, prob[t]->sp->bdu, NULL, prob[t]->sp->cname, prob[t]->sp->rname, prob[t]->sp->ctype)) ) {
+		if ( !(prob[t]->sp->lp = setupProblem(prob[t]->sp->name, prob[t]->sp->type, prob[t]->sp->mac, prob[t]->sp->mar, prob[t]->sp->objsen, prob[t]->sp->objx, prob[t]->sp->rhsx, prob[t]->sp->senx,
+				prob[t]->sp->matbeg, prob[t]->sp->matcnt, prob[t]->sp->matind, prob[t]->sp->matval, prob[t]->sp->bdl, prob[t]->sp->bdu, NULL, prob[t]->sp->cname, prob[t]->sp->rname, prob[t]->sp->ctype)) ) {
 			errMsg("solver", "newProb", "failed to setup stage problem in solver", 0);
 			return prob;
 		}
-	    sprintf(fname, "stageProb%d.lp", t);
-	    if ( writeProblem(prob[t]->sp->lp, fname) ) {
-	    	errMsg("solver", "newProb", "failed to write stage problem", 0);
-	    	return prob;
-	    }
+		sprintf(fname, "stageProb%d.lp", t);
+		if ( writeProblem(prob[t]->sp->lp, fname) ) {
+			errMsg("solver", "newProb", "failed to write stage problem", 0);
+			return prob;
+		}
 	}
 #endif
 
@@ -339,13 +339,27 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 
 	/* go through the list of random variable and assign them to appropriate parts (right-hand side and objective coefficients) */
 	for ( m = 0; m < stoc->numOmega; m++ ) {
-		t = 0;
-		while ( t < tim->numStages ) {
-			if ( stoc->row[m] < tim->row[t] )
-				break;
-			t++;
+		if ( stoc->col[m] == -1 ) {
+			/* randomness in right-hand side */
+			t = 0;
+			while ( t < tim->numStages ) {
+				if ( stoc->row[m] < tim->row[t] )
+					break;
+				t++;
+			}
+			t--;
 		}
-		t--;
+		else {
+			/* randomness in either objective function coefficients or the transfer matrix */
+			t = 0;
+			while ( t < tim->numStages ) {
+				if ( stoc->col[m] < tim->col[t] )
+					break;
+				t++;
+			}
+			t--;
+		}
+
 		if ( t == 0 ) {
 			errMsg("setup", "newProb", "encountered randomness is root-stage", 0);
 			return NULL;
