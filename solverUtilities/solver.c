@@ -35,7 +35,6 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	}
 
 RESOLVE:
-    
 	(*status) = CPXgetstat(env, lp);
 	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
 		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {

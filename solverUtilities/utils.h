@@ -81,6 +81,7 @@ vector expandVector(vector red, intvec col, int redElems, int expElems);
 BOOL equalVector(vector a, vector b, int len, double tolerance);
 BOOL equalIntvec(intvec a, intvec b, int len);
 BOOL isZeroVector(vector a, int len, double tolerance);
+BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance);
 vector duplicVector(double *a, int len);
 intvec duplicIntvec(intvec a, int len);
 void copyVector(vector a, vector b, int len, BOOL isOneNorm);

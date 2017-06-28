@@ -332,6 +332,17 @@ BOOL isZeroVector(vector a, int len, double tolerance) {
 	return TRUE;
 }//END equalVector()
 
+/*This function will check if a vector is integer with a predefined gap */
+BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance){
+	int i;
+
+	for (i = startIdx+1; i < endIdx; i++)
+		if (fabs(x[i] - round(x[i])) > tolerance)
+			return FALSE;
+
+	return TRUE;
+}//END isInteger()
+
 
 vector duplicVector(vector a, int len) {
 	int		i;
