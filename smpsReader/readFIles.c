@@ -12,8 +12,6 @@
 #include "smps.h"
 #include "prob.h"
 
-#define TRACE
-
 // global variables
 long int MEM_USED;
 string 	outputDir;

@@ -1020,7 +1020,7 @@ int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int m
 int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc) {
 	string	*rvRows, *rvCols, *scenName;
 	char 	strType;
-	int  	n, r, c, t, numFields, maxScenarios = 100, numScen = 0, parentIdx;
+	int  	n, r, c, numFields, maxScenarios = 100, numScen = 0, parentIdx;
 
 	/* allocate memory to hold the names of random variable */
 	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
@@ -1145,27 +1145,6 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, i
 	for ( n = 0; n < numScen; n++)
 		if (scenName[n]) mem_free(scenName[n]);
 	mem_free(scenName);
-
-	//	/* The root node of the scenario correspond to deterministic stage and hence these variables should be removed from the random variable list */
-	//	for ( n = 0; n < stoc->numOmega; n++ ) {
-	//		if ( stoc->numVals[n] < 2 ) {
-	//			/* This is a deterministic variable, therefore remove from the list */
-	//			c = n+1; parentIdx = n;
-	//			while ( c < stoc->numOmega ) {
-	//				if ( stoc->numVals[c] > 1 ) {
-	//					while (c < stoc->numOmega ) {
-	//						copyVector(stoc->vals[c], stoc->vals[parentIdx], numScen, FALSE);
-	//						stoc->row[parentIdx] = stoc->row[c];
-	//						stoc->col[parentIdx] = stoc->col[c];
-	//						parentIdx = c++;
-	//					}
-	//				}
-	//				c++;
-	//			}
-	//			stoc->numOmega--;
-	//			if ( stoc->vals[stoc->numOmega]) mem_free(stoc->vals[stoc->numOmega]);
-	//		}
-	//	}
 
 	/* compute the mean value for each random variable */
 	for (n = 0; n < stoc->numOmega; n++ ) {

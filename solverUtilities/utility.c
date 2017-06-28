@@ -415,6 +415,16 @@ void printVector(vector vec, int len, FILE *fptr){
 
 }//END printVector()
 
+void printVectorWName(vector vec, string *vecName, int len, FILE *fptr){
+	int n;
+
+	for ( n = 1; n <= len; n++ ) {
+		fprintf(fptr, "%s\t\t%4.3lf\n ", vecName[n-1],vec[n]);
+		fprintf(fptr, "\n");
+	}
+
+}//END printVectorWName()
+
 void printIntvec(intvec vec, int len, FILE *fptr){
 	int n;
 
