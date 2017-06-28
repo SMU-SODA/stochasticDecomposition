@@ -21,7 +21,7 @@ int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts,
 	/* allocate memory to new cut */
 	cut = newCut(cell->omega->cnt, cell->k, prob->num->cntCcols);
 	if ( cut == NULL ) {
-		errMsg("algorithm", "formCandidCut", "failed to allocate memory to the new cut", 0);
+		errMsg("algorithm", "formCut", "failed to allocate memory to the new cut", 0);
 		return -1;
 	}
 
@@ -29,7 +29,7 @@ int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts,
 	status = stageCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, cell->lb, xt, cell->k, cut, isTerminal, numStages,
 			cell->piRatios, &cell->dualStableFlag);
 	if (status ) {
-		errMsg("algorithm", "formNewCut", "failed to create the stage cut", 0);
+		errMsg("algorithm", "formCut", "failed to create the stage cut", 0);
 		return -1;
 	}
 
@@ -37,12 +37,12 @@ int formCut(LPptr lp, LPptr sda, cellType *cell, probType *prob, cutsType *cuts,
 	idxCut = addCut(lp, sda, cuts, numRows, numCols, cell->k, prob->num->cntCcols, prob->coord->colsC, cut,
 			pi, incumbCuts);
 	if ( idxCut < 0 ) {
-		errMsg("algorithm", "formCandidCut", "failed to add the cut stage problem", 0);
+		errMsg("algorithm", "formCut", "failed to add the cut stage problem", 0);
 		freeOneCut(cut); return -1;
 	}
 
 	return idxCut;
-}//END formCandidCut()
+}//END formCut()
 
 int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType *cuts, vector incumbU,
 		int numRows, int numCols, BOOL isTerminal, int numStages, vector pi, intvec incumbCuts) {
@@ -58,7 +58,7 @@ int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType 
 		return -1;
 	}
 	if ( dualUpdates(cell->sda, cell->sp->name, prob->num->rows+extraRows, prob->num->cols, cell->pi, &mubBar)) {
-		errMsg("algorithm", "backwardPass","failed to complete d%ual updates", 0);
+		errMsg("algorithm", "formIncumbCut","failed to complete d%ual updates", 0);
 		return -1;
 	}
 
@@ -81,13 +81,12 @@ int formIncumbCut(cellType *cell, probType *prob, LPptr lp, LPptr sda, cutsType 
 	/* form new incumbent cut */
 	idxCut = formCut(lp, sda, cell, prob, cuts, incumbU, numRows, numCols, isTerminal, numStages, pi, incumbCuts);
 	if ( idxCut < 0 ) {
-		errMsg("algorithm", "backwardPass", "failed to add the candidate cut", 0);
+		errMsg("algorithm", "formIncumbCut", "failed to add the candidate cut", 0);
 		return 1;
 	}
-	incumbCuts[0] = idxCut;
 	cuts->vals[idxCut]->isIncumb = TRUE;
 
-	return 0;
+	return idxCut;
 }//END formIncumbCut()
 
 /* subroutine to the allocate memory to oneCut structure and initialize its elements with default values */

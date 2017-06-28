@@ -23,10 +23,10 @@ void parseCmdLine(int argc, string *argv, string algoName, string probName, stri
 void setupDir(string algoName, string probName);
 
 int main(int argc, char *argv[]) {
-	oneProblem *orig;
-	timeType *tim;
-	stocType *stoc;
-	probType **prob;
+	oneProblem *orig = NULL;
+	timeType *tim = NULL;
+	stocType *stoc = NULL;
+	probType **prob = NULL;
 	vector	meanSol, lb;
 	char probName[NAMESIZE], algoName[NAMESIZE], inputDir[2*BLOCKSIZE];
 

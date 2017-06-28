@@ -34,8 +34,8 @@ R3 2
 // Number of iterations after which incumbent cut is reevaluated.
 TAU 2
 
-// Determines the policy employed to select incumbent: Fixed = 0, Scenario-dependent = 1, linear mapping = 2
-POLICY	1
+// Determines the policy employed to select incumbent: Mapping = 0, Scenario-dependent = 1
+POLICY	0
 
 // Run seed
 RUN_SEED	3554548844580680

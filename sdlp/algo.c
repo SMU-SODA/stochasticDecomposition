@@ -1,5 +1,5 @@
 /*
-  * algo.c
+ * algo.c
  *
  *  Created on: Apr 2, 2017
  *      Author: Harsha Gangammanavar
@@ -118,7 +118,7 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 		/* select the incumbent solution to be used */
 		incumbIdx = selectIncumb(cell[t]->incumb, cell[t]->omega);
 #if VERBOSE
-			printf("\tIncumbent chosen = %d.\t", incumbIdx); fflush(stdout);
+		printf("\tIncumbent chosen = %d.\t", incumbIdx); fflush(stdout);
 #endif
 
 		if ( config.QUADRATIC && cell[t]->incumb->chg ) {
@@ -196,7 +196,6 @@ int forwardPass(probType **prob, cellType **cell, vector observ, int numStages) 
 				return 1;
 			}
 		}
-
 		/* obtain the primal objective function value */
 		cell[t]->candidEst = getObjective(cell[t]->sp->lp, PROB_LP);
 	}
@@ -218,7 +217,7 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 	for ( t = numStages-1; t > 0; t-- ) {
 		if ( t == numStages-1 ) {
 #if VERBOSE
-		printf("\nStage-%d :: ", t);
+			printf("\nStage-%d :: ", t);
 #endif
 			/* update omega structure with the new observation, as this is not done in forward pass */
 			cell[t]->k++;
@@ -256,14 +255,14 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 
 		/* update all the stochastic components, indicate that the updates with respect to new node have been completed */
 		idxSigma = stocUpdate(config.MAX_ITER, prob[t]->num, prob[t]->coord, prob[t]->Cbar, prob[t]->bBar, cell[t]->pi, mubBar, futureVal,
-					cell[t]->lambda, cell[t]->sigma, &newSigmaFlag, cell[t]->delta, cell[t]->omega, cell[t]->k);
+				cell[t]->lambda, cell[t]->sigma, &newSigmaFlag, cell[t]->delta, cell[t]->omega, cell[t]->k);
 
 #ifdef STOC_CHECK
-	double obj;
-	obj = cell[t]->sigma->vals[idxSigma].pib - vXv(cell[t]->sigma->vals[idxSigma].piC, cell[t-1]->candidU, prob[t]->coord->colsC, prob[t]->num->cntCcols);
-	obj += cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].pib - vXv(cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].piC,
-			cell[t]->omega->vals[cell[t]->omega->idx], prob[t]->coord->rvCols, prob[t]->num->rvColCnt);
-	printf("Objective function estimate at candidate solution = %lf\n", obj);
+		double obj;
+		obj = cell[t]->sigma->vals[idxSigma].pib - vXv(cell[t]->sigma->vals[idxSigma].piC, cell[t-1]->candidU, prob[t]->coord->colsC, prob[t]->num->cntCcols);
+		obj += cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].pib - vXv(cell[t]->delta->vals[cell[t]->sigma->lambdaIdx[idxSigma]][cell[t]->omega->idx].piC,
+				cell[t]->omega->vals[cell[t]->omega->idx], prob[t]->coord->rvCols, prob[t]->num->rvColCnt);
+		printf("Objective function estimate at candidate solution = %lf\n", obj);
 #endif
 
 		/* form new optimality cut */
@@ -275,10 +274,13 @@ int backwardPass(probType **prob, cellType **cell, vector observ, int numStages)
 		}
 		extraRows = 1;
 
-		if ( numStages == 2 && (cell[t-1]->k % config.TAU == 0)) {
-			formIncumbCut(cell[t], prob[t], cell[t-1]->sp->lp, cell[t-1]->sda, cell[t-1]->cuts, cell[t-1]->incumb->vals[cell[t-1]->incumb->idx],
-					prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1), numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
-		}
+		// TODO: incumbent cut for multiple incumbents
+//		if ( cell[t-1]->k % config.TAU == 0 ) {
+//			cell[t-1]->cuts->vals[cell[t-1]->incumb->cutidx[cell[t-1]->incumb->idx]]->isIncumb = FALSE;
+//			cell[t-1]->incumb->cutidx[cell[t-1]->incumb->idx] = formIncumbCut(cell[t], prob[t], cell[t-1]->sp->lp, cell[t-1]->sda, cell[t-1]->cuts,
+//					cell[t-1]->incumb->vals[cell[t-1]->incumb->idx], prob[t-1]->num->rows, prob[t-1]->num->cols, t == (numStages - 1),
+//					numStages, cell[t-1]->pi, cell[t-1]->incumb->cutidx);
+//		}
 	}
 
 	return 0;

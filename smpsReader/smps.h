@@ -92,12 +92,12 @@ typedef struct {
 int readFiles(string inputDir, string probName, oneProblem **orig, timeType **tim, stocType **stoc);
 oneProblem *readCore(string inputDir, string probName);
 timeType *readTime(string inputDir, string probName, oneProblem *orig);
-stocType *readStoc(string inputDir, string probName, oneProblem *orig);
+stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim);
 int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
 int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
 int readBlk(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
 int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas);
-int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
+int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc);
 
 void freeOneProblem(oneProblem *p);
 void freeTimeType(timeType *tim);

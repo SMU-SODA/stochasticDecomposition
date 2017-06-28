@@ -28,7 +28,7 @@ int readFiles(string inputDir, string probName, oneProblem **orig, timeType **ti
 		return 1;
 	}
 
-	(*stoc) = readStoc(inputDir, probName, (*orig));
+	(*stoc) = readStoc(inputDir, probName, (*orig), (*tim));
 	if ( (*stoc) == NULL ) {
 		errMsg("read", "readFiles", "failed to read problem stoc file", 0);
 		return 1;
@@ -330,7 +330,7 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 	return tim;
 }//END readTime()
 
-stocType *readStoc(string inputDir, string probName, oneProblem *orig) {
+stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim) {
 	stocType *stoc;
 	char	probpath[2*BLOCKSIZE], line[BLOCKSIZE], **fields, fieldType;
 	FILE	*fptr;
@@ -407,7 +407,7 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig) {
 			}
 		}
 		else if ( !(strcmp(fields[0], "SCENARIOS")) ) {
-			if ( readScenarios(fptr, fields, orig, maxOmegas, maxVals, stoc) ) {
+			if ( readScenarios(fptr, fields, orig, tim, maxOmegas, maxVals, stoc) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with scenarios", 0);
 				return NULL;
 			}
@@ -423,6 +423,7 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig) {
 		if (fields[n]) mem_free(fields[n]);
 	mem_free(fields);
 	fclose(fptr);
+
 	return stoc;
 }//END readStoc()
 
@@ -1016,10 +1017,10 @@ int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int m
 	return 0;
 }//END readARMA()
 
-int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc) {
+int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc) {
 	string	*rvRows, *rvCols, *scenName;
 	char 	strType;
-	int  	n, m, numFields, maxScenarios = 100, numScen = 0, parentIdx;
+	int  	n, r, c, t, numFields, maxScenarios = 100, numScen = 0, parentIdx;
 
 	/* allocate memory to hold the names of random variable */
 	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
@@ -1035,7 +1036,7 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, i
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "SCENARIOS_DISCRETE");
 		while (TRUE) {
-			getLine(&fptr, fields, &strType, &numFields);
+			NEXT_LINE: getLine(&fptr, fields, &strType, &numFields);
 			if (strType != 'f')
 				break; 										//Encountered ENDATA
 			if ( !(strcmp(fields[0], "SC")) ) {
@@ -1073,6 +1074,43 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, i
 				}
 				if ( n == stoc->numOmega ) {
 					/* New omega encountered. Note the row and column information. */
+					/* First, begin by identifying row and column coordinates in the problem */
+					if ( !(strcmp(fields[0], "RHS")) )
+						c = -1;
+					else {
+						c = 0;
+						while ( c < orig->mac ){
+							if ( !(strcmp(fields[0], orig->cname[c])) )
+								break;
+							c++;
+						}
+					}
+					if ( c == orig->mac ) {
+						errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
+						return 1;
+					}
+					else if ( c < tim->col[1] && c != -1)
+						/* variable belongs to the first stage, hence ignore */
+						goto NEXT_LINE;
+
+					if ( !(strcmp(fields[1], orig->objname)) )
+						r = -1;
+					else {
+						r = 0;
+						while (r < orig->mar ) {
+							if ( !(strcmp(fields[1], orig->rname[r])) )
+								break;
+							r++;
+						}
+					}
+					if ( r == orig->mar ) {
+						errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
+						return 1;
+					}
+					else if ( r < tim->row[1] && r != -1)
+						/* variable belongs to the first stage, hence ignore */
+						goto NEXT_LINE;
+
 					if ( !(rvRows[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 						errMsg("allocation", "readIndep", "rvNames[n]", 0);
 					if ( !(rvCols[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
@@ -1084,37 +1122,8 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, i
 					strcpy(rvRows[stoc->numOmega], fields[1]);
 					stoc->numVals[stoc->numOmega] = 0;
 
-					/* identify row and column coordinates in the problem */
-					if ( !(strcmp(fields[0], "RHS")) )
-						m = -1;
-					else {
-						m = 0;
-						while ( m < orig->mac ){
-							if ( !(strcmp(rvCols[stoc->numOmega], orig->cname[m])) )
-								break;
-							m++;
-						}
-					}
-					if ( m == orig->mac ) {
-						errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
-						return 1;
-					}
-					stoc->col[stoc->numOmega] = m;
-					if ( !(strcmp(fields[1], orig->objname)) )
-						m = -1;
-					else {
-						m = 0;
-						while (m < orig->mar ) {
-							if ( !(strcmp(rvRows[stoc->numOmega], orig->rname[m])) )
-								break;
-							m++;
-						}
-					}
-					if ( m == orig->mar ) {
-						errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
-						return 1;
-					}
-					stoc->row[stoc->numOmega] = m;
+					stoc->col[stoc->numOmega] = c;
+					stoc->row[stoc->numOmega] = r;
 					stoc->numOmega++;
 				}
 				stoc->vals[n][numScen-1] = str2float(fields[2]);
@@ -1137,31 +1146,31 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, i
 		if (scenName[n]) mem_free(scenName[n]);
 	mem_free(scenName);
 
-	/* The root node of the scenario correspond to deterministic stage and hence these variables should be removed from the random variable list */
-	for ( n = 0; n < stoc->numOmega; n++ ) {
-		if ( stoc->numVals[n] < 2 ) {
-			/* This is a deterministic variable, therefore remove from the list */
-			m = n+1; parentIdx = n;
-			while ( m < stoc->numOmega ) {
-				if ( stoc->numVals[m] > 1 ) {
-					while (m < stoc->numOmega ) {
-						copyVector(stoc->vals[m], stoc->vals[parentIdx], numScen, FALSE);
-						stoc->row[parentIdx] = stoc->row[m];
-						stoc->col[parentIdx] = stoc->col[m];
-						parentIdx = m++;
-					}
-				}
-				m++;
-			}
-			stoc->numOmega--;
-			if ( stoc->vals[stoc->numOmega]) mem_free(stoc->vals[stoc->numOmega]);
-		}
-	}
+	//	/* The root node of the scenario correspond to deterministic stage and hence these variables should be removed from the random variable list */
+	//	for ( n = 0; n < stoc->numOmega; n++ ) {
+	//		if ( stoc->numVals[n] < 2 ) {
+	//			/* This is a deterministic variable, therefore remove from the list */
+	//			c = n+1; parentIdx = n;
+	//			while ( c < stoc->numOmega ) {
+	//				if ( stoc->numVals[c] > 1 ) {
+	//					while (c < stoc->numOmega ) {
+	//						copyVector(stoc->vals[c], stoc->vals[parentIdx], numScen, FALSE);
+	//						stoc->row[parentIdx] = stoc->row[c];
+	//						stoc->col[parentIdx] = stoc->col[c];
+	//						parentIdx = c++;
+	//					}
+	//				}
+	//				c++;
+	//			}
+	//			stoc->numOmega--;
+	//			if ( stoc->vals[stoc->numOmega]) mem_free(stoc->vals[stoc->numOmega]);
+	//		}
+	//	}
 
 	/* compute the mean value for each random variable */
 	for (n = 0; n < stoc->numOmega; n++ ) {
-		for ( m = 0; m < numScen; m++ )
-			stoc->mean[n] += stoc->probs[0][m]*stoc->vals[n][m];
+		for ( c = 0; c < numScen; c++ )
+			stoc->mean[n] += stoc->probs[0][c]*stoc->vals[n][c];
 	}
 
 	/* reallocate memory to elements of stocType based on the exact sizes */
