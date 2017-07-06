@@ -61,20 +61,36 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	return 0;
 }//END setupAlgo()
 
-cellType *newCell(stocType *stoc, probType **prob, vector lb, vector meanSol) {
-	cellType 	*cell;
+/* This function is used to create cells used in the algorithm */
+cellType **newCell(probType **prob, vector xk, vector weight) {
+	cellType        **cell;
+	double   AggWeight;
+	int agentCnt;
 
-	if ( !(cell = (cellType *) mem_malloc(sizeof(cellType))) )
-		errMsg("allocation", "newCell", "cell", 0);
-	cell->k = 0;
-	cell->LP_cnt = 0;
+	/* allocate memory to all cells used in the algorithm. The first cell belongs to the master problem, while the rest correspond to each of the
+	 * sub-agents in the problem.  */
+	if (!(cell = (cellType **) arr_alloc (numAgents, cellType *)))
+		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
 
-	cell->cuts = new_cuts(prob->num->iter, p->num->mast_cols, 0);
-	cell->lambda = new_lambda(length, 0, p->num->rv_rows, p->coord);
-	cell->sigma = new_sigma(length, p->num->nz_cols, 0, p->coord);
+	/* setup the master cell*/
+	cell->master = newMaster(prob[0], xk, weight, AggWeight);
+	if ( cell[0] == NULL ) {
+		errMsg("setup", "newCell", "failed to setup the master problem", 0);
+		return NULL;
+	}
+
+	/* setup subproblem cells */
+	for (agentCnt = 1; agentCnt < numAgents; agentCnt++) {
+		AggWeight += weight[agentCnt];
+		cell[agentCnt] = newSubprob(prob[agentCnt], agentCnt, weight[agentCnt]);
+		if ( cell[agentCnt] == NULL ) {
+			errMsg("setup", "newCell", "failed to setup the subproblem cell", 0);
+			return NULL;
+		}
+	}
 
 	return cell;
-}//END newCell
+}//END newCell()
 
 void freeCellType(probType *prob, cellType *cell) {
 
