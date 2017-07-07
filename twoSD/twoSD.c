@@ -51,7 +51,7 @@ int main (int argc, char *argv[]) {
 	createOutputDir(outputDir, "twoSD", probName);
 
 	/* launch the algorithm */
-	status = algo(probName, orig, stoc, tim);
+	status = algo(orig, tim, stoc, inputDir, probName);
 	if ( status ) {
 		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
 		goto TERMINATE;

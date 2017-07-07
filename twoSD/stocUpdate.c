@@ -9,20 +9,7 @@
  *
  */
 
-
-//
-//  stocUpdate.c
-//  multiAgentSP
-//
-//  Created by Shasha Wang on 2/23/16.
-//  Copyright © 2016 Shasha Wang. All rights reserved.
-//
-
-#include "utils.h"
-#include "smps.h"
-#include "solver.h"
-#include "prob.h"
-#include "multiAgentSP.h"
+#include "twoSD.h"
 
 extern configType config;
 
@@ -31,7 +18,7 @@ extern configType config;
  * and are added to the appropriate structures.
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
-BOOL stochasticUpdates(numType *num, vector X, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
+BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar, BOOL newPi) {
     int 	lambdaIdx, sigmaIdx;
     BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
@@ -54,13 +41,6 @@ BOOL stochasticUpdates(numType *num, vector X, coordType *coord, sparseVector *b
      distinct one due to the variations in sigma*/
     if (newLambdaFlag)
         calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
-
-#ifdef STOCH_CHECK
-    double  objEst;
-    objEst = sigma->vals[sigmaIdx].b - vXv(sigma->vals[sigmaIdx].C, X, coord->colsC, num->cntCcols) + delta->vals[lambdaIdx][omegaIdx].b
-               - vXv(delta->vals[lambdaIdx][omegaIdx].C, X, coord->rvCols, num->rvColCnt);
-    printf("objective estimate is : %lf\n", objEst);
-#endif
 
     return newSigmaFlag;
 }//END stochasticUpdates

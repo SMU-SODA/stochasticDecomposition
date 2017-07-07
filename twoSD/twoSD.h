@@ -17,10 +17,29 @@
 #include "smps.h"
 #include "prob.h"
 
+#define TRIVIAL 0
+#define NONTRIVIAL 1
+#define INF	DBL_MAX
+
 typedef struct{
+	long long RUN_SEED;			/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
+	int		MASTERTYPE;			/* type of master problem */
+	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
+	int		TAU;				/* Frequency at which the incumbent is updated */
+	double	MIN_QUAD_SCALAR;	/* Minimum value for regularizing parameter */
+	double 	MAX_QUAD_SCALAR;	/* Maximum value for regularizing parameter */
+	double	R1;
+	double	R2;
+	double	R3;
+	int		PI_EVAL_START;
+	int		PI_CYCLE;
+	int		SCAN_LEN;
+	int		EVAL_FLAG;
+	long long EVAL_SEED;
+	int		EVAL_MIN_ITER;
 }configType;
 
 typedef struct {
@@ -37,7 +56,7 @@ typedef struct {
 
 typedef struct {
 	int     cnt;                    /* number of cuts */
-	oneCut  **val;
+	oneCut  **vals;
 }cutsType;
 
 /* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Toward
@@ -139,45 +158,48 @@ typedef struct{
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	oneProblem  *master;            /* store master information */
+	int 		LPcnt; 				/* the number of LPs solved. */
+    double		lb;					/* lower bound on cell objective function */
+    int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
+
+    oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
+
 	vector      candidX;            /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
-    int         cCutIdx;            /* index of candidate cut in cell->cuts structure */
-	vector      pi;                 /* dual slack information */
-    vector      pi_ratio;
-    BOOL        dualStableFlag; /* indicates if dual variables are stable */
-	vector      di;                 /* reduced cost vector */
-	double      mubBar;				/* dual slack information for subproblem */
-	cutsType    *cuts;              /* optimality cuts */
-	cutsType    *fcuts;             /* feasibility cuts */
-	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
-	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
-	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
-	omegaType 	*omega;				/* all realizations observed during the algorithm */
+
 	vector      incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
-	int 		LPcnt; 				/* the number of LPs solved. */
-	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
-	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
-	BOOL		feasFlag;           /* indicates feasibility of a cell */
-	double      incumbStdev;		/* standard deviation of incumbent estimate */
 	BOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
 	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
 	int         iCutUpdt;			/* iteration number when incumbent cut is updated */
 	double      gamma;				/* improvement in objective function value */
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
-	double      optValM;            /* store the optimal value in the first stage */
-    BOOL        optFlag;
-	BOOL        newOmegaFlag;       /* set to true if a new omega is generated */
+
+	vector      pi;                 /* dual slack information */
+	vector      dj;                 /* reduced cost vector */
+	double      mubBar;				/* dual slack information for subproblem */
+
     int      	maxCuts;            /* maximum number of cuts to be used*/
-    int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
+	cutsType    *cuts;              /* optimality cuts */
+	cutsType    *fcuts;             /* feasibility cuts */
+
+	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
+	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
+	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
+	omegaType 	*omega;				/* all realizations observed during the algorithm */
+
+    BOOL        optFlag;
+	vector      pi_ratio;
+    BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
+
+	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
+	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+
     vector      spRHS;              /* subproblem's rhs*/
     double      full_test_error;
-    runTimeType *runTime;            /* record time */
-    int         pushcnt;
 }cellType;
 
 /* twoSD.c */
@@ -185,12 +207,64 @@ void parseCmdLine(string probName);
 int readConfig(string inputDir);
 
 /* algo.c */
-void printAlgoDetails(void *fptr);
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
+int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
+void writeStat(probType *prob, cellType *cell, double totRunTime, string probName);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
-cellType *newCell(stocType *stoc, probType **prob, vector lb, vector meanSol);
-void freeCellType(probType *prob, cellType *cell);
+cellType *newCell(stocType *stoc, probType **prob, vector xk);
+void freeCellType(cellType *cell);
+
+/* master.c */
+oneProblem *newMaster(probType *prob, vector xk);
+int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
+int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
+int constructQP(LPptr lp, int numCols, double sigma);
+int changeQPrhs(probType *prob, cellType *cell);
+int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
+int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb);
+
+/* cuts.c */
+int formSDCut(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag);
+oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+		BOOL *dualStableFlag, vector pi_ratio, double lb);
+iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
+		int ictr, BOOL pi_eval, double *argmax);
+iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
+		vector PiCbarX, double *argmax, int ictr);
+oneCut *newCut(int numX, int numIstar, int numSamples);
+cutsType *newCuts(int maxCuts);
+int reduceCuts(cellType *cell, vector candidX, vector pi, int lbType, int betaLen, double lb);
+int dropCut(cellType *cell, int cutIdx);
+double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
+void print_cut(cutsType *cuts, numType *num, int idx);
+void freeOneCut(oneCut *cut);
+void freeCutsType(cutsType *cuts);
+double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
+
+/* subprob.c */
+int solveSubprob(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag);
+vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
+void chgRHSwMean(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
+int chgRHSwRand(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
+oneProblem *newSubprob(probType *subprob);
+
+/* stocUpdate.c */
+int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
+void freeLambdaType(lambdaType *lambda);
+void freeSigmaType(sigmaType *sigma);
+void freeOmegaType(omegaType *omega);
+void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt);
+
+/* soln.c */
+double cutHeight(int lbType, oneCut *cut, int currIter, vector xk, int betaLen, double lb);
+double maxCutHeight(int lbType, cutsType *cuts, int currIter, vector xk, int betaLen, double lb, int *maxCutID);
+
+/* optimal.c */
+BOOL optimal(probType **prob, cellType *cell);
+BOOL preTest(cellType *cell);
+BOOL full_test(probType **prob, cellType *cell);
 
 #endif /* TWOSD_H_ */
