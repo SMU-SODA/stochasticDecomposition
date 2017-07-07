@@ -18,7 +18,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	vector	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
-	double   totRunTime;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
@@ -31,7 +30,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	}
 
 	/* Write the solutions statistics */
-	writeStat(prob[0], cell, totRunTime, probName);
+	writeStat(prob[0], cell, probName);
 
 	/* free up memory before leaving */
 	if (xk) mem_free(xk);
@@ -50,7 +49,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName) {
 	vector 	observ;
-	int		m, omegaIdx;
+	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
@@ -84,30 +83,23 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( formSDCut(prob[1], cell, cell->candidX, observ, TRUE) ) {
+		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, TRUE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( formSDCut(prob[1], cell, cell->incumbX, observ, FALSE) ) {
+			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, FALSE) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				return 1;
 			}
+			cell->iCutUpdt = cell->k;
 		}
 
 		/******* 5. Check improvement in predicted values at candidate solution *******/
-		if ( !(cell->incumbChg) && cell->k > 1) {
+		if ( !(cell->incumbChg) && cell->k > 1)
 			/* If the incumbent has not changed in the current iteration */
-			checkImprovement(prob[0], cell);
-
-			if (cell->incumbChg)
-				/******* 6. If the incumbent solution has changed then update all things concerned with the incumbent */
-				if ( constructQP(cell->master->lp, prob[0]->num->cols, cell->quadScalar) ) {
-					errMsg("algorithm", "solveMASP", "failed to change the proximal term", 0);
-					return 1;
-				}
-		}
+			checkImprovement(prob[0], cell, candidCut);
 
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
@@ -116,7 +108,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 		}
 	}//END while loop
 
-	writeStat(prob[0], cell, 0.0, probName);
+	writeStat(prob[0], cell, probName);
 
 	/*evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {
@@ -128,14 +120,12 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 	return 0;
 }//END solveCell()
 
-void writeStat(probType *prob, cellType *cell, double totRunTime, string probName) {
+void writeStat(probType *prob, cellType *cell, string probName) {
 	FILE    *Stat;
 	FILE    *StatTime;
 
 	StatTime = openFile(outputDir, "time.dat", "a");
 	fprintf(StatTime, "\nTotal (%d):\t", cell->k-1);
-
-	fprintf(StatTime, "\ntotRunTime = %lf", totRunTime);
 
 	fclose(StatTime);
 

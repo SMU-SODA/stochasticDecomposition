@@ -19,7 +19,7 @@ extern configType config;
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
 BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar, BOOL newPi) {
+                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
     int 	lambdaIdx, sigmaIdx;
     BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
 
@@ -27,14 +27,11 @@ BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, spars
     if (newOmegaFlag)
         calcDeltaCol(num, coord, lambda, omega->vals[omegaIdx], omegaIdx, delta);
 
-    /* Update the lambda and sigma structures only if a new dual solution is available */
-    if ( !(newPi) ) {
-    	/* extract the dual solutions corresponding to rows with random elements in them */
-    	lambdaIdx = calcLambda(num, coord, pi, lambda, &newLambdaFlag);
+    /* extract the dual solutions corresponding to rows with random elements in them */
+    lambdaIdx = calcLambda(num, coord, pi, lambda, &newLambdaFlag);
 
-    	/* compute Pi x bBar and Pi x Cbar */
-    	sigmaIdx = calcSigma(num, coord, bBar, Cbar, pi, mubBar, lambdaIdx, newLambdaFlag, iter, sigma, &newSigmaFlag);
-    }
+    /* compute Pi x bBar and Pi x Cbar */
+    sigmaIdx = calcSigma(num, coord, bBar, Cbar, pi, mubBar, lambdaIdx, newLambdaFlag, iter, sigma, &newSigmaFlag);
 
     /* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
     /* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a

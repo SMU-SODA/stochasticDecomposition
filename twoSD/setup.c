@@ -64,9 +64,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 /* This function is used to create cells used in the algorithm */
 cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cellType    *cell;
-	vector		rhs;
-	intvec		indices;
-	int			cnt, length;
+	int			length;
 
 	/* allocate memory to all cells used in the algorithm. The first cell belongs to the master problem, while the rest correspond to each of the
 	 * sub-agents in the problem.  */
@@ -136,14 +134,34 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->omega  = newOmega(config.MAX_ITER);
 
 	cell->optFlag 			= FALSE;
-	cell->pi_ratio 			= NULL;
 	cell->dualStableFlag 	= FALSE;
+	if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
+		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 
 	cell->feasCnt 			= 0;
 	cell->infeasIncumb 		= FALSE;
 
 	cell->spRHS 			= NULL;
 	cell->full_test_error 	= 0.0;
+
+	/* construct the QP using the current incumbent */
+	if ( config.MASTERTYPE == PROB_QP ) {
+		/* update the right-hand side and the bounds with incumbent solution */
+		if ( changeQPrhs(prob[0], cell) ) {
+			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
+			return NULL;
+		}
+		if ( changeQPbds(cell->master->lp, prob[0]->num->cols, prob[0]->sp->bdl, prob[0]->sp->bdu, cell->incumbX) ) {
+			errMsg("setup", "newCell", "failed to change the bounds after incumbent update", 0);
+			return NULL;
+		}
+
+		/* change the proximal term */
+		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, config.MIN_QUAD_SCALAR) ) {
+			errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
+			return NULL;
+		}
+	}
 
 	return cell;
 }//END newCell()

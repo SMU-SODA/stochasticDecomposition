@@ -40,6 +40,7 @@ typedef struct{
 	int		EVAL_FLAG;
 	long long EVAL_SEED;
 	int		EVAL_MIN_ITER;
+	double	EVAL_ERROR;
 }configType;
 
 typedef struct {
@@ -209,7 +210,7 @@ int readConfig(string inputDir);
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStat(probType *prob, cellType *cell, double totRunTime, string probName);
+void writeStat(probType *prob, cellType *cell, string probName);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -218,16 +219,20 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk);
 void freeCellType(cellType *cell);
 
 /* master.c */
-oneProblem *newMaster(probType *prob, vector xk);
+int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb);
+int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb);
+int constructQP(probType *prob, LPptr lp, vector incumbX);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
-int constructQP(LPptr lp, int numCols, double sigma);
+int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
+int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
+int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell);
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
-int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb);
+oneProblem *newMaster(probType *prob, vector xk);
 
 /* cuts.c */
-int formSDCut(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag);
+int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
 iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
@@ -245,22 +250,36 @@ void freeCutsType(cutsType *cuts);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
 
 /* subprob.c */
-int solveSubprob(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag);
+int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
 vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
-void chgRHSwMean(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
-int chgRHSwRand(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
 oneProblem *newSubprob(probType *subprob);
 
 /* stocUpdate.c */
+BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
+                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
+void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
+int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
+int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
+int computeMU(LPptr lp, int numCols, double *mubBar);
+lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
+sigmaType *newSigma(int numIter, int numNzCols, int numPi);
+deltaType *newDelta(int numIter);
+omegaType *newOmega(int numIter);
 void freeLambdaType(lambdaType *lambda);
 void freeSigmaType(sigmaType *sigma);
 void freeOmegaType(omegaType *omega);
 void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt);
 
 /* soln.c */
-double cutHeight(int lbType, oneCut *cut, int currIter, vector xk, int betaLen, double lb);
-double maxCutHeight(int lbType, cutsType *cuts, int currIter, vector xk, int betaLen, double lb, int *maxCutID);
+int checkImprovement(probType *prob, cellType *cell, int candidCut);
+int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
+double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb);
+double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType *cell);

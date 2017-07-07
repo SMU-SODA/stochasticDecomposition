@@ -16,16 +16,16 @@ extern configType config;
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
-int solveSubprob(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag) {
+int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
 	vector 	rhs;
 	intvec	indices;
-	int  	omegaIdx, status;
+	int  	status;
 
     if ( !(indices = (intvec) arr_alloc(prob->num->rows, int)) )
         errMsg("allocation", "solve_subporb", "indices", 0);
 
 	/* (a) compute the right-hand side using current observation and first-stage solution */
-    rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, observ);
+    rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, cell->omega->vals[omegaIdx]);
     if ( rhs == NULL ) {
         errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
         return 1;
@@ -65,8 +65,8 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, vector observ, BO
     }
 
 	/* (d) update the stochastic elements in the problem */
-	stochasticUpdates(prob->num, Xvect, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma, cell->delta, cell->omega,
-			newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->pi, cell->mubBar, cell->optFlag);
+	stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
+			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->pi, cell->mubBar);
 
 	return 0;
 }// END solveSubprob()
@@ -108,7 +108,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     return rhs;
 }//END computeRHS()
 
-void chgRHSwMean(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
     int cnt;
 
     /* copy the original right-hand side */
@@ -120,7 +120,7 @@ void chgRHSwMean(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
 
 }//END chgRHSwMean()
 
-int chgRHSwRand(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X) {
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X) {
     sparseVector bomega;
     sparseMatrix Comega;
     vector 	rhs;
@@ -137,7 +137,6 @@ int chgRHSwRand(LPptr lp, numType *num, coordType *coord, vector observ, vector 
     if ( !(rhs = (vector) arr_alloc(num->rows+1, double)) )
         errMsg("allocation", "chgRHSwRand", "rhs", 0);
 
-
     /* copy right-hand side modified with mean information */
     for ( cnt = 1; cnt <= num->rows; cnt++ ) {
         rhs[cnt] = spRHS[cnt];
@@ -151,22 +150,12 @@ int chgRHSwRand(LPptr lp, numType *num, coordType *coord, vector observ, vector 
     /* change right-hand side with randomness in transfer matrix */
     rhs = MSparsexvSub(&Comega, X, rhs);
 
-#if 0
-    if (agent ==2)
-        writeProblem(lp, "chgrhsevl.lp");
-#endif
-
     /* change the right-hand side in the solver */
     stat1 = changeRHS(lp, num->rows, indices, rhs + 1);
     if ( stat1 ) {
         errMsg("solver", "chgRHSwRand", "failed to change the right-hand side in the solver",0);
         return 1;
     }
-
-#if 0
-    if (agent ==2)
-        writeProblem(lp, "chgrhsevl1.lp");
-#endif
 
     mem_free(rhs); mem_free(indices);
     return 0;

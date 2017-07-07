@@ -76,7 +76,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->lbType, cell->cuts, cell->k, cell->candidX, num->cols, lb, &status);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->k, cell->candidX, num->cols, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;
@@ -86,8 +86,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 
 int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 	intvec 	indices;
-	int 	cnt, i, status, c;
-	BOOL    dropIncumb = FALSE;
+	int 	cnt;
 
 	if (!(indices = arr_alloc(lenX + 1, int)))
 		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta",0);
@@ -99,11 +98,11 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, cell->incumbX, NULL, lenX);
 
 	/* check to see if there is room for the candidate cut, else drop a cut */
-	if (cell->cuts->cnt > cell->maxCuts) {
-		/* status is the position of the oldest cut (which is dropped) and now holds the candidate cut */
+	if (cell->cuts->cnt == cell->maxCuts) {
+		/* make room for the latest cut */
 		if( reduceCuts(cell, cell->candidX, cell->pi, cell->lbType, lenX, lb) < 0 ) {
 			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
-			return 1;
+			return -1;
 		}
 	}
 
@@ -111,11 +110,8 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 	cell->cuts->vals[cell->cuts->cnt] = cut;
 	if ( addRow(cell->master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
-		return 1;
+		return -1;
 	}
-
-	/* note the row number of the candidate cut */
-	//	cell->cuts->vals[cell->cCutIdx]->rowNum = cell->master->mar++;
 
 #ifdef CUT_CHECK
 	writeProblem(cell->master->lp,"master_wCandidCut.lp");
@@ -123,12 +119,40 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 
 
 	mem_free(indices);
-	return 0;
+	return cell->cuts->cnt++;
 }//END addCuts2Master()
 
-void constructQP() {
+int constructQP(probType *prob, LPptr lp, vector incumbX) {
+	vector rhs;
+	intvec indices;
+	int cnt;
 
+	if ( !(rhs = (vector) arr_alloc(prob->num->cols, double)))
+		errMsg("allocation", "constructQp", "rhs", 0);
+	if ( (!(indices = (intvec) arr_alloc(prob->num->cols, int))) )
+		errMsg("allocation", "constructQP", "indices", 0);
 
+	for (cnt = 0; cnt < prob->num->rows; cnt++) {
+		rhs[cnt + 1] = prob->sp->rhsx[cnt];
+		indices[cnt] = cnt;
+	}
+
+	/* b - A * xbar */
+	rhs = MSparsexvSub(prob->Dbar, incumbX, rhs);
+
+	/* Now we change the right-hand of the master problem. */
+	if ( changeRHS(lp, prob->num->rows, indices, rhs + 1) ) {
+		errMsg("algorithm", "newMaster", "failed to change the rhs", 0);
+		return 1;
+	}
+
+	/* change QP bounds */
+	if ( changeQPbds(lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX) ) {
+		errMsg("algorithm", "newMaster", "failed to change the bounds", 0);
+		return 1;
+	}
+
+	return 0;
 }//END constructQP()
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,

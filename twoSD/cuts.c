@@ -13,11 +13,11 @@
 
 extern configType config;
 
-int formSDCut(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL newOmegaFlag) {
+int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
 	oneCut *cut;
-
+	int    cutIdx;
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-	if ( solveSubprob(prob, cell, Xvect, observ, newOmegaFlag) ) {
+	if ( solveSubprob(prob, cell, Xvect, omegaIdx, newOmegaFlag) ) {
 		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 		return 1;
 	}
@@ -26,10 +26,10 @@ int formSDCut(probType *prob, cellType *cell, vector Xvect, vector observ, BOOL 
 	cut = SDCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 
 	/* (c) add cut to the master problem  */
-	if ( addCut2Master(cell, cut, prob->num->prevCols, cell->lb) )
+	if ( (cutIdx = addCut2Master(cell, cut, prob->num->prevCols, cell->lb)) < 0 )
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
 
-	return 0;
+	return cutIdx;
 }//END formCut()
 
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
@@ -179,14 +179,15 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 	return ans;
 }//END computeIstar
 
+// TODO: Redundant function
 iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
 		vector PiCbarX, double *argmax, int ictr) {
+	iType ans;
+	ans.delta = 0;
+	ans.sigma = 0;
 	double arg;
 	int sig_pi, del_pi;
 	int new_pisz;
-	iType ans;
-	ans.sigma = 0;
-	ans.delta = 0;
 
 	new_pisz = ictr / 10 + 1;
 	ictr -= new_pisz; /* evaluate the pi's generated in the last 10% iterations */
@@ -279,7 +280,7 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int lbType, int betaLe
 	if ( oldestCut == cell->cuts->cnt ) {
 		//MARK:cell[agentIdx]->k to cell[0]->k
 		//minHeight = cutHeight(lbType, cell[agentIdx]->cuts->vals[0], cell[agentIdx]->k, candidX, betaLen, lb);
-		minHeight = cutHeight(lbType, cell->cuts->vals[0], cell->k, candidX, betaLen, lb);
+		minHeight = cutHeight(cell->cuts->vals[0], cell->k, candidX, betaLen, lb);
 		oldestCut = 0;
 
 		for (idx = 1; idx < cell->cuts->cnt; idx++) {
@@ -288,7 +289,7 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int lbType, int betaLe
 
 			//MARK:cell[agentIdx]->k to cell[0]->k
 			//height = cutHeight(lbType, cell[agentIdx]->cuts->vals[idx], cell[agentIdx]->k, candidX, betaLen, lb);
-			height = cutHeight(lbType, cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
+			height = cutHeight(cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
 			if (height < minHeight) {
 				minHeight = height;
 				oldestCut = idx;
