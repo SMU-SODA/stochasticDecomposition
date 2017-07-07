@@ -64,12 +64,12 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->normDk = d2;
 
 	/* Get the dual solution too */
-	status = getDual(cell->master->lp, cell->pi, cell->master->mar);
+	status = getDual(cell->master->lp, cell->piM, cell->master->mar);
 	if ( status ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
 		return 1;
 	}
-	status = getDualSlacks(cell->master->lp, cell->dj, num->cols);
+	status = getDualSlacks(cell->master->lp, cell->djM, num->cols);
 	if ( status ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
@@ -100,7 +100,7 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 	/* check to see if there is room for the candidate cut, else drop a cut */
 	if (cell->cuts->cnt == cell->maxCuts) {
 		/* make room for the latest cut */
-		if( reduceCuts(cell, cell->candidX, cell->pi, cell->lbType, lenX, lb) < 0 ) {
+		if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
 			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
 			return -1;
 		}
@@ -112,6 +112,7 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return -1;
 	}
+	cut->rowNum = cell->master->mar++;
 
 #ifdef CUT_CHECK
 	writeProblem(cell->master->lp,"master_wCandidCut.lp");

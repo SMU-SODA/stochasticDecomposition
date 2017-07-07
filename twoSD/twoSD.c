@@ -131,6 +131,12 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
 		else if (!(strcmp(line, "EVAL_ERROR")))
 			fscanf(fptr, "%lf", &config.EVAL_ERROR);
+		else if (!(strcmp(line, "PRE_EPSILON")))
+			fscanf(fptr, "%lf", &config.PRE_EPSILON);
+		else if (!(strcmp(line, "EPSILON")))
+			fscanf(fptr, "%lf", &config.EPSILON);
+		else if (!(strcmp(line, "BOOTSTRAP_REP")))
+			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {

@@ -40,6 +40,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			return 1;
 		}
 		cell->iCutIdx = candidCut;
+		printf("+"); fflush(stdout);
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */
@@ -89,8 +90,6 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	cell->infeasIncumb = FALSE;
 	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
 	cell->gamma = 0.0;
-
-	printf("(+%d)", cell->k); fflush(stdout);
 
 	return 0;
 }//END replaceIncumbent()

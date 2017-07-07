@@ -68,6 +68,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
 			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->pi, cell->mubBar);
 
+	mem_free(rhs); mem_free(indices);
 	return 0;
 }// END solveSubprob()
 
@@ -163,7 +164,6 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 }//END chgRHSwRand()
 
 oneProblem *newSubprob(probType *subprob) {
-    int         length, i;
 
     /* since the basic structure of subproblem is not modified during the course of the algorithm, we just load it onto the solver */
     subprob->sp->lp = setupProblem(subprob->sp->name, subprob->sp->type, subprob->sp->mac, subprob->sp->mar, subprob->sp->objsen, subprob->sp->objx, subprob->sp->rhsx, subprob->sp->senx,subprob->sp->matbeg, subprob->sp->matcnt, subprob->sp->matind, subprob->sp->matval, subprob->sp->bdl, subprob->sp->bdu, NULL, subprob->sp->cname, subprob->sp->rname, subprob->sp->ctype);

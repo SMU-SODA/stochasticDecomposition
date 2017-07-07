@@ -70,6 +70,12 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	 * sub-agents in the problem.  */
 	if (!(cell = (cellType *) mem_malloc(sizeof(cellType))) )
 		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
+	cell->master = cell->subprob = NULL;
+	cell->candidX = cell->incumbX = NULL;
+	cell->pi = cell->piM = cell->djM = NULL;
+	cell->cuts = cell->fcuts = NULL;
+	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
+	cell->pi_ratio = NULL;
 
 	/* setup the master problem */
 	cell->master = newMaster(prob[0], xk);
@@ -114,17 +120,19 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->normDk_1 			= 0.0;
 	cell->normDk 			= 0.0;
 
-	/* solution parts of the cell */
-	if ( !(cell->pi = (vector) arr_alloc(prob[1]->num->rows + cell->maxCuts + 1, double)) )
-		errMsg("allocation", "newMaster", "cell->pi", 0);
-	if ( !(cell->dj = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
-		errMsg("allocation", "newMaster", "cell->di", 0);
-	cell->mubBar = 0.0;
-
 	/* lower bounding approximations held in cuts structure */
-	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols;
+	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 1;
 	cell->cuts 	  = newCuts(cell->maxCuts);
 	cell->fcuts   = NULL;
+
+	/* solution parts of the cell */
+	if ( !(cell->pi = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
+		errMsg("allocation", "newMaster", "cell->pi", 0);
+	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
+		errMsg("allocation", "newMaster", "cell->di", 0);
+	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
+		errMsg("allocation", "newMaster", "cell->piM", 0);
+	cell->mubBar = 0.0;
 
 	/* stochastic elements */
 	length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
@@ -141,11 +149,8 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->feasCnt 			= 0;
 	cell->infeasIncumb 		= FALSE;
 
-	cell->spRHS 			= NULL;
-	cell->full_test_error 	= 0.0;
-
 	/* construct the QP using the current incumbent */
-	if ( config.MASTERTYPE == PROB_QP ) {
+	if ( config.MASTERTYPE == PROB_QP && cell->incumbChg == TRUE) {
 		/* update the right-hand side and the bounds with incumbent solution */
 		if ( changeQPrhs(prob[0], cell) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
@@ -155,6 +160,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 			errMsg("setup", "newCell", "failed to change the bounds after incumbent update", 0);
 			return NULL;
 		}
+		cell->incumbChg = FALSE;
 
 		/* change the proximal term */
 		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, config.MIN_QUAD_SCALAR) ) {
@@ -170,19 +176,18 @@ void freeCellType(cellType *cell) {
 
 	if ( cell ) {
 		if (cell->master) freeOneProblem(cell->master);
-		if (cell->subprob) freeOneProblem(cell->subprob);
 		if (cell->candidX) mem_free(cell->candidX);
 		if (cell->incumbX) mem_free(cell->incumbX);
 		if (cell->pi) mem_free(cell->pi);
-		if (cell->dj) mem_free(cell->dj);
+		if (cell->piM) mem_free(cell->piM);
+		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts);
 		if (cell->fcuts) freeCutsType(cell->fcuts);
+		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt);
 		if (cell->omega) freeOmegaType(cell->omega);
 		if (cell->lambda) freeLambdaType(cell->lambda);
 		if (cell->sigma) freeSigmaType(cell->sigma);
-		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
-		if (cell->spRHS) mem_free(cell->spRHS);
 		mem_free(cell);
 	}
 

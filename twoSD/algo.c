@@ -63,7 +63,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 #if 0
 		printf("\nIteration-%d :: \n", cell->k);
 #else
-		if ( (cell->k -1) % 50 == 0)
+		if ( (cell->k -1) % 100 == 0)
 			printf("\nIteration-%4d: ", cell->k);
 #endif
 

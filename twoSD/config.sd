@@ -14,13 +14,13 @@ TOLERANCE    0.000001
 MIN_ITER   1
 
 // Maximum number of iterations
-MAX_ITER   500
+MAX_ITER   5000
 
 // 0 lp, 1 milp, 5 Qp, 7 miQp
 MASTERTYPE 5
 
 // Multiplier for the number of cuts; with QP, SD sets this to 1
-CUT_MULT  1
+CUT_MULT  3
 
 // Number of iterations after which incumbent cut is reevaluated.
 TAU 2
@@ -46,11 +46,11 @@ PI_EVAL_START 1
 // Number of iterations between evaluation of the impact of new dual vertex
 PI_CYCLE 1
 
-// NOMINAL TOLERANCE 256
-SCAN_LEN 64
-
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
 EVAL_FLAG 0
+
+// Number of resampling to take when checking optimality.
+BOOTSTRAP_REP 50 
 
 // Random number seed for resampling omegas during evaluation
 EVAL_SEED	1354874229869110
@@ -61,3 +61,14 @@ EVAL_MIN_ITER 250
 // Obj. eval. is accurate to within this much, w/95% confidence
 EVAL_ERROR 0.01
 
+// Ratio used in pre_test for optimality: (Sm - Lm) / Fk  < PRE_EPSILON.
+PRE_EPSILON 0.01 
+
+// ** STOPPING RULE TOLERANCE
+// Ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON.
+// ** SAMPLE SIZE OF THE IMPACT RATIO OF NEW SECOND STAGE DUAL INFORMATION
+// The variance of the ratio indicates the stability of the dual vertex set
+// EPSILON:
+// SCAN LENGTH: Powers of 2
+EPSILON 0.01
+SCAN_LEN 64

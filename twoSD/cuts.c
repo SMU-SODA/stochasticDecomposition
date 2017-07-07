@@ -245,6 +245,9 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 cutsType *newCuts(int maxCuts) {
 	cutsType *cuts;
 
+	if (maxCuts == 0)
+		return NULL;
+
 	if (!(cuts = (cutsType *) mem_malloc (sizeof(cutsType))))
 		errMsg("allocation", "newCuts", "cuts",0);
 	if (!(cuts->vals = (oneCut **) arr_alloc (maxCuts, oneCut)))
@@ -255,18 +258,16 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(cellType *cell, vector candidX, vector pi, int lbType, int betaLen, double lb) {
+int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb) {
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
-	//MARK:cell[agentIdx]->k to cell[0]->k
-	//minObs = cell[agentIdx]->k;
 	minObs 	  = cell->k;
 	oldestCut = cell->cuts->cnt;
 
 	/* identify the oldest loose cut */
 	for (idx = 0; idx < cell->cuts->cnt; idx++) {
-		if ( idx == cell->iCutIdx && cell->cuts->vals[idx]->rowNum < 0)
+		if ( idx == cell->iCutIdx || cell->cuts->vals[idx]->rowNum < 0)
 			/* avoid dropping incumbent cut and newly added cuts */
 			continue;
 

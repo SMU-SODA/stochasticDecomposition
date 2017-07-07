@@ -38,7 +38,7 @@ int evaluate(stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, cell->spRHS, cell->incumbX) ) {
+		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, cell->incumbX) ) {
 			errMsg("algorithm", "evaluateOpt", "failed to setup the subproblem",0);
 			return 1;
 		}

@@ -41,6 +41,10 @@ typedef struct{
 	long long EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
+	double  PRE_EPSILON;
+	double	EPSILON;
+	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
+	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
 }configType;
 
 typedef struct {
@@ -179,9 +183,10 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	vector      pi;                 /* dual slack information */
-	vector      dj;                 /* reduced cost vector */
+	vector      pi;                 /* subproblem dual information */
 	double      mubBar;				/* dual slack information for subproblem */
+	vector 		piM;				/* master dual information */
+	vector      djM;                /* master reduced cost vector */
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
@@ -198,9 +203,6 @@ typedef struct {
 
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
-
-    vector      spRHS;              /* subproblem's rhs*/
-    double      full_test_error;
 }cellType;
 
 /* twoSD.c */
@@ -241,7 +243,7 @@ iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta
 		vector PiCbarX, double *argmax, int ictr);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
-int reduceCuts(cellType *cell, vector candidX, vector pi, int lbType, int betaLen, double lb);
+int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
 void print_cut(cutsType *cuts, numType *num, int idx);
@@ -284,6 +286,11 @@ double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb);
 /* optimal.c */
 BOOL optimal(probType **prob, cellType *cell);
 BOOL preTest(cellType *cell);
-BOOL full_test(probType **prob, cellType *cell);
+BOOL fullTest(probType **prob, cellType *cell);
+cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX);
+void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
+double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, int currIter, double quadScalar, cutsType *cuts);
+void empiricalDistribution(omegaType *omega, int *cdf);
+void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 #endif /* TWOSD_H_ */
