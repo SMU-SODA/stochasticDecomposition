@@ -357,7 +357,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 
 /* This subroutine initializes the master problem by copying information from the decomposed prob[0](type: oneProblem) and adding a column for
  * theta for modified benders decomposition. */
-oneProblem *newMaster(probType *prob, vector xk) {
+oneProblem *newMaster(oneProblem *orig, double lb) {
 	oneProblem 	*master;
 	int         r, i, j, idx, cnt;
 	long        colOffset, rowOffset;
@@ -368,16 +368,16 @@ oneProblem *newMaster(probType *prob, vector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Allocating memory to master -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	master->type 	= config.MASTERTYPE;                  	/* type of problem: LP, QP, MIP or MIQP */
-	master->objsen 	= prob->sp->objsen;                 	/* sense of the objective: 1 for minimization and -1 for maximization */
-	master->mar 	= prob->sp->mar;                       	/* number of rows */
-	master->numInt 	= prob->sp->numInt;                 	/* number of integer variables in the problem  */
-	master->numnz 	= prob->sp->numnz;                   	/* number of non-zero elements in constraint matrix */
-	master->matsz 	= prob->sp->matsz;                   	/* extended matrix size */
-	master->marsz 	= prob->sp->marsz;                   	/* extended row size */
-	master->rstorsz = prob->sp->rstorsz;               		/* memory size for storing row names */
-	master->mac 	= prob->sp->mac+1;           			/* number of columns + etas */
-	master->macsz 	= prob->sp->macsz + 1;       			/* extended column size */
-	master->cstorsz 	= prob->sp->cstorsz + NAMESIZE;    	/* memory size for storing column names */
+	master->objsen 	= orig->objsen;                 	/* sense of the objective: 1 for minimization and -1 for maximization */
+	master->mar 	= orig->mar;                       	/* number of rows */
+	master->numInt 	= orig->numInt;                 	/* number of integer variables in the problem  */
+	master->numnz 	= orig->numnz;                   	/* number of non-zero elements in constraint matrix */
+	master->matsz 	= orig->matsz;                   	/* extended matrix size */
+	master->marsz 	= orig->marsz;                   	/* extended row size */
+	master->rstorsz = orig->rstorsz;               		/* memory size for storing row names */
+	master->mac 	= orig->mac+1;           			/* number of columns + etas */
+	master->macsz 	= orig->macsz + 1;       			/* extended column size */
+	master->cstorsz 	= orig->cstorsz + NAMESIZE;    	/* memory size for storing column names */
 
 	/* Allocate memory to the information whose type is string */
 	if (!(master->name = (string) arr_alloc(NAMESIZE, char)))
@@ -417,69 +417,69 @@ oneProblem *newMaster(probType *prob, vector xk) {
 	if (!(master->matind = (intvec) arr_alloc(master->matsz, int)))
 		errMsg("allocation", "new_master", "master->matind",0);
 
-	strcpy(master->name, prob->sp->name);           /* Copy problem name */
-	strcpy(master->objname, prob->sp->objname);     /* Copy objective name */
+	strcpy(master->name, orig->name);           /* Copy problem name */
+	strcpy(master->objname, orig->objname);     /* Copy objective name */
 
 	/* Copy problem's column and row names */
 	i = 0;
-	for (q = prob->sp->cname[0]; q < prob->sp->cname[0] + prob->sp->cstorsz; q++)
+	for (q = orig->cname[0]; q < orig->cname[0] + orig->cstorsz; q++)
 		master->cstore[i++] = *q;
 
 	i = 0;
-	for (q = prob->sp->rname[0]; q < prob->sp->rname[0] + prob->sp->rstorsz; q++)
+	for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
 		master->rstore[i++] = *q;
 
 	/* Calculate difference in pointers for master/copy row and column names */
-	colOffset = master->cstore - prob->sp->cname[0];
-	rowOffset = master->rstore - prob->sp->rname[0];
+	colOffset = master->cstore - orig->cname[0];
+	rowOffset = master->rstore - orig->rname[0];
 
 	/* Copy the all column information from the original master problem */
 	cnt = 0;
-	for (j = 0; j < prob->sp->mac; j++) {
+	for (j = 0; j < orig->mac; j++) {
 		/* Copy objective function coefficients */
-		master->objx[j] = prob->sp->objx[j];
+		master->objx[j] = orig->objx[j];
 		/* Copy the decision variable type */
-		master->ctype[j] = prob->sp->ctype[j];
+		master->ctype[j] = orig->ctype[j];
 		/* Copy the upper bound and lower bound */
-		master->bdu[j] = prob->sp->bdu[j];
-		master->bdl[j] = prob->sp->bdl[j];
+		master->bdu[j] = orig->bdu[j];
+		master->bdl[j] = orig->bdl[j];
 		/* Copy column names, offset by length */
-		master->cname[j] = prob->sp->cname[j] + colOffset;
+		master->cname[j] = orig->cname[j] + colOffset;
 		/* Copy the master sparse matrix beginning position of each column */
 		master->matbeg[j] = cnt;
 		/* Copy the sparse matrix non-zero element count */
-		master->matcnt[j] = prob->sp->matcnt[j];
-		master->ctype[j] = prob->sp->ctype[j];
+		master->matcnt[j] = orig->matcnt[j];
+		master->ctype[j] = orig->ctype[j];
 		/* Loop through all non-zero elements in this column */
-		for (idx = prob->sp->matbeg[j]; idx < prob->sp->matbeg[j] + prob->sp->matcnt[j]; idx++) {
+		for (idx = orig->matbeg[j]; idx < orig->matbeg[j] + orig->matcnt[j]; idx++) {
 			/* Copy the non-zero coefficient */
-			master->matval[cnt] = prob->sp->matval[idx];
+			master->matval[cnt] = orig->matval[idx];
 			/* Copy the row entry of the non-zero elements */
-			master->matind[cnt] = prob->sp->matind[idx];
+			master->matind[cnt] = orig->matind[idx];
 			cnt++;
 		}
 	}
 
 	/* Copy all information concerning rows of master */
-	for (r = 0; r < prob->sp->mar; r++) {
+	for (r = 0; r < orig->mar; r++) {
 		/* Copy the right hand side value */
-		master->rhsx[r] = prob->sp->rhsx[r];
+		master->rhsx[r] = orig->rhsx[r];
 		/* Copy the constraint sense */
-		master->senx[r] = prob->sp->senx[r];
+		master->senx[r] = orig->senx[r];
 		/* Copy row names, offset by length */
-		master->rname[r] = prob->sp->rname[r] + rowOffset;
+		master->rname[r] = orig->rname[r] + rowOffset;
 	}
 
 	/* Initialize information for the extra column in the new master. */
-	colOffset = prob->sp->cstorsz;
-	strcpy(master->cstore + prob->sp->cstorsz, "eta");
-	master->cname[prob->sp->mac] = master->cstore + colOffset;
-	master->objx[prob->sp->mac] = 1.0;			// prob->sp->mac is the last column in the original master
-	master->ctype[prob->sp->mac] = 'C';
-	master->bdu[prob->sp->mac] = INFBOUND;
-	master->bdl[prob->sp->mac] = 0.0;
-	master->matbeg[prob->sp->mac] = prob->sp->numnz;	// Beginning point in matval/matind in eta columns. every eta column begins at the same address
-	master->matcnt[prob->sp->mac] = 0;               // Only optimality cuts has eta
+	colOffset = orig->cstorsz;
+	strcpy(master->cstore + orig->cstorsz, "eta");
+	master->cname[orig->mac] = master->cstore + colOffset;
+	master->objx[orig->mac] = 1.0;			// orig->mac is the last column in the original master
+	master->ctype[orig->mac] = 'C';
+	master->bdu[orig->mac] = INFBOUND;
+	master->bdl[orig->mac] = lb;
+	master->matbeg[orig->mac] = orig->numnz;	// Beginning point in matval/matind in eta columns. every eta column begins at the same address
+	master->matcnt[orig->mac] = 0;               // Only optimality cuts has eta
 
 	/* Load the copy into CPLEX */
 	master->lp = setupProblem(master->name, master->type, master->mac, master->mar, master->objsen, master->objx, master->rhsx, master->senx, master->matbeg, master->matcnt,master->matind, master->matval, master->bdl, master->bdu, NULL, master->cname, master->rname, master->ctype);
@@ -488,10 +488,9 @@ oneProblem *newMaster(probType *prob, vector xk) {
 		return NULL;
 	}
 
-#if 0
-	status = writeProblem(master->lp, "newMaster.lp");
-	if ( status ) {
-		errMsg("write problem", "new_master", "failed to write master problem to file",0);
+#if defined(SETUP_CHECK)
+	if ( writeProblem(master->lp, "newMaster.lp") ) {
+		errMsg("solver", "newMaster", "failed to write master problem to file", 0);
 		return NULL;
 	}
 #endif

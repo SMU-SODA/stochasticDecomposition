@@ -55,7 +55,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
         }
     }
 
-#ifdef STOCH_CHECK
+#if defined(STOCH_CHECK)
     double obj;
     obj = getObjective(cell->subprob->lp, PROB_LP);
     printf("Objective value of Subproblem  = %lf\n", obj);
@@ -74,7 +74,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	status = stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
 			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->piS, cell->mubBar);
 
-#ifdef STOCH_CHECK
+#if defined(STOCH_CHECK)
 	obj = cell->sigma->vals[status].pib - vXv(cell->sigma->vals[status].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
 	obj += cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].pib - vXv(cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].piC,
 			cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
@@ -176,25 +176,21 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
 }//END chgRHSwRand()
 
-oneProblem *newSubprob(probType *subprob) {
+oneProblem *newSubproblem(oneProblem *subprob) {
 
     /* since the basic structure of subproblem is not modified during the course of the algorithm, we just load it onto the solver */
-    subprob->sp->lp = setupProblem(subprob->sp->name, subprob->sp->type, subprob->sp->mac, subprob->sp->mar, subprob->sp->objsen, subprob->sp->objx, subprob->sp->rhsx, subprob->sp->senx,subprob->sp->matbeg, subprob->sp->matcnt, subprob->sp->matind, subprob->sp->matval, subprob->sp->bdl, subprob->sp->bdu, NULL, subprob->sp->cname, subprob->sp->rname, subprob->sp->ctype);
-    if ( subprob->sp->lp == NULL ) {
-        errMsg("Problem Setup", "new_subprob", "subprob->sp",0);
+    subprob->lp = setupProblem(subprob->name, subprob->type, subprob->mac, subprob->mar, subprob->objsen, subprob->objx, subprob->rhsx, subprob->senx,subprob->matbeg, subprob->matcnt, subprob->matind, subprob->matval, subprob->bdl, subprob->bdu, NULL, subprob->cname, subprob->rname, subprob->ctype);
+    if ( subprob->lp == NULL ) {
+        errMsg("Problem Setup", "new_subprob", "subprob",0);
         return NULL;
     }
 
-#if 0
-    int     status;
-    char probName[NAMESIZE];
-    sprintf(probName,"newSubprob%d.lp", agent);
-    status = writeProblem(scell->sp->lp, probName);
-    if ( status ) {
-        errMsg("write problem", "new_subprob", "failed to write subproblems problem to file",0);
+#if defined(SETUP_CHECK)
+    if (writeProblem(subprob->lp, "newSubproblem.lp") ){
+        errMsg("solver", "newSubproblem", "failed to write subproblems to file", 0);
         return NULL;
     }
 #endif
 
-    return subprob->sp;
+    return subprob;
 }//END new_subprob

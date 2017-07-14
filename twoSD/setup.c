@@ -78,13 +78,13 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->pi_ratio = NULL;
 
 	/* setup the master problem */
-	cell->master = newMaster(prob[0], xk);
+	cell->master = newMaster(prob[0]->sp, prob[0]->lb);
 	if ( cell->master == NULL ) {
 		errMsg("setup", "newCell", "failed to setup the master problem", 0);
 		return NULL;
 	}
 	/* setup the subproblem */
-	cell->subprob = newSubprob(prob[1]);
+	cell->subprob = newSubproblem(prob[1]->sp);
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
@@ -167,6 +167,12 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 			errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
 			return NULL;
 		}
+#if defined(SETUP_CHECK)
+	if ( writeProblem(master->lp, "newQPMaster.lp") ) {
+		errMsg("solver", "newCell", "failed to write QP master problem to file",0);
+		return NULL;
+	}
+#endif
 	}
 
 	return cell;

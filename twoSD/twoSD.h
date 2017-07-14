@@ -234,7 +234,7 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell);
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
-oneProblem *newMaster(probType *prob, vector xk);
+oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
@@ -259,7 +259,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
-oneProblem *newSubprob(probType *subprob);
+oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
