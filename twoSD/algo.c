@@ -18,6 +18,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	vector	 xk = NULL, lb = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
+	FILE 	*soln;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
@@ -29,8 +30,14 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 		goto TERMINATE;
 	}
 
-	/* Write the solutions statistics */
-	writeStatistic(prob[0], cell, probName);
+	/* Write solution statistics for optimization process */
+	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
+	writeStatistic(&soln, prob[0], cell, probName);
+
+	/* evaluating the optimal solution*/
+	if (config.EVAL_FLAG == 1) {
+		evaluate(&soln, stoc, prob, cell, cell->incumbX);
+	}
 
 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
@@ -97,7 +104,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 			}
 			cell->iCutUpdt = cell->k;
 		}
-
 		/******* 5. Check improvement in predicted values at candidate solution *******/
 		if ( !(cell->incumbChg) && cell->k > 1)
 			/* If the incumbent has not changed in the current iteration */
@@ -110,30 +116,24 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 		}
 	}//END while loop
 
-	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
-	writeStatistic(prob[0], cell, probName);
-
-	/*evaluating the optimal solution*/
-	if (config.EVAL_FLAG == 1) {
-		evaluate(stoc, prob, cell);
-	}
-
 	mem_free(observ);
-
 	return 0;
 }//END solveCell()
 
-void writeStatistic(probType *prob, cellType *cell, string probName) {
-	FILE    *soln;
+void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName) {
 
-	soln = openFile(outputDir, "summary.dat", "w");
-	fprintf(soln, "Problem                                : %s\n", probName);
-	fprintf(soln, "First Stage Rows                       : %d\n", prob->num->rows);
-	fprintf(soln, "First Stage Columns                    : %d\n", prob->num->cols);
+	(*soln) = openFile(outputDir, "summary.dat", "w");
 
-	fprintf(soln, "Algorithm                              : Two-stage Stochastic Decomposition\n");
-	fprintf(soln, "Number of iterations                   : %d\n", cell->k);
-	fprintf(soln, "Lower bound estimate                   : %f\n", cell->incumbEst);
-	fclose(soln);
+	fprintf((*soln), "----------------------------------- Problem Information ------------------------------------\n\n");
+	fprintf((*soln), "Problem                                : %s\n", probName);
+	fprintf((*soln), "First Stage Rows                       : %d\n", prob->num->rows);
+	fprintf((*soln), "First Stage Columns                    : %d\n", prob->num->cols);
+
+	fprintf((*soln), "\n--------------------------------------- Optimization ---------------------------------------\n\n");
+
+	fprintf((*soln), "Algorithm                              : Two-stage Stochastic Decomposition\n");
+	fprintf((*soln), "Number of iterations                   : %d\n", cell->k);
+	fprintf((*soln), "Lower bound estimate                   : %f\n", cell->incumbEst);
+	fclose((*soln));
 
 }//END WriteStat

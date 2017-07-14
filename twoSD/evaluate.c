@@ -12,8 +12,9 @@
 #include "twoSD.h"
 
 extern configType config;
+extern string outputDir;
 
-int evaluate(stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
+int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 	vector 	observ, rhs;
 	double 	obj, mean, variance, stdev, temp;
 	int		cnt, status, m;
@@ -21,7 +22,7 @@ int evaluate(stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "evaluateOpt", "observ", 0);
 
-	printf("\n\nEvaluating optimal solution");
+	printf("\nStarting evaluating.\n");
 
 	/* initialize parameters used for evaluations */
 	cnt = 0.0; mean = 0.0; variance = 0.0; stdev = INFBOUND; cnt = 0;
@@ -38,7 +39,7 @@ int evaluate(stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, cell->incumbX) ) {
+		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluateOpt", "failed to setup the subproblem",0);
 			return 1;
 		}
@@ -68,14 +69,31 @@ int evaluate(stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 			stdev = sqrt(variance/ (double) cnt);
 		}
 		cnt++;
+
 		/* Print the results every once in a while for long runs */
 		if (!(cnt % 100)) {
 			printf(".");
 			fflush(stdout);
 		}
 		if (!(cnt % 10000))
-			printf("\n\nObs:%d mean:%lf   error: %lf \n 0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
+			printf("\nObs:%d mean:%lf   error: %lf \n 0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
 	}//END while loop
+	mean += vXvSparse(Xvect, prob[0]->dBar);;
+
+	printf("\n\nEvaluation complete. Final evaluation results :: \n");
+	printf("Upper bound estimate                   : %lf\n", mean);
+	printf("Error in estimation                    : %lf\n", 3.29 * stdev / mean);
+	printf("Confidence interval at 95%%             : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
+	printf("Number of observations                 : %d\n", cnt);
+
+	/* Write the evaluation results to the summary file */
+	(*soln) = openFile(outputDir, "summary.dat", "a");
+	fprintf((*soln), "\n---------------------------------------- Evaluation ----------------------------------------\n\n");
+	fprintf((*soln), "Upper bound estimate                   : %lf\n", mean);
+	fprintf((*soln), "Error in estimation                    : %lf\n", 3.29 * stdev / mean);
+	fprintf((*soln), "Confidence interval at 95%%             : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
+	fprintf((*soln), "Number of observations                 : %d\n", cnt);
+	fclose((*soln));
 
 	mem_free(observ); mem_free(rhs);
 	return 0;

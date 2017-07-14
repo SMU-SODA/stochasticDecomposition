@@ -215,7 +215,7 @@ int readConfig(string inputDir);
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStatistic(probType *prob, cellType *cell, string probName);
+void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -295,5 +295,8 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, int currIter, double quadScalar, cutsType *cuts);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
+
+/* evaluate.c */
+int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
 
 #endif /* TWOSD_H_ */
