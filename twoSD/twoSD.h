@@ -21,6 +21,9 @@
 #define NONTRIVIAL 1
 #define INF	DBL_MAX
 
+#undef STOCH_CHECK
+#undef ALGO_CHECK
+
 typedef struct{
 	long long RUN_SEED;			/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
@@ -67,8 +70,8 @@ typedef struct {
 /* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Toward
  * this end, pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
 typedef struct{
-	double 	b;
-	vector 	C;
+	double 	pib;
+	vector 	piC;
 } pixbCType;
 
 /* The lambda structure stores some of the dual variable values from every distinct dual vector obtained during the program.  Each vector contains
@@ -183,7 +186,7 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	vector      pi;                 /* subproblem dual information */
+	vector      piS;                 /* subproblem dual information */
 	double      mubBar;				/* dual slack information for subproblem */
 	vector 		piM;				/* master dual information */
 	vector      djM;                /* master reduced cost vector */
@@ -212,7 +215,7 @@ int readConfig(string inputDir);
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStat(probType *prob, cellType *cell, string probName);
+void writeStatistic(probType *prob, cellType *cell, string probName);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -259,7 +262,7 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 oneProblem *newSubprob(probType *subprob);
 
 /* stocUpdate.c */
-BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
+int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);

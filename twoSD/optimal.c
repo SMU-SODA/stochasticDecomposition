@@ -106,7 +106,9 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		else
 			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
 
+#if 0
 		printf("\niter = %d, replication = %d, UB = %f, LB = %f, Gap = %lf", cell->k, rep, est, LB, DBL_ABS((est - LB) / cell->incumbEst));
+#endif
 
 		/* (g) compare the normalized difference between estimate and the lower bound. If the problem is a QP problem, we don't need add the constant term c^T x \hat{x} */
 		if (DBL_ABS((est - LB) / cell->incumbEst) <= config.EPSILON)
@@ -197,13 +199,13 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 				iStar.sigma = gCuts->vals[cnt]->iStar[observ[obs]];
 				iStar.delta = sigma->lambdaIdx[iStar.sigma];
 
-				gCuts->vals[cnt]->alpha += sigma->vals[iStar.sigma].b + delta->vals[iStar.delta][observ[obs]].b;
+				gCuts->vals[cnt]->alpha += sigma->vals[iStar.sigma].pib + delta->vals[iStar.delta][observ[obs]].pib;
 
 				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[iStar.sigma].C[idx];
+					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[iStar.sigma].piC[idx];
 
 				for (idx = 1; idx <= num->rvColCnt; idx++)
-					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[iStar.delta][observ[obs]].C[idx];
+					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[iStar.delta][observ[obs]].piC[idx];
 
 				count++;
 			}
@@ -235,7 +237,7 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 	double *q_vec; 			/* vector: c + Bk_theta - A_Trans_lambda. */
 	double q_term; 			/* scalar: q_vec * q_vec. */
 	double Lm; 				/* The calculated lower bound of the optimal value. */
-	int cnt, i, n;
+	int cnt, i;
 
 	if (!(bk = arr_alloc(prob->num->rows+1, double)))
 		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to bk", 0);

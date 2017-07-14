@@ -72,7 +72,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
-	cell->pi = cell->piM = cell->djM = NULL;
+	cell->piS = cell->piM = cell->djM = NULL;
 	cell->cuts = cell->fcuts = NULL;
 	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
 	cell->pi_ratio = NULL;
@@ -121,12 +121,12 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->normDk 			= 0.0;
 
 	/* lower bounding approximations held in cuts structure */
-	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 1;
+	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->cuts 	  = newCuts(cell->maxCuts);
 	cell->fcuts   = NULL;
 
 	/* solution parts of the cell */
-	if ( !(cell->pi = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
+	if ( !(cell->piS = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
 		errMsg("allocation", "newMaster", "cell->pi", 0);
 	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
 		errMsg("allocation", "newMaster", "cell->di", 0);
@@ -178,7 +178,7 @@ void freeCellType(cellType *cell) {
 		if (cell->master) freeOneProblem(cell->master);
 		if (cell->candidX) mem_free(cell->candidX);
 		if (cell->incumbX) mem_free(cell->incumbX);
-		if (cell->pi) mem_free(cell->pi);
+		if (cell->piS) mem_free(cell->piS);
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts);

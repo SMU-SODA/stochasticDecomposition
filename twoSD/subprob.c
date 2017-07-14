@@ -19,10 +19,12 @@ extern configType config;
 int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
 	vector 	rhs;
 	intvec	indices;
-	int  	status;
+	int  	status, n;
 
     if ( !(indices = (intvec) arr_alloc(prob->num->rows, int)) )
         errMsg("allocation", "solve_subporb", "indices", 0);
+    for ( n = 0; n < prob->num->rows; n++ )
+    	indices[n] = n;
 
 	/* (a) compute the right-hand side using current observation and first-stage solution */
     rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, cell->omega->vals[omegaIdx]);
@@ -37,6 +39,10 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
         return 1;
     }
 
+#if defined(ALGO_CHECK)
+    writeProblem(cell->subprob->lp, "subproblem.lp");
+#endif
+
     /* (c) Solve the subproblem to obtain the optimal dual solution. */
     if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
         if ( status == STAT_INFEASIBLE ) {
@@ -50,12 +56,12 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
     }
 
 #ifdef STOCH_CHECK
-    double objV;
-    objV = getObjective(cell->sp->lp, PROB_LP);
-    printf("\t\t\t    Objective value of Subproblem-%d  = %lf\n", cell->ID, objV);
+    double obj;
+    obj = getObjective(cell->subprob->lp, PROB_LP);
+    printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 
-    if ( getDual(cell->subprob->lp, cell->pi, prob->num->rows) ) {
+    if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
         errMsg("algorithm", "solveSubprob", "failed to get the dual", 0);
         return 1;
     }
@@ -65,8 +71,15 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
     }
 
 	/* (d) update the stochastic elements in the problem */
-	stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
-			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->pi, cell->mubBar);
+	status = stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
+			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->piS, cell->mubBar);
+
+#ifdef STOCH_CHECK
+	obj = cell->sigma->vals[status].pib - vXv(cell->sigma->vals[status].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
+	obj += cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].pib - vXv(cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].piC,
+			cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
+	printf("Objective function estimate    = %lf\n", obj);
+#endif
 
 	mem_free(rhs); mem_free(indices);
 	return 0;

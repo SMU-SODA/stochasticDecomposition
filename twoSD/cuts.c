@@ -16,19 +16,25 @@ extern configType config;
 int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
 	oneCut *cut;
 	int    cutIdx;
+
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 	if ( solveSubprob(prob, cell, Xvect, omegaIdx, newOmegaFlag) ) {
 		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
-		return 1;
+		return -1;
 	}
 
 	/* (b) create an affine lower bound */
 	cut = SDCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	if ( cut == NULL ) {
+		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
+		return -1;
+	}
 
 	/* (c) add cut to the master problem  */
-	if ( (cutIdx = addCut2Master(cell, cut, prob->num->prevCols, cell->lb)) < 0 )
+	if ( (cutIdx = addCut2Master(cell, cut, prob->num->prevCols, cell->lb)) < 0 ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
-
+		return -1;
+	}
 	return cutIdx;
 }//END formCut()
 
@@ -63,7 +69,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	for (cnt = 0; cnt < sigma->cnt; cnt++) {
 		piCbarX[cnt] = 0;
 		for (c = 1; c <= num->cntCcols; c++)
-			piCbarX[cnt] += sigma->vals[cnt].C[c] * Xvect[coord->colsC[c]];
+			piCbarX[cnt] += sigma->vals[cnt].piC[c] * Xvect[coord->colsC[c]];
 	}
 
 	/* Test for omega issues */
@@ -94,18 +100,18 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 
 		if ( istar.delta < 0 || istar.sigma < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
-			return 1;
+			return NULL;
 		}
 		cut->iStar[obs] = istar.sigma;
 
 		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-		alpha += sigma->vals[istar.sigma].b * omega->weight[obs];
-		alpha += delta->vals[istar.delta][obs].b * omega->weight[obs];
+		alpha += sigma->vals[istar.sigma].pib * omega->weight[obs];
+		alpha += delta->vals[istar.delta][obs].pib * omega->weight[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
-			beta[coord->colsC[c]] += sigma->vals[istar.sigma].C[c] * omega->weight[obs];
+			beta[coord->colsC[c]] += sigma->vals[istar.sigma].piC[c] * omega->weight[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
-			beta[coord->rvCols[c]] += delta->vals[istar.delta][obs].C[c] * omega->weight[obs];
+			beta[coord->rvCols[c]] += delta->vals[istar.delta][obs].piC[c] * omega->weight[obs];
 	}
 
 	if (pi_eval_flag == TRUE) {
@@ -163,10 +169,10 @@ iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *
 			delPi = sigma->lambdaIdx[sigPi];
 
 			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			arg = sigma->vals[sigPi].b + delta->vals[delPi][obs].b - PiCbarX[sigPi];
+			arg = sigma->vals[sigPi].pib + delta->vals[delPi][obs].pib - PiCbarX[sigPi];
 
 			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[delPi][obs].C, Xvect, coord->rvCols, num->rvColCnt);
+			arg -= vXv(delta->vals[delPi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 
 			if (arg > (*argmax)) {
 				*argmax = arg;
@@ -199,11 +205,11 @@ iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta
 			del_pi = sigma->lambdaIdx[sig_pi];
 
 			/* Start with (Pi x Rbar) + (Pi x Romega) + (Pi x Tbar) x X */
-			arg = sigma->vals[sig_pi].b + delta->vals[del_pi][obs].b
+			arg = sigma->vals[sig_pi].pib + delta->vals[del_pi][obs].pib
 					- PiCbarX[sig_pi];
 
 			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[del_pi][obs].C, Xvect, coord->rvCols, num->rvColCnt);
+			arg -= vXv(delta->vals[del_pi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 
 			if (arg > (*argmax)) {
 				*argmax = arg;
@@ -279,7 +285,6 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb
 
 	/* if the oldest loose cut is the most recently added cut, then the cut with minimium cut height will be dropped */
 	if ( oldestCut == cell->cuts->cnt ) {
-		//MARK:cell[agentIdx]->k to cell[0]->k
 		//minHeight = cutHeight(lbType, cell[agentIdx]->cuts->vals[0], cell[agentIdx]->k, candidX, betaLen, lb);
 		minHeight = cutHeight(cell->cuts->vals[0], cell->k, candidX, betaLen, lb);
 		oldestCut = 0;
@@ -288,7 +293,6 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb
 			if (idx == cell->iCutIdx)
 				continue;
 
-			//MARK:cell[agentIdx]->k to cell[0]->k
 			//height = cutHeight(lbType, cell[agentIdx]->cuts->vals[idx], cell[agentIdx]->k, candidX, betaLen, lb);
 			height = cutHeight(cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
 			if (height < minHeight) {
@@ -298,9 +302,6 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb
 		}
 	}
 
-#ifdef DROPCUT
-	printf("reduced cut =%d\t", oldestCut);
-#endif
 	/* drop the selected cut and swap the last cut into its place */
 	if ( dropCut(cell, oldestCut) ){
 		errMsg("algorithm", "reduceCuts", "failed to drop a cut", 0);

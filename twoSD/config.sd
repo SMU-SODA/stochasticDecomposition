@@ -20,7 +20,7 @@ MAX_ITER   5000
 MASTERTYPE 5
 
 // Multiplier for the number of cuts; with QP, SD sets this to 1
-CUT_MULT  3
+CUT_MULT  1
 
 // Number of iterations after which incumbent cut is reevaluated.
 TAU 2
@@ -70,5 +70,5 @@ PRE_EPSILON 0.01
 // The variance of the ratio indicates the stability of the dual vertex set
 // EPSILON:
 // SCAN LENGTH: Powers of 2
-EPSILON 0.01
-SCAN_LEN 64
+EPSILON 0.001
+SCAN_LEN 256

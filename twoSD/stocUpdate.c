@@ -18,7 +18,7 @@ extern configType config;
  * and are added to the appropriate structures.
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
-BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
+int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
     int 	lambdaIdx, sigmaIdx;
     BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
@@ -39,7 +39,9 @@ BOOL stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, spars
     if (newLambdaFlag)
         calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
 
-    return newSigmaFlag;
+
+
+    return sigmaIdx;
 }//END stochasticUpdates
 
 /* This function calculates a new column in the delta structure, based on a new observation of omega. Thus, lambda_pi X C and lambda_pi X b
@@ -64,14 +66,14 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector obs
 
         /* Multiply the dual vector by the observation of bomega and Comega */
         /* Reduce PIxb from its full vector form into a sparse vector */
-        delta->vals[piIdx][omegaIdx].b = vXvSparse(lambPi, &bomega);
+        delta->vals[piIdx][omegaIdx].pib = vXvSparse(lambPi, &bomega);
         if ( num->rvColCnt != 0 ) {
         	piCrossC = vxMSparse(lambPi, &Comega, num->prevCols);
-        	delta->vals[piIdx][omegaIdx].C = reduceVector(piCrossC, coord->rvCols, num->rvColCnt);
+        	delta->vals[piIdx][omegaIdx].piC = reduceVector(piCrossC, coord->rvCols, num->rvColCnt);
             mem_free(piCrossC);
         }
         else
-        	delta->vals[piIdx][omegaIdx].C = NULL;
+        	delta->vals[piIdx][omegaIdx].piC = NULL;
 
         mem_free(lambPi);
     }
@@ -120,8 +122,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 
     if (!newLambdaFlag){
         for (cnt = 0; cnt < sigma->cnt; cnt++) {
-            if (DBL_ABS(pibBar - sigma->vals[cnt].b) <= config.TOLERANCE) {
-                if (equalVector(piCBar, sigma->vals[cnt].C, num->cntCcols, config.TOLERANCE))
+            if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= config.TOLERANCE) {
+                if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, config.TOLERANCE))
                     if(sigma->lambdaIdx[cnt]== idxLambda){
                         mem_free(piCBar);
                         (*newSigmaFlag) = FALSE;
@@ -132,8 +134,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
     }
 
     (*newSigmaFlag) = TRUE;
-    sigma->vals[sigma->cnt].b  = pibBar;
-    sigma->vals[sigma->cnt].C  = piCBar;
+    sigma->vals[sigma->cnt].pib  = pibBar;
+    sigma->vals[sigma->cnt].piC  = piCBar;
     sigma->lambdaIdx[sigma->cnt] = idxLambda;
     sigma->ck[sigma->cnt] = iter;
 
@@ -165,14 +167,14 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
         bomega.val= omega->vals[obs];
         Comega.val = omega->vals[obs] + num->rvbOmCnt;
 
-        delta->vals[lambdaIdx][obs].b = vXvSparse(lamb_pi, &bomega);
+        delta->vals[lambdaIdx][obs].pib = vXvSparse(lamb_pi, &bomega);
         if ( num->rvColCnt != 0 ) {
         	pixC = vxMSparse(lamb_pi, &Comega, num->prevCols);
-        	delta->vals[lambdaIdx][obs].C = reduceVector(pixC, coord->rvCols, num->rvColCnt);
+        	delta->vals[lambdaIdx][obs].piC = reduceVector(pixC, coord->rvCols, num->rvColCnt);
             mem_free(pixC);
         }
         else
-        	delta->vals[lambdaIdx][obs].C = NULL;
+        	delta->vals[lambdaIdx][obs].piC = NULL;
     }
 
     mem_free(lamb_pi);
@@ -202,7 +204,7 @@ int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmeg
     (*newOmegaFlag) = TRUE;
 
 #ifdef STOCH_CHECK
-    printf("\t\t :: Observation (%d): ", *newOmegaFlag);
+    printf("Observation (%d): ", *newOmegaFlag);
     printVector(omega->vals[omega->cnt], end - begin, NULL);
 #endif
 
@@ -295,7 +297,7 @@ sigmaType *newSigma(int numIter, int numNzCols, int numPi) {
     if (!(sigma->vals = arr_alloc(numIter, pixbCType)))
         errMsg("allocation", "new_sigma", "sigma->vals",0);
     for (cnt = 0; cnt < numPi && cnt < numIter; cnt++)
-        if (!(sigma->vals[cnt].C = arr_alloc(numNzCols+1, double)))
+        if (!(sigma->vals[cnt].piC = arr_alloc(numNzCols+1, double)))
             errMsg("allocation", "new_sigma", "sigma->val[cnt]",0);
 
     sigma->cnt = numPi;
@@ -371,7 +373,7 @@ void freeSigmaType(sigmaType *sigma) {
 	if (sigma) {
 		if (sigma->lambdaIdx) mem_free(sigma->lambdaIdx);
 		for ( n = 0; n < sigma->cnt; n++ )
-			if (sigma->vals[n].C) mem_free(sigma->vals[n].C);
+			if (sigma->vals[n].piC) mem_free(sigma->vals[n].piC);
 		if (sigma->vals) mem_free(sigma->vals);
 		if (sigma->ck) mem_free(sigma->ck);
 		mem_free(sigma);
@@ -387,8 +389,8 @@ void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt) {
 			for ( n = 0; n < lambdaCnt; n++ ) {
 				if (delta->vals[n]) {
 					for ( m = 0; m < omegaCnt; m++ )
-						if (delta->vals[n][m].C)
-							mem_free(delta->vals[n][m].C);
+						if (delta->vals[n][m].piC)
+							mem_free(delta->vals[n][m].piC);
 					mem_free(delta->vals[n]);
 				}
 			}

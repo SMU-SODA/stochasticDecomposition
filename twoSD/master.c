@@ -32,7 +32,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 		}
 	}
 
-#if 0
+#ifdef ALGO_CHECK
 	writeProblem(cell->master->lp, "masterCell.lp");
 #endif
 

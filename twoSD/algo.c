@@ -30,7 +30,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	}
 
 	/* Write the solutions statistics */
-	writeStat(prob[0], cell, probName);
+	writeStatistic(prob[0], cell, probName);
+
+	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */
 	if (xk) mem_free(xk);
@@ -60,7 +62,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
 		cell->k++;
 
-#if 0
+#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\nIteration-%d :: \n", cell->k);
 #else
 		if ( (cell->k -1) % 100 == 0)
@@ -108,7 +110,8 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 		}
 	}//END while loop
 
-	writeStat(prob[0], cell, probName);
+	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
+	writeStatistic(prob[0], cell, probName);
 
 	/*evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {
@@ -120,25 +123,17 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 	return 0;
 }//END solveCell()
 
-void writeStat(probType *prob, cellType *cell, string probName) {
-	FILE    *Stat;
-	FILE    *StatTime;
+void writeStatistic(probType *prob, cellType *cell, string probName) {
+	FILE    *soln;
 
-	StatTime = openFile(outputDir, "time.dat", "a");
-	fprintf(StatTime, "\nTotal (%d):\t", cell->k-1);
+	soln = openFile(outputDir, "summary.dat", "w");
+	fprintf(soln, "Problem                                : %s\n", probName);
+	fprintf(soln, "First Stage Rows                       : %d\n", prob->num->rows);
+	fprintf(soln, "First Stage Columns                    : %d\n", prob->num->cols);
 
-	fclose(StatTime);
+	fprintf(soln, "Algorithm                              : Two-stage Stochastic Decomposition\n");
+	fprintf(soln, "Number of iterations                   : %d\n", cell->k);
+	fprintf(soln, "Lower bound estimate                   : %f\n", cell->incumbEst);
+	fclose(soln);
 
-	Stat = openFile(outputDir, "statistic.dat", "w");
-	fprintf(Stat, "-------- Result summary for %s --------\n", probName);
-
-	fprintf(Stat, "Samples simulated using SMPS stoch file.\n");
-	fprintf(Stat, "A single aggregated cut added to master problem.\n\n");
-
-	fprintf(Stat, "\nTotal number of iteration: %d\n", cell->k-1);
-	fprintf(Stat, "Aggregated estimate at the incumbent solution = %lf\n", cell->incumbEst);
-	fprintf(Stat, "\nIncumbent solution = ");
-	printVector(cell->incumbX, prob->num->cols, Stat);
-
-	fclose(Stat);
 }//END WriteStat

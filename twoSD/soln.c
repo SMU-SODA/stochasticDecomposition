@@ -40,6 +40,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			return 1;
 		}
 		cell->iCutIdx = candidCut;
+		cell->incumbChg = FALSE;
 		printf("+"); fflush(stdout);
 	}
 	else {
