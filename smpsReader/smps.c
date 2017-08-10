@@ -51,15 +51,18 @@ oneProblem *readCore(string inputDir, string probName) {
 	FILE			*fptr;
 
 	/* Locate the problem core file */
-	sprintf(probpath, "%s%s/%s.cor", inputDir, probName, probName);
-
+	sprintf(probpath, "%s%s/%s.lp", inputDir, probName, probName);
 	fptr = fopen(probpath, "r");
 	if ( fptr == NULL ) {
-		sprintf(probpath, "%s%s/%s.mps", inputDir, probName, probName);
+		sprintf(probpath, "%s%s/%s.cor", inputDir, probName, probName);
 		fptr = fopen(probpath, "r");
 		if ( fptr == NULL ) {
-			errMsg("read", "readCore", "failed to open problem core file", 0);
-			return NULL;
+			sprintf(probpath, "%s%s/%s.mps", inputDir, probName, probName);
+			fptr = fopen(probpath, "r");
+			if ( fptr == NULL ) {
+				errMsg("read", "readCore", "failed to open problem core file", 0);
+				return NULL;
+			}
 		}
 	}
 
