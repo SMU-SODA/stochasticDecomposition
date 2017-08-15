@@ -267,7 +267,7 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 		if( !(tim->col = (intvec) arr_alloc(defaultStages, int)) )
 			errMsg("allocation", "readTime", "colNames in timeType", 0);
 		while ( fgets(line, sizeof line, fptr )!= NULL ) {
-			if (strncmp(line,"ENDATA",6)) {
+			if (line[0] != '*' && strncmp(line,"ENDATA",6)) /* If it is not a comment line and end of data in the file proceed to read the contents */ {
 				if ( !(tim->stgNames[n] =  (string) mem_malloc(NAMESIZE*sizeof(char))))
 					errMsg("allocation", "readTime", "individual stage names", 0);
 				sscanf(line, "%s %s %s", field1, field2, tim->stgNames[n]);
@@ -1288,14 +1288,3 @@ void freeARMAtype(armaType *arma) {
 	mem_free(arma);
 
 }//END freeARMAtype()
-
-void writeStocType (stocType *stoc) {
-
-	printf("-----------------------------------------------------------------------------------------------------\n");
-	printf("Type of stoc file          = %s\n", stoc->type);
-	printf("Number of random variables = %d\n", stoc->numOmega);
-	printf("Number of groups           = %d \t with number of elements per group = ", stoc->numGroups);
-	printIntvec(stoc->numPerGroup-1, stoc->numGroups, NULL);
-	printf("Number of ciphers used     = %d\n", stoc->numCipher);
-
-}//END writeStocType()

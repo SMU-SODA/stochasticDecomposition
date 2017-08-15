@@ -65,13 +65,13 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	/* decompose the problem into master and subproblem */
+	/* decompose the problem into stage problems */
 	prob = newProb(orig, stoc, tim, lb, 0.0001);
 	if ( prob == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
 		goto TERMINATE;
 	}
-	printf("Successfully decomposed the problem '%s' for '%s' algorithm.\n", probName, algoName);
+	printf("\nSuccessfully decomposed the problem '%s' for '%s' algorithm.\n", probName, algoName);
 
 #ifdef DECOMPOSE_CHECK
 	printDecomposeSummary(tim, prob);

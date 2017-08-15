@@ -517,8 +517,7 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	}
 
 	/* solve the mean value problem */
-	//MARK: PROB_LP is changed to PROB_Qp
-	status = solveProblem(orig->lp, orig->name, PROB_QP, &status);
+	status = solveProblem(orig->lp, orig->name, PROB_LP, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;
@@ -757,19 +756,27 @@ void freeOmegastuff(omegastuff *omegas) {
 void printDecomposeSummary(timeType *tim, probType **prob) {
 	int t;
 
-	printf("===============================================================================================================================\n");
+	printf("====================================================================================================================================\n");
+	printf("Stage optimization problem for given input s_t = (x_t, omega_t) is in the following form : \n\n");
+	printf("\t\t\t\t h_t(s_t) = c_t*x_t + min d_t*u_t\n");
+	printf("\t\t\t\t                      s.t. D_t u_t = b_t - C_t x_t,\n\n");
+	printf("with the following linear dynamics: x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.\n\n");
+	printf("------------------------------------------------------------------------------------------------------------------------------------\n");
 	printf("Number of stages                   = %d\n", tim->numStages);
 	for ( t = 0; t < tim->numStages; t++ ) {
-		printf("-------------------------------------------------------------------------------------------------------------------------------\n");
+		printf("------------------------------------------------------------------------------------------------------------------------------------\n");
 		printf("Stage %d\n", t);
-		printf("Number of decision variables       = %d\t\t", prob[t]->sp->mac);
+		printf("Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
 		printf("(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
 		printf("Number of constraints              = %d\n", prob[t]->sp->mar);
-		if ( prob[t]->omegas != NULL )
-			printf("Number of random variables         = %d\n", prob[t]->omegas->numRV);
+		if ( prob[t]->omegas != NULL ) {
+			printf("Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+			printf("(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
+					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
+		}
 		else
-			printf("Number of random variables         = 0\n");
+			printf("Number of random variables (omega) = 0\n");
 	}
-	printf("===============================================================================================================================\n");
+	printf("====================================================================================================================================\n");
 
 }//printDecomposeSummary()
