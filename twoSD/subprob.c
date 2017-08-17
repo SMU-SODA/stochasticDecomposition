@@ -17,33 +17,48 @@ extern configType config;
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
 int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
-	vector 	rhs;
+	vector 	rhs, cost;
 	intvec	indices;
-	int  	status, n;
+	int  	status, n, offset = 0, basisIdx;
+	BOOL	newBasisFlag;
 
-    if ( !(indices = (intvec) arr_alloc(prob->num->rows, int)) )
+    if ( !(indices = (intvec) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
         errMsg("allocation", "solve_subporb", "indices", 0);
-    for ( n = 0; n < prob->num->rows; n++ )
+    for ( n = 0; n < max(prob->num->rows,prob->num->cols); n++ )
     	indices[n] = n;
 
 	/* (a) compute the right-hand side using current observation and first-stage solution */
-    rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, cell->omega->vals[omegaIdx]);
+    rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, cell->omega->vals[omegaIdx]+offset);
     if ( rhs == NULL ) {
         errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
         return 1;
     }
 
-    /* change the right-hand side in the solver */
+    /* (b) change the right-hand side in the solver */
     if ( changeRHS(cell->subprob->lp, prob->num->rows, indices, rhs + 1) ) {
         errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
         return 1;
+    }
+
+    offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
+    /* (c) compute the cost coefficients using current observation */
+    cost = computeCostCoeff(prob->num, prob->coord, prob->cBar, cell->omega->vals[omegaIdx], offset);
+    if ( cost == NULL ) {
+    	errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
+    	return 1;
+    }
+
+    /* (d) change cost coefficients in the solver */
+    if ( changeObjx(cell->subprob->lp, prob->num->cols, indices, cost+1) ) {
+    	errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver",0);
+    	return 1;
     }
 
 #if defined(ALGO_CHECK)
     writeProblem(cell->subprob->lp, "subproblem.lp");
 #endif
 
-    /* (c) Solve the subproblem to obtain the optimal dual solution. */
+    /* (e) Solve the subproblem to obtain the optimal dual solution. */
     if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
         if ( status == STAT_INFEASIBLE ) {
             printf("Subproblem is infeasible: need to create feasibility cut.\n");
@@ -69,8 +84,9 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
         errMsg("algorithm", "solveSubprob", "failed to compute mubBar for subproblem", 0);
         return 1;
     }
+    basisIdx = calcBasis(cell->subprob->lp, prob->num->cols, prob->num->rows, cell->basis, &newBasisFlag);
 
-	/* (d) update the stochastic elements in the problem */
+	/* (f) update the stochastic elements in the problem */
 	status = stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
 			cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER, cell->k, cell->piS, cell->mubBar);
 
@@ -81,7 +97,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	printf("Objective function estimate    = %lf\n", obj);
 #endif
 
-	mem_free(rhs); mem_free(indices);
+	mem_free(rhs); mem_free(cost); mem_free(indices);
 	return 0;
 }// END solveSubprob()
 
@@ -107,7 +123,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     Comega.row = coord->omegaRow + num->rvbOmCnt; Comega.val = obs + num->rvbOmCnt;
 
     if (!(rhs =(vector) arr_alloc(num->rows+1, double)))
-        errMsg("Allocation", "computeRhs", "rhs",0);
+        errMsg("allocation", "computeRhs", "rhs",0);
 
     /* Start with the values of b(omega) -- both fixed and varying */
     for (cnt = 1; cnt <= bBar->cnt; cnt++)
@@ -121,6 +137,24 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
 
     return rhs;
 }//END computeRHS()
+
+vector computeCostCoeff(numType *num, coordType *coord, sparseVector *cBar, vector obs, int offset) {
+	vector cost;
+	sparseVector cOmega;
+	int	cnt;
+
+	cOmega.cnt = num->rvcOmCnt; cOmega.col = coord->omegaCol+offset; cOmega.val = obs+offset;
+
+	if ( !(cost = (vector) arr_alloc(num->cols+1, double)) )
+		errMsg("allocation", "computeCostCoeff", "cost", 0);
+
+	for (cnt = 1; cnt <= cBar->cnt; cnt++)
+		cost[cBar->col[cnt]] = cBar->val[cnt];
+	for (cnt = 1; cnt <= cOmega.cnt; cnt++)
+		cost[cOmega.col[cnt]] += cOmega.val[cnt];
+
+	return cost;
+}//END computeCostCoeff()
 
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
     int cnt;

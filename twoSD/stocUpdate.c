@@ -259,17 +259,37 @@ int computeMU(LPptr lp, int numCols, double *mubBar) {
     return 0;
 }//END compute_mu()
 
+/* This function allocates a new basisType data structure which holds all the unique basis discovered by the algorithm. It returns a pointer to the
+ * structure. */
+basisType *newBasis(int numIter, int numCols, int numRows, int wordLength) {
+	basisType *basis;
+
+	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
+		errMsg("allocation", "newBasis", "basis", 0);
+	if ( !(basis->weight = (intvec) arr_alloc(numIter, int)))
+		errMsg("allocation", "newBasis", "basis->weight", 0);
+	if ( !(basis->cCode = (unsigned long **) arr_alloc(numIter, unsigned long *)))
+		errMsg("allocation", "newBasis", "basis->cCode", 0);
+	if ( !(basis->rCode = (unsigned long **) arr_alloc(numIter, unsigned long *)))
+		errMsg("allocation", "newBasis", "basis->rCode", 0);
+	basis->cCodeLen = numCols/wordLength + 2;
+	basis->rCodeLen = numRows/wordLength + 2;
+	basis->cnt = 0;
+
+	return basis;
+}//END newBasis()
+
 /* This function allocates a new lambda structure, with room for num_lambdas lambda vectors of size vect_size.  It returns a pointer to the structure.
  * Only some of the individual lambda vectors are expected to be allocated (according to the num_vect parameter) so that there is room for new
  * lambdas to be created. */
-lambdaType *newLambda(int num_iter, int numLambda, int numRVrows) {
+lambdaType *newLambda(int numIter, int numLambda, int numRVrows) {
     lambdaType *lambda;
     int cnt;
 
     if (!(lambda = (lambdaType *) mem_malloc (sizeof(lambdaType))))
         errMsg("allocation", "new_lambda", "lambda",0);
 
-    if (!(lambda->vals = arr_alloc(num_iter, vector)))
+    if (!(lambda->vals = arr_alloc(numIter, vector)))
         errMsg("allocation", "new_lambda", "lambda->val",0);
 
     for (cnt = 0; cnt < numLambda; cnt++)

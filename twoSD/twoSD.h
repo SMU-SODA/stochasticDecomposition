@@ -24,6 +24,8 @@
 #undef STOCH_CHECK
 #undef ALGO_CHECK
 
+/* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
+configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
 	long long RUN_SEED;			/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
@@ -50,28 +52,29 @@ typedef struct{
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
 }configType;
 
+/* The oneCut and cutsType data structures will be used to hold all information which can completely define the affine minorants (cuts) which
+ * are used to compute the lower bounding function approximations */
 typedef struct {
-	double  alpha;                  /* scalar value for the righ-hand side */
+	double  alpha;                  /* scalar value for the right-hand side */
 	vector  beta;                   /* coefficients of the master problems's primal variables */
 	int 	cutObs;					/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
-	intvec	iStar;					/* indices of maximal pi for each distint observation */
+	intvec	iStar;					/* indices of maximal pi for each distinct observation */
 	BOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
-	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
 	int 	rowNum;					/* row number for master problem in solver */
 }oneCut;
 
 typedef struct {
 	int     cnt;                    /* number of cuts */
-	oneCut  **vals;
+	oneCut  **vals;					/* values which define the set of cuts */
 }cutsType;
 
-/* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Toward
- * this end, pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
+/* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Towards this end,
+ * pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
 typedef struct{
-	double 	pib;
-	vector 	piC;
+	double 	pib;					/* scalar pi x b */
+	vector 	piC;					/* vector pi x C */
 } pixbCType;
 
 /* The lambda structure stores some of the dual variable values from every distinct dual vector obtained during the program.  Each vector contains
@@ -112,41 +115,23 @@ typedef struct {
 	pixbCType 	**vals;
 } deltaType;
 
-/**************************************************************************\
- ** Omega stores the set of observations which have been made so far.
- **
- **   Each observation consists of a vector of realizations of random
- ** variables with discrete distributions.  Since every distribution is
- ** discrete, an observation is just stored as a vector of indices into a
- ** distribution array containing the possible values.  _idx_ is an array
- ** of such vectors.  Each rv occurs in the R vector or T matrix which
- ** (along with the candidate X) make up the rhs of the subproblem.
- **
- **   The _row_ and _col_ arrays give the coordinates in R and T of each rv
- ** realization in a vector.  If _col_ is zero for a given entry, then the
- ** realization comes from R; otherwise, it comes from T.  The field _RT_
- ** represents a vector of actual realizations (as opposed to indices) of
- ** omega for both the Romega and Tomega structures (only one observation's
- ** worth of omega).
- **
- **   The _weight_ field specifies the number of times a particular outcome
- ** has been observed (it starts at 1 when the outcome is first generated,
- ** and increments every time the same outcome is observed again).  _cnt_
- ** just specifies the number of distinct outcomes which have been observed
- ** and stored in the omega structure.
- **
- **   If the problem gets too large, some unexciting omegas may be dropped.
- ** So, _filter_ (same length as _weight_) describes which vectors in the
- ** _idx_ array are actually filled with observations.  _next_ references
- ** the place to start in the _filter_ array when trying to find the next
- ** available position in _idx_.  _most_ represents the number of
- ** elements needed to store all elements in the _idx_ array, from
- ** the first to the last.  (It is the greatest index at which an
- ** observation is stored in the _idx_ array, plus one).   Finally,
- ** _last_ indicates the index of omega from which we started dropping
- ** omegas last time -- so we only "need" to go from omega.most down
- ** to omega.last when dropping them this time (we'll miss some).
- \**************************************************************************/
+/* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
+ * This structure will be at the heart of all calculations related to stochastic updates. */
+typedef struct {
+	int				cnt;		/* Number of unique basis encountered by the algorithm */
+	intvec			weight;		/* Vector of frequency of observation for each unique basis */
+	int				rCodeLen;	/* Length of encoded row status */
+	int				cCodeLen;	/* Length of encoded column status */
+	unsigned long 	**rCode;		/* Encoded row status in the basis */
+	unsigned long	**cCode;		/* Encoded column status in the basis */
+}basisType;
+
+/* The OmegaType data structure stores the set of observations which have been made so far. Each observation consists of a vector
+ * of realizations _vals_ of random variables. Each rv occurs in right-hand side vector, cost coefficient vector or the T matrix
+ * which (along with the candidate first-stage solution) make up the rhs of the subproblem. The _weight_ field specifies the
+ * number of times a particular outcome has been observed (it starts at 1 when the outcome is first generated, and increments
+ * every time the same outcome is observed again).  _cnt_ just specifies the number of distinct outcomes which have been observed
+ ** and stored in the omegaType structure. */
 typedef struct {
 	int 	cnt;
 	intvec	weight;                 /* number of times that an omega is observed */
@@ -160,8 +145,6 @@ typedef struct{
     double  	totCutGenTime;      /* time of generating cuts(cumulated) */
     double		iterTime;        /* time for each iter (solveAgent) */
     double      totTime;     /* total time of doing a iteration for subprob */
-//    vector  	masterIterTime;     /* time for each iter (within the while loop) */
-//    double      totMasterIterTime;  /* time of cumulated iteration time */
 }runTimeType;
 
 typedef struct {
@@ -195,6 +178,7 @@ typedef struct {
 	cutsType    *cuts;              /* optimality cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
 
+	basisType	*basis;				/* hold unique basis identified */
 	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
 	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
 	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
@@ -257,11 +241,13 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 /* subprob.c */
 int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
 vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
+vector computeCostCoeff(numType *num, coordType *coord, sparseVector *cBar, vector obs, int offset);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
+int calcBasis(LPptr lp, int numCols, int numRows, basisType *basis);
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
@@ -298,5 +284,10 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
 int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+
+/* TODO: After merging 2SD_randomCost branch into main, move the following to util.h */
+#define WORDLENGTH 64
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
+BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 
 #endif /* TWOSD_H_ */

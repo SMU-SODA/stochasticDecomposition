@@ -231,7 +231,6 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
 	cut->cutObs   = numSamples;
 	cut->omegaCnt = numIstar;
-	cut->slackCnt = 0;
 	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
