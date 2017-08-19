@@ -115,15 +115,24 @@ typedef struct {
 	pixbCType 	**vals;
 } deltaType;
 
+typedef struct {
+	int				weight;		/* Frequency of observation for each unique basis */
+	unsigned long 	*rCode;		/* Encoded row status in the basis (currently not being used */
+	unsigned long	*cCode;		/* Encoded column status in the basis */
+	int				phiLength;	/* Number of basic columns with random cost coefficients */
+	intvec			phiHeader;	/* Indices of variables in resident phi matrix */
+	vector			*phi;		/* The phi matrix */
+	pixbCType		*sigma;
+	int				ck;
+}oneBasis;
+
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
  * This structure will be at the heart of all calculations related to stochastic updates. */
 typedef struct {
 	int				cnt;		/* Number of unique basis encountered by the algorithm */
-	intvec			weight;		/* Vector of frequency of observation for each unique basis */
 	int				rCodeLen;	/* Length of encoded row status */
 	int				cCodeLen;	/* Length of encoded column status */
-	unsigned long 	**rCode;		/* Encoded row status in the basis */
-	unsigned long	**cCode;		/* Encoded column status in the basis */
+	oneBasis		**vals;		/* a structure for each basis */
 }basisType;
 
 /* The OmegaType data structure stores the set of observations which have been made so far. Each observation consists of a vector
@@ -241,13 +250,13 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 /* subprob.c */
 int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
 vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
-vector computeCostCoeff(numType *num, coordType *coord, sparseVector *cBar, vector obs, int offset);
+vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector obs, int offset);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
-int calcBasis(LPptr lp, int numCols, int numRows, basisType *basis);
+int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVcols, basisType *basis, BOOL *newBasisFlag);
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
@@ -257,6 +266,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, int numCols, double *mubBar);
+basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
+oneBasis *newBasis(int maxPhiLength);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
@@ -289,5 +300,9 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 #define WORDLENGTH 64
 unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
 BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
+
+/* TODO: After merging 2SD_randomCost branch into main, move the following to solver.h */
+int getBasisHead(LPptr lp, intvec head, vector basicX);
+int getBasisInvRow(LPptr lp, int i, vector phi);
 
 #endif /* TWOSD_H_ */

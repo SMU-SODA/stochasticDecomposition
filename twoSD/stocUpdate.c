@@ -259,22 +259,32 @@ int computeMU(LPptr lp, int numCols, double *mubBar) {
     return 0;
 }//END compute_mu()
 
+oneBasis *newBasis(int maxPhiLength) {
+	oneBasis *B;
+
+	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
+		errMsg("allocation", "newBasis", "B", 0);
+	if ( !(B->phiHeader = (intvec) arr_alloc(maxPhiLength, int)) )
+		errMsg("allocation", "newBasis", "B->phiHeader", 0);
+	if ( !(B->phi = (vector *) arr_alloc(maxPhiLength, vector)) )
+		errMsg("allocation", "newBasis", "B->phi", 0);
+	B->phiLength = 0;
+
+	return B;
+}//END newBasis()
+
 /* This function allocates a new basisType data structure which holds all the unique basis discovered by the algorithm. It returns a pointer to the
  * structure. */
-basisType *newBasis(int numIter, int numCols, int numRows, int wordLength) {
+basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 	basisType *basis;
 
 	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
-		errMsg("allocation", "newBasis", "basis", 0);
-	if ( !(basis->weight = (intvec) arr_alloc(numIter, int)))
-		errMsg("allocation", "newBasis", "basis->weight", 0);
-	if ( !(basis->cCode = (unsigned long **) arr_alloc(numIter, unsigned long *)))
-		errMsg("allocation", "newBasis", "basis->cCode", 0);
-	if ( !(basis->rCode = (unsigned long **) arr_alloc(numIter, unsigned long *)))
-		errMsg("allocation", "newBasis", "basis->rCode", 0);
-	basis->cCodeLen = numCols/wordLength + 2;
-	basis->rCodeLen = numRows/wordLength + 2;
+		errMsg("allocation", "newBasisType", "basis", 0);
+	if ( !(basis->vals = (oneBasis **) arr_alloc(numIter, oneBasis *)))
+		errMsg("allocation", "newBasisType", "basis->vals", 0);
 	basis->cnt = 0;
+	basis->cCodeLen = ceil(numCols/wordLength) + 1;
+	basis->rCodeLen = ceil(numRows/wordLength) + 1;
 
 	return basis;
 }//END newBasis()

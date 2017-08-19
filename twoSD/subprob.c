@@ -20,7 +20,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	vector 	rhs, cost;
 	intvec	indices;
 	int  	status, n, offset = 0, basisIdx;
-	BOOL	newBasisFlag;
+	BOOL	newBasisFlag = FALSE;
 
     if ( !(indices = (intvec) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
         errMsg("allocation", "solve_subporb", "indices", 0);
@@ -42,7 +42,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 
     offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
     /* (c) compute the cost coefficients using current observation */
-    cost = computeCostCoeff(prob->num, prob->coord, prob->cBar, cell->omega->vals[omegaIdx], offset);
+    cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, cell->omega->vals[omegaIdx], offset);
     if ( cost == NULL ) {
     	errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
     	return 1;
@@ -76,6 +76,10 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
     printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 
+    /* TODO: Can we restrict recording basis only when the cost coefficients are random? */
+    basisIdx = calcBasis(cell->subprob->lp, prob->num->cols, prob->num->rows, prob->num->rvdOmCnt, prob->coord->rvCols, cell->basis, &newBasisFlag);
+
+    /* record the dual and reduced cost on bounds */
     if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
         errMsg("algorithm", "solveSubprob", "failed to get the dual", 0);
         return 1;
@@ -84,7 +88,6 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
         errMsg("algorithm", "solveSubprob", "failed to compute mubBar for subproblem", 0);
         return 1;
     }
-    basisIdx = calcBasis(cell->subprob->lp, prob->num->cols, prob->num->rows, cell->basis, &newBasisFlag);
 
 	/* (f) update the stochastic elements in the problem */
 	status = stochasticUpdates(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->lambda, cell->sigma,
@@ -138,7 +141,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     return rhs;
 }//END computeRHS()
 
-vector computeCostCoeff(numType *num, coordType *coord, sparseVector *cBar, vector obs, int offset) {
+vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector obs, int offset) {
 	vector cost;
 	sparseVector cOmega;
 	int	cnt;
@@ -148,8 +151,8 @@ vector computeCostCoeff(numType *num, coordType *coord, sparseVector *cBar, vect
 	if ( !(cost = (vector) arr_alloc(num->cols+1, double)) )
 		errMsg("allocation", "computeCostCoeff", "cost", 0);
 
-	for (cnt = 1; cnt <= cBar->cnt; cnt++)
-		cost[cBar->col[cnt]] = cBar->val[cnt];
+	for (cnt = 1; cnt <= dBar->cnt; cnt++)
+		cost[dBar->col[cnt]] = dBar->val[cnt];
 	for (cnt = 1; cnt <= cOmega.cnt; cnt++)
 		cost[cOmega.col[cnt]] += cOmega.val[cnt];
 
