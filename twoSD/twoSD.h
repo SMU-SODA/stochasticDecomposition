@@ -122,7 +122,8 @@ typedef struct {
 	int				phiLength;	/* Number of basic columns with random cost coefficients */
 	intvec			phiHeader;	/* Indices of variables in resident phi matrix */
 	vector			*phi;		/* The phi matrix */
-	pixbCType		*sigma;
+	vector			lambda;
+	pixbCType		sigma;
 	int				ck;
 }oneBasis;
 
@@ -256,18 +257,18 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
-int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVcols, basisType *basis, BOOL *newBasisFlag);
+int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
 int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
                        deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
-int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
+int calcLambda(numType *num, coordType *coord, vector Pi, basisType *basis, int basisIdx, BOOL *newBasisFlag);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
+              int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag);
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
-int computeMU(LPptr lp, int numCols, double *mubBar);
+int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
-oneBasis *newBasis(int maxPhiLength);
+oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);

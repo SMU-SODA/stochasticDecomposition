@@ -11,24 +11,88 @@
 
 #include "twoSD.h"
 
-extern ENVptr	env;
+extern configType 	config;
+extern ENVptr		env;
 
-int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVcols, basisType *basis, BOOL *newBasisFlag) {
-	intvec cstat, rstat, basisHead;;
-	unsigned long *codedRow, *codedCol;
-	int    i, j, cnt;
+int stochastics(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag) {
+	vector 	temp;
+	intvec 	cstat, rstat;
+	int 	basisIdx, lambdaIdx, sigmaIdx;
+	BOOL	stocUpdateFlag, newLambdaFlag, newBasisFlag, newSigmaFlag;
+
+	/* Allocate memory. */
+	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
+		errMsg("allocation", "getIndexNumber", "cstat", 0);
+	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
+		errMsg("allocation", "getIndexNumber", "rstat", 0);
+
+	/* Obtain the status of columns and rows in the basis. */
+	if ( getBasis(cell->subprob->lp, cstat+1, rstat+1) ) {
+		errMsg("algorithm", "stochastics", "failed to get the basis column and row status", 0);
+		return 1;
+	}
+	/* Record the dual and reduced cost on bounds. */
+	if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
+		errMsg("algorithm", "stochastics", "failed to get the dual", 0);
+		return 1;
+	}
+	if ( computeMU(cell->subprob->lp, cstat,  prob->num->cols, &cell->mubBar) ) {
+		errMsg("algorithm", "stochastics", "failed to compute mubBar for subproblem", 0);
+		return 1;
+	}
+	stocUpdateFlag = TRUE;
+
+	/* Update the column of delta structure if a new observation was encountered. */
+	if ( newOmegaFlag )
+		calcDeltaCol(prob->num, prob->coord, cell->lambda, cell->omega->vals[omegaIdx], omegaIdx, cell->delta);
+
+	if ( prob->num->rvdOmCnt > 0 ) {
+		/* If the cost-coefficients are random, update the basis structure. */
+		basisIdx = calcBasis(cell->basis, cell->subprob->lp, cstat, prob->num->cols, rstat, prob->num->rows, prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag);
+
+		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
+			/* TODO: Decompose the dual solution into deterministic and stochastic components. */
+
+		}
+
+		// TODO: If there is a new basis, then the following need to be computed. */
+		/* Extract lambda (dual solutions for rows with random variables in right-hand side) associated with current basis. */
+		cell->basis->vals[basisIdx]->lambda = reduceVector(cell->piS, prob->coord->rvRows, prob->num->rvRowCnt);
+
+		/* Compute the product of deterministic component of decomposed dual solution and deterministic right-hand side */
+		cell->basis->vals[basisIdx]->sigma.pib = vXvSparse(cell->piS, prob->bBar) + cell->mubBar;
+
+		temp = vxMSparse(cell->piS, prob->Cbar, prob->num->prevCols);
+		cell->basis->vals[basisIdx]->sigma.piC = reduceVector(temp, prob->coord->colsC, prob->num->cntCcols);
+		mem_free(temp);
+	}
+	else {
+		/* extract the dual solutions corresponding to rows with random elements in them */
+		lambdaIdx = calcLambda(prob->num, prob->coord, cell->piS, cell->basis, -1, &newBasisFlag);
+
+		/* compute Pi x bBar and Pi x Cbar */
+		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
+	}
+
+	/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
+	/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
+     distinct one due to the variations in sigma*/
+	if (newLambdaFlag)
+		calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
+
+
+	mem_free(cstat); mem_free(rstat);
+	return 0;
+}//End stochastics()
+
+int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag) {
+	unsigned long *codedCol, *codedRow;
+	intvec 	basisHead;
+	int		cnt, i, j;
 
 	/* allocate memory */
-	if ( !(cstat = (intvec) arr_alloc(numCols+1, int)))
-		errMsg("allocation", "getIndexNumber", "cstat", 0);
-	if ( !(rstat = (intvec) arr_alloc(numRows+1, int)))
-		errMsg("allocation", "getIndexNumber", "rstat", 0);
 	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
-
-
-	/* obtain the status of columns and rows in the basis */
-	getBasis(lp, cstat+1, rstat+1);  /* TODO: can incorporate computeMU into this program. */
 
 	/* encode the row and column status */
 	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH);
@@ -47,10 +111,7 @@ int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVc
 
 	/* New basis encountered, add it to the list */
 	(*newBasisFlag) = TRUE;
-	basis->vals[cnt] = newBasis(numRows);
-	basis->vals[cnt]->cCode  = codedCol;
-	basis->vals[cnt]->rCode  = codedRow;
-	basis->vals[cnt]->weight = 1;
+	basis->vals[cnt] = newBasis(numRows, codedCol, codedRow);
 
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
@@ -60,8 +121,8 @@ int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVc
 		if ( basisHead[i] >= 0 ) {
 			/* corresponds to a basic row */
 			j = 1;
-			while ( j <= numCostRVs ) {
-				if ( (costRVcols[j] - 1) == basisHead[i] ) {
+			while ( j <= rvdOmCnt ) {
+				if ( (rvCols[j] - 1) == basisHead[i] ) {
 					/* basis column with random cost coefficient */
 					basis->vals[cnt]->phiHeader[basis->vals[cnt]->phiLength] = basisHead[i];
 					if ( !(basis->vals[cnt]->phi[basis->vals[cnt]->phiLength] = (vector) arr_alloc(numRows, double)) )
@@ -74,22 +135,21 @@ int calcBasis(LPptr lp, int numCols, int numRows, int numCostRVs, intvec costRVc
 		}
 	}
 
-	/* reallocate memory to phi header and matrix */
-	if ( basis->vals[cnt]->phiLength ) {
+	if ( basis->vals[cnt]->phiLength > 0 ) {
+		/* reallocate memory to phi header and matrix */
 		basis->vals[cnt]->phiHeader = (intvec) mem_realloc(basis->vals[cnt]->phiHeader, basis->vals[cnt]->phiLength*sizeof(int));
 		basis->vals[cnt]->phi 		= (vector *) mem_realloc(basis->vals[cnt]->phi, basis->vals[cnt]->phiLength*sizeof(vector));
 	}
 	else {
 		/* If the basis does not include columns that do not have random cost coefficients. */
-		basis->vals[cnt]->phiHeader = NULL;
-		basis->vals[cnt]->phi 		= NULL;
+		mem_free(basis->vals[cnt]->phiHeader); 	basis->vals[cnt]->phiHeader = NULL;
+		mem_free(basis->vals[cnt]->phi);		basis->vals[cnt]->phi 		= NULL;
 	}
 
 	mem_free(basisHead);
-	mem_free(cstat); mem_free(rstat);
-
 	return basis->cnt++;
-}//End calcBasis()
+
+}//END calcBasis()
 
 /* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_ */
 unsigned long *encodeIntvec(intvec stream, int len, int wordLength) { /* TODO: After merging 2SD_randomCost branch into main, move this subroutine to utilities */

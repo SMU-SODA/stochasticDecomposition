@@ -77,7 +77,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 #endif
 
     /* TODO: Can we restrict recording basis only when the cost coefficients are random? */
-    basisIdx = calcBasis(cell->subprob->lp, prob->num->cols, prob->num->rows, prob->num->rvdOmCnt, prob->coord->rvCols, cell->basis, &newBasisFlag);
+//    basisIdx = calcBasis(cell->subprob->lp, prob->num->cols, prob->num->rows, prob->num->rvdOmCnt, prob->coord->rvCols, cell->basis, &newBasisFlag);
 
     /* record the dual and reduced cost on bounds */
     if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
