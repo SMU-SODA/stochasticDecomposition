@@ -24,7 +24,7 @@ int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL n
 	}
 
 	/* (b) create an affine lower bound */
-	cut = SDCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	cut = SDCut(prob->num, prob->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -38,19 +38,13 @@ int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL n
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
-	iType istar_new;
-	iType istar_old;
-	iType 	istar;
 	vector 	piCbarX, beta;
+	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, vari = 1.0;
+	int 	istarAll, istarNew, istar, c, cnt, obs;
 	BOOL    pi_eval_flag = FALSE;
-	double  argmax_all;
-	double  argmax_new;
-	double  argmax_old;
-	double  alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, vari = 1.0;
-	int 	c, cnt, obs;
 
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
@@ -76,33 +70,29 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istar_old = computeIstar(num, coord, sigma, delta, Xvect, piCbarX, obs, numSamples, pi_eval_flag, &argmax_old);
-			istar_new = compute_new_istar(obs, cut, sigma, delta, Xvect, num, coord, piCbarX, &argmax_new, numSamples);
+			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmaxAll);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, TRUE, &argmaxNew);
 
-			if (argmax_new > argmax_old) {
-				argmax_all = argmax_new;
-				istar.sigma = istar_new.sigma;
-				istar.delta = istar_new.delta;
+			if (argmaxNew > argmaxAll) {
+				argmax = argmaxNew; istar = istarNew;
 			}
 			else {
-				argmax_all = argmax_old;
-				istar.sigma = istar_old.sigma;
-				istar.delta = istar_old.delta;
+				argmax = argmaxAll; istar = istarAll;
 			}
 
-			argmax_dif_sum += max(argmax_old - lb, 0) * omega->weight[obs];
-			argmax_all_sum += max(argmax_all - lb, 0) * omega->weight[obs];
+			argmax_dif_sum += max(argmaxAll - lb, 0) * omega->weight[obs];
+			argmax_all_sum += max(argmax - lb, 0) * omega->weight[obs];
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, sigma, delta, Xvect, piCbarX, obs, numSamples, pi_eval_flag, &argmax_all);
+			istar = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax);
 		}
 
-		if ( istar.delta < 0 || istar.sigma < 0) {
+		if ( istar < 0 ) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
 			return NULL;
 		}
-		cut->iStar[obs] = istar.sigma;
+		cut->iStar[obs] = istar;
 
 		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
 		alpha += sigma->vals[istar.sigma].pib * omega->weight[obs];
@@ -146,81 +136,51 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
  * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax) {
-	iType 	ans;
-	ans.delta = 0;
-	ans.sigma = 0;
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
+		int numSamples, BOOL pi_eval, double *argmax) {
 	double 	arg;
-	int 	sigPi, delPi;
-	int     new_pisz;
+	int 	sigmaIdx, lambdaIdx, offset, cnt, i, maxCnt;
+
+	/* initialization */
+	offset = num->rvbOmCnt + num->rvCOmCnt;
 
 	if (pi_eval == TRUE)
-		new_pisz = ictr / 10 + 1;
-	else
-		new_pisz = 0;
+		numSamples = -(numSamples / 10 + 1);
 
-	ictr -= new_pisz;
+	*argmax = -DBL_MAX; maxCnt = 0;
+	/* Run through the list of basis to choose the one which provides the best lower bound */
+	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+		/* I. Compute argument using deterministic component of the dual solution */
+		sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
+		lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
 
-	*argmax = -DBL_MAX;
-	for (sigPi = 0; sigPi < sigma->cnt; sigPi++) {
-		if (sigma->ck[sigPi] <= ictr) {
-			/* Find the row in delta corresponding to this row in sigma */
-			delPi = sigma->lambdaIdx[sigPi];
+		/* a. */
+		arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
 
-			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			arg = sigma->vals[sigPi].pib + delta->vals[delPi][obs].pib - PiCbarX[sigPi];
+		/* b. */
+		arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 
-			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[delPi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
+		/* II. Append argument using values computed from the stochastic component of the dual solution. */
+		for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
+			sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
+			lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
 
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				ans.sigma = sigPi;
-				ans.delta = delPi;
-			}
+			/* a. */
+			arg += omegaVals[offset+basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+
+			/* b. */
+			arg -= omegaVals[offset+basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 		}
+
+		if (arg > (*argmax)) {
+			*argmax = arg;
+			maxCnt = cnt;
+		}
+
 	}
 
-	return ans;
+	return maxCnt;
 }//END computeIstar
-
-// TODO: Redundant function
-iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
-		vector PiCbarX, double *argmax, int ictr) {
-	iType ans;
-	ans.delta = 0;
-	ans.sigma = 0;
-	double arg;
-	int sig_pi, del_pi;
-	int new_pisz;
-
-	new_pisz = ictr / 10 + 1;
-	ictr -= new_pisz; /* evaluate the pi's generated in the last 10% iterations */
-
-	*argmax = -DBL_MAX;
-	for (sig_pi = 0; sig_pi < sigma->cnt; sig_pi++) {
-		if (sigma->ck[sig_pi] > ictr) {
-			/* Find the row in delta corresponding to this row in sigma */
-			del_pi = sigma->lambdaIdx[sig_pi];
-
-			/* Start with (Pi x Rbar) + (Pi x Romega) + (Pi x Tbar) x X */
-			arg = sigma->vals[sig_pi].pib + delta->vals[del_pi][obs].pib
-					- PiCbarX[sig_pi];
-
-			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[del_pi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				ans.sigma = sig_pi;
-				ans.delta = del_pi;
-			}
-		}
-	}
-
-	return ans;
-}//END computer_new_istar
 
 /* This function allocates memory for the arrays inside a single cut, and initializes its values accordingly.  The cut structure
  * itself is assumed to be already allocated.  Note, each beta vector contains room for its one-norm, thought it just gets filled

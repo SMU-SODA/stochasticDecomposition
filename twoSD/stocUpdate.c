@@ -83,47 +83,63 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector obs
  * This vector is then compared with all previous lambda_pi vectors, searching for a duplication. If a duplicate is found, the vector is not added
  * to the structure, and the function returns the index of the duplicate vector. Otherwise, it adds the vector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambdaSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector Pi, double mubBar,
-		int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag) {
-    vector	lambda_pi, piCBar, temp;
-    double pibBar;
+int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag) {
+    int 	pi_idx;
+    vector	lambda_pi;
 
     /* Pull out only those elements in dual vector which have rv's */
     lambda_pi = reduceVector(Pi, coord->rvRows, num->rvRowCnt);
 
-    /* sigma = \pi_t^\top \bar{b}_t - \bar{C}_t^\top \pi_t */
-    pibBar = vXvSparse(Pi, bBar) + mubBar;
+    /* Compare resulting lambda_pi with all previous vectors */
+    for (pi_idx = 0; pi_idx < lambda->cnt; pi_idx++)
+        if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, config.TOLERANCE)) {
+            mem_free(lambda_pi);
+            *newLambdaFlag = FALSE;
+            return pi_idx;
+        }
 
-    temp = vxMSparse(Pi, CBar, num->prevCols);
+    /* Add the vector to lambda structure */
+    lambda->vals[lambda->cnt] = lambda_pi;
+    *newLambdaFlag = TRUE;
+
+    return lambda->cnt++;
+}//END calcLambda
+
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag) {
+    vector	piCBar, temp;
+    double 	pibBar;
+    int 	cnt;
+
+    /* sigma = \pi_t^\top \bar{b}_t - \bar{C}_t^\top \pi_t */
+    pibBar = vXvSparse(pi, bBar) + mubBar;
+
+    temp = vxMSparse(pi, CBar, num->prevCols);
     piCBar = reduceVector(temp, coord->colsC, num->cntCcols);
     mem_free(temp);
 
-    if ( basisIdx < 0 ) {
-    	/* Compare resulting lambda_pi with all previous vectors */
-    	for (basisIdx = 0; basisIdx < basis->cnt; basisIdx++)
-    		if (equalVector(lambda_pi, basis->vals[basisIdx]->lambda, num->rvRowCnt, config.TOLERANCE)) {
-    			if (DBL_ABS(pibBar - basis->vals[basisIdx]->sigma.pib) <= config.TOLERANCE) {
-    				if (equalVector(piCBar, basis->vals[basisIdx]->sigma.piC, num->cntCcols, config.TOLERANCE)) {
-    					mem_free(lambda_pi);
-    					mem_free(piCBar);
-    					(*newBasisFlag) = FALSE;
-    					return basisIdx;
-    				}
-    			}
-    		}
-    	basis->vals[basisIdx] = newBasis(0, NULL, NULL);
-    	(*newBasisFlag) = TRUE;
-    	basis->cnt++;
+    if (!newLambdaFlag){
+        for (cnt = 0; cnt < sigma->cnt; cnt++) {
+            if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= config.TOLERANCE) {
+                if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, config.TOLERANCE))
+                    if(sigma->lambdaIdx[cnt]== idxLambda){
+                        mem_free(piCBar);
+                        (*newSigmaFlag) = FALSE;
+                        return cnt;
+                    }
+            }
+        }
     }
 
-    /* Add the vector to lambda structure */
-    basis->vals[basisIdx]->lambda 	  = lambda_pi;
-    basis->vals[basisIdx]->sigma.pib  = pibBar;
-    basis->vals[basisIdx]->sigma.piC  = piCBar;
-    basis->vals[basisIdx]->ck 		  = iter;
+    (*newSigmaFlag) = TRUE;
+    sigma->vals[sigma->cnt].pib  = pibBar;
+    sigma->vals[sigma->cnt].piC  = piCBar;
+    sigma->lambdaIdx[sigma->cnt] = idxLambda;
+    sigma->ck[sigma->cnt] = iter;
 
-    return 0;
-}//END calcLambda
+    return sigma->cnt++;
+
+}//END calcSigma()
 
 /* This function calculates a new row in the delta structure, based on a new dual vector, lambda_pi, by calculating lambda_pi X b and
  * lambda_pi X C for all previous realizations of b(omega) and C(omega).  It is assumed that the lambda vector is distinct from all previous ones
@@ -240,9 +256,10 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 	if ( maxPhiLength > 0 ) {
 		if ( !(B->phiHeader = (intvec) arr_alloc(maxPhiLength, int)) )
 			errMsg("allocation", "newBasis", "B->phiHeader", 0);
+		if ( !(B->omegaIdx = (intvec) arr_alloc(maxPhiLength, int)) )
+			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
 		if ( !(B->phi = (vector *) arr_alloc(maxPhiLength, vector)) )
 			errMsg("allocation", "newBasis", "B->phi", 0);
-		B->phiLength = 0;
 		B->cCode  = codedCol;
 		B->rCode  = codedRow;
 	}
@@ -250,7 +267,12 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 		B->phiHeader = NULL; B->phi   = NULL;
 		B->cCode 	 = NULL; B->rCode = NULL;
 	}
+	if ( !(B->lambdaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
+		errMsg("allocation", "newBasis", "B->lambdaIdx", 0);
+	if ( !(B->sigmaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
+		errMsg("allocation", "newBasis", "B->sigmaIdx", 0);
 	B->weight = 1;
+	B->phiLength = 0;
 
 	return B;
 }//END newBasis()
@@ -274,14 +296,14 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 /* This function allocates a new lambda structure, with room for num_lambdas lambda vectors of size vect_size.  It returns a pointer to the structure.
  * Only some of the individual lambda vectors are expected to be allocated (according to the num_vect parameter) so that there is room for new
  * lambdas to be created. */
-lambdaType *newLambda(int numIter, int numLambda, int numRVrows) {
+lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows) {
     lambdaType *lambda;
     int cnt;
 
     if (!(lambda = (lambdaType *) mem_malloc (sizeof(lambdaType))))
         errMsg("allocation", "new_lambda", "lambda",0);
 
-    if (!(lambda->vals = arr_alloc(numIter, vector)))
+    if (!(lambda->vals = arr_alloc(maxLambda, vector)))
         errMsg("allocation", "new_lambda", "lambda->val",0);
 
     for (cnt = 0; cnt < numLambda; cnt++)

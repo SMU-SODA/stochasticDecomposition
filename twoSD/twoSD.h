@@ -121,10 +121,10 @@ typedef struct {
 	unsigned long	*cCode;		/* Encoded column status in the basis */
 	int				phiLength;	/* Number of basic columns with random cost coefficients */
 	intvec			phiHeader;	/* Indices of variables in resident phi matrix */
+	intvec			omegaIdx;
+	intvec			lambdaIdx;
+	intvec			sigmaIdx;
 	vector			*phi;		/* The phi matrix */
-	vector			lambda;
-	pixbCType		sigma;
-	int				ck;
 }oneBasis;
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
@@ -232,12 +232,10 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
-oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax);
-iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
-		vector PiCbarX, double *argmax, int ictr);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
+		int numSamples, BOOL pi_eval, double *argmax);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
@@ -259,15 +257,17 @@ oneProblem *newSubproblem(oneProblem *subprob);
 /* stocUpdate.c */
 int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
+int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
-int calcLambdaSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector Pi, double mubBar,
-		int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag);
+int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
+int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
+              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
 oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow);
-lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
+lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
 omegaType *newOmega(int numIter);

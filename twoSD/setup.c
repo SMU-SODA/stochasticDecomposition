@@ -135,7 +135,10 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->mubBar = 0.0;
 
 	/* stochastic elements */
-	length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
+	if ( prob[1]->num->rvdOmCnt > 0 )
+		length = prob[1]->num->rvdOmCnt*config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
+	else
+		length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
 	cell->basis  = newBasisType(config.MAX_ITER, prob[1]->num->cols, prob[1]->num->rows, WORDLENGTH);
 	cell->lambda = newLambda(length, 0, prob[1]->num->rvRowCnt);
 	cell->sigma  = newSigma(length, prob[1]->num->rvColCnt, 0);
