@@ -14,11 +14,10 @@
 extern configType 	config;
 extern ENVptr		env;
 
-int stochastics(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag) {
-	vector 	temp;
+int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag) {
 	intvec 	cstat, rstat;
-	int 	basisIdx, lambdaIdx, sigmaIdx;
-	BOOL	stocUpdateFlag, newLambdaFlag, newBasisFlag, newSigmaFlag;
+	int 	basisIdx;
+	BOOL	newBasisFlag;
 
 	/* Allocate memory. */
 	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
@@ -40,7 +39,6 @@ int stochastics(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag)
 		errMsg("algorithm", "stochastics", "failed to compute mubBar for subproblem", 0);
 		return 1;
 	}
-	stocUpdateFlag = TRUE;
 
 	/* Update the column of delta structure if a new observation was encountered. */
 	if ( newOmegaFlag )
@@ -56,29 +54,18 @@ int stochastics(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag)
 		}
 
 		// TODO: If there is a new basis, then the following need to be computed. */
-		/* Extract lambda (dual solutions for rows with random variables in right-hand side) associated with current basis. */
-		cell->basis->vals[basisIdx]->lambda = reduceVector(cell->piS, prob->coord->rvRows, prob->num->rvRowCnt);
-
-		/* Compute the product of deterministic component of decomposed dual solution and deterministic right-hand side */
-		cell->basis->vals[basisIdx]->sigma.pib = vXvSparse(cell->piS, prob->bBar) + cell->mubBar;
-
-		temp = vxMSparse(cell->piS, prob->Cbar, prob->num->prevCols);
-		cell->basis->vals[basisIdx]->sigma.piC = reduceVector(temp, prob->coord->colsC, prob->num->cntCcols);
-		mem_free(temp);
+		calcLambdaSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, cell->k, cell->basis, basisIdx, &newBasisFlag);
 	}
 	else {
-		/* extract the dual solutions corresponding to rows with random elements in them */
-		lambdaIdx = calcLambda(prob->num, prob->coord, cell->piS, cell->basis, -1, &newBasisFlag);
-
-		/* compute Pi x bBar and Pi x Cbar */
-		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
+		/* The cost coefficients do not have randomness. Update lambda and sigma as based on the dual solutions alone */
+		calcLambdaSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, cell->k, cell->basis, -1, &newBasisFlag);
 	}
 
 	/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
 	/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
      distinct one due to the variations in sigma*/
-	if (newLambdaFlag)
-		calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
+	if (newBasisFlag)
+		calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, basisIdx, cell->delta);
 
 
 	mem_free(cstat); mem_free(rstat);
@@ -139,6 +126,7 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 		/* reallocate memory to phi header and matrix */
 		basis->vals[cnt]->phiHeader = (intvec) mem_realloc(basis->vals[cnt]->phiHeader, basis->vals[cnt]->phiLength*sizeof(int));
 		basis->vals[cnt]->phi 		= (vector *) mem_realloc(basis->vals[cnt]->phi, basis->vals[cnt]->phiLength*sizeof(vector));
+//		basis->vals[cnt]
 	}
 	else {
 		/* If the basis does not include columns that do not have random cost coefficients. */

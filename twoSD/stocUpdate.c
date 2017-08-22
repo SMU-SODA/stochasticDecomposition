@@ -18,29 +18,29 @@ extern configType config;
  * and are added to the appropriate structures.
  * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
  * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
-int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
-    int 	lambdaIdx, sigmaIdx;
-    BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
-
-    /* Only need to calculate column if new observation of omega found */
-    if (newOmegaFlag)
-        calcDeltaCol(num, coord, lambda, omega->vals[omegaIdx], omegaIdx, delta);
-
-    /* extract the dual solutions corresponding to rows with random elements in them */
-//    lambdaIdx = calcLambda(num, coord, pi, lambda, &newLambdaFlag);
-
-    /* compute Pi x bBar and Pi x Cbar */
-    sigmaIdx = calcSigma(num, coord, bBar, Cbar, pi, mubBar, lambdaIdx, newLambdaFlag, iter, sigma, &newSigmaFlag);
-
-    /* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
-    /* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
-     distinct one due to the variations in sigma*/
-    if (newLambdaFlag)
-        calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
-
-    return sigmaIdx;
-}//END stochasticUpdates
+//int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
+//                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
+//    int 	lambdaIdx, sigmaIdx;
+//    BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
+//
+//    /* Only need to calculate column if new observation of omega found */
+//    if (newOmegaFlag)
+//        calcDeltaCol(num, coord, lambda, omega->vals[omegaIdx], omegaIdx, delta);
+//
+//    /* extract the dual solutions corresponding to rows with random elements in them */
+////    lambdaIdx = calcLambda(num, coord, pi, lambda, &newLambdaFlag);
+//
+//    /* compute Pi x bBar and Pi x Cbar */
+////    sigmaIdx = calcSigma(num, coord, bBar, Cbar, pi, mubBar, lambdaIdx, newLambdaFlag, iter, sigma, &newSigmaFlag);
+//
+//    /* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
+//    /* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
+//     distinct one due to the variations in sigma*/
+//    if (newLambdaFlag)
+//        calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
+//
+//    return sigmaIdx;
+//}//END stochasticUpdates
 
 /* This function calculates a new column in the delta structure, based on a new observation of omega. Thus, lambda_pi X C and lambda_pi X b
  * are calculated for all values of lambda_pi, for the new C(omega) and b(omega).  Room in the array has already been allocated, so the function
@@ -83,69 +83,47 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector obs
  * This vector is then compared with all previous lambda_pi vectors, searching for a duplication. If a duplicate is found, the vector is not added
  * to the structure, and the function returns the index of the duplicate vector. Otherwise, it adds the vector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambda(numType *num, coordType *coord, vector Pi, basisType *basis, int basisIdx, BOOL *newBasisFlag) {
-    vector	lambda_pi;
+int calcLambdaSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector Pi, double mubBar,
+		int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag) {
+    vector	lambda_pi, piCBar, temp;
+    double pibBar;
 
     /* Pull out only those elements in dual vector which have rv's */
     lambda_pi = reduceVector(Pi, coord->rvRows, num->rvRowCnt);
+
+    /* sigma = \pi_t^\top \bar{b}_t - \bar{C}_t^\top \pi_t */
+    pibBar = vXvSparse(Pi, bBar) + mubBar;
+
+    temp = vxMSparse(Pi, CBar, num->prevCols);
+    piCBar = reduceVector(temp, coord->colsC, num->cntCcols);
+    mem_free(temp);
 
     if ( basisIdx < 0 ) {
     	/* Compare resulting lambda_pi with all previous vectors */
     	for (basisIdx = 0; basisIdx < basis->cnt; basisIdx++)
     		if (equalVector(lambda_pi, basis->vals[basisIdx]->lambda, num->rvRowCnt, config.TOLERANCE)) {
-    			mem_free(lambda_pi);
-    			*newBasisFlag = FALSE;
-    			return basisIdx;
-    		}
-
-    	/* Add the vector to lambda structure */
-    	basis->vals[basisIdx] = newBasis(0, NULL, NULL);
-        basis->vals[basisIdx]->lambda = lambda_pi;
-        *newBasisFlag = TRUE;
-        return basis->cnt++;
-    }
-    else {
-    	basis->vals[basisIdx]->lambda = lambda_pi;
-    	return basis->cnt;
-    }
-
-}//END calcLambda
-
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-              int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag) {
-    vector	piCBar, temp;
-    double 	pibBar;
-    int 	cnt;
-
-    /* sigma = \pi_t^\top \bar{b}_t - \bar{C}_t^\top \pi_t */
-    pibBar = vXvSparse(pi, bBar) + mubBar;
-
-    temp = vxMSparse(pi, CBar, num->prevCols);
-    piCBar = reduceVector(temp, coord->colsC, num->cntCcols);
-    mem_free(temp);
-
-    if ( basisIdx < 0) {
-    	if ( !newBasisFlag ) {
-    		for (cnt = 0; cnt < basis->cnt; cnt++) {
-    			if (DBL_ABS(pibBar - basis->vals[cnt]->sigma.pib) <= config.TOLERANCE) {
-    				if (equalVector(piCBar, basis->vals[cnt]->sigma.piC, num->cntCcols, config.TOLERANCE))
-    					if(sigma->lambdaIdx[cnt]== idxLambda){
-    						mem_free(piCBar);
-    						(*newBasisFlag) = FALSE;
-    						return cnt;
-    					}
+    			if (DBL_ABS(pibBar - basis->vals[basisIdx]->sigma.pib) <= config.TOLERANCE) {
+    				if (equalVector(piCBar, basis->vals[basisIdx]->sigma.piC, num->cntCcols, config.TOLERANCE)) {
+    					mem_free(lambda_pi);
+    					mem_free(piCBar);
+    					(*newBasisFlag) = FALSE;
+    					return basisIdx;
+    				}
     			}
     		}
-    	}
+    	basis->vals[basisIdx] = newBasis(0, NULL, NULL);
+    	(*newBasisFlag) = TRUE;
+    	basis->cnt++;
     }
 
-    (*newBasisFlag) = TRUE;
-    basis->vals[cnt]->sigma.pib  = pibBar;
-    basis->vals[cnt]->sigma.piC  = piCBar;
-    basis->vals[cnt]->ck = iter;
+    /* Add the vector to lambda structure */
+    basis->vals[basisIdx]->lambda 	  = lambda_pi;
+    basis->vals[basisIdx]->sigma.pib  = pibBar;
+    basis->vals[basisIdx]->sigma.piC  = piCBar;
+    basis->vals[basisIdx]->ck 		  = iter;
 
-    return sigma->cnt++;
-}//END calcSigma()
+    return 0;
+}//END calcLambda
 
 /* This function calculates a new row in the delta structure, based on a new dual vector, lambda_pi, by calculating lambda_pi X b and
  * lambda_pi X C for all previous realizations of b(omega) and C(omega).  It is assumed that the lambda vector is distinct from all previous ones

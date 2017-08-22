@@ -258,12 +258,10 @@ oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
 int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
-int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
+int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
-int calcLambda(numType *num, coordType *coord, vector Pi, basisType *basis, int basisIdx, BOOL *newBasisFlag);
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-              int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag);
+int calcLambdaSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector Pi, double mubBar,
+		int iter, basisType *basis, int basisIdx, BOOL *newBasisFlag);
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
