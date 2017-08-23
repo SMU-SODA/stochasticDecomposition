@@ -28,16 +28,16 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 	/* Obtain the status of columns and rows in the basis. */
 	if ( getBasis(cell->subprob->lp, cstat+1, rstat+1) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
-		return 1;
+		return -1;
 	}
 	/* Record the dual and reduced cost on bounds. */
 	if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
-		return 1;
+		return -1;
 	}
 	if ( computeMU(cell->subprob->lp, cstat,  prob->num->cols, &cell->mubBar) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
-		return 1;
+		return -1;
 	}
 
 	/* Update the column of delta structure if a new observation was encountered. */
@@ -50,7 +50,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 
 		/* If the cost-coefficients are random, update the basis structure. */
 		basisIdx = calcBasis(cell->basis, cell->subprob->lp, cstat, prob->num->cols, rstat, prob->num->rows,
-				prob->coord->rvCols+offset, prob->num->rvdOmCnt, &newBasisFlag);
+				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag);
 
 		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
 			/* Decompose the dual solution into deterministic and stochastic components. */
@@ -58,34 +58,36 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 					cell->basis->vals[basisIdx]->omegaIdx, cell->basis->vals[basisIdx]->phiLength, prob->num->rows);
 		}
 
-		/* Calculations with respect to deterministic component of the dual solution */
-		/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
-		lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag);
-
-		/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
-		cell->basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar,
-				lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
-
-		/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
-		/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
-	     distinct one due to the variations in sigma*/
-		if (newLambdaFlag)
-			calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
-
-		/* Calculations with respect to stochastic component of the dual solution */
-		for (cnt = 0; cnt < cell->basis->vals[basisIdx]->phiLength; cnt++ ) {
+		if ( newBasisFlag ) {
+			/* Calculations with respect to deterministic component of the dual solution */
 			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
-			lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, cell->basis->vals[basisIdx]->phi[cnt], cell->lambda, &newLambdaFlag);
+			lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag);
 
 			/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
-			cell->basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->basis->vals[basisIdx]->phi[cnt], cell->mubBar,
+			cell->basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar,
 					lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
 
 			/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
 			/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
-		     distinct one due to the variations in sigma*/
+	     distinct one due to the variations in sigma*/
 			if (newLambdaFlag)
 				calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
+
+			/* Calculations with respect to stochastic component of the dual solution */
+			for (cnt = 0; cnt < cell->basis->vals[basisIdx]->phiLength; cnt++ ) {
+				/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+				lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, cell->basis->vals[basisIdx]->phi[cnt], cell->lambda, &newLambdaFlag);
+
+				/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+				cell->basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->basis->vals[basisIdx]->phi[cnt], cell->mubBar,
+						lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
+
+				/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
+				/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
+		     distinct one due to the variations in sigma*/
+				if (newLambdaFlag)
+					calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
+			}
 		}
 	}
 	else {
@@ -99,6 +101,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 			cell->basis->vals[cell->basis->cnt] 			  = newBasis(0, NULL, NULL);
 			cell->basis->vals[cell->basis->cnt]->lambdaIdx[0] = lambdaIdx;
 			cell->basis->vals[cell->basis->cnt]->sigmaIdx[0]  = sigmaIdx;
+			basisIdx = cell->basis->cnt++;
 		}
 
 		/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
@@ -108,8 +111,9 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 			calcDeltaRow(config.MAX_ITER, prob->num, prob->coord, cell->omega, cell->lambda, lambdaIdx, cell->delta);
 	}
 
-	mem_free(cstat); mem_free(rstat);
-	return 0;
+	mem_free(cstat);
+	mem_free(rstat);
+	return basisIdx;
 }//End stochasticUpdates()
 
 int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag) {
@@ -163,6 +167,9 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 		}
 	}
 
+#if 1
+	printf("<%d>\n", basis->vals[cnt]->phiLength);fflush(stdout);
+#endif
 	if ( basis->vals[cnt]->phiLength > 0 ) {
 		/* reallocate memory to phi header and matrix */
 		basis->vals[cnt]->phiHeader = (intvec) mem_realloc(basis->vals[cnt]->phiHeader, basis->vals[cnt]->phiLength*sizeof(int));
@@ -200,7 +207,7 @@ unsigned long *encodeIntvec(intvec stream, int len, int wordLength) { /* TODO: A
 	unsigned long *codeWord, temp;
 	int j, group, shift, codeLength;
 
-	codeLength = ceil(len/wordLength) + 1;
+	codeLength = ceil((double) len/ (double) wordLength) + 1;
 
 	if ( !(codeWord = (unsigned long *) arr_alloc(codeLength, unsigned long)))
 		errMsg("allocation", "encodeIntVec", "codeWord", 0);

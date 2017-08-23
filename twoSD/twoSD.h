@@ -21,7 +21,7 @@
 #define NONTRIVIAL 1
 #define INF	DBL_MAX
 
-#undef STOCH_CHECK
+#define STOCH_CHECK
 #undef ALGO_CHECK
 
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
@@ -66,7 +66,7 @@ typedef struct {
 }oneCut;
 
 typedef struct {
-	int     cnt;                    /* number of cuts */
+	int    STOCH_CHECK cnt;                    /* number of cuts */
 	oneCut  **vals;					/* values which define the set of cuts */
 }cutsType;
 
@@ -213,7 +213,7 @@ void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
+int setupAlSTOCH_CHECKgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
 void freeCellType(cellType *cell);
 
@@ -271,6 +271,8 @@ lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
 omegaType *newOmega(int numIter);
+void freeBasisType(basisType *basis);
+void freeOneBasis(oneBasis *B);
 void freeLambdaType(lambdaType *lambda);
 void freeSigmaType(sigmaType *sigma);
 void freeOmegaType(omegaType *omega);

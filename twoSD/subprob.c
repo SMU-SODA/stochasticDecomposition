@@ -77,15 +77,21 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 #endif
 
 	/* (f) update the stochastic elements in the problem */
-	if ( stochasticUpdates(cell, prob, omegaIdx, newOmegaFlag) ) {
-		errMsg("alogrithm", "solveSubprob", "stochastic updates failed", 0);
+	basisIdx = stochasticUpdates(cell, prob, omegaIdx, newOmegaFlag);
+	if ( basisIdx < 0 ) {
+		errMsg("algorithm", "solveSubprob", "stochastic updates failed", 0);
 		return 1;
 	}
 
 #if defined(STOCH_CHECK)
-	obj = cell->sigma->vals[status].pib - vXv(cell->sigma->vals[status].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
-	obj += cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].pib - vXv(cell->delta->vals[cell->sigma->lambdaIdx[status]][omegaIdx].piC,
-			cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
+	int sigmaIdx, lambdaIdx;
+	for ( n = 0; n <= cell->basis->vals[basisIdx]->phiLength; n++ ) {
+		sigmaIdx = cell->basis->vals[basisIdx]->sigmaIdx[n];
+		lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[n];
+		obj = cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
+		obj += cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
+				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
+	}
 	printf("Objective function estimate    = %lf\n", obj);
 #endif
 

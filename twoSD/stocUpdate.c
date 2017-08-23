@@ -243,7 +243,7 @@ int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar) {
         }
     }
 
-    mem_free(u); mem_free(cstat); mem_free(dj);
+    mem_free(u); mem_free(dj);
 
     return 0;
 }//END compute_mu()
@@ -292,6 +292,40 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 
 	return basis;
 }//END newBasis()
+
+void freeBasisType(basisType *basis) {
+	int n;
+
+	if ( basis ) {
+		if ( basis->vals ) {
+			for ( n = 0; n < basis->cnt; n++ )
+				freeOneBasis(basis->vals[n]);
+			mem_free(basis->vals);
+		}
+		mem_free(basis);
+	}
+
+}//END freeBasisType
+
+void freeOneBasis(oneBasis *B) {
+	int n;
+
+	if ( B ) {
+		if (B->cCode) mem_free(B->cCode);
+		if (B->rCode) mem_free(B->rCode);
+		if (B->lambdaIdx) mem_free(B->lambdaIdx);
+		if (B->sigmaIdx) mem_free(B->sigmaIdx);
+		if (B->omegaIdx) mem_free(B->omegaIdx);
+		if (B->phiHeader) mem_free(B->phiHeader);
+		if ( B->phi) {
+			for ( n = 0; n < B->phiLength; n++ )
+				if ( B->phi[n] ) mem_free(B->phi[n]);
+			mem_free(B->phi);
+		}
+		mem_free(B);
+	}
+
+}//END freeOneBasis
 
 /* This function allocates a new lambda structure, with room for num_lambdas lambda vectors of size vect_size.  It returns a pointer to the structure.
  * Only some of the individual lambda vectors are expected to be allocated (according to the num_vect parameter) so that there is room for new

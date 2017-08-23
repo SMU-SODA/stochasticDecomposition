@@ -193,6 +193,7 @@ void freeCellType(cellType *cell) {
 		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts);
 		if (cell->fcuts) freeCutsType(cell->fcuts);
+		if (cell->basis) freeBasisType(cell->basis);
 		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt);
 		if (cell->omega) freeOmegaType(cell->omega);
 		if (cell->lambda) freeLambdaType(cell->lambda);

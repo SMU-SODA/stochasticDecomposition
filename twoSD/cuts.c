@@ -43,7 +43,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	oneCut *cut;
 	vector 	piCbarX, beta;
 	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, vari = 1.0;
-	int 	istarAll, istarNew, istar, c, cnt, obs;
+	int 	istarAll, istarNew, istar, c, cnt, obs, offset;
 	BOOL    pi_eval_flag = FALSE;
 
 	/* allocate memory to hold a new cut */
@@ -60,18 +60,16 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		pi_eval_flag = TRUE;
 
 	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
-	for (cnt = 0; cnt < sigma->cnt; cnt++) {
-		piCbarX[cnt] = 0;
-		for (c = 1; c <= num->cntCcols; c++)
-			piCbarX[cnt] += sigma->vals[cnt].piC[c] * Xvect[coord->colsC[c]];
-	}
+	for (cnt = 0; cnt < sigma->cnt; cnt++)
+		piCbarX[cnt] = vXv(sigma->vals[cnt].piC, Xvect, coord->colsC, num->cntCcols);
 
+	offset = num->rvbOmCnt + num->rvCOmCnt;
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmaxAll);
-			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, TRUE, &argmaxNew);
+			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, pi_eval_flag, &argmaxAll);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, TRUE, &argmaxNew);
 
 			if (argmaxNew > argmaxAll) {
 				argmax = argmaxNew; istar = istarNew;
@@ -95,13 +93,21 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		cut->iStar[obs] = istar;
 
 		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-		alpha += sigma->vals[istar.sigma].pib * omega->weight[obs];
-		alpha += delta->vals[istar.delta][obs].pib * omega->weight[obs];
+		alpha = (sigma->vals[basis->vals[istar]->sigmaIdx[0]].pib + delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].pib)* omega->weight[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
-			beta[coord->colsC[c]] += sigma->vals[istar.sigma].piC[c] * omega->weight[obs];
+			beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[0]].piC[c] * omega->weight[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
-			beta[coord->rvCols[c]] += delta->vals[istar.delta][obs].piC[c] * omega->weight[obs];
+			beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].piC[c] * omega->weight[obs];
+
+		if ( basis->vals[istar]->phiLength > 0 ) {
+			for ( c = 1; c <= basis->vals[istar]->phiLength; c++ )
+				alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[c]].pib + delta->vals[basis->vals[istar]->lambdaIdx[c]][obs].pib)*omega->vals[obs][offset+basis->vals[istar]->omegaIdx[c]]*omega->weight[obs];
+			for (c = 1; c <= num->cntCcols; c++)
+				beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[c]].piC[c] * omega->weight[obs];
+			for (c = 1; c <= num->rvColCnt; c++)
+				beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[c]][obs].piC[c] * omega->weight[obs];
+		}
 	}
 
 	if (pi_eval_flag == TRUE) {
@@ -139,10 +145,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
 		int numSamples, BOOL pi_eval, double *argmax) {
 	double 	arg;
-	int 	sigmaIdx, lambdaIdx, offset, cnt, i, maxCnt;
-
-	/* initialization */
-	offset = num->rvbOmCnt + num->rvCOmCnt;
+	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt;
 
 	if (pi_eval == TRUE)
 		numSamples = -(numSamples / 10 + 1);
@@ -166,10 +169,10 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 			lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
 
 			/* a. */
-			arg += omegaVals[offset+basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+			arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
 
 			/* b. */
-			arg -= omegaVals[offset+basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
+			arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 		}
 
 		if (arg > (*argmax)) {
