@@ -213,7 +213,7 @@ void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
-int setupAlSTOCH_CHECKgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
 void freeCellType(cellType *cell);
 
@@ -305,5 +305,6 @@ BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 /* TODO: After merging 2SD_randomCost branch into main, move the following to solver.h */
 int getBasisHead(LPptr lp, intvec head, vector basicX);
 int getBasisInvRow(LPptr lp, int i, vector phi);
+int getBasisInvCol(LPptr lp, int i, vector phi);
 
 #endif /* TWOSD_H_ */

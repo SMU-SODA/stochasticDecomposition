@@ -54,7 +54,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 
 		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
 			/* Decompose the dual solution into deterministic and stochastic components. */
-			decomposeDualSolution(cell->basis->vals[basisIdx]->phi, cell->omega->vals[omegaIdx]+offset, cell->piS,
+			decomposeDualSolution(cell->basis->vals[basisIdx]->phi, cell->omega->vals[omegaIdx]+offset+1, cell->piS,
 					cell->basis->vals[basisIdx]->omegaIdx, cell->basis->vals[basisIdx]->phiLength, prob->num->rows);
 		}
 
@@ -121,10 +121,6 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 	intvec 	basisHead;
 	int		cnt, i, j;
 
-	/* allocate memory */
-	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
-		errMsg("allocation", "calcBasis", "basisHead", 0);
-
 	/* encode the row and column status */
 	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH);
 	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH);
@@ -135,10 +131,21 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 			/* The basis is the same as one encountered before */
 			basis->vals[cnt]->weight++;
 			mem_free(codedRow); mem_free(codedCol);
+#if defined (STOCH_CHECK)
+			if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
+				errMsg("allocation", "calcBasis", "basisHead", 0);
+			getBasisHead(lp, basisHead+1, NULL);
+			printf("An old basis encountered :: %d\n", cnt);
+			mem_free(basisHead);
+#endif
 			(*newBasisFlag) = FALSE;
 			return cnt;
 		}
 	}
+
+	/* allocate memory */
+	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
+		errMsg("allocation", "calcBasis", "basisHead", 0);
 
 	/* New basis encountered, add it to the list */
 	(*newBasisFlag) = TRUE;
@@ -147,7 +154,7 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
 
-	/* Compute the phi matrix header and extract the basis inverse matrix rows corresponding to the header */
+	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
 	for ( i = 1; i <= numRows; i++ ) {
 		if ( basisHead[i] >= 0 ) {
 			/* corresponds to a basic row */
@@ -155,11 +162,11 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 			while ( j <= rvdOmCnt ) {
 				if ( (rvCols[j] - 1) == basisHead[i] ) {
 					/* basis column with random cost coefficient */
-					basis->vals[cnt]->phiHeader[basis->vals[cnt]->phiLength] = basisHead[i];
-					basis->vals[cnt]->omegaIdx[basis->vals[cnt]->phiLength] = j;
+					basis->vals[cnt]->phiHeader[basis->vals[cnt]->phiLength+1] = basisHead[i];
+					basis->vals[cnt]->omegaIdx[basis->vals[cnt]->phiLength+1] = j;
 					if ( !(basis->vals[cnt]->phi[basis->vals[cnt]->phiLength] = (vector) arr_alloc(numRows+1, double)) )
 						errMsg("allocation", "calcBasis", "basis->vals[cnt]->phi[i]", 0);
-					getBasisInvRow(lp, i, basis->vals[cnt]->phi[basis->vals[cnt]->phiLength]+1);
+					getBasisInvRow(lp, i-1, basis->vals[cnt]->phi[basis->vals[cnt]->phiLength]+1);
 					basis->vals[cnt]->phiLength++;
 				}
 				j++;
@@ -167,14 +174,11 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 		}
 	}
 
-#if 1
-	printf("<%d>\n", basis->vals[cnt]->phiLength);fflush(stdout);
-#endif
 	if ( basis->vals[cnt]->phiLength > 0 ) {
 		/* reallocate memory to phi header and matrix */
 		basis->vals[cnt]->phiHeader = (intvec) mem_realloc(basis->vals[cnt]->phiHeader, basis->vals[cnt]->phiLength*sizeof(int));
 		basis->vals[cnt]->phi 		= (vector *) mem_realloc(basis->vals[cnt]->phi, basis->vals[cnt]->phiLength*sizeof(vector));
-		basis->vals[cnt]->omegaIdx = (intvec) mem_realloc(basis->vals[cnt]->omegaIdx, basis->vals[cnt]->phiLength*sizeof(int));
+		basis->vals[cnt]->omegaIdx = (intvec) mem_realloc(basis->vals[cnt]->omegaIdx, (basis->vals[cnt]->phiLength+1)*sizeof(int));
 		basis->vals[cnt]->lambdaIdx = (intvec) mem_realloc(basis->vals[cnt]->lambdaIdx, (basis->vals[cnt]->phiLength+1)*sizeof(int));
 		basis->vals[cnt]->sigmaIdx = (intvec) mem_realloc(basis->vals[cnt]->sigmaIdx, (basis->vals[cnt]->phiLength+1)*sizeof(int));
 	}
@@ -186,6 +190,24 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 		basis->vals[cnt]->lambdaIdx = (intvec) mem_realloc(basis->vals[cnt]->lambdaIdx, sizeof(int));
 		basis->vals[cnt]->sigmaIdx = (intvec) mem_realloc(basis->vals[cnt]->sigmaIdx, sizeof(int));
 	}
+
+#if defined (STOCH_CHECK)
+	printf("New basis identified     :: %d\n", cnt);
+	printf("\tNumber of basic stochastic columns = %d\n", basis->vals[cnt]->phiLength);
+	if ( basis->vals[cnt]->phiLength > 0 ) {
+		printf("\tBasic stochastic columns           = "); printIntvec(basis->vals[cnt]->phiHeader, basis->vals[cnt]->phiLength, NULL);
+		printf("\tStochastic cost variable           = "); printIntvec(basis->vals[cnt]->omegaIdx, basis->vals[cnt]->phiLength, NULL);
+		printf("\tPhi = ");
+		for (i = 0; i < basis->vals[cnt]->phiLength; i++ ) {
+			printf("\t\t"); printVector(basis->vals[cnt]->phi[i], numRows, NULL);
+		}
+	}
+	else {
+		printf("\tBasic stochastic columns           = NULL\n");
+		printf("\tStochastic cost variable           = NULL\n");
+		printf("\tPhi                                = NULL\n");
+	}
+#endif
 
 	mem_free(basisHead);
 	return basis->cnt++;
@@ -246,6 +268,16 @@ int getBasisInvRow(LPptr lp, int i, vector phi) {
 	int status;
 
 	status = CPXbinvrow(env, lp, i, phi);
+	if ( status )
+		solverErrmsg(status);
+
+	return status;
+}//END getBasicInvRow()
+
+int getBasisInvCol(LPptr lp, int i, vector phi) {
+	int status;
+
+	status = CPXbinvcol(env, lp, i, phi);
 	if ( status )
 		solverErrmsg(status);
 

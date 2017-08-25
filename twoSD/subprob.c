@@ -20,7 +20,6 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	vector 	rhs, cost;
 	intvec	indices;
 	int  	status, n, offset = 0, basisIdx;
-	BOOL	newBasisFlag = FALSE;
 
 	if ( !(indices = (intvec) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
 		errMsg("allocation", "solve_subporb", "indices", 0);
@@ -84,13 +83,18 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	}
 
 #if defined(STOCH_CHECK)
-	int sigmaIdx, lambdaIdx;
+	int sigmaIdx, lambdaIdx; double multiplier;
+	obj = 0;
 	for ( n = 0; n <= cell->basis->vals[basisIdx]->phiLength; n++ ) {
 		sigmaIdx = cell->basis->vals[basisIdx]->sigmaIdx[n];
 		lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[n];
-		obj = cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
-		obj += cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
-				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
+		if ( n == 0 )
+			multiplier = 1.0;
+		else
+			multiplier = cell->omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[basisIdx]->omegaIdx[n]];
+		obj += multiplier*(cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
+		obj += multiplier*(cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
+				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt));
 	}
 	printf("Objective function estimate    = %lf\n", obj);
 #endif
@@ -141,7 +145,7 @@ vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vect
 	sparseVector cOmega;
 	int	cnt;
 
-	cOmega.cnt = num->rvcOmCnt; cOmega.col = coord->omegaCol+offset; cOmega.val = obs+offset;
+	cOmega.cnt = num->rvdOmCnt; cOmega.col = coord->omegaCol+offset; cOmega.val = obs+offset;
 
 	if ( !(cost = (vector) arr_alloc(num->cols+1, double)) )
 		errMsg("allocation", "computeCostCoeff", "cost", 0);

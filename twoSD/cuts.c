@@ -101,12 +101,13 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].piC[c] * omega->weight[obs];
 
 		if ( basis->vals[istar]->phiLength > 0 ) {
-			for ( c = 1; c <= basis->vals[istar]->phiLength; c++ )
-				alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[c]].pib + delta->vals[basis->vals[istar]->lambdaIdx[c]][obs].pib)*omega->vals[obs][offset+basis->vals[istar]->omegaIdx[c]]*omega->weight[obs];
-			for (c = 1; c <= num->cntCcols; c++)
-				beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[c]].piC[c] * omega->weight[obs];
-			for (c = 1; c <= num->rvColCnt; c++)
-				beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[c]][obs].piC[c] * omega->weight[obs];
+			for ( cnt = 1; cnt <= basis->vals[istar]->phiLength; cnt++ ) {
+				alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].pib)*omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]*omega->weight[obs];
+				for (c = 1; c <= num->cntCcols; c++)
+					beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].piC[c] * omega->weight[obs];
+				for (c = 1; c <= num->rvColCnt; c++)
+					beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].piC[c] * omega->weight[obs];
+			}
 		}
 	}
 

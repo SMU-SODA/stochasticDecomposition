@@ -256,10 +256,10 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 	if ( maxPhiLength > 0 ) {
 		if ( !(B->phiHeader = (intvec) arr_alloc(maxPhiLength, int)) )
 			errMsg("allocation", "newBasis", "B->phiHeader", 0);
-		if ( !(B->omegaIdx = (intvec) arr_alloc(maxPhiLength, int)) )
-			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
 		if ( !(B->phi = (vector *) arr_alloc(maxPhiLength, vector)) )
 			errMsg("allocation", "newBasis", "B->phi", 0);
+		if ( !(B->omegaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
+			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
 		B->cCode  = codedCol;
 		B->rCode  = codedRow;
 	}
