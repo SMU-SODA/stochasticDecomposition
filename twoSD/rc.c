@@ -49,7 +49,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
 
 		/* If the cost-coefficients are random, update the basis structure. */
-		basisIdx = calcBasis(cell->basis, cell->subprob->lp, cstat, prob->num->cols, rstat, prob->num->rows,
+		basisIdx = calcBasis(cell->subprob->lp, cell->basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
 				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag);
 
 		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
@@ -116,8 +116,9 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 	return basisIdx;
 }//End stochasticUpdates()
 
-int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag) {
+int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag) {
 	unsigned long *codedCol, *codedRow;
+	vector	costVector;
 	intvec 	basisHead;
 	int		cnt, i, j;
 
@@ -150,6 +151,8 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
 
+	/* Compute the Phi matrix header (namely, basic columns with random cost coefficients. */
+
 	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
 	for ( i = 1; i <= numRows; i++ ) {
 		if ( basisHead[i] >= 0 ) {
@@ -170,15 +173,32 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 		}
 	}
 
-	/* Compute the psi matrix is the tableau entries */
+	/* Extract the basic variable cost vector and psi matrix (the tableau entries) */
+	vector tempPsiRow;
+	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
 
-	for ( i = 1; i <= numCols; i ++ ) {
-		if ( !(basis->vals[cnt]->psi[i-1] = (vector) arr_alloc(numRows+1, double)) )
-			errMsg("allocation", "calcBasis", "basis->vals[cnt]->phi[i]", 0);
-		getBasisInvACol(lp, i-1, basis->vals[cnt]->psi[i-1]+1);
+	basis->vals[cnt]->psi->val = (vector) arr_alloc(numRows*basis->vals[cnt]->phiLength+1, double);
+	basis->vals[cnt]->psi->col = (intvec) arr_alloc(numRows*basis->vals[cnt]->phiLength+1, int);
+	basis->vals[cnt]->psi->row = (intvec) arr_alloc(numRows*basis->vals[cnt]->phiLength+1, int);
+	basis->vals[cnt]->psi->cnt = 0;
 
+	if ( !(tempPsiRow = (vector) arr_alloc(numRows+1, double)) )
+		errMsg("allocation", "calcBasis", "tempPsiRow", 0);
 
+	for ( i = 1; i <= numCols; i++ ) {
+		getBasisInvACol(lp, numRows, tempPsiRow+1);
+
+		basis->vals[cnt]->g[i] = costVector[i] - vXv(tempPsiRow, costVector, basisHead, numRows);
+
+		for ( j = 1; j <= basis->vals[cnt]->phiLength; j++ ) {
+			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt] = tempPsiRow[rvCols[basis->vals[cnt]->phiHeader[j]]];
+			basis->vals[cnt]->psi->row[basis->vals[cnt]->psi->cnt] = i;
+			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt] = basis->vals[cnt]->phiHeader[j];
+			basis->vals[cnt]->psi->cnt++;
+		}
 	}
+
+
 
 	if ( basis->vals[cnt]->phiLength > 0 ) {
 		/* reallocate memory to phi header and matrix */
@@ -310,4 +330,34 @@ int getBasisInvACol(LPptr lp, int i, vector phi) {
 	return status;
 }//END getBasicInvRow()
 
+/* This subroutine extracts elements which are common to the two input integer vectors _a_ and _b_ */
+intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
+	intvec inter;
+	int	cnt, n;
+
+	if ( !(inter = (intvec) arr_alloc(max(lenA, lenB)+1, int)) )
+		errMsg("allocation", "intvecIntersect", "inter", 0);
+
+	cnt = 1;
+	for ( n = 1; n <= lenA; n++ )
+		if ( isElementIntvec(b, lenB, a[n]) )
+			inter[cnt++] = a[n];
+
+	return inter;
+
+}//END intvecIntersect()
+
+/* This subroutine checks to see if a integer scalar is an element of integer vector. If so, the subroutine will return the index. If not, a value of -1 is returned. */
+int isElementIntvec(intvec vec, int lenVec, int elem) {
+	int n = 1;
+
+	while ( vec[n] != elem && n <= lenVec )
+		n++;
+
+	if ( n == (lenVec+1) )
+		return -1;
+	else
+		return n;
+
+}
 

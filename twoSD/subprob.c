@@ -124,12 +124,8 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
 	Comega.cnt = num->rvCOmCnt; Comega.col = coord->omegaCol + num->rvbOmCnt;
 	Comega.row = coord->omegaRow + num->rvbOmCnt; Comega.val = obs + num->rvbOmCnt;
 
-	if (!(rhs =(vector) arr_alloc(num->rows+1, double)))
-		errMsg("allocation", "computeRhs", "rhs",0);
-
 	/* Start with the values of b(omega) -- both fixed and varying */
-	for (cnt = 1; cnt <= bBar->cnt; cnt++)
-		rhs[bBar->col[cnt]] +=  bBar->val[cnt];
+	rhs = expandVector(bBar->val, bBar->col, bBar->cnt, num->rows);
 	for (cnt = 1; cnt <= bomega.cnt; cnt++)
 		rhs[bomega.col[cnt]] += bomega.val[cnt];
 
@@ -147,11 +143,7 @@ vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vect
 
 	cOmega.cnt = num->rvdOmCnt; cOmega.col = coord->omegaCol+offset; cOmega.val = obs+offset;
 
-	if ( !(cost = (vector) arr_alloc(num->cols+1, double)) )
-		errMsg("allocation", "computeCostCoeff", "cost", 0);
-
-	for (cnt = 1; cnt <= dBar->cnt; cnt++)
-		cost[dBar->col[cnt]] = dBar->val[cnt];
+	cost = expandVector(dBar->val, dBar->col, dBar->cnt, num->cols);
 	for (cnt = 1; cnt <= cOmega.cnt; cnt++)
 		cost[cOmega.col[cnt]] += cOmega.val[cnt];
 

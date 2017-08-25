@@ -126,7 +126,7 @@ typedef struct {
 	intvec			sigmaIdx;
 	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
 	vector			g;
-	vector			*psi;
+	sparseMatrix	*psi;
 }oneBasis;
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
@@ -257,7 +257,7 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
-int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
+int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
 int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
@@ -303,6 +303,8 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 #define WORDLENGTH 64
 unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
 BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
+int isElementIntvec(intvec vec, int lenVec, int elem);
+intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB);
 
 /* TODO: After merging 2SD_randomCost branch into main, move the following to solver.h */
 int getBasisHead(LPptr lp, intvec head, vector basicX);

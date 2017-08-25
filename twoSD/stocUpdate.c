@@ -260,11 +260,10 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 			errMsg("allocation", "newBasis", "B->phi", 0);
 		if ( !(B->omegaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
 			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
-		if ( !(B->g = (vector) arr_alloc(numCols, double)) )
+		if ( !(B->g = (vector) arr_alloc(numCols+1, double)) )
 			errMsg("allocation", "newBasis", "B->g", 0);
-		if ( !(B->psi = (vector *) arr_alloc(numCols, vector)) )
-			errMsg("allocation", "newBasis", "B->phi", 0);
-
+		if ( !(B->psi = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
+			errMsg("allocation", "newBasis", "B->psi", 0);
 		B->cCode  = codedCol;
 		B->rCode  = codedRow;
 	}
