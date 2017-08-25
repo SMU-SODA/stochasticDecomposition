@@ -271,7 +271,7 @@ double smooth(double new, double old, double factor) {
 	return factor*new + (1-factor)*old;
 }//END smooth();
 
-vector reduceVector(vector f_vect, int *row, int num_elem){
+vector reduceVector(vector f_vect, intvec row, int num_elem){
 	int		cnt;
 	double 	*s_vect;
 
