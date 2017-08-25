@@ -436,7 +436,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		prob[t]->coord->colsC = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
 	}
 
-	/* modify the bBar and Cbar with mean values computed from stoch file */
+	/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
 	cOffset = 0;
 	for ( t = 1; t < tim->numStages; t++ ) {
 		for ( m = 1; m <= prob[t]->num->numRV; m++ ) {
@@ -448,6 +448,15 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 					i++;
 				}
 				prob[t]->bBar->val[i] = stoc->mean[cOffset+m-1];
+			}
+			else if (prob[t]->coord->omegaRow[m] == -1) {
+				i = 1;
+				while ( i <= prob[t]->dBar->cnt) {
+					if ( prob[t]->dBar->col[i] == prob[t]->coord->omegaCol[m])
+						break;
+					i++;
+				}
+				prob[t]->dBar->val[i] = stoc->mean[cOffset+m-1];
 			}
 			else {
 				i = 1;
