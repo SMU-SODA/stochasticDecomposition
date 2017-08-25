@@ -124,7 +124,9 @@ typedef struct {
 	intvec			omegaIdx;
 	intvec			lambdaIdx;
 	intvec			sigmaIdx;
-	vector			*phi;		/* The phi matrix */
+	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
+	vector			g;
+	vector			*psi;
 }oneBasis;
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
@@ -266,7 +268,7 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
-oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow);
+oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow, int numCols);
 lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
@@ -306,5 +308,7 @@ BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 int getBasisHead(LPptr lp, intvec head, vector basicX);
 int getBasisInvRow(LPptr lp, int i, vector phi);
 int getBasisInvCol(LPptr lp, int i, vector phi);
+int getBasisInvARow(LPptr lp, int i, vector phi);
+int getBasisInvACol(LPptr lp, int i, vector phi);
 
 #endif /* TWOSD_H_ */

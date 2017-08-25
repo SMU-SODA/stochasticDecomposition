@@ -98,7 +98,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
 
 		if ( newSigmaFlag ) {
-			cell->basis->vals[cell->basis->cnt] 			  = newBasis(0, NULL, NULL);
+			cell->basis->vals[cell->basis->cnt] 			  = newBasis(0, NULL, NULL, prob->num->cols);
 			cell->basis->vals[cell->basis->cnt]->lambdaIdx[0] = lambdaIdx;
 			cell->basis->vals[cell->basis->cnt]->sigmaIdx[0]  = sigmaIdx;
 			basisIdx = cell->basis->cnt++;
@@ -132,24 +132,20 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 			basis->vals[cnt]->weight++;
 			mem_free(codedRow); mem_free(codedCol);
 #if defined (STOCH_CHECK)
-			if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
-				errMsg("allocation", "calcBasis", "basisHead", 0);
-			getBasisHead(lp, basisHead+1, NULL);
 			printf("An old basis encountered :: %d\n", cnt);
-			mem_free(basisHead);
 #endif
 			(*newBasisFlag) = FALSE;
 			return cnt;
 		}
 	}
 
-	/* allocate memory */
+	/* Allocate memory for the basis header. */
 	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
 
 	/* New basis encountered, add it to the list */
 	(*newBasisFlag) = TRUE;
-	basis->vals[cnt] = newBasis(numRows, codedCol, codedRow);
+	basis->vals[cnt] = newBasis(numRows, codedCol, codedRow, numCols);
 
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
@@ -172,6 +168,16 @@ int calcBasis(basisType *basis, LPptr lp, intvec cstat, int numCols, intvec rsta
 				j++;
 			}
 		}
+	}
+
+	/* Compute the psi matrix is the tableau entries */
+
+	for ( i = 1; i <= numCols; i ++ ) {
+		if ( !(basis->vals[cnt]->psi[i-1] = (vector) arr_alloc(numRows+1, double)) )
+			errMsg("allocation", "calcBasis", "basis->vals[cnt]->phi[i]", 0);
+		getBasisInvACol(lp, i-1, basis->vals[cnt]->psi[i-1]+1);
+
+
 	}
 
 	if ( basis->vals[cnt]->phiLength > 0 ) {
@@ -283,3 +289,25 @@ int getBasisInvCol(LPptr lp, int i, vector phi) {
 
 	return status;
 }//END getBasicInvRow()
+
+int getBasisInvARow(LPptr lp, int i, vector phi) {
+	int status;
+
+	status = CPXbinvarow(env, lp, i, phi);
+	if ( status )
+		solverErrmsg(status);
+
+	return status;
+}//END getBasicInvRow()
+
+int getBasisInvACol(LPptr lp, int i, vector phi) {
+	int status;
+
+	status = CPXbinvacol(env, lp, i, phi);
+	if ( status )
+		solverErrmsg(status);
+
+	return status;
+}//END getBasicInvRow()
+
+

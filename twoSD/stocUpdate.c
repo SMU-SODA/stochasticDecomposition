@@ -248,7 +248,7 @@ int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar) {
     return 0;
 }//END compute_mu()
 
-oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow) {
+oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow, int numCols) {
 	oneBasis *B;
 
 	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
@@ -260,12 +260,18 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 			errMsg("allocation", "newBasis", "B->phi", 0);
 		if ( !(B->omegaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
 			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
+		if ( !(B->g = (vector) arr_alloc(numCols, double)) )
+			errMsg("allocation", "newBasis", "B->g", 0);
+		if ( !(B->psi = (vector *) arr_alloc(numCols, vector)) )
+			errMsg("allocation", "newBasis", "B->phi", 0);
+
 		B->cCode  = codedCol;
 		B->rCode  = codedRow;
 	}
 	else {
 		B->phiHeader = NULL; B->phi   = NULL;
 		B->cCode 	 = NULL; B->rCode = NULL;
+		B->psi 		 = NULL;
 	}
 	if ( !(B->lambdaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
 		errMsg("allocation", "newBasis", "B->lambdaIdx", 0);
@@ -317,6 +323,7 @@ void freeOneBasis(oneBasis *B) {
 		if (B->sigmaIdx) mem_free(B->sigmaIdx);
 		if (B->omegaIdx) mem_free(B->omegaIdx);
 		if (B->phiHeader) mem_free(B->phiHeader);
+		if (B->g) mem_free(B->g);
 		if ( B->phi) {
 			for ( n = 0; n < B->phiLength; n++ )
 				if ( B->phi[n] ) mem_free(B->phi[n]);
