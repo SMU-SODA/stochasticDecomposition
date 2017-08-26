@@ -13,35 +13,6 @@
 
 extern configType config;
 
-/* This function updates all the structures necessary for forming a stochastic cut. The latest observation of omega and the latest dual solution
- * to the subproblem are added to their appropriate structures. Then Pi x b and Pi x C are computed and for the latest omega and dual vector,
- * and are added to the appropriate structures.
- * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
- * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
-//int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-//                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar) {
-//    int 	lambdaIdx, sigmaIdx;
-//    BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
-//
-//    /* Only need to calculate column if new observation of omega found */
-//    if (newOmegaFlag)
-//        calcDeltaCol(num, coord, lambda, omega->vals[omegaIdx], omegaIdx, delta);
-//
-//    /* extract the dual solutions corresponding to rows with random elements in them */
-////    lambdaIdx = calcLambda(num, coord, pi, lambda, &newLambdaFlag);
-//
-//    /* compute Pi x bBar and Pi x Cbar */
-////    sigmaIdx = calcSigma(num, coord, bBar, Cbar, pi, mubBar, lambdaIdx, newLambdaFlag, iter, sigma, &newSigmaFlag);
-//
-//    /* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
-//    /* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
-//     distinct one due to the variations in sigma*/
-//    if (newLambdaFlag)
-//        calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
-//
-//    return sigmaIdx;
-//}//END stochasticUpdates
-
 /* This function calculates a new column in the delta structure, based on a new observation of omega. Thus, lambda_pi X C and lambda_pi X b
  * are calculated for all values of lambda_pi, for the new C(omega) and b(omega).  Room in the array has already been allocated, so the function
  * only fills it, in the column specified by _obs_. It is assumed that this observation is distinct from all previous ones, and thus a new column
@@ -254,7 +225,7 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
 		errMsg("allocation", "newBasis", "B", 0);
 	if ( maxPhiLength > 0 ) {
-		if ( !(B->phiHeader = (intvec) arr_alloc(maxPhiLength, int)) )
+		if ( !(B->phiHeader = (intvec) arr_alloc(maxPhiLength+1, int)) )
 			errMsg("allocation", "newBasis", "B->phiHeader", 0);
 		if ( !(B->phi = (vector *) arr_alloc(maxPhiLength, vector)) )
 			errMsg("allocation", "newBasis", "B->phi", 0);
@@ -262,8 +233,6 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 			errMsg("allocation", "newBasis", "B->omegaIdx", 0);
 		if ( !(B->g = (vector) arr_alloc(numCols+1, double)) )
 			errMsg("allocation", "newBasis", "B->g", 0);
-		if ( !(B->psi = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
-			errMsg("allocation", "newBasis", "B->psi", 0);
 		B->cCode  = codedCol;
 		B->rCode  = codedRow;
 	}
@@ -291,6 +260,8 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 		errMsg("allocation", "newBasisType", "basis", 0);
 	if ( !(basis->vals = (oneBasis **) arr_alloc(numIter, oneBasis *)))
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
+	if ( !(basis->obsFeasible = (BOOL **) arr_alloc(numIter, BOOL *)))
+		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
 	basis->cnt = 0;
 	basis->cCodeLen = ceil(numCols/wordLength) + 1;
 	basis->rCodeLen = ceil(numRows/wordLength) + 1;
@@ -303,9 +274,12 @@ void freeBasisType(basisType *basis) {
 
 	if ( basis ) {
 		if ( basis->vals ) {
-			for ( n = 0; n < basis->cnt; n++ )
+			for ( n = 0; n < basis->cnt; n++ ) {
 				freeOneBasis(basis->vals[n]);
+				mem_free(basis->obsFeasible[n]);
+			}
 			mem_free(basis->vals);
+			mem_free(basis->obsFeasible);
 		}
 		mem_free(basis);
 	}
@@ -328,6 +302,7 @@ void freeOneBasis(oneBasis *B) {
 				if ( B->phi[n] ) mem_free(B->phi[n]);
 			mem_free(B->phi);
 		}
+		if ( B->psi ) freeSparseMatrix(B->psi);
 		mem_free(B);
 	}
 

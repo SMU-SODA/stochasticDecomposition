@@ -135,6 +135,7 @@ typedef struct {
 	int				cnt;		/* Number of unique basis encountered by the algorithm */
 	int				rCodeLen;	/* Length of encoded row status */
 	int				cCodeLen;	/* Length of encoded column status */
+	BOOL			**obsFeasible;
 	oneBasis		**vals;		/* a structure for each basis */
 }basisType;
 
@@ -257,8 +258,9 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
-int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
+int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
+int calcBasisFeasibility(numType *num, coordType *coord, basisType *basis, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
 int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
