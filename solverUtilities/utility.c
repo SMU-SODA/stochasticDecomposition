@@ -401,12 +401,12 @@ void addVectors(vector a, vector b, intvec indices, int len){
 	if ( indices == NULL ) {
 		for ( n = 1; n <= len; n++ )
 			a[n] += b[n];
+		a[0] = oneNorm(a+1, len);
 	}
 	else {
 		for ( n = 1; n <= len; n++ )
 			a[indices[n]] += b[n];
 	}
-	a[0] = oneNorm(a+1, len);
 
 }//END copy_arr()
 

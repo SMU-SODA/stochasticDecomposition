@@ -103,10 +103,12 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
 
 		if ( newSigmaFlag ) {
-			cell->basis->vals[cell->basis->cnt] 			  = newBasis(0, NULL, NULL, prob->num->cols);
-			cell->basis->vals[cell->basis->cnt]->lambdaIdx[0] = lambdaIdx;
-			cell->basis->vals[cell->basis->cnt]->sigmaIdx[0]  = sigmaIdx;
 			basisIdx = cell->basis->cnt++;
+			cell->basis->vals[basisIdx] = newBasis(0, NULL, NULL, prob->num->cols);
+			checkBasisFeasibility(prob->num, prob->coord, cell->basis, cell->omega, FALSE, basisIdx, config.MAX_ITER);
+
+			cell->basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
+			cell->basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
 		}
 
 		/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
@@ -124,7 +126,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag) {
 	unsigned long *codedCol, *codedRow;
 	vector	costVector, tempPsiRow;
-	intvec 	basisHead;
+	intvec 	basisHead, randBasisHead;
 	int		cnt, i, j;
 
 	/* encode the row and column status */
@@ -148,6 +150,8 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	/* Allocate memory for the basis header. */
 	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
+	if ( !(randBasisHead = (intvec) arr_alloc(numRows+1, int)) )
+		errMsg("allocation", "calcBasis", "randBasisHead", 0);
 
 	/* New basis encountered, add it to the list */
 	(*newBasisFlag) = TRUE;
@@ -155,8 +159,6 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
-
-	/* Compute the Phi matrix header (namely, basic columns with random cost coefficients. */
 
 	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
 	for ( i = 1; i <= numRows; i++ ) {
@@ -166,7 +168,8 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 			while ( j <= rvdOmCnt ) {
 				if ( (rvCols[j] - 1) == basisHead[i] ) {
 					/* basis column with random cost coefficient */
-					basis->vals[cnt]->phiHeader[basis->vals[cnt]->phiLength+1] = basisHead[i];
+					randBasisHead[basis->vals[cnt]->phiLength+1] = i;
+					basis->vals[cnt]->phiHeader[basis->vals[cnt]->phiLength+1] = basisHead[i]+1;
 					basis->vals[cnt]->omegaIdx[basis->vals[cnt]->phiLength+1] = j;
 					if ( !(basis->vals[cnt]->phi[basis->vals[cnt]->phiLength] = (vector) arr_alloc(numRows+1, double)) )
 						errMsg("allocation", "calcBasis", "basis->vals[cnt]->phi[i]", 0);
@@ -213,14 +216,17 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 		errMsg("allocation", "calcBasis", "tempPsiRow", 0);
 
 	for ( i = 1; i <= numCols; i++ ) {
-		getBasisInvACol(lp, numRows, tempPsiRow+1);
+		getBasisInvACol(lp, i-1, tempPsiRow+1);
 
-		basis->vals[cnt]->g[i] = costVector[i] - vXv(tempPsiRow, costVector, basisHead, numRows);
+		basis->vals[cnt]->g[i] = costVector[i];
+		for ( j = 1; j <= numRows; j++ )
+			basis->vals[cnt]->g[i] -= tempPsiRow[j]*costVector[basisHead[j]+1];
 
 		for ( j = 1; j <= basis->vals[cnt]->phiLength; j++ ) {
-			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt]   = tempPsiRow[rvCols[basis->vals[cnt]->phiHeader[j]]];
-			basis->vals[cnt]->psi->row[basis->vals[cnt]->psi->cnt]   = i;
-			basis->vals[cnt]->psi->col[basis->vals[cnt]->psi->cnt++] = basis->vals[cnt]->phiHeader[j];
+			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt+1]   = tempPsiRow[randBasisHead[j]];
+			basis->vals[cnt]->psi->row[basis->vals[cnt]->psi->cnt+1]   = i;
+			basis->vals[cnt]->psi->col[basis->vals[cnt]->psi->cnt+1] = basis->vals[cnt]->phiHeader[j];
+			basis->vals[cnt]->psi->cnt++;
 		}
 	}
 
@@ -262,16 +268,18 @@ int checkBasisFeasibility(numType *num, coordType *coord, basisType *basis, omeg
 		cOmega.val = omega->vals[elemIdx] + offset;
 		for ( n = 0; n < basis->cnt; n++ ) {
 			basis->obsFeasible[n][elemIdx] = TRUE;
-			copyVector(basis->vals[n]->g, costVector, num->cols, TRUE);
-			addVectors(costVector, cOmega.val, cOmega.col, cOmega.cnt);
-			if ( basis->vals[n]->phiLength > 0 ) {
-				MSparsexvSub(basis->vals[n]->psi, cOmega.val, costVector);
-			}
-			c = 1;
-			while ( c <= num->cols) {
-				if ( costVector[c] < 0 )
-					basis->obsFeasible[n][elemIdx] = FALSE;
-				c++;
+			if  ( cOmega.cnt > 0 ) {
+				copyVector(basis->vals[n]->g, costVector, num->cols, TRUE);
+				addVectors(costVector, cOmega.val, cOmega.col, cOmega.cnt);
+				if ( basis->vals[n]->phiLength > 0 ) {
+					MSparsexvSub(basis->vals[n]->psi, cOmega.val, costVector);
+				}
+				c = 1;
+				while ( c <= num->cols) {
+					if ( costVector[c] < 0 )
+						basis->obsFeasible[n][elemIdx] = FALSE;
+					c++;
+				}
 			}
 		}
 	}
@@ -279,18 +287,20 @@ int checkBasisFeasibility(numType *num, coordType *coord, basisType *basis, omeg
 		if ( !(basis->obsFeasible[elemIdx] = (BOOL*) arr_alloc(maxIter, BOOL)) )
 			errMsg("allocation", "calcBasisFeasibility", "basis->obsFeasibility[n]", 0);
 		for ( n = 0; n < omega->cnt; n++ ) {
-			cOmega.val = omega->vals[n] + offset;
 			basis->obsFeasible[elemIdx][n] = TRUE;
-			copyVector(basis->vals[n]->g, costVector, num->cols, TRUE);
-			addVectors(costVector, cOmega.val, cOmega.col, cOmega.cnt);
-			if ( basis->vals[elemIdx]->phiLength > 0 ) {
-				MSparsexvSub(basis->vals[elemIdx]->psi, cOmega.val, costVector);
-			}
-			c = 1;
-			while ( c <= num->cols) {
-				if ( costVector[c] < 0 )
-					basis->obsFeasible[elemIdx][elemIdx] = FALSE;
-				c++;
+			if ( cOmega.cnt > 0 ) {
+				cOmega.val = omega->vals[n] + offset;
+				copyVector(basis->vals[elemIdx]->g, costVector, num->cols, TRUE);
+				addVectors(costVector, cOmega.val, cOmega.col, cOmega.cnt);
+				if ( basis->vals[elemIdx]->phiLength > 0 ) {
+					MSparsexvSub(basis->vals[elemIdx]->psi, cOmega.val, costVector);
+				}
+				c = 1;
+				while ( c <= num->cols) {
+					if ( costVector[c] < 0 )
+						basis->obsFeasible[elemIdx][n] = FALSE;
+					c++;
+				}
 			}
 		}
 	}
