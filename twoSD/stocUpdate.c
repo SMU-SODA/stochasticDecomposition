@@ -239,7 +239,8 @@ oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *cod
 	else {
 		B->phiHeader = NULL; B->phi   = NULL;
 		B->cCode 	 = NULL; B->rCode = NULL;
-		B->psi 		 = NULL;
+		B->psi 		 = NULL; B->omegaIdx = NULL;
+		B->g = NULL;
 	}
 	if ( !(B->lambdaIdx = (intvec) arr_alloc(maxPhiLength+1, int)) )
 		errMsg("allocation", "newBasis", "B->lambdaIdx", 0);

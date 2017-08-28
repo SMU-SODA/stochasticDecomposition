@@ -21,7 +21,7 @@
 #define NONTRIVIAL 1
 #define INF	DBL_MAX
 
-#define STOCH_CHECK
+#undef STOCH_CHECK
 #undef ALGO_CHECK
 
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
@@ -66,7 +66,7 @@ typedef struct {
 }oneCut;
 
 typedef struct {
-	int    STOCH_CHECK cnt;                    /* number of cuts */
+	int    	cnt;                    /* number of cuts */
 	oneCut  **vals;					/* values which define the set of cuts */
 }cutsType;
 

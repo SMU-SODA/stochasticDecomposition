@@ -93,7 +93,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		cut->iStar[obs] = istar;
 
 		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-		alpha = (sigma->vals[basis->vals[istar]->sigmaIdx[0]].pib + delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].pib)* omega->weight[obs];
+		alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[0]].pib + delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].pib)* omega->weight[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
 			beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[0]].piC[c] * omega->weight[obs];

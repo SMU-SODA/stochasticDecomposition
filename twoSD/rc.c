@@ -110,6 +110,8 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 			cell->basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
 			cell->basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
 		}
+		else
+			basisIdx = sigmaIdx;
 
 		/* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
 		/* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
