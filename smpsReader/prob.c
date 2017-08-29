@@ -526,7 +526,7 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	}
 
 	/* solve the mean value problem */
-	status = solveProblem(orig->lp, orig->name, PROB_LP, &status);
+	status = solveProblem(orig->lp, orig->name, PROB_QP, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;

@@ -19,6 +19,8 @@
 #define		PARAM_SCRIND	CPX_PARAM_SCRIND
 #define		PARAM_SCAIND	CPX_PARAM_SCAIND
 #define		PARAM_LPMETHOD	CPX_PARAM_LPMETHOD
+#define		PARAM_QPMETHOD	CPX_PARAM_QPMETHOD
+#define 	PARAM_PREIND	CPX_PARAM_PREIND
 
 #define		ALG_AUTOMATIC	CPX_ALG_AUTOMATIC
 #define		ALG_PRIMAL		CPX_ALG_PRIMAL
@@ -87,7 +89,8 @@ void openSolver();
 void closeSolver();
 int setIntParam(int paramname, int paramvalue);
 void solverErrmsg(int status);
-int changeSolverType();
+int changeLPSolverType(int method);
+int changeQPSolverType(int method);
 
 int getProbName(LPptr lp, string probName, int len);
 int getObjSen(LPptr lp);

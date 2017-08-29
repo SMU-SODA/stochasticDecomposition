@@ -32,7 +32,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 	/* Write solution statistics for optimization process */
 	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
-	writeStatistic(&soln, prob[0], cell, probName);
+	writeStatistic(&soln, prob, cell, probName, tim->numStages);
 
 	/* evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {
@@ -92,7 +92,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, newOmegaFlag)) < 0 ) {
+		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, newOmegaFlag, FALSE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
@@ -101,7 +101,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, newOmegaFlag) ) < 0 ) {
+			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, newOmegaFlag, TRUE) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				return 1;
 			}
@@ -123,20 +123,37 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 	return 0;
 }//END solveCell()
 
-void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName) {
+void writeStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages) {
+	int t;
 
 	(*soln) = openFile(outputDir, "summary.dat", "w");
 
-	fprintf((*soln), "----------------------------------- Problem Information ------------------------------------\n\n");
-	fprintf((*soln), "Problem                                : %s\n", probName);
-	fprintf((*soln), "First Stage Rows                       : %d\n", prob->num->rows);
-	fprintf((*soln), "First Stage Columns                    : %d\n", prob->num->cols);
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "-------------------------------------------------------- Problem Information -------------------------------------------------------\n");
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "Problem                            : %s\n", probName);
+	fprintf((*soln), "Number of stages                   : %d\n", numStages);
+	for ( t = 0; t < numStages; t++ ) {
+		fprintf((*soln),  "------------------------------------------------------------------------------------------------------------------------------------\n");
+		fprintf((*soln),  "Stage %d\n", t);
+		fprintf((*soln),  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
+		fprintf((*soln),  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
+		fprintf((*soln),  "Number of constraints              = %d\n", prob[t]->sp->mar);
+		if ( prob[t]->omegas != NULL ) {
+			fprintf((*soln),  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+			fprintf((*soln),  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
+					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
+		}
+		else
+			fprintf((*soln),  "Number of random variables (omega) = 0\n");
+	}
 
-	fprintf((*soln), "\n--------------------------------------- Optimization ---------------------------------------\n\n");
-
-	fprintf((*soln), "Algorithm                              : Two-stage Stochastic Decomposition\n");
-	fprintf((*soln), "Number of iterations                   : %d\n", cell->k);
-	fprintf((*soln), "Lower bound estimate                   : %f\n", cell->incumbEst);
+	fprintf((*soln), "\n====================================================================================================================================\n");
+	fprintf((*soln), "----------------------------------------------------------- Optimization -----------------------------------------------------------\n");
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "Algorithm                          : Two-stage Stochastic Decomposition\n");
+	fprintf((*soln), "Number of iterations               : %d\n", cell->k);
+	fprintf((*soln), "Lower bound estimate               : %f\n", cell->incumbEst);
 	fclose((*soln));
 
 }//END WriteStat

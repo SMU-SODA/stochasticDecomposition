@@ -17,11 +17,13 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-        changeSolverType(ALG_AUTOMATIC);
+        changeLPSolverType(ALG_AUTOMATIC);
+        setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
+		setIntParam(PARAM_PREIND, ON);
 		break;
 	case PROB_QP:
-        changeSolverType(ALG_CONCURRENT);
+        changeQPSolverType(ALG_CONCURRENT);
 		(*status) = CPXbaropt(env, lp);
 		break;
 	case PROB_MILP:
@@ -49,7 +51,7 @@ RESOLVE:
 			else
 				goto skip;
         } else if ( (type == PROB_QP) && (*status) == 2 ) {
-            changeSolverType(ALG_PRIMAL);
+            changeLPSolverType(ALG_PRIMAL);
             (*status) = CPXlpopt(env, lp);
             goto RESOLVE;
         }
@@ -191,7 +193,7 @@ void closeSolver(){
 
 }//END closeSolver()
 
-int changeSolverType(int method) {
+int changeLPSolverType(int method) {
 	int status = 0;
 
 	status = setIntParam(PARAM_LPMETHOD, method);
@@ -200,7 +202,19 @@ int changeSolverType(int method) {
 		return 1;
 	}
 	return 0;
-}
+}//END changeLPSolverType()
+
+int changeQPSolverType(int method) {
+	int status = 0;
+
+	status = setIntParam(PARAM_QPMETHOD, method);
+	if (status) {
+		solverErrmsg(status);
+		return 1;
+	}
+	return 0;
+}//END changeQPSolverType()
+
 
 int setIntParam(int paramname, int paramvalue){
 

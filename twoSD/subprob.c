@@ -204,6 +204,25 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
 }//END chgRHSwRand()
 
+int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector observ) {
+	vector vals;
+	int n;
+
+	if ( !(vals = (vector) arr_alloc(rvdOmCnt + 1, double)) )
+		errMsg("allocation", "chgObjwObserv", "vals", 0);
+
+	for ( n = 1; n <= rvdOmCnt; n++ )
+		vals[n] = cost[n] + observ[n];
+
+	if ( changeObjx(lp, rvdOmCnt, indices+1, vals+1) ) {
+		errMsg("solver", "chgObjswObserv", "failed to change the cost coefficients in the solver",0);
+		return 1;
+	}
+
+	mem_free(vals);
+	return 0;
+}//END chgObjwObserv()
+
 oneProblem *newSubproblem(oneProblem *subprob) {
 
 	/* since the basic structure of subproblem is not modified during the course of the algorithm, we just load it onto the solver */

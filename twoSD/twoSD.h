@@ -212,7 +212,7 @@ int readConfig(string inputDir);
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName);
+void writeStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -234,11 +234,11 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
+int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
-		int numSamples, BOOL pi_eval, double *argmax);
+		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
@@ -255,12 +255,13 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
 vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector obs, int offset);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
+int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector observ);
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
-int calcBasisFeasibility(numType *num, coordType *coord, basisType *basis, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
+int checkBasisFeasibility(numType *num, coordType *coord, basisType *basis, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
 int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);

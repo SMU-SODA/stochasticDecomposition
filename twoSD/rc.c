@@ -153,7 +153,7 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	if ( !(basisHead = (intvec) arr_alloc(numRows+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
 	if ( !(randBasisHead = (intvec) arr_alloc(numRows+1, int)) )
-		errMsg("allocation", "calcBasis", "randBasisHead", 0);
+		errMsg("allocation", "calcBasis", "basisHead", 0);
 
 	/* New basis encountered, add it to the list */
 	(*newBasisFlag) = TRUE;
@@ -204,8 +204,8 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 		mem_free(basis->vals[cnt]->phiHeader); 	basis->vals[cnt]->phiHeader = NULL;
 		mem_free(basis->vals[cnt]->phi);		basis->vals[cnt]->phi 		= NULL;
 		mem_free(basis->vals[cnt]->omegaIdx);	basis->vals[cnt]->omegaIdx  = NULL;
-		basis->vals[cnt]->lambdaIdx = (intvec) mem_realloc(basis->vals[cnt]->lambdaIdx, sizeof(int));
-		basis->vals[cnt]->sigmaIdx = (intvec) mem_realloc(basis->vals[cnt]->sigmaIdx, sizeof(int));
+		basis->vals[cnt]->lambdaIdx = (intvec) mem_realloc(basis->vals[cnt]->lambdaIdx, 1*sizeof(int));
+		basis->vals[cnt]->sigmaIdx = (intvec) mem_realloc(basis->vals[cnt]->sigmaIdx, 1*sizeof(int));
 
 		/* Feasibility in this case is assessed using only the _g_ vector in basis structure */
 		basis->vals[cnt]->psi = NULL;
@@ -221,13 +221,13 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 		getBasisInvACol(lp, i-1, tempPsiRow+1);
 
 		basis->vals[cnt]->g[i] = costVector[i];
-		for ( j = 1; j <= numRows; j++ )
+		for ( j = 1; j < numRows; j++ )
 			basis->vals[cnt]->g[i] -= tempPsiRow[j]*costVector[basisHead[j]+1];
 
 		for ( j = 1; j <= basis->vals[cnt]->phiLength; j++ ) {
-			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt+1]   = tempPsiRow[randBasisHead[j]];
-			basis->vals[cnt]->psi->row[basis->vals[cnt]->psi->cnt+1]   = i;
-			basis->vals[cnt]->psi->col[basis->vals[cnt]->psi->cnt+1] = basis->vals[cnt]->phiHeader[j];
+			basis->vals[cnt]->psi->val[basis->vals[cnt]->psi->cnt+1] = tempPsiRow[basisHead[randBasisHead[j]]+1];
+			basis->vals[cnt]->psi->row[basis->vals[cnt]->psi->cnt+1] = i;
+			basis->vals[cnt]->psi->col[basis->vals[cnt]->psi->cnt+1] = j;
 			basis->vals[cnt]->psi->cnt++;
 		}
 	}
@@ -250,7 +250,7 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	}
 #endif
 
-	mem_free(costVector); mem_free(basisHead); mem_free(tempPsiRow);
+	mem_free(costVector); mem_free(basisHead); mem_free(tempPsiRow); mem_free(randBasisHead);
 	return basis->cnt++;
 
 }//END calcBasis()
@@ -273,9 +273,9 @@ int checkBasisFeasibility(numType *num, coordType *coord, basisType *basis, omeg
 			if  ( cOmega.cnt > 0 ) {
 				copyVector(basis->vals[n]->g, costVector, num->cols, TRUE);
 				addVectors(costVector, cOmega.val, cOmega.col, cOmega.cnt);
-				if ( basis->vals[n]->phiLength > 0 ) {
-					MSparsexvSub(basis->vals[n]->psi, cOmega.val, costVector);
-				}
+//				if ( basis->vals[n]->phiLength > 0 ) {
+//					MSparsexvSub(basis->vals[n]->psi, cOmega.val, costVector);
+//				}
 				c = 1;
 				while ( c <= num->cols) {
 					if ( costVector[c] < 0 )

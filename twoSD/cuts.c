@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
+int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb) {
 	oneCut *cut;
 	int    cutIdx;
 
@@ -68,8 +68,8 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, pi_eval_flag, &argmaxAll);
-			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, TRUE, &argmaxNew);
+			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, TRUE, &argmaxNew, TRUE);
 
 			if (argmaxNew > argmaxAll) {
 				argmax = argmaxNew; istar = istarNew;
@@ -83,7 +83,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax);
+			istar = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, FALSE);
 		}
 
 		if ( istar < 0 ) {
@@ -144,12 +144,19 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
-		int numSamples, BOOL pi_eval, double *argmax) {
+		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
 	double 	arg;
-	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt;
+	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, sigmaUp, sigmaLow;
 
 	if (pi_eval == TRUE)
-		numSamples = -(numSamples / 10 + 1);
+		numSamples -= (numSamples / 10 + 1);
+
+	if ( !isNew ) {
+		sigmaUp = numSamples; sigmaLow = -INT_MAX;
+	}
+	else {
+		sigmaUp = INT_MAX; sigmaLow = numSamples;
+	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
 	/* Run through the list of basis to choose the one which provides the best lower bound */
@@ -158,29 +165,30 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
 		lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
 
-		/* a. */
-		arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
-
-		/* b. */
-		arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-		/* II. Append argument using values computed from the stochastic component of the dual solution. */
-		for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
-			sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
-			lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
-
+		if ( sigma->ck[sigmaIdx] > sigmaLow && sigma->ck[sigmaIdx] <= sigmaUp ) {
 			/* a. */
-			arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+			arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
 
 			/* b. */
-			arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-		}
+			arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
 
-		if (arg > (*argmax)) {
-			*argmax = arg;
-			maxCnt = cnt;
-		}
+			/* II. Append argument using values computed from the stochastic component of the dual solution. */
+			for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
+				sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
+				lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
 
+				/* a. */
+				arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+
+				/* b. */
+				arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
+			}
+
+			if (arg > (*argmax)) {
+				*argmax = arg;
+				maxCnt = cnt;
+			}
+		}
 	}
 
 	return maxCnt;
