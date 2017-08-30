@@ -90,7 +90,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		resampleOmega(cdf, observ, cell->k-1);
 
 		/* (d) reform the good cuts by plugging in the omegas */
-		reformCuts(cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
@@ -180,9 +180,8 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
  * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
-void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
-	int cnt, obs, idx, count;
-	iType iStar;
+void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
+	int cnt, obs, idx, c, count, offset, iStar, sigmaIdx, lambdaIdx;
 
 	/* Loop through all the cuts and reform them */
 	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
@@ -191,21 +190,35 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 			gCuts->vals[cnt]->beta[idx] = 0.0;
 		gCuts->vals[cnt]->alpha = 0.0;
 
-		count = 0;
+		count = 0; offset = num->rvbOmCnt + num->rvCOmCnt;
 		/* Reform this cut based on resampled observations */
 		for (obs = 0; obs < k; obs++) {
 			/* Only sum values if the cut has an istar for this observation */
 			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
-				iStar.sigma = gCuts->vals[cnt]->iStar[observ[obs]];
-				iStar.delta = sigma->lambdaIdx[iStar.sigma];
+				iStar = gCuts->vals[cnt]->iStar[observ[obs]];
 
-				gCuts->vals[cnt]->alpha += sigma->vals[iStar.sigma].pib + delta->vals[iStar.delta][observ[obs]].pib;
+				sigmaIdx  = basis->vals[iStar]->sigmaIdx[0];
+				lambdaIdx = basis->vals[iStar]->lambdaIdx[0];
+
+				gCuts->vals[cnt]->alpha += sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib;
 
 				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[iStar.sigma].piC[idx];
+					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[sigmaIdx].piC[idx];
 
-				for (idx = 1; idx <= num->rvColCnt; idx++)
-					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[iStar.delta][observ[obs]].piC[idx];
+				for (idx = 1; idx <= num->rvCOmCnt; idx++)
+					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[lambdaIdx][observ[obs]].piC[idx];
+
+
+				for ( idx = 1; idx <= basis->vals[iStar]->phiLength; idx++ ) {
+					sigmaIdx  = basis->vals[iStar]->sigmaIdx[idx];
+					lambdaIdx = basis->vals[iStar]->lambdaIdx[idx];
+
+					gCuts->vals[cnt]->alpha += (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib) * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+					for (c = 1; c <= num->cntCcols; c++)
+						gCuts->vals[cnt]->beta[coord->colsC[c]] += sigma->vals[sigmaIdx].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						gCuts->vals[cnt]->beta[coord->rvCols[c]] += delta->vals[lambdaIdx][obs].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+				}
 
 				count++;
 			}

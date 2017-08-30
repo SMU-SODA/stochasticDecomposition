@@ -141,7 +141,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
 	cell->basis  = newBasisType(config.MAX_ITER, prob[1]->num->cols, prob[1]->num->rows, WORDLENGTH);
 	cell->lambda = newLambda(length, 0, prob[1]->num->rvRowCnt);
-	cell->sigma  = newSigma(length, prob[1]->num->rvColCnt, 0);
+	cell->sigma  = newSigma(length, prob[1]->num->cntCcols, 0);
 	cell->delta  = newDelta(length);
 	cell->omega  = newOmega(config.MAX_ITER);
 

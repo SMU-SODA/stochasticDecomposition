@@ -11,8 +11,6 @@
 
 #include "twoSD.h"
 
-extern configType config;
-
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
@@ -94,7 +92,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 			multiplier = cell->omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[basisIdx]->omegaIdx[n]];
 		obj += multiplier*(cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
 		obj += multiplier*(cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
-				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt));
+				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvCOmCnt));
 	}
 	printf("Objective function estimate    = %lf\n", obj);
 #endif

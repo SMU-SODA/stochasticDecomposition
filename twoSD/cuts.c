@@ -97,24 +97,23 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 		for (c = 1; c <= num->cntCcols; c++)
 			beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[0]].piC[c] * omega->weight[obs];
-		for (c = 1; c <= num->rvColCnt; c++)
+		for (c = 1; c <= num->rvCOmCnt; c++)
 			beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].piC[c] * omega->weight[obs];
 
-		if ( basis->vals[istar]->phiLength > 0 ) {
-			for ( cnt = 1; cnt <= basis->vals[istar]->phiLength; cnt++ ) {
-				alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].pib)*omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]*omega->weight[obs];
-				for (c = 1; c <= num->cntCcols; c++)
-					beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].piC[c] * omega->weight[obs];
-				for (c = 1; c <= num->rvColCnt; c++)
-					beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].piC[c] * omega->weight[obs];
-			}
+		for ( cnt = 1; cnt <= basis->vals[istar]->phiLength; cnt++ ) {
+			alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].pib)
+					* (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
+			for (c = 1; c <= num->cntCcols; c++)
+				beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].piC[c] * (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].piC[c] * (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
 		}
 	}
 
 	if (pi_eval_flag == TRUE) {
 		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
-			vari = calc_var(pi_ratio, NULL, NULL, 0);
+			vari = calcVari(pi_ratio, NULL, NULL, 0);
 
 		if (DBL_ABS(vari) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
 			*dualStableFlag = FALSE;
@@ -146,47 +145,50 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
 		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
 	double 	arg;
-	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, sigmaUp, sigmaLow;
+	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, basisUp, basisLow;
 
 	if (pi_eval == TRUE)
 		numSamples -= (numSamples / 10 + 1);
 
+	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
 	if ( !isNew ) {
-		sigmaUp = numSamples; sigmaLow = -INT_MAX;
+		basisUp = numSamples; basisLow = -INT_MAX;
 	}
 	else {
-		sigmaUp = INT_MAX; sigmaLow = numSamples;
+		basisUp = INT_MAX; basisLow = numSamples;
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
 	/* Run through the list of basis to choose the one which provides the best lower bound */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-		/* I. Compute argument using deterministic component of the dual solution */
-		sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
-		lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
+		if ( basis->obsFeasible[cnt][obs] ) {
+			/* I. Compute argument using deterministic component of the dual solution */
+			sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
+			lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
 
-		if ( sigma->ck[sigmaIdx] > sigmaLow && sigma->ck[sigmaIdx] <= sigmaUp ) {
-			/* a. */
-			arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
-
-			/* b. */
-			arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-			/* II. Append argument using values computed from the stochastic component of the dual solution. */
-			for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
-				sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
-				lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
-
+			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
 				/* a. */
-				arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+				arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
 
 				/* b. */
-				arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-			}
+				arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
 
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				maxCnt = cnt;
+				/* II. Append argument using values computed from the stochastic component of the dual solution. */
+				for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
+					sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
+					lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
+
+					/* a. */
+					arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+
+					/* b. */
+					arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+				}
+
+				if (arg > (*argmax)) {
+					*argmax = arg;
+					maxCnt = cnt;
+				}
 			}
 		}
 	}
@@ -319,7 +321,7 @@ int dropCut(cellType *cell, int cutIdx) {
  ** This function calculate the variance of the
  ** vector x.
  */
-double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size) {
+double calcVari(double *x, double *mean_value, double *stdev_value, int batch_size) {
 	double mean, vari, temp;
 	int count, length;
 	double stdev;
@@ -333,8 +335,7 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 	else
 		length = config.SCAN_LEN;
 
-	for (count = 1; count < length; count++)
-	{
+	for (count = 1; count < length; count++) {
 		temp = mean;
 		mean = mean + (x[count] - mean) / (double) (count + 1);
 		vari = (1 - 1 / (double) count) * vari
@@ -342,36 +343,15 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 	}
 
 	if (mean_value != NULL)
-	{
 		*mean_value = mean;
-	}
-	if (stdev_value != NULL)
-	{
-		//TODO:(HG) why divide vari by count?
+	if (stdev_value != NULL) {
 		stdev = sqrt(vari / (double) count);
 		*stdev_value = stdev;
 	}
 
 	return vari;
 
-}//END calc_var
-
-/***********************************************************************\
- ** This function prints the relevant information in a cut.
- ** It is meant to be used for debugging.
- \***********************************************************************/
-void print_cut(cutsType *cuts, numType *num, int idx) {
-	int cnt;
-
-	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->cutObs,
-			cuts->vals[idx]->omegaCnt, cuts->vals[idx]->alpha);
-	for (cnt = 0; cnt <= num->cols; cnt++)
-		printf("%f ", cuts->vals[idx]->beta[cnt]);
-	printf("\nistar: ");
-	for (cnt = 0; cnt < cuts->vals[idx]->omegaCnt; cnt++)
-		printf("%d ", cuts->vals[idx]->iStar[cnt]);
-	printf("\n");
-}
+}//END calcVariance()
 
 void freeOneCut(oneCut *cut) {
 

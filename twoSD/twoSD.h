@@ -95,15 +95,7 @@ typedef struct {
 	int 		cnt;
 	pixbCType 	*vals;
 	intvec		lambdaIdx;
-	intvec		ck; 				/* record the iteration # when sigma was created */
 } sigmaType;
-
-/* When calculating istar for a cut, it is useful to have two separate references into the sigma and delta structures, since each dual vector
- * is stored in two places -- part in sigma and part in delta.  The final entry in cut->istar[] will just be the _sigma_ field of this structure. */
-typedef struct {
-	int delta;
-	int sigma;
-} iType;
 
 /* The delta matrix contains the values of lambda_pi X bOmega and lambda_pi X Comega for all values of pi and all observations of omega.
  * _col_ gives the column number of the each non-zero element in the multiplication of lambda_pi X Comega (the same elements are non-zero
@@ -116,6 +108,7 @@ typedef struct {
 } deltaType;
 
 typedef struct {
+	int				ck;			/* The first time the basis was encountered. */
 	int				weight;		/* Frequency of observation for each unique basis */
 	unsigned long 	*rCode;		/* Encoded row status in the basis (currently not being used */
 	unsigned long	*cCode;		/* Encoded column status in the basis */
@@ -243,11 +236,10 @@ oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
-double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
+double calcVari(double *x, double *mean_value, double *stdev_value, int batch_size);
 void print_cut(cutsType *cuts, numType *num, int idx);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts);
-double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
 
 /* subprob.c */
 int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
@@ -260,8 +252,9 @@ oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
-int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag);
-int checkBasisFeasibility(numType *num, coordType *coord, basisType *basis, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
+int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter);
+int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
+BOOL checkBasisFeasibility(oneBasis *B, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
 int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
@@ -271,7 +264,7 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
-oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow, int numCols);
+oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow, int numCols, int currentIter);
 lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
@@ -294,7 +287,7 @@ BOOL optimal(probType **prob, cellType *cell);
 BOOL preTest(cellType *cell);
 BOOL fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX);
-void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
+void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
 double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, int currIter, double quadScalar, cutsType *cuts);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
