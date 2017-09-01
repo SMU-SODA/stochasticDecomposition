@@ -456,7 +456,7 @@ void printSparseVector(vector vec, intvec indices, int len) {
 	int n;
 
 	for ( n = 1; n <= len; n++ )
-		printf("%4.3lf", vec[indices[n]]);
+		printf("%4.3lf\t", vec[indices[n]]);
 	printf("\n");
 
 }//END printSparseVector()

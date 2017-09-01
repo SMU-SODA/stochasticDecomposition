@@ -96,7 +96,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	}
 	printf("Objective function estimate    = %lf\n", obj1);
 	if ( fabs(obj-obj1) > 0.001 )
-		printf("WARNING: The objective function and the estiamte computed using stochastic elements do not match.\n");
+		printf("WARNING: The objective function and the estimate computed using stochastic elements do not match.\n");
 #endif
 
 	mem_free(rhs); mem_free(cost); mem_free(indices);

@@ -503,7 +503,7 @@ int decomposeDualSolution(vector *phi, vector omegaVals, intvec phiOmegaIdx, int
 
 oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvCols, int numCols, int numRows, int rvdOmCnt, int currentIter, sparseVector *dBar) {
 	oneBasis *B;
-	vector 	 tempPsiRow, costVector;
+	vector 	 tempPsiRow, costVector, basicCost;
 	intvec	 basisHead, phiHead;
 	int 	 i, j;
 
@@ -568,16 +568,19 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 	}
 
 	/* Extract the basic variable cost vector and psi matrix (the tableau entries) */
+	if ( !(basicCost = (vector) arr_alloc(numRows+1, double)) )
+		errMsg("allocation", "newBasis", "basicCost", 0);
 	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
+	for ( i = 1; i <= numRows; i++ )
+		basicCost[i] = costVector[basisHead[i]+1];
+
 	if ( !(tempPsiRow = (vector) arr_alloc(numRows+1, double)) )
-		errMsg("allocation", "calcBasis", "tempPsiRow", 0);
+		errMsg("allocation", "newBasis", "tempPsiRow", 0);
 
 	for ( i = 1; i <= numCols; i++ ) {
 		getBasisInvACol(lp, i-1, tempPsiRow+1);
 
-		B->gBar[i] = costVector[i];
-		for ( j = 1; j <= numRows; j++ )
-			B->gBar[i] -= tempPsiRow[j]*costVector[basisHead[j]+1];
+		B->gBar[i] = costVector[i] - vXv(tempPsiRow, basicCost, NULL, numRows);
 
 		for ( j = 1; j <= B->phiLength; j++ ) {
 			B->psi->row[B->psi->cnt+1] = i;
@@ -587,7 +590,12 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 		}
 	}
 
-	mem_free(basisHead); mem_free(phiHead);
+#if defined(STOCH_CHECK)
+	printf("Deterministic component of reduced cost  = ");
+	printSparseVector(B->gBar+1, basisHead, numRows);
+#endif
+
+	mem_free(basisHead); mem_free(phiHead); mem_free(basicCost);
 	return B;
 }//END newBasis()
 
