@@ -21,8 +21,8 @@
 #define NONTRIVIAL 1
 #define INF	DBL_MAX
 
-#undef STOCH_CHECK
-#undef ALGO_CHECK
+#define STOCH_CHECK
+#define ALGO_CHECK
 
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
@@ -113,12 +113,11 @@ typedef struct {
 	unsigned long 	*rCode;		/* Encoded row status in the basis (currently not being used */
 	unsigned long	*cCode;		/* Encoded column status in the basis */
 	int				phiLength;	/* Number of basic columns with random cost coefficients */
-	intvec			phiHeader;	/* Indices of variables in resident phi matrix */
 	intvec			omegaIdx;
 	intvec			lambdaIdx;
 	intvec			sigmaIdx;
+	vector			gBar;
 	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
-	vector			g;
 	sparseMatrix	*psi;
 }oneBasis;
 
@@ -255,7 +254,7 @@ int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmeg
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter);
 int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
 BOOL checkBasisFeasibility(oneBasis *B, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
-int decomposeDualSolution(vector *phi, vector omegaVals, vector Pi, intvec phiOmegaIdx, int phiLength, int numRows);
+int decomposeDualSolution(vector *phi, vector omegaVals, intvec phiOmegaIdx, int phiLength, vector Pi, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
@@ -264,7 +263,7 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
-oneBasis *newBasis(int maxPhiLength, unsigned long *codedCol, unsigned long *codedRow, int numCols, int currentIter);
+oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvCols, int numCols, int numRows, int rvdOmCnt, int currentIter, sparseVector *dBar);
 lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);

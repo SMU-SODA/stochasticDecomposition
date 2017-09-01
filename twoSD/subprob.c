@@ -81,8 +81,8 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	}
 
 #if defined(STOCH_CHECK)
-	int sigmaIdx, lambdaIdx; double multiplier;
-	obj = 0;
+	int sigmaIdx, lambdaIdx; double multiplier, obj1;
+	obj1 = 0;
 	for ( n = 0; n <= cell->basis->vals[basisIdx]->phiLength; n++ ) {
 		sigmaIdx = cell->basis->vals[basisIdx]->sigmaIdx[n];
 		lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[n];
@@ -90,11 +90,13 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 			multiplier = 1.0;
 		else
 			multiplier = cell->omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[basisIdx]->omegaIdx[n]];
-		obj += multiplier*(cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
-		obj += multiplier*(cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
+		obj1 += multiplier*(cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
+		obj1 += multiplier*(cell->delta->vals[lambdaIdx][omegaIdx].pib - vXv(cell->delta->vals[lambdaIdx][omegaIdx].piC,
 				cell->omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvCOmCnt));
 	}
-	printf("Objective function estimate    = %lf\n", obj);
+	printf("Objective function estimate    = %lf\n", obj1);
+	if ( fabs(obj-obj1) > 0.001 )
+		printf("WARNING: The objective function and the estiamte computed using stochastic elements do not match.\n");
 #endif
 
 	mem_free(rhs); mem_free(cost); mem_free(indices);
