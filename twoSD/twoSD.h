@@ -21,8 +21,8 @@
 #define NONTRIVIAL 1
 #define INF	DBL_MAX
 
-#define STOCH_CHECK
-#define ALGO_CHECK
+#undef STOCH_CHECK
+#undef ALGO_CHECK
 
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
@@ -124,11 +124,12 @@ typedef struct {
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
  * This structure will be at the heart of all calculations related to stochastic updates. */
 typedef struct {
-	int				cnt;		/* Number of unique basis encountered by the algorithm */
-	int				rCodeLen;	/* Length of encoded row status */
-	int				cCodeLen;	/* Length of encoded column status */
-	BOOL			**obsFeasible;
-	oneBasis		**vals;		/* a structure for each basis */
+	int			cnt;		/* Number of unique basis encountered by the algorithm */
+	int			rCodeLen;	/* Length of encoded row status */
+	int			cCodeLen;	/* Length of encoded column status */
+	vector		feasSenx;
+	BOOL		**obsFeasible;
+	oneBasis	**vals;		/* a structure for each basis */
 }basisType;
 
 /* The OmegaType data structure stores the set of observations which have been made so far. Each observation consists of a vector
@@ -253,7 +254,7 @@ oneProblem *newSubproblem(oneProblem *subprob);
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter);
 int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
-BOOL checkBasisFeasibility(oneBasis *B, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
+BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
 int decomposeDualSolution(vector *phi, vector omegaVals, intvec phiOmegaIdx, int phiLength, vector Pi, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
@@ -262,7 +263,7 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
 int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
-basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
+basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int wordLength);
 oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvCols, int numCols, int numRows, int rvdOmCnt, int currentIter, sparseVector *dBar);
 lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);

@@ -182,7 +182,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 		/* Loop though all the basis to establish feasibility with respect to new observations, and if feasible, compute delta elements for corresponding lambdas. */
 		for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 			/* Establish if the basis is feasible or not. */
-			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega.val, dOmega.col, dOmega.cnt, num->cols);
+			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols);
 
 			if ( basis->obsFeasible[cnt][elemIdx] ) {
 				/* If the basis is feasible, then compute the delta elements. */
@@ -224,7 +224,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 			dOmega.val = omega->vals[cnt] + offset[2];
 
 			/* Establish the feasibility of new basis with respect to existing observations */
-			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], dOmega.val, dOmega.col, dOmega.cnt, num->cols);
+			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols);
 
 			if ( basis->obsFeasible[elemIdx][cnt] ) {
 				/* If the basis is feasible, compute the delta elements */
@@ -259,30 +259,30 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 	return 0;
 }//END calcDelta()
 
-BOOL checkBasisFeasibility(oneBasis *B, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols) {
-	vector 	costVector;
+BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols) {
+	vector 	reducedCost;
 	int 	c;
 
-	if ( !(costVector = (vector) arr_alloc(numCols+1, double)) )
+	if ( !(reducedCost = (vector) arr_alloc(numCols+1, double)) )
 		errMsg("allocation", "calcDelta", "costVector", 0);
 
 	if ( rvdOmCnt > 0 ) {
-		copyVector(B->gBar, costVector, numCols, TRUE);
-		addVectors(costVector, dOmega, rvCols, rvdOmCnt);
+		copyVector(B->gBar, reducedCost, numCols, TRUE);
+		addVectors(reducedCost, dOmega, rvCols, rvdOmCnt);
 		if ( B->phiLength > 0 ) {
-			MSparsexvSub(B->psi, dOmega, costVector);
+			MSparsexvSub(B->psi, dOmega, reducedCost);
 		}
 		c = 1;
 		while ( c <= numCols) {
-			if ( costVector[c] < 0 ) {
-				mem_free(costVector);
+			if ( (0*reducedCost[c]) < 0 ) {
+				mem_free(reducedCost);
 				return FALSE;
 			}
 			c++;
 		}
 	}
 
-	mem_free(costVector);
+	mem_free(reducedCost);
 	return TRUE;
 }//END checkBasisFeasibility()
 
@@ -601,8 +601,9 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 
 /* This function allocates a new basisType data structure which holds all the unique basis discovered by the algorithm. It returns a pointer to the
  * structure. */
-basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
+basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int wordLength) {
 	basisType *basis;
+	int n;
 
 	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
 		errMsg("allocation", "newBasisType", "basis", 0);
@@ -610,9 +611,20 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
 	if ( !(basis->obsFeasible = (BOOL **) arr_alloc(numIter, BOOL *)))
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
+	if ( !(basis->feasSenx = (vector) arr_alloc(numRows+1, double)) )
+		errMsg("allocation", "newBasisType", "basis->feasSenx", 0);
 	basis->cnt = 0;
 	basis->cCodeLen = ceil(numCols/wordLength) + 1;
 	basis->rCodeLen = ceil(numRows/wordLength) + 1;
+
+	for (n = 1; n <= numRows; n++ ) {
+		if ( senx[n-1] == 'E' )
+			basis->feasSenx[n] = 0;
+		else if ( senx[n-1] == 'L' )
+			basis->feasSenx[n] = -1;
+		else if ( senx[n-1] == 'G' )
+			basis->feasSenx[n] = 1;
+	}
 
 	return basis;
 }//END newBasis()

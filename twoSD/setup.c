@@ -139,7 +139,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		length = prob[1]->num->rvdOmCnt*config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
 	else
 		length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
-	cell->basis  = newBasisType(config.MAX_ITER, prob[1]->num->cols, prob[1]->num->rows, WORDLENGTH);
+	cell->basis  = newBasisType(prob[1]->sp->senx, config.MAX_ITER, prob[1]->num->cols, prob[1]->num->rows, WORDLENGTH);
 	cell->lambda = newLambda(length, 0, prob[1]->num->rvRowCnt);
 	cell->sigma  = newSigma(length, prob[1]->num->cntCcols, 0);
 	cell->delta  = newDelta(length);
