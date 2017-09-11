@@ -9,6 +9,7 @@
  *
  */
 
+#include "stoc.h"
 #include "twoSD.h"
 
 extern string outputDir;

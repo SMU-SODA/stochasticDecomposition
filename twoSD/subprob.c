@@ -9,6 +9,7 @@
  *
  */
 
+#include "stoc.h"
 #include "twoSD.h"
 
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some

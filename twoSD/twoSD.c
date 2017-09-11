@@ -9,8 +9,8 @@
  *
  */
 
-
-#include <twoSD.h>
+#include "stoc.h"
+#include "twoSD.h"
 
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 string   	outputDir;		/* output directory */
