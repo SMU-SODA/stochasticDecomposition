@@ -12,11 +12,16 @@
 #include "utils.h"
 #include "solver.h"
 #include "smps.h"
+#include "prob.h"
+#include "cell.h"
 
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
 string   	outputDir;		/* output directory */
+configType 	config;
 
 int parseCmdLine(int argc, char *argv[], string algoName, string probName, string inputDir);
+int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName);
+int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName);
 
 int main (int argc, char *argv[]) {
 	int 	status;
@@ -44,13 +49,13 @@ int main (int argc, char *argv[]) {
 
 	/* setup the data structures based on the algorithm selected */
 	if ( !(strcmp(algoName, "benders")) ) {
-		if ( benders(orig, tim, stoc, inputDir, probName) ) {
+		if ( benders(orig, tim, stoc, probName) ) {
 			errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
 			goto TERMINATE;
 		}
 	}
 	else {
-		if ( twoSD(orig, tim, stoc, inputDir, probName) ) {
+		if ( twoSD(orig, tim, stoc, probName) ) {
 			errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
 			goto TERMINATE;
 		}
@@ -79,7 +84,7 @@ int parseCmdLine(int argc, char *argv[], string algoName, string probName, strin
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
-		printf("All solution files will be written to default output directory: %s", outputDir);
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 3 ) {
 		strcpy(algoName, argv[1]);
@@ -88,7 +93,7 @@ int parseCmdLine(int argc, char *argv[], string algoName, string probName, strin
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
-		printf("All solution files will be written to default output directory: %s", outputDir);
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 4 ) {
 		strcpy(algoName, argv[1]);
@@ -96,14 +101,14 @@ int parseCmdLine(int argc, char *argv[], string algoName, string probName, strin
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
-		printf("All solution files will be written to default output directory: %s", outputDir);
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 5 ) {
 		strcpy(algoName, argv[1]);
 		strcpy(probName, argv[2]);
 		strcpy(inputDir, argv[3]);
 		strcpy(outputDir, "../../spOutput/");
-		printf("All solution files will be written to default output directory: %s", outputDir);
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else {
 		strcpy(algoName, argv[1]);

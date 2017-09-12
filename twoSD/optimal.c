@@ -20,7 +20,7 @@ extern configType config;
  * 		2. If dual solution set is stable, the pre-test checks for "convergence" of objective function estimate.
  * 		3. Full test is based on boot-strapping, and checks the gap between primal (upper) and dual (lower) values.
  * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test is successful. */
-BOOL optimal(probType **prob, cellType *cell) {
+BOOL optimalSD(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag ) {
@@ -40,8 +40,7 @@ BOOL optimal(probType **prob, cellType *cell) {
 	}
 
 	return FALSE;
-}//optimal()
-
+}//optimalSD()
 
 /* Because checking optimality is an arduous task, we first do a pre-check to determine if the full test is worthwhile. This function
  * determines whether the height at the candidate is close enough to the height at the incumbent to warrant an optimality test. */
@@ -55,7 +54,6 @@ BOOL preTest(cellType *cell) {
 	}
 	else
 		cell->optFlag = (cell->candidEst > (1 + config.PRE_EPSILON) * cell->incumbEst);
-
 	return cell->optFlag;
 
 }//END preTest()
@@ -101,7 +99,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		}
 
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach, we don't include the incumb_x * c in estimate */
-		if (config.MASTERTYPE == 1)
+		if (config.MASTER_TYPE == 1)
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
 		else
 			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
@@ -156,9 +154,9 @@ void empiricalDistribution(omegaType *omega, intvec cdf) {
 	int cnt;
 
 	/* Calculate an integer cdf distribution for observations */
-	cdf[0] = omega->weight[0];
+	cdf[0] = omega->weights[0];
 	for (cnt = 1; cnt < omega->cnt; cnt++)
-		cdf[cnt] = cdf[cnt - 1] + omega->weight[cnt];
+		cdf[cnt] = cdf[cnt - 1] + omega->weights[cnt];
 
 }//END empirical_distrib
 
@@ -213,11 +211,11 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 					sigmaIdx  = basis->vals[iStar]->sigmaIdx[idx];
 					lambdaIdx = basis->vals[iStar]->lambdaIdx[idx];
 
-					gCuts->vals[cnt]->alpha += (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib) * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+					gCuts->vals[cnt]->alpha += (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib) * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weights[obs];
 					for (c = 1; c <= num->cntCcols; c++)
-						gCuts->vals[cnt]->beta[coord->colsC[c]] += sigma->vals[sigmaIdx].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+						gCuts->vals[cnt]->beta[coord->colsC[c]] += sigma->vals[sigmaIdx].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weights[obs];
 					for (c = 1; c <= num->rvCOmCnt; c++)
-						gCuts->vals[cnt]->beta[coord->rvCols[c]] += delta->vals[lambdaIdx][obs].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weight[obs];
+						gCuts->vals[cnt]->beta[coord->rvCols[c]] += delta->vals[lambdaIdx][obs].piC[c] * (omega->vals[observ[obs]][offset+basis->vals[iStar]->omegaIdx[cnt]]) * omega->weights[obs];
 				}
 
 				count++;

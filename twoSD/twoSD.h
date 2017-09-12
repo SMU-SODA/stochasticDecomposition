@@ -18,121 +18,28 @@
 #include "prob.h"
 #include "stoc.h"
 #include "cuts.h"
+#include "cell.h"
 
-#define TRIVIAL 0
-#define NONTRIVIAL 1
-
-#undef STOCH_CHECK
 #undef ALGO_CHECK
 
-/* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
-configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
-typedef struct{
-	long long RUN_SEED;			/* seed used during optimization */
-	double 	TOLERANCE; 			/* for zero identity test */
-	int		MIN_ITER;			/* minimum number of iterations */
-	int		MAX_ITER;			/* maximum number of iterations */
-	int		MASTERTYPE;			/* type of master problem */
-	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
-	int		TAU;				/* Frequency at which the incumbent is updated */
-	double	MIN_QUAD_SCALAR;	/* Minimum value for regularizing parameter */
-	double 	MAX_QUAD_SCALAR;	/* Maximum value for regularizing parameter */
-	double	R1;
-	double	R2;
-	double	R3;
-	int		PI_EVAL_START;
-	int		PI_CYCLE;
-	int		SCAN_LEN;
-	int		EVAL_FLAG;
-	long long EVAL_SEED;
-	int		EVAL_MIN_ITER;
-	double	EVAL_ERROR;
-	double  PRE_EPSILON;
-	double	EPSILON;
-	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
-	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
-}configType;
-
-typedef struct {
-	int         k;                  /* number of iterations */
-	int 		LPcnt; 				/* the number of LPs solved. */
-    double		lb;					/* lower bound on cell objective function */
-    int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
-
-    oneProblem  *master;            /* store master information */
-	oneProblem 	*subprob;			/* store subproblem information */
-
-	vector      candidX;            /* primal solution of the master problem */
-	double      candidEst;          /* objective value master problem */
-
-	vector      incumbX;			/* incumbent master solution */
-	double      incumbEst;			/* estimate at incumbent solution */
-	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
-	BOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
-	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
-	int         iCutUpdt;			/* iteration number when incumbent cut is updated */
-	double      gamma;				/* improvement in objective function value */
-	double      normDk_1;			/* (\Delta x^{k-1})^2 */
-	double      normDk;				/* (\Delta x^k)^2 */
-
-	vector 		piM;				/* master dual information */
-	vector      djM;                /* master reduced cost vector */
-
-    int      	maxCuts;            /* maximum number of cuts to be used*/
-	cutsType    *cuts;              /* optimality cuts */
-	cutsType    *fcuts;             /* feasibility cuts */
-
-	basisType	*basis;				/* hold unique basis identified */
-	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
-	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
-	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
-	omegaType 	*omega;				/* all realizations observed during the algorithm */
-
-    BOOL        optFlag;
-	vector      pi_ratio;
-    BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
-
-	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
-	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
-}cellType;
-
 /* twoSD.c */
-int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string algoName, string probName);
-int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-int readSDConfig();
-void writeSDStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages);
-
-/* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
-cellType *newCell(stocType *stoc, probType **prob, vector xk);
-void freeCellType(cellType *cell);
+int solveSDCell(stocType *stoc, probType **prob, cellType *cell);
+void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages);
 
 /* master.c */
-int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb);
-int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb);
-int constructQP(probType *prob, LPptr lp, vector incumbX);
+int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
-int changeQPproximal(LPptr lp, int numCols, double sigma);
-int changeQPrhs(probType *prob, cellType *cell);
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
-oneProblem *newMaster(oneProblem *orig, double lb);
-
-/* cuts.c */
 int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
-int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
-		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
-
-/* soln.c */
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
 
 /* optimal.c */
-BOOL optimal(probType **prob, cellType *cell);
+BOOL optimalSD(probType **prob, cellType *cell);
 BOOL preTest(cellType *cell);
 BOOL fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX);
@@ -142,6 +49,6 @@ void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
-int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
 
 #endif /* TWOSD_H_ */

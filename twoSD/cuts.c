@@ -10,6 +10,43 @@
  */
 
 #include "cuts.h"
+#include "cell.h"
+
+extern configType config;
+
+int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double lb) {
+	intvec 	indices;
+	int 	cnt;
+
+	if (!(indices = arr_alloc(lenX + 1, int)))
+		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta",0);
+	for (cnt = 1; cnt <= lenX; cnt++)
+		indices[cnt] = cnt - 1;
+	indices[0] = lenX;
+
+	if ( config.MASTER_TYPE == PROB_QP )
+		cut->alphaIncumb = cut->alpha - vXv(cut->beta, cell->incumbX, NULL, lenX);
+
+	/* check to see if there is room for the candidate cut, else drop a cut */
+	if (cell->cuts->cnt == cell->maxCuts) {
+		/* make room for the latest cut */
+		if( reduceCuts(cell->master, cell->cuts, scaleCut, cell->candidX, cell->piM, lenX, lb, cell->k, &cell->iCutIdx, config.TOLERANCE) < 0 ) {
+			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
+			return -1;
+		}
+	}
+
+	/* add the cut to the cell cuts structure as well as on the solver */
+	cell->cuts->vals[cell->cuts->cnt] = cut;
+	if ( addRow(cell->master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
+		return -1;
+	}
+	cut->rowNum = cell->master->mar++;
+
+	mem_free(indices);
+	return cell->cuts->cnt++;
+}//END addCuts2Master()
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
 double maxCutHeight(cutsType *cuts, vector xk, int betaLen, BOOL scaleCut, int currIter, double lb) {
@@ -87,7 +124,7 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(oneProblem *master, cutsType *cuts, vector candidX, vector pi, int betaLen, double lb, int currentIter, int *iCutIdx, double TOLERANCE) {
+int reduceCuts(oneProblem *master, cutsType *cuts, BOOL scaleCut, vector candidX, vector pi, int betaLen, double lb, int currentIter, int *iCutIdx, double TOLERANCE) {
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
@@ -109,7 +146,7 @@ int reduceCuts(oneProblem *master, cutsType *cuts, vector candidX, vector pi, in
 	/* if the oldest loose cut is the most recently added cut, then the cut with minimium cut height will be dropped */
 	if ( oldestCut == cuts->cnt ) {
 		//minHeight = cutHeight(lbType, cell[agentIdx]->cuts->vals[0], cell[agentIdx]->k, candidX, betaLen, lb);
-		minHeight = cutHeight(cuts->vals[0], candidX, betaLen, TRUE, currentIter, lb);
+		minHeight = cutHeight(cuts->vals[0], candidX, betaLen, scaleCut, currentIter, lb);
 		oldestCut = 0;
 
 		for (idx = 1; idx < cuts->cnt; idx++) {
@@ -117,7 +154,7 @@ int reduceCuts(oneProblem *master, cutsType *cuts, vector candidX, vector pi, in
 				continue;
 
 			//height = cutHeight(lbType, cell[agentIdx]->cuts->vals[idx], cell[agentIdx]->k, candidX, betaLen, lb);
-			height = cutHeight(cuts->vals[idx], candidX, betaLen, TRUE, currentIter, lb);
+			height = cutHeight(cuts->vals[idx], candidX, betaLen, scaleCut, currentIter, lb);
 			if (height < minHeight) {
 				minHeight = height;
 				oldestCut = idx;

@@ -84,15 +84,15 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 #if defined(STOCH_CHECK)
 	int sigmaIdx, lambdaIdx; double multiplier, obj1;
 	obj1 = 0;
-	for ( n = 0; n <= ->vals[basisIdx]->phiLength; n++ ) {
-		sigmaIdx = ->vals[basisIdx]->sigmaIdx[n];
-		lambdaIdx = ->vals[basisIdx]->lambdaIdx[n];
+	for ( n = 0; n <= basis->vals[basisIdx]->phiLength; n++ ) {
+		sigmaIdx = basis->vals[basisIdx]->sigmaIdx[n];
+		lambdaIdx = basis->vals[basisIdx]->lambdaIdx[n];
 		if ( n == 0 )
 			multiplier = 1.0;
 		else
-			multiplier = omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+->vals[basisIdx]->omegaIdx[n]];
-		obj1 += multiplier*(cell->sigma->vals[sigmaIdx].pib - vXv(cell->sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
-		obj1 += multiplier*(delta->vals[lambdaIdx][omegaIdx].pib - vXv(->vals[lambdaIdx][omegaIdx].piC,
+			multiplier = omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+basis->vals[basisIdx]->omegaIdx[n]];
+		obj1 += multiplier*(sigma->vals[sigmaIdx].pib - vXv(sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
+		obj1 += multiplier*(delta->vals[lambdaIdx][omegaIdx].pib - vXv(delta->vals[lambdaIdx][omegaIdx].piC,
 				omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvCOmCnt));
 	}
 	printf("Objective function estimate    = %lf\n", obj1);
@@ -101,7 +101,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 #endif
 
 	mem_free(rhs); mem_free(cost); mem_free(indices);
-	return 0;
+	return basisIdx;
 }// END solveSubprob()
 
 /* This function computes the right hand side of the subproblem, based on a given X vector and a given observation of omega.

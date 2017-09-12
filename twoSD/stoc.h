@@ -13,6 +13,8 @@
 #include "smps.h"
 #include "prob.h"
 
+#undef STOCH_CHECK
+
 /* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Towards this end,
  * pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
 typedef struct{
@@ -27,8 +29,10 @@ typedef struct{
  * every time the same outcome is observed again).  _cnt_ just specifies the number of distinct outcomes which have been observed
  ** and stored in the omegaType structure. */
 typedef struct {
+	int		numRV;
 	int 	cnt;
-	intvec	weight;                 /* number of times that an omega is observed */
+	intvec	weights;                 /* number of times that an omega is observed */
+	vector	probs;
 	vector	*vals;
 } omegaType;
 
@@ -100,6 +104,8 @@ oneProblem *newSubproblem(oneProblem *subprob);
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
+		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter);
 int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter);
 BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
@@ -116,7 +122,7 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
-omegaType *newOmega(int numIter);
+omegaType *newOmega(int numOmega, int numIter);
 void freeBasisType(basisType *basis);
 void freeOneBasis(oneBasis *B);
 void freeLambdaType(lambdaType *lambda);

@@ -11,129 +11,53 @@
 
 #include "twoSD.h"
 
-configType config;
+extern configType config;
 extern string outputDir;
 
-int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string algoName, string probName) {
-	vector	 xk = NULL, lb = NULL;
+int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	FILE 	*soln;
 
 	/* read algorithm configuration file */
-	if ( readSDConfig() )
+	if ( readConfig() )
 		goto TERMINATE;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
 		goto TERMINATE;
 
+	printf("Starting two-stage stochastic decomposition.\n");
 	/* Use two-stage stochastic decomposition algorithm to solve the problem */
-	if ( solveSDCell(stoc, prob, cell, inputDir, probName) ) {
+	if ( solveSDCell(stoc, prob, cell) ) {
 		errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
 		goto TERMINATE;
 	}
 
 	/* Write solution statistics for optimization process */
-	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
-	writeSDStatistic(&soln, prob, cell, probName, tim->numStages);
+	writeSDStatistic(stdout, prob, cell, probName, tim->numStages);
+	soln = openFile(outputDir, "summary.dat", "w");
+	writeSDStatistic(soln, prob, cell, probName, tim->numStages);
 
 	/* evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {
-		evaluate(&soln, stoc, prob, cell, cell->incumbX);
+		evaluateSD(&soln, stoc, prob, cell, cell->incumbX);
 	}
 
 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */
-	if (xk) mem_free(xk);
-	if (lb) mem_free(lb);
 	freeCellType(cell);
 	freeProbType(prob, 2);
 	return 0;
 
 	TERMINATE:
-	if(xk) mem_free(xk);
-	if(lb) mem_free(lb);
 	if(cell) freeCellType(cell);
 	if(prob) freeProbType(prob, 2);
 	return 1;
 }//END algo()
 
-
-int readSDConfig() {
-	FILE 	*fptr;
-	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
-	int 	status;
-
-	fptr = fopen("config.sd", "r");
-	if ( fptr == NULL ) {
-		errMsg("read", "readConfig", "failed to open configuration file", 0);
-		return 1;
-	}
-
-	if ( !(outputDir = (string) mem_malloc(BLOCKSIZE*sizeof(char))) )
-		errMsg("allocation", "readConfig", "outputDir", 0);
-
-	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
-		if (!(strcmp(line, "RUN_SEED")))
-			fscanf(fptr, "%lld", &config.RUN_SEED);
-		else if (!(strcmp(line, "TOLERANCE")))
-			fscanf(fptr, "%lf", &config.TOLERANCE);
-		else if (!(strcmp(line, "MIN_ITER")))
-			fscanf(fptr, "%d", &config.MIN_ITER);
-		else if (!(strcmp(line, "MAX_ITER")))
-			fscanf(fptr, "%d", &config.MAX_ITER);
-		else if (!(strcmp(line, "MASTERTYPE")))
-			fscanf(fptr, "%d", &config.MASTERTYPE);
-		else if (!(strcmp(line, "CUT_MULT")))
-			fscanf(fptr, "%d", &config.CUT_MULT);
-		else if (!(strcmp(line, "TAU")))
-			fscanf(fptr, "%d", &config.TAU);
-		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
-			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
-		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
-			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
-		else if (!(strcmp(line, "R1")))
-			fscanf(fptr, "%lf", &config.R1);
-		else if (!(strcmp(line, "R2")))
-			fscanf(fptr, "%lf", &config.R2);
-		else if (!(strcmp(line, "R3")))
-			fscanf(fptr, "%lf", &config.R3);
-		else if (!(strcmp(line, "PI_EVAL_START")))
-			fscanf(fptr, "%d", &config.PI_EVAL_START);
-		else if (!(strcmp(line, "PI_CYCLE")))
-			fscanf(fptr, "%d", &config.PI_CYCLE);
-		else if (!(strcmp(line, "SCAN_LEN")))
-			fscanf(fptr, "%d", &config.SCAN_LEN);
-		else if (!(strcmp(line, "EVAL_FLAG")))
-			fscanf(fptr, "%d", &config.EVAL_FLAG);
-		else if (!(strcmp(line, "EVAL_SEED")))
-			fscanf(fptr, "%lld", &config.EVAL_SEED);
-		else if (!(strcmp(line, "EVAL_MIN_ITER")))
-			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
-		else if (!(strcmp(line, "EVAL_ERROR")))
-			fscanf(fptr, "%lf", &config.EVAL_ERROR);
-		else if (!(strcmp(line, "PRE_EPSILON")))
-			fscanf(fptr, "%lf", &config.PRE_EPSILON);
-		else if (!(strcmp(line, "EPSILON")))
-			fscanf(fptr, "%lf", &config.EPSILON);
-		else if (!(strcmp(line, "BOOTSTRAP_REP")))
-			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
-		else if (!strcmp(line, "//"))
-			fgets(comment, 2*BLOCKSIZE, fptr);
-		else {
-			printf ("%s\n", line);
-			errMsg("read", "readConfig", "unrecognized parameter in configuration file", 1);
-		}
-	}
-
-	fclose(fptr);
-
-	return 0;
-}//END readConfig()
-
-int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName) {
+int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 	vector 	observ;
 	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;
@@ -154,7 +78,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir
 #endif
 
 		/******* 1. Optimality tests *******/
-		if (optimal(prob, cell))
+		if (optimalSD(prob, cell))
 			break;
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
@@ -190,7 +114,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir
 			checkImprovement(prob[0], cell, candidCut);
 
 		/******* 6. Solve the master problem to obtain the new candidate solution */
-		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
+		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
 			return 1;
 		}
@@ -200,37 +124,35 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir
 	return 0;
 }//END solveCell()
 
-void writeSDStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages) {
+void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages) {
 	int t;
 
-	(*soln) = openFile(outputDir, "summary.dat", "w");
-
-	fprintf((*soln), "====================================================================================================================================\n");
-	fprintf((*soln), "-------------------------------------------------------- Problem Information -------------------------------------------------------\n");
-	fprintf((*soln), "====================================================================================================================================\n");
-	fprintf((*soln), "Problem                            : %s\n", probName);
-	fprintf((*soln), "Number of stages                   : %d\n", numStages);
+	fprintf(soln, "\n\n====================================================================================================================================\n");
+	fprintf(soln, "-------------------------------------------------------- Problem Information -------------------------------------------------------\n");
+	fprintf(soln, "====================================================================================================================================\n");
+	fprintf(soln, "Problem                            : %s\n", probName);
+	fprintf(soln, "Number of stages                   : %d\n", numStages);
 	for ( t = 0; t < numStages; t++ ) {
-		fprintf((*soln),  "------------------------------------------------------------------------------------------------------------------------------------\n");
-		fprintf((*soln),  "Stage %d\n", t);
-		fprintf((*soln),  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
-		fprintf((*soln),  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
-		fprintf((*soln),  "Number of constraints              = %d\n", prob[t]->sp->mar);
+		fprintf(soln,  "------------------------------------------------------------------------------------------------------------------------------------\n");
+		fprintf(soln,  "Stage %d\n", t);
+		fprintf(soln,  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
+		fprintf(soln,  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
+		fprintf(soln,  "Number of constraints              = %d\n", prob[t]->sp->mar);
 		if ( prob[t]->omegas != NULL ) {
-			fprintf((*soln),  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
-			fprintf((*soln),  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
+			fprintf(soln,  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+			fprintf(soln,  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
 					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
 		}
 		else
-			fprintf((*soln),  "Number of random variables (omega) = 0\n");
+			fprintf(soln,  "Number of random variables (omega) = 0\n");
 	}
 
-	fprintf((*soln), "\n====================================================================================================================================\n");
-	fprintf((*soln), "----------------------------------------------------------- Optimization -----------------------------------------------------------\n");
-	fprintf((*soln), "====================================================================================================================================\n");
-	fprintf((*soln), "Algorithm                          : Two-stage Stochastic Decomposition\n");
-	fprintf((*soln), "Number of iterations               : %d\n", cell->k);
-	fprintf((*soln), "Lower bound estimate               : %f\n", cell->incumbEst);
-	fclose((*soln));
+	fprintf(soln, "\n====================================================================================================================================\n");
+	fprintf(soln, "----------------------------------------------------------- Optimization -----------------------------------------------------------\n");
+	fprintf(soln, "====================================================================================================================================\n");
+	fprintf(soln, "Algorithm                          : Two-stage Stochastic Decomposition\n");
+	fprintf(soln, "Number of iterations               : %d\n", cell->k);
+	fprintf(soln, "Lower bound estimate               : %f\n", cell->incumbEst);
+	fclose(soln);
 
 }//END WriteStat

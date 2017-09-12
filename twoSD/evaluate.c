@@ -14,7 +14,7 @@
 extern configType config;
 extern string outputDir;
 
-int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
+int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 	vector 	observ, rhs, costTemp, cost;
 	intvec	objxIdx;
 	double 	obj, mean, variance, stdev, temp;
@@ -124,3 +124,8 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 	return 0;
 
 }//END evaluate()
+
+int evaluateBenders(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
+
+	return 0;
+}

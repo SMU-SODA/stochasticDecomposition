@@ -111,11 +111,70 @@ int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, 
 			basisIdx = sigmaIdx;
 	}
 
-	mem_free(cstat);
-	mem_free(rstat);
+	mem_free(piS); mem_free(cstat);	mem_free(rstat);
 	return basisIdx;
 }//End stochasticUpdates()
 
+/*This function loops through all the dual vectors found so far and returns the index of the one which satisfies the expression:
+ * 				argmax { Pi x (R - T x X) | all Pi }
+ * where X, R, and T are given.  It is calculated in this form:
+ * 				Pi x bBar + Pi x bomega + (Pi x Cbar) x X + (Pi x Comega) x X.
+ * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
+ * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
+ * another due to elimination of non-distinct or redundant vectors. */
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX,
+		vector omegaVals, int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
+	double 	arg;
+	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, basisUp, basisLow;
+
+	if (pi_eval == TRUE)
+		numSamples -= (numSamples / 10 + 1);
+
+	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
+	if ( !isNew ) {
+		basisUp = numSamples; basisLow = -INT_MAX;
+	}
+	else {
+		basisUp = INT_MAX; basisLow = numSamples;
+	}
+
+	*argmax = -DBL_MAX; maxCnt = 0;
+	/* Run through the list of basis to choose the one which provides the best lower bound */
+	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+		if ( basis->obsFeasible[cnt][obs] ) {
+			/* I. Compute argument using deterministic component of the dual solution */
+			sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
+			lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
+
+			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
+				/* a. */
+				arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
+
+				/* b. */
+				arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+
+				/* II. Append argument using values computed from the stochastic component of the dual solution. */
+				for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
+					sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
+					lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
+
+					/* a. */
+					arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+
+					/* b. */
+					arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+				}
+
+				if (arg > (*argmax)) {
+					*argmax = arg;
+					maxCnt = cnt;
+				}
+			}
+		}
+	}
+
+	return maxCnt;
+}//END computeIstar
 
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter) {
 	unsigned long *codedCol, *codedRow;
@@ -439,13 +498,13 @@ int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmeg
 	for (cnt = 0; cnt < omega->cnt; cnt++)
 		if (equalVector(observ, omega->vals[cnt], end-begin, TOLERANCE)) {
 			(*newOmegaFlag) = FALSE;
-			omega->weight[cnt]++;
+			omega->weights[cnt]++;
 			return cnt;
 		}
 
 	/* Add the realization vector to the list */
 	omega->vals[omega->cnt] = duplicVector(observ, end-begin);
-	omega->weight[omega->cnt] = 1;
+	omega->weights[omega->cnt] = 1;
 	(*newOmegaFlag) = TRUE;
 
 #ifdef STOCH_CHECK
@@ -645,6 +704,7 @@ void freeBasisType(basisType *basis) {
 			mem_free(basis->vals);
 			mem_free(basis->obsFeasible);
 		}
+		if (basis->feasSenx) mem_free(basis->feasSenx);
 		mem_free(basis);
 	}
 
@@ -658,6 +718,7 @@ void freeOneBasis(oneBasis *B) {
 		if (B->rCode) mem_free(B->rCode);
 		if (B->lambdaIdx) mem_free(B->lambdaIdx);
 		if (B->sigmaIdx) mem_free(B->sigmaIdx);
+		if (B->omegaIdx) mem_free(B->omegaIdx);
 		if (B->gBar) mem_free(B->gBar);
 		if ( B->phi) {
 			for ( n = 0; n < B->phiLength; n++ )
@@ -735,15 +796,17 @@ deltaType *newDelta(int numIter) {
 
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a vector to hold an array of
  * observation and the weights associated with it. */
-omegaType *newOmega(int numIter) {
+omegaType *newOmega(int numOmega, int numIter) {
 	omegaType *omega;
 
 	if ( !(omega = (omegaType *) mem_malloc(sizeof(omegaType))) )
 		errMsg("allocation","newOmega", "omega", 0);
-	if ( !(omega->weight = (intvec) arr_alloc(numIter, int)) )
+	if ( !(omega->weights = (intvec) arr_alloc(numIter, int)) )
 		errMsg("allocation", "newOmega", "omega->weight", 0);
 	if ( !(omega->vals = (vector *) arr_alloc(numIter, vector)) )
 		errMsg("allocation", "newOmega", "omega->vals", 0);
+	omega->probs = NULL;
+	omega->numRV = numOmega;
 	omega->cnt = 0;
 
 	return omega;
@@ -752,7 +815,8 @@ omegaType *newOmega(int numIter) {
 void freeOmegaType(omegaType *omega) {
 	int n;
 
-	if ( omega->weight ) mem_free(omega->weight);
+	if ( omega->weights ) mem_free(omega->weights);
+	if ( omega->probs ) mem_free(omega->probs);
 	if ( omega->vals ) {
 		for ( n = 0; n < omega->cnt; n++ )
 			if ( omega->vals[n] ) mem_free(omega->vals[n]);
