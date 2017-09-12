@@ -16,6 +16,7 @@
 #include "solver.h"
 #include "smps.h"
 #include "prob.h"
+#include "stoc.h"
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1
@@ -185,20 +186,6 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
 int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
-
-/* TODO: After merging 2SD_randomCost branch into main, move the following to util.h */
-#define WORDLENGTH 64
-unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
-BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
-int isElementIntvec(intvec vec, int lenVec, int elem);
-intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB);
-
-/* TODO: After merging 2SD_randomCost branch into main, move the following to solver.h */
-int getBasisHead(LPptr lp, intvec head, vector basicX);
-int getBasisInvRow(LPptr lp, int i, vector phi);
-int getBasisInvCol(LPptr lp, int i, vector phi);
-int getBasisInvARow(LPptr lp, int i, vector phi);
-int getBasisInvACol(LPptr lp, int i, vector phi);
 
 /* stocUpdates.c */
 int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);

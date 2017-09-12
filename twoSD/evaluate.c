@@ -9,7 +9,6 @@
  *
  */
 
-#include "stoc.h"
 #include "twoSD.h"
 
 extern configType config;

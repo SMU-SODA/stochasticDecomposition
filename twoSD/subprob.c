@@ -9,8 +9,9 @@
  *
  */
 
-#include "stoc.h"
 #include "twoSD.h"
+
+extern configType config;
 
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
@@ -242,3 +243,103 @@ oneProblem *newSubproblem(oneProblem *subprob) {
 
 	return subprob;
 }//END new_subprob
+
+int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag) {
+	intvec 	cstat, rstat;
+	int 	basisIdx, lambdaIdx, sigmaIdx, cnt, offset;
+	BOOL	newBasisFlag, newLambdaFlag, newSigmaFlag;
+
+	/* Allocate memory. */
+	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
+		errMsg("allocation", "getIndexNumber", "cstat", 0);
+	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
+		errMsg("allocation", "getIndexNumber", "rstat", 0);
+
+	/* Obtain the status of columns and rows in the basis. */
+	if ( getBasis(cell->subprob->lp, cstat+1, rstat+1) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
+		return -1;
+	}
+	/* Record the dual and reduced cost on bounds. */
+	if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+		return -1;
+	}
+	if ( computeMU(cell->subprob->lp, cstat,  prob->num->cols, &cell->mubBar) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+		return -1;
+	}
+
+	/* Update the column of delta structure if a new observation was encountered, and check the feasibility of existing bases with respect to new observation. */
+	if ( newOmegaFlag )
+		calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER);
+
+	if ( prob->num->rvdOmCnt > 0 ) {
+		/* The random variables corresponding to cost coefficients are listed at the end of vector, the offset is used to index them */
+		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
+
+		/* If the cost-coefficients are random, update the basis structure. */
+		basisIdx = calcBasis(cell->subprob->lp, cell->basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
+				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag, cell->k);
+
+		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
+			/* Decompose the dual solution into deterministic and stochastic components. */
+			decomposeDualSolution(cell->basis->vals[basisIdx]->phi, cell->omega->vals[omegaIdx]+offset, cell->basis->vals[basisIdx]->omegaIdx,
+					cell->basis->vals[basisIdx]->phiLength, cell->piS, prob->num->rows);
+		}
+
+		if ( newBasisFlag ) {
+			/* Calculations with respect to deterministic component of the dual solution */
+			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+			lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag, config.TOLERANCE);
+			if ( newLambdaFlag )
+				if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
+					errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+			/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+			cell->basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar,
+					lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag, config.TOLERANCE);
+
+			/* Calculations with respect to stochastic component of the dual solution */
+			for (cnt = 0; cnt < cell->basis->vals[basisIdx]->phiLength; cnt++ ) {
+				/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+				lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, cell->basis->vals[basisIdx]->phi[cnt], cell->lambda, &newLambdaFlag, config.TOLERANCE);
+				if ( newLambdaFlag )
+					if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
+						errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+				/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+				cell->basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->basis->vals[basisIdx]->phi[cnt], cell->mubBar,
+						lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag, config.TOLERANCE);
+			}
+
+			/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
+			calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, FALSE, basisIdx, config.MAX_ITER);
+		}
+	}
+	else {
+		/* extract the dual solutions corresponding to rows with random elements in them */
+		lambdaIdx = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag, config.TOLERANCE);
+		if ( newLambdaFlag )
+			if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
+				errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+		/* compute Pi x bBar and Pi x Cbar */
+		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag, config.TOLERANCE);
+
+		if ( newSigmaFlag ) {
+			basisIdx = cell->basis->cnt++;
+			cell->basis->vals[basisIdx] = newBasis(NULL, NULL, NULL, NULL, 0, 0, 0, cell->k, NULL);
+			cell->basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
+			cell->basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
+
+			calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, FALSE, basisIdx, config.MAX_ITER);
+		}
+		else
+			basisIdx = sigmaIdx;
+	}
+
+	mem_free(cstat);
+	mem_free(rstat);
+	return basisIdx;
+}//End stochasticUpdates()

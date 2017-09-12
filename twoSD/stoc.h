@@ -93,11 +93,11 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols);
 int decomposeDualSolution(vector *phi, vector omegaVals, intvec phiOmegaIdx, int phiLength, vector Pi, int numRows);
 void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
-int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
+int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
+              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag, double TOLERANCE);
 int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
-int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
+int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag, double TOLERANCE);
 int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int wordLength);
 oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvCols, int numCols, int numRows, int rvdOmCnt, int currentIter, sparseVector *dBar);
@@ -111,5 +111,20 @@ void freeLambdaType(lambdaType *lambda);
 void freeSigmaType(sigmaType *sigma);
 void freeOmegaType(omegaType *omega);
 void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt);
+
+/* TODO: After merging 2SD_randomCost branch into main, move the following to util.h */
+#define WORDLENGTH 64
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
+BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
+int isElementIntvec(intvec vec, int lenVec, int elem);
+intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB);
+
+/* TODO: After merging 2SD_randomCost branch into main, move the following to solver.h */
+int getBasisHead(LPptr lp, intvec head, vector basicX);
+int getBasisInvRow(LPptr lp, int i, vector phi);
+int getBasisInvCol(LPptr lp, int i, vector phi);
+int getBasisInvARow(LPptr lp, int i, vector phi);
+int getBasisInvACol(LPptr lp, int i, vector phi);
+
 
 #endif /* STOC_H_ */

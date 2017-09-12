@@ -10,113 +10,10 @@
  */
 
 #include "stoc.h"
-#include "twoSD.h"
-
-extern configType config;
-
-int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag) {
-	intvec 	cstat, rstat;
-	int 	basisIdx, lambdaIdx, sigmaIdx, cnt, offset;
-	BOOL	newBasisFlag, newLambdaFlag, newSigmaFlag;
-
-	/* Allocate memory. */
-	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
-		errMsg("allocation", "getIndexNumber", "cstat", 0);
-	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
-		errMsg("allocation", "getIndexNumber", "rstat", 0);
-
-	/* Obtain the status of columns and rows in the basis. */
-	if ( getBasis(cell->subprob->lp, cstat+1, rstat+1) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
-		return -1;
-	}
-	/* Record the dual and reduced cost on bounds. */
-	if ( getDual(cell->subprob->lp, cell->piS, prob->num->rows) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
-		return -1;
-	}
-	if ( computeMU(cell->subprob->lp, cstat,  prob->num->cols, &cell->mubBar) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
-		return -1;
-	}
-
-	/* Update the column of delta structure if a new observation was encountered, and check the feasibility of existing bases with respect to new observation. */
-	if ( newOmegaFlag )
-		calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, newOmegaFlag, omegaIdx, config.MAX_ITER);
-
-	if ( prob->num->rvdOmCnt > 0 ) {
-		/* The random variables corresponding to cost coefficients are listed at the end of vector, the offset is used to index them */
-		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
-
-		/* If the cost-coefficients are random, update the basis structure. */
-		basisIdx = calcBasis(cell->subprob->lp, cell->basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
-				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag, cell->k);
-
-		if ( cell->basis->vals[basisIdx]->phiLength > 0) {
-			/* Decompose the dual solution into deterministic and stochastic components. */
-			decomposeDualSolution(cell->basis->vals[basisIdx]->phi, cell->omega->vals[omegaIdx]+offset, cell->basis->vals[basisIdx]->omegaIdx,
-					cell->basis->vals[basisIdx]->phiLength, cell->piS, prob->num->rows);
-		}
-
-		if ( newBasisFlag ) {
-			/* Calculations with respect to deterministic component of the dual solution */
-			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
-			lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag);
-			if ( newLambdaFlag )
-				if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
-					errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
-
-			/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
-			cell->basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar,
-					lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
-
-			/* Calculations with respect to stochastic component of the dual solution */
-			for (cnt = 0; cnt < cell->basis->vals[basisIdx]->phiLength; cnt++ ) {
-				/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
-				lambdaIdx = cell->basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, cell->basis->vals[basisIdx]->phi[cnt], cell->lambda, &newLambdaFlag);
-				if ( newLambdaFlag )
-					if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
-						errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
-
-				/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
-				cell->basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->basis->vals[basisIdx]->phi[cnt], cell->mubBar,
-						lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
-			}
-
-			/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
-			calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, FALSE, basisIdx, config.MAX_ITER);
-		}
-	}
-	else {
-		/* extract the dual solutions corresponding to rows with random elements in them */
-		lambdaIdx = calcLambda(prob->num, prob->coord, cell->piS, cell->lambda, &newLambdaFlag);
-		if ( newLambdaFlag )
-			if ( !(cell->delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(config.MAX_ITER, pixbCType)))
-				errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
-
-		/* compute Pi x bBar and Pi x Cbar */
-		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, cell->piS, cell->mubBar, lambdaIdx, newLambdaFlag, cell->k, cell->sigma, &newSigmaFlag);
-
-		if ( newSigmaFlag ) {
-			basisIdx = cell->basis->cnt++;
-			cell->basis->vals[basisIdx] = newBasis(NULL, NULL, NULL, NULL, 0, 0, 0, cell->k, NULL);
-			cell->basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
-			cell->basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
-
-			calcDelta(prob->num, prob->coord, cell->basis, cell->lambda, cell->delta, cell->omega, FALSE, basisIdx, config.MAX_ITER);
-		}
-		else
-			basisIdx = sigmaIdx;
-	}
-
-	mem_free(cstat);
-	mem_free(rstat);
-	return basisIdx;
-}//End stochasticUpdates()
 
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter) {
 	unsigned long *codedCol, *codedRow;
-	int		cnt, i;
+	int		cnt;
 
 	/* encode the row and column status */
 	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH);
@@ -146,7 +43,7 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	if ( basis->vals[cnt]->phiLength > 0 ) {
 		printf("\tIndex in observation vector corresponding to basic columns = "); printIntvec(basis->vals[cnt]->omegaIdx, basis->vals[cnt]->phiLength, NULL);
 		printf("\tPhi = ");
-		for (i = 0; i < basis->vals[cnt]->phiLength; i++ ) {
+		for (int i = 0; i < basis->vals[cnt]->phiLength; i++ ) {
 			printf("\t\t"); printVector(basis->vals[cnt]->phi[i], numRows, NULL);
 		}
 	}
@@ -328,7 +225,7 @@ void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector obs
  * This vector is then compared with all previous lambda_pi vectors, searching for a duplication. If a duplicate is found, the vector is not added
  * to the structure, and the function returns the index of the duplicate vector. Otherwise, it adds the vector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag) {
+int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag, double TOLERANCE) {
 	int 	pi_idx;
 	vector	lambda_pi;
 
@@ -337,7 +234,7 @@ int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BO
 
 	/* Compare resulting lambda_pi with all previous vectors */
 	for (pi_idx = 0; pi_idx < lambda->cnt; pi_idx++)
-		if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, config.TOLERANCE)) {
+		if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, TOLERANCE)) {
 			mem_free(lambda_pi);
 			*newLambdaFlag = FALSE;
 			return pi_idx;
@@ -351,7 +248,7 @@ int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BO
 }//END calcLambda
 
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-		int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag) {
+		int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag, double TOLERANCE) {
 	vector	piCBar, temp;
 	double 	pibBar;
 	int 	cnt;
@@ -365,8 +262,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 
 	if (!newLambdaFlag){
 		for (cnt = 0; cnt < sigma->cnt; cnt++) {
-			if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= config.TOLERANCE) {
-				if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, config.TOLERANCE))
+			if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= TOLERANCE) {
+				if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, TOLERANCE))
 					if(sigma->lambdaIdx[cnt] == idxLambda){
 						mem_free(piCBar);
 						(*newSigmaFlag) = FALSE;
@@ -429,12 +326,12 @@ int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, 
  * a duplication.  If it finds a duplicate, it returns the index of that duplicate; otherwise, it adds the vector to the list of distinct realizations
  * and returns the index of that realization. Note that the simulated observation does not have contain one-norm, while the values stored in
  * omegaType do */
-int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag) {
+int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag, double TOLERANCE) {
 	int cnt;
 
 	/* Compare vector with all the previous observations */
 	for (cnt = 0; cnt < omega->cnt; cnt++)
-		if (equalVector(observ, omega->vals[cnt], end-begin, config.TOLERANCE)) {
+		if (equalVector(observ, omega->vals[cnt], end-begin, TOLERANCE)) {
 			(*newOmegaFlag) = FALSE;
 			omega->weight[cnt]++;
 			return cnt;

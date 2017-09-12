@@ -9,7 +9,6 @@
  *
  */
 
-#include "stoc.h"
 #include "twoSD.h"
 
 extern string outputDir;
@@ -90,7 +89,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 			observ[m] -= stoc->mean[m];
 
 		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag);
+		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, newOmegaFlag, FALSE)) < 0 ) {
