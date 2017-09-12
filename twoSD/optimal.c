@@ -140,7 +140,7 @@ cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
 
 	for ( cnt = 0; cnt < cuts->cnt; cnt++ ) {
 		if (pi[cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
-			gCuts->vals[gCuts->cnt] = newCut(lenX, cuts->vals[cnt]->omegaCnt, cuts->vals[cnt]->cutObs);
+			gCuts->vals[gCuts->cnt] = newCut(lenX, cuts->vals[cnt]->omegaCnt, cuts->vals[cnt]->numSamples);
 			copyIntvec(cuts->vals[cnt]->iStar, gCuts->vals[gCuts->cnt]->iStar, cuts->vals[cnt]->omegaCnt);
 			gCuts->vals[gCuts->cnt]->rowNum = cuts->vals[cnt]->rowNum;
 			gCuts->cnt++;
@@ -306,7 +306,7 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 	Vk_theta = 0.0;
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
 		/* 3a. Obtain theta from c->pi */
-		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->cutObs) * piM[cuts->vals[cnt]->rowNum + 1];
+		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
 
 		/* 3a. Obtain theta from c->pi */
 		Vk_theta += theta*(cuts->vals[cnt]->alpha - vXv(cuts->vals[cnt]->beta, incumbX, NULL, prob->num->cols));

@@ -17,7 +17,7 @@ extern configType config;
  the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
 int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
-	int 	status, stat1, i;
+	int 	status, i;
 
 	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts, lb) ) {
 		errMsg("algorithm", "solveMaster", "failed to change the eta column coefficients", 0);
@@ -37,7 +37,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 #endif
 
 	/* solve the master problem */
-	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTERTYPE, &stat1) ) {
+	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTERTYPE, &status) ) {
 		writeProblem(cell->master->lp, "error.lp");
 		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
 		return 1;
@@ -47,8 +47,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->LPcnt++;
 
 	/* Get the most recent optimal solution to master program */
-	status = getPrimal(cell->master->lp, cell->candidX, num->cols);
-	if ( status ) {
+	if ( getPrimal(cell->master->lp, cell->candidX, num->cols) ) {
 		errMsg("algorithm", "solveMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
 	}
@@ -64,19 +63,17 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->normDk = d2;
 
 	/* Get the dual solution too */
-	status = getDual(cell->master->lp, cell->piM, cell->master->mar);
-	if ( status ) {
+	if ( getDual(cell->master->lp, cell->piM, cell->master->mar) ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
 		return 1;
 	}
-	status = getDualSlacks(cell->master->lp, cell->djM, num->cols);
-	if ( status ) {
+	if ( getDualSlacks(cell->master->lp, cell->djM, num->cols) ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->k, cell->candidX, num->cols, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols, TRUE, cell->k, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;
@@ -100,7 +97,7 @@ int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb) {
 	/* check to see if there is room for the candidate cut, else drop a cut */
 	if (cell->cuts->cnt == cell->maxCuts) {
 		/* make room for the latest cut */
-		if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
+		if( reduceCuts(cell->master, cell->cuts, cell->candidX, cell->piM, lenX, lb, cell->k, &cell->iCutIdx, config.TOLERANCE) < 0 ) {
 			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
 			return -1;
 		}
@@ -168,7 +165,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, doub
 
 	for (c = 0; c < cuts->cnt; c++){
 		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-		coef[0] = (double) (k) / (double) cuts->vals[c]->cutObs;         // coeff k/j of eta column
+		coef[0] = (double) (k) / (double) cuts->vals[c]->numSamples;         // coeff k/j of eta column
 
 		status = changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum+1);
 		if ( status ) {
@@ -214,7 +211,7 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 		errMsg("allocation", "updateRHS", "indices", 0);
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double) numIter / (double) cuts->vals[cnt]->cutObs - 1) * lb;
+		rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double) numIter / (double) cuts->vals[cnt]->numSamples - 1) * lb;
 		indices[cnt] = cuts->vals[cnt]->rowNum;
 	}
 
@@ -498,3 +495,188 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	return master;
 
 }//END newMaster
+
+int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb) {
+	oneCut *cut;
+	int    cutIdx;
+
+	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+	if ( solveSubprob(prob, cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE) ) {
+		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+		return -1;
+	}
+
+	/* (b) create an affine lower bound */
+	cut = SDCut(prob->num, prob->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	if ( cut == NULL ) {
+		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+
+	/* (c) add cut to the master problem  */
+	if ( (cutIdx = addCut2Master(cell, cut, prob->num->prevCols, cell->lb)) < 0 ) {
+		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
+		return -1;
+	}
+	return cutIdx;
+}//END formCut()
+
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+		BOOL *dualStableFlag, vector pi_ratio, double lb) {
+	oneCut *cut;
+	vector 	piCbarX, beta;
+	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0, mean;
+	int 	istarAll, istarNew, istar, c, cnt, obs, offset;
+	BOOL    pi_eval_flag = FALSE;
+
+	/* allocate memory to hold a new cut */
+	cut = newCut(num->prevCols, omega->cnt, numSamples);
+
+	/* Need to store  Pi x Cbar x X independently of observation loop */
+	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	if ( !(beta = (vector) arr_alloc(num->prevCols + 1, double)) )
+		errMsg("Allocation", "SDCut", "beta", 0);
+
+	/* Calculate pi_eval_flag to determine the way of computing argmax */
+	if (numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
+		pi_eval_flag = TRUE;
+
+	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
+	for (cnt = 0; cnt < sigma->cnt; cnt++)
+		piCbarX[cnt] = vXv(sigma->vals[cnt].piC, Xvect, coord->colsC, num->cntCcols);
+
+	offset = num->rvbOmCnt + num->rvCOmCnt;
+	/* Test for omega issues */
+	for (obs = 0; obs < omega->cnt; obs++) {
+		/* For each observation, find the Pi which maximizes height at X. */
+		if (pi_eval_flag == TRUE) {
+			istarAll = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs]+offset, obs, numSamples, TRUE, &argmaxNew, TRUE);
+
+			if (argmaxNew > argmaxAll) {
+				argmax = argmaxNew; istar = istarNew;
+			}
+			else {
+				argmax = argmaxAll; istar = istarAll;
+			}
+
+			argmax_dif_sum += max(argmaxAll - lb, 0) * omega->weight[obs];
+			argmax_all_sum += max(argmax - lb, 0) * omega->weight[obs];
+		}
+		else {
+			/* identify the maximal Pi for each observation */
+			istar = computeIstar(num, coord, basis, sigma, delta, Xvect, piCbarX, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, FALSE);
+		}
+
+		if ( istar < 0 ) {
+			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
+			return NULL;
+		}
+		cut->iStar[obs] = istar;
+
+		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+		alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[0]].pib + delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].pib)* omega->weight[obs];
+
+		for (c = 1; c <= num->cntCcols; c++)
+			beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[0]].piC[c] * omega->weight[obs];
+		for (c = 1; c <= num->rvCOmCnt; c++)
+			beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[0]][obs].piC[c] * omega->weight[obs];
+
+		for ( cnt = 1; cnt <= basis->vals[istar]->phiLength; cnt++ ) {
+			alpha += (sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].pib)
+					* (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
+			for (c = 1; c <= num->cntCcols; c++)
+				beta[coord->colsC[c]] += sigma->vals[basis->vals[istar]->sigmaIdx[cnt]].piC[c] * (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				beta[coord->rvCols[c]] += delta->vals[basis->vals[istar]->lambdaIdx[cnt]][obs].piC[c] * (omega->vals[obs][offset+basis->vals[istar]->omegaIdx[cnt]]) * omega->weight[obs];
+		}
+	}
+
+	if (pi_eval_flag == TRUE) {
+		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
+		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
+			calcMeanVariance(pi_ratio, config.SCAN_LEN, &mean, &variance);
+
+		if (DBL_ABS(variance) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
+			*dualStableFlag = FALSE;
+		else
+			*dualStableFlag = TRUE;
+	}
+
+	cut->alpha = alpha / numSamples;
+
+	for (c = 1; c <= num->prevCols; c++)
+		cut->beta[c] = beta[c] / numSamples;
+
+	/* coefficient of eta coloumn */
+	cut->beta[0] = 1.0;
+
+	mem_free(piCbarX);
+	mem_free(beta);
+
+	return cut;
+}//END SDCut
+
+/*This function loops through all the dual vectors found so far and returns the index of the one which satisfies the expression:
+ * 				argmax { Pi x (R - T x X) | all Pi }
+ * where X, R, and T are given.  It is calculated in this form:
+ * 				Pi x bBar + Pi x bomega + (Pi x Cbar) x X + (Pi x Comega) x X.
+ * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
+ * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
+ * another due to elimination of non-distinct or redundant vectors. */
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
+		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
+	double 	arg;
+	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, basisUp, basisLow;
+
+	if (pi_eval == TRUE)
+		numSamples -= (numSamples / 10 + 1);
+
+	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
+	if ( !isNew ) {
+		basisUp = numSamples; basisLow = -INT_MAX;
+	}
+	else {
+		basisUp = INT_MAX; basisLow = numSamples;
+	}
+
+	*argmax = -DBL_MAX; maxCnt = 0;
+	/* Run through the list of basis to choose the one which provides the best lower bound */
+	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+		if ( basis->obsFeasible[cnt][obs] ) {
+			/* I. Compute argument using deterministic component of the dual solution */
+			sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
+			lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
+
+			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
+				/* a. */
+				arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
+
+				/* b. */
+				arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+
+				/* II. Append argument using values computed from the stochastic component of the dual solution. */
+				for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
+					sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
+					lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
+
+					/* a. */
+					arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+
+					/* b. */
+					arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+				}
+
+				if (arg > (*argmax)) {
+					*argmax = arg;
+					maxCnt = cnt;
+				}
+			}
+		}
+	}
+
+	return maxCnt;
+}//END computeIstar
+

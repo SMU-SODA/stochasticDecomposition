@@ -501,45 +501,55 @@ int getRowName(LPptr lp, int start, int end, string *rowname, string rownamestor
 
 }// END getRowName()
 
-int getBinvC(LPptr lp, int col, vector a ) {
+int getBasisHead(LPptr lp, intvec head, vector basicX) {
 	int status;
 
-	status = CPXbinvcol(env, lp, col, a);
+	status = CPXgetbhead(env, lp, head, basicX);
 	if ( status )
 		solverErrmsg(status);
 
 	return status;
-}//END getBinvC
+}//END getBasisHead()
 
-int getBhead(LPptr lp, intvec head, vector x) {
+int getBasisInvRow(LPptr lp, int i, vector phi) {
 	int status;
 
-	status=CPXgetbhead(env, lp, head, x);
+	status = CPXbinvrow(env, lp, i, phi);
 	if ( status )
 		solverErrmsg(status);
 
 	return status;
-}//END getBhead
+}//END getBasicInvRow()
 
-int binvArow(LPptr lp, int i, vector z) {
+int getBasisInvCol(LPptr lp, int i, vector phi) {
 	int status;
 
-	status= CPXbinvarow (env, lp, i, z);
+	status = CPXbinvcol(env, lp, i, phi);
 	if ( status )
 		solverErrmsg(status);
 
 	return status;
-}//END binvArow
+}//END getBasicInvRow()
 
-int binvAcol(LPptr lp, int i, vector z) {
+int getBasisInvARow(LPptr lp, int i, vector phi) {
 	int status;
 
-	status= CPXbinvacol (env, lp, i, z);
+	status = CPXbinvarow(env, lp, i, phi);
 	if ( status )
 		solverErrmsg(status);
 
 	return status;
-}//END binvArow
+}//END getBasicInvRow()
+
+int getBasisInvACol(LPptr lp, int i, vector phi) {
+	int status;
+
+	status = CPXbinvacol(env, lp, i, phi);
+	if ( status )
+		solverErrmsg(status);
+
+	return status;
+}//END getBasicInvRow()
 
 int copyQPseparable(LPptr lp, vector qsepvec){
 	int status;

@@ -18,6 +18,10 @@
 
 #define 	NAMESIZE			32
 #define		BLOCKSIZE			256
+#define 	WORDLENGTH 			64
+
+#define 	INF					DBL_MAX
+
 #define		MAXBITS				sizeof(int) * 8
 #define		GE					'G'
 #define		LE					'L'
@@ -67,7 +71,7 @@ int str2int(char *string);
 int getNumBits(int num);
 double oneNorm(vector a, int len);
 double twoNorm(vector a, vector b, int len);
-double calcVariance(vector x, int lenX);
+void calcMeanVariance(vector x, int lenX, double *mean, double *variance);
 double vXv(vector a, vector b, intvec idxCol, int len);
 double vXvSparse(vector v, sparseVector *vSparse);
 vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans);
@@ -80,6 +84,7 @@ vector reduceVector(double *f_vect, int *row, int num_elem);
 vector expandVector(vector red, intvec col, int redElems, int expElems);
 BOOL equalVector(vector a, vector b, int len, double tolerance);
 BOOL equalIntvec(intvec a, intvec b, int len);
+BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 BOOL isZeroVector(vector a, int len, double tolerance);
 BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance);
 vector duplicVector(double *a, int len);
@@ -99,5 +104,10 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq);
 
 void freeSparseMatrix(sparseMatrix *M);
 void freeSparseVector(sparseVector *v);
+
+int isElementIntvec(intvec vec, int lenVec, int elem);
+intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB);
+
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
 
 #endif /* UTILS_H_ */

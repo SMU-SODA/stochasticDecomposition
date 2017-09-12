@@ -11,6 +11,112 @@
 
 #include "stoc.h"
 
+int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE) {
+	vector	piS;
+	intvec 	cstat, rstat;
+	double	mubBar;
+	int 	basisIdx, lambdaIdx, sigmaIdx, cnt, offset;
+	BOOL	newBasisFlag, newLambdaFlag, newSigmaFlag;
+
+	/* Allocate memory. */
+	if ( !(piS = (vector) arr_alloc(prob->num->cols+1, double)) )
+		errMsg("allocation", "stochasticUpdates", "piS", 0);
+	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
+		errMsg("allocation", "stochasticUpdates", "cstat", 0);
+	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
+		errMsg("allocation", "stochasticUpdates", "rstat", 0);
+
+	/* Obtain the status of columns and rows in the basis. */
+	if ( getBasis(subproblem->lp, cstat+1, rstat+1) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
+		return -1;
+	}
+	/* Record the dual and reduced cost on bounds. */
+	if ( getDual(subproblem->lp, piS, prob->num->rows) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+		return -1;
+	}
+	if ( computeMU(subproblem->lp, cstat,  prob->num->cols, &mubBar) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+		return -1;
+	}
+
+	/* Update the column of delta structure if a new observation was encountered, and check the feasibility of existing bases with respect to new observation. */
+	if ( newOmegaFlag )
+		calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, newOmegaFlag, omegaIdx, deltaRowLength);
+
+	if ( prob->num->rvdOmCnt > 0 ) {
+		/* The random variables corresponding to cost coefficients are listed at the end of vector, the offset is used to index them */
+		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
+
+		/* If the cost-coefficients are random, update the basis structure. */
+		basisIdx = calcBasis(subproblem->lp, basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
+				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag, currentIter);
+
+		if ( basis->vals[basisIdx]->phiLength > 0) {
+			/* Decompose the dual solution into deterministic and stochastic components. */
+			decomposeDualSolution(basis->vals[basisIdx]->phi, omega->vals[omegaIdx]+offset, basis->vals[basisIdx]->omegaIdx,
+					basis->vals[basisIdx]->phiLength, piS, prob->num->rows);
+		}
+
+		if ( newBasisFlag ) {
+			/* Calculations with respect to deterministic component of the dual solution */
+			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+			lambdaIdx = basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, piS, lambda, &newLambdaFlag, TOLERANCE);
+			if ( newLambdaFlag )
+				if ( !(delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(deltaRowLength, pixbCType)))
+					errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+			/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+			basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, piS, mubBar,
+					lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+
+			/* Calculations with respect to stochastic component of the dual solution */
+			for (cnt = 0; cnt < basis->vals[basisIdx]->phiLength; cnt++ ) {
+				/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+				lambdaIdx = basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, basis->vals[basisIdx]->phi[cnt], lambda, &newLambdaFlag, TOLERANCE);
+				if ( newLambdaFlag )
+					if ( !(delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(deltaRowLength, pixbCType)))
+						errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+				/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+				basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, basis->vals[basisIdx]->phi[cnt], mubBar,
+						lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+			}
+
+			/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
+			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength);
+		}
+	}
+	else {
+		/* extract the dual solutions corresponding to rows with random elements in them */
+		lambdaIdx = calcLambda(prob->num, prob->coord, piS, lambda, &newLambdaFlag, TOLERANCE);
+		if ( newLambdaFlag )
+			if ( !(delta->vals[lambdaIdx] = (pixbCType *) arr_alloc(deltaRowLength, pixbCType)))
+				errMsg("allocation", "stochasticUpdates", "delta->val[cnt]", 0);
+
+		/* compute Pi x bBar and Pi x Cbar */
+		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, piS, mubBar, lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+
+		if ( newSigmaFlag ) {
+			basisIdx = basis->cnt++;
+			basis->vals[basisIdx] = newBasis(NULL, NULL, NULL, NULL, 0, 0, 0, currentIter, NULL);
+			basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
+			basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
+
+			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength);
+		}
+		else
+			basisIdx = sigmaIdx;
+	}
+
+	mem_free(cstat);
+	mem_free(rstat);
+	return basisIdx;
+}//End stochasticUpdates()
+
+
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter) {
 	unsigned long *codedCol, *codedRow;
 	int		cnt;

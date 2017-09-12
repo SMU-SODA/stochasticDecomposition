@@ -111,10 +111,11 @@ int getCstoreSize(LPptr lp, int start, int end);
 int getColName(LPptr lp, int start, int end, string *colname, string colnamestore, int csize);
 int getRstoreSize(LPptr lp, int start, int end);
 int getRowName(LPptr lp, int start, int end, string *rowname, string rownamestore, int rsize);
-int getBinvC(LPptr lp, int col, vector a ) ;
-int getBhead(LPptr lp, intvec head, vector x) ;
-int binvArow(LPptr lp, int i, vector z) ;
-int binvAcol(LPptr lp, int i, vector z);
+int getBasisHead(LPptr lp, intvec head, vector basicX);
+int getBasisInvRow(LPptr lp, int i, vector phi);
+int getBasisInvCol(LPptr lp, int i, vector phi);
+int getBasisInvARow(LPptr lp, int i, vector phi);
+int getBasisInvACol(LPptr lp, int i, vector phi);
 int freeProblem(LPptr lp);
 
 #endif /* MTSD_SOLVER_H_ */

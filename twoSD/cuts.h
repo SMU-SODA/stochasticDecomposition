@@ -21,7 +21,7 @@
 typedef struct {
 	double  alpha;                  /* scalar value for the right-hand side */
 	vector  beta;                   /* coefficients of the master problems's primal variables */
-	int 	cutObs;					/* number of samples on which the given cut was based */
+	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	intvec	iStar;					/* indices of maximal pi for each distinct observation */
 	BOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
@@ -36,10 +36,10 @@ typedef struct {
 
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
-double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb);
-double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb);
-int reduceCuts(oneProblem *master, cutsType *cuts, int *iCutIdx, vector candidX, vector pi, int betaLen, double lb, int currentIter, double TOLERANCE);
-int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx, int currentIter);
+double maxCutHeight(cutsType *cuts, vector xk, int betaLen, BOOL scaleCut, int currIter, double lb);
+double cutHeight(oneCut *cut, vector xk, int betaLen, BOOL scaleCut, int currIter, double lb);
+int reduceCuts(oneProblem *master, cutsType *cuts, vector candidX, vector pi, int betaLen, double lb, int currentIter, int *iCutIdx, double TOLERANCE);
+int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts);
 

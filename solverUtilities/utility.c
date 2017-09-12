@@ -186,19 +186,18 @@ double twoNorm(vector a, vector b, int len) {
 	return norm;
 }//END twoNorm()
 
-double calcVariance(vector x, int lenX) {
-    double 	mean, vari, temp;
+void calcMeanVariance(vector x, int lenX, double *mean, double *variance) {
+    double 	temp;
     int 	cnt;
 
     temp = 0.0;
-    vari = 0.0; mean = x[0];
+    (*variance) = 0.0; (*mean) = x[0];
     for (cnt = 1; cnt < lenX; cnt++) {
-        temp = mean;
-        mean = mean + (x[cnt] - mean) / (double) (cnt + 1);
-        vari = (1 - 1 / (double) cnt) * vari + (cnt + 1) * (mean - temp) * (mean - temp);
+        temp = (*mean);
+        (*mean) = (*mean) + (x[cnt] - (*mean)) / (double) (cnt + 1);
+        (*variance) = (1 - 1 / (double) cnt) * (*variance) + (cnt + 1) * ((*mean) - temp) * ((*mean) - temp);
     }
 
-    return vari;
 }//END calcVariance()
 
 double vXv(vector a, vector b, intvec idxCol, int len) {
@@ -319,6 +318,16 @@ BOOL equalIntvec(intvec a, intvec b, int len) {
 	return TRUE;
 }//END equalIntvec()
 
+BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len) {  /* TODO: After merging 2SD_randomCost branch into main, move this subroutine to utilities */
+	int		cnt;
+
+	for (cnt = 1; cnt <= len; cnt++)
+		if ( a[cnt] != b[cnt] )
+			return FALSE;
+
+	return TRUE;
+}//END equalLongIntvec()
+
 BOOL isZeroVector(vector a, int len, double tolerance) {
 	int		cnt;
 
@@ -330,7 +339,7 @@ BOOL isZeroVector(vector a, int len, double tolerance) {
 	}
 
 	return TRUE;
-}//END equalVector()
+}//END isZeroVector()
 
 /*This function will check if a vector is integer with a predefined gap */
 BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance){
@@ -507,7 +516,75 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq){
 	*numUniq = len;
 
 	return elemUniq;
-}//END fin_cols
+}//END findElems()
+
+/* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_ */
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength) { /* TODO: After merging 2SD_randomCost branch into main, move this subroutine to utilities */
+	unsigned long *codeWord, temp;
+	int j, group, shift, codeLength;
+
+	codeLength = ceil((double) len/ (double) wordLength) + 1;
+
+	if ( !(codeWord = (unsigned long *) arr_alloc(codeLength, unsigned long)))
+		errMsg("allocation", "encodeIntVec", "codeWord", 0);
+
+	for (j = 1; j <= len; j++) {
+		group = j/wordLength + 1;
+		shift = wordLength - (j % wordLength);
+		temp = (unsigned long) stream[j] << shift;
+		codeWord[group] |= temp;
+	}
+
+	return codeWord;
+}//END encodeIntVec()
+
+
+/* This subroutine extracts elements which are common to the two input integer vectors _a_ and _b_ */
+intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
+	intvec inter;
+	int	cnt, n;
+
+	if ( !(inter = (intvec) arr_alloc(max(lenA, lenB)+1, int)) )
+		errMsg("allocation", "intvecIntersect", "inter", 0);
+
+	cnt = 1;
+	for ( n = 1; n <= lenA; n++ )
+		if ( isElementIntvec(b, lenB, a[n]) )
+			inter[cnt++] = a[n];
+
+	return inter;
+
+}//END intvecIntersect()
+
+/* This subroutine checks to see if a integer scalar is an element of integer vector. If so, the subroutine will return the index. If not, a value of -1 is returned. */
+int isElementIntvec(intvec vec, int lenVec, int elem) {
+	int n = 1;
+
+	while ( vec[n] != elem && n <= lenVec )
+		n++;
+
+	if ( n == (lenVec+1) )
+		return -1;
+	else
+		return n;
+
+}//END isElementIntvec()
+
+void subVectors(vector a, vector b, intvec indices, int len){
+	int n;
+
+	if ( indices == NULL ) {
+		for ( n = 1; n <= len; n++ )
+			a[n] -= b[n];
+	}
+	else {
+		for ( n = 1; n <= len; n++ )
+			a[indices[n]] -= b[n];
+	}
+	a[0] = oneNorm(a+1, len);
+
+}//END subVectors()
+
 
 void freeSparseMatrix(sparseMatrix *M) {
 

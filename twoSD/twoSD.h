@@ -17,10 +17,10 @@
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
+#include "cuts.h"
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1
-#define INF	DBL_MAX
 
 #undef STOCH_CHECK
 #undef ALGO_CHECK
@@ -52,24 +52,6 @@ typedef struct{
 	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
 }configType;
-
-/* The oneCut and cutsType data structures will be used to hold all information which can completely define the affine minorants (cuts) which
- * are used to compute the lower bounding function approximations */
-typedef struct {
-	double  alpha;                  /* scalar value for the right-hand side */
-	vector  beta;                   /* coefficients of the master problems's primal variables */
-	int 	cutObs;					/* number of samples on which the given cut was based */
-	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
-	intvec	iStar;					/* indices of maximal pi for each distinct observation */
-	BOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
-	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
-	int 	rowNum;					/* row number for master problem in solver */
-}oneCut;
-
-typedef struct {
-	int    	cnt;                    /* number of cuts */
-	oneCut  **vals;					/* values which define the set of cuts */
-}cutsType;
 
 typedef struct {
 	int         k;                  /* number of iterations */
@@ -150,29 +132,10 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
 		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
-oneCut *newCut(int numX, int numIstar, int numSamples);
-cutsType *newCuts(int maxCuts);
-int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
-int dropCut(cellType *cell, int cutIdx);
-double calcVari(double *x, double *mean_value, double *stdev_value, int batch_size);
-void print_cut(cutsType *cuts, numType *num, int idx);
-void freeOneCut(oneCut *cut);
-void freeCutsType(cutsType *cuts);
-
-/* subprob.c */
-int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
-vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector obs, int offset);
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
-int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector observ);
-oneProblem *newSubproblem(oneProblem *subprob);
 
 /* soln.c */
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
-double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb);
-double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb);
 
 /* optimal.c */
 BOOL optimal(probType **prob, cellType *cell);
@@ -186,8 +149,5 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
 int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
-
-/* stocUpdates.c */
-int stochasticUpdates(cellType *cell, probType *prob, int omegaIdx, BOOL newOmegaFlag);
 
 #endif /* TWOSD_H_ */
