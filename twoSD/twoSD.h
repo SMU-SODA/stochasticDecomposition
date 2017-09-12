@@ -75,8 +75,6 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	vector      piS;                 /* subproblem dual information */
-	double      mubBar;				/* dual slack information for subproblem */
 	vector 		piM;				/* master dual information */
 	vector      djM;                /* master reduced cost vector */
 
@@ -99,14 +97,10 @@ typedef struct {
 }cellType;
 
 /* twoSD.c */
-void parseCmdLine(string probName);
-int readConfig(string inputDir);
-
-/* algo.c */
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
-int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages);
-void cleanupAlgo(probType **prob, cellType *cell, int T);
+int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string algoName, string probName);
+int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
+int readSDConfig();
+void writeSDStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages);
 
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);

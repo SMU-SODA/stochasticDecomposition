@@ -72,9 +72,9 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
-	cell->piS = cell->piM = cell->djM = NULL;
+	cell->piM = cell->djM = NULL;
 	cell->cuts = cell->fcuts = NULL;
-	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
+	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL; cell->basis = NULL;
 	cell->pi_ratio = NULL;
 
 	/* setup the master problem */
@@ -126,13 +126,10 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->fcuts   = NULL;
 
 	/* solution parts of the cell */
-	if ( !(cell->piS = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
-		errMsg("allocation", "newMaster", "cell->pi", 0);
 	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
 		errMsg("allocation", "newMaster", "cell->di", 0);
 	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newMaster", "cell->piM", 0);
-	cell->mubBar = 0.0;
 
 	/* stochastic elements */
 	if ( prob[1]->num->rvdOmCnt > 0 )
@@ -188,7 +185,6 @@ void freeCellType(cellType *cell) {
 		if (cell->master) freeOneProblem(cell->master);
 		if (cell->candidX) mem_free(cell->candidX);
 		if (cell->incumbX) mem_free(cell->incumbX);
-		if (cell->piS) mem_free(cell->piS);
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts);

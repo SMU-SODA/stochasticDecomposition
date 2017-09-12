@@ -11,69 +11,57 @@
 
 #include "twoSD.h"
 
-long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
-string   	outputDir;		/* output directory */
-configType	config;			/* algorithm tuning parameters */
+configType config;
+extern string outputDir;
 
-int main (int argc, char *argv[]) {
-	int 	status;
-	char 	inputDir[2*BLOCKSIZE], probName[NAMESIZE];
-	oneProblem *orig = NULL;
-	timeType *tim = NULL;
-	stocType *stoc = NULL;
+int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string algoName, string probName) {
+	vector	 xk = NULL, lb = NULL;
+	probType **prob = NULL;
+	cellType *cell = NULL;
+	FILE 	*soln;
 
-	/* open solver environment */
-	openSolver();
+	/* read algorithm configuration file */
+	if ( readSDConfig() )
+		goto TERMINATE;
 
-	/* read algorithm configuration files */
-	status = readConfig(inputDir);
-	if ( status ) {
-		errMsg("read", "main", "failed to read algorithm configuration file", 0);
+	/* complete necessary initialization for the algorithm */
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
+		goto TERMINATE;
+
+	/* Use two-stage stochastic decomposition algorithm to solve the problem */
+	if ( solveSDCell(stoc, prob, cell, inputDir, probName) ) {
+		errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
 		goto TERMINATE;
 	}
 
-	/* read problem information */
-	/* request for problem name to be solved, the path should be provided in the configuration file */
-	if ( argc < 2 )
-		parseCmdLine(probName);
-	else
-		strcpy(probName, argv[1]);
+	/* Write solution statistics for optimization process */
+	printf("\n\nLower bound estimate                   : %f\n", cell->incumbEst);
+	writeSDStatistic(&soln, prob, cell, probName, tim->numStages);
 
-	/* read problem SMPS input files */
-	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
-	if ( status ) {
-		errMsg("read", "main", "failed to read problem files using SMPS reader", 0);
-		goto TERMINATE;
+	/* evaluating the optimal solution*/
+	if (config.EVAL_FLAG == 1) {
+		evaluate(&soln, stoc, prob, cell, cell->incumbX);
 	}
 
-	/* set up output directory: using the outputDir in config file and the input problem name */
-	createOutputDir(outputDir, "twoSD", probName);
+	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
-	/* launch the algorithm */
-	status = algo(orig, tim, stoc, inputDir, probName);
-	if ( status ) {
-		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
-		goto TERMINATE;
-	}
-
-	/* release structures and close solver environment */
-	TERMINATE:
-	freeOneProblem(orig);
-	freeTimeType(tim);
-	freeStocType(stoc);
-	closeSolver();
-
+	/* free up memory before leaving */
+	if (xk) mem_free(xk);
+	if (lb) mem_free(lb);
+	freeCellType(cell);
+	freeProbType(prob, 2);
 	return 0;
-}//END main()
 
-void parseCmdLine(string probName) {
+	TERMINATE:
+	if(xk) mem_free(xk);
+	if(lb) mem_free(lb);
+	if(cell) freeCellType(cell);
+	if(prob) freeProbType(prob, 2);
+	return 1;
+}//END algo()
 
-	printf("Please enter the name of the problem: ");
-	scanf("%s", probName);
 
-}//END parseCmdLine
-
-int readConfig(string inputDir) {
+int readSDConfig() {
 	FILE 	*fptr;
 	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
 	int 	status;
@@ -88,11 +76,7 @@ int readConfig(string inputDir) {
 		errMsg("allocation", "readConfig", "outputDir", 0);
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
-		if (!(strcmp(line, "INPUTDIR")))
-			fscanf(fptr, "%s", inputDir);
-		else if (!(strcmp(line, "OUTPUTDIR")))
-			fscanf(fptr, "%s", outputDir);
-		else if (!(strcmp(line, "RUN_SEED")))
+		if (!(strcmp(line, "RUN_SEED")))
 			fscanf(fptr, "%lld", &config.RUN_SEED);
 		else if (!(strcmp(line, "TOLERANCE")))
 			fscanf(fptr, "%lf", &config.TOLERANCE);
@@ -148,3 +132,105 @@ int readConfig(string inputDir) {
 
 	return 0;
 }//END readConfig()
+
+int solveSDCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName) {
+	vector 	observ;
+	int		m, omegaIdx, candidCut;
+	BOOL 	newOmegaFlag;
+
+	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
+	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
+		errMsg("allocation", "solveMASP", "observ", 0);
+
+	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
+	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
+		cell->k++;
+
+#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
+		printf("\nIteration-%d :: \n", cell->k);
+#else
+		if ( (cell->k -1) % 100 == 0)
+			printf("\nIteration-%4d: ", cell->k);
+#endif
+
+		/******* 1. Optimality tests *******/
+		if (optimal(prob, cell))
+			break;
+
+		/******* 2. Generate new observation, and add it to the set of observations *******/
+		/* (a) Use the stoc file to generate observations */
+		generateOmega(stoc, observ, &config.RUN_SEED);
+
+		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+		for ( m = 0; m < stoc->numOmega; m++ )
+			observ[m] -= stoc->mean[m];
+
+		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
+
+		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+		if ( (candidCut = formSDCut(prob[1], cell, cell->candidX, omegaIdx, newOmegaFlag, FALSE)) < 0 ) {
+			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+			return 1;
+		}
+		/* Since all updates with respect to new omega have been completed during candidate cut formation, the newOmegaFlag is turned off. */
+		newOmegaFlag = FALSE;
+
+		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
+			if ( (cell->iCutIdx = formSDCut(prob[1], cell, cell->incumbX, omegaIdx, newOmegaFlag, TRUE) ) < 0 ) {
+				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+				return 1;
+			}
+			cell->iCutUpdt = cell->k;
+		}
+		/******* 5. Check improvement in predicted values at candidate solution *******/
+		if ( !(cell->incumbChg) && cell->k > 1)
+			/* If the incumbent has not changed in the current iteration */
+			checkImprovement(prob[0], cell, candidCut);
+
+		/******* 6. Solve the master problem to obtain the new candidate solution */
+		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
+			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
+			return 1;
+		}
+	}//END while loop
+
+	mem_free(observ);
+	return 0;
+}//END solveCell()
+
+void writeSDStatistic(FILE **soln, probType **prob, cellType *cell, string probName, int numStages) {
+	int t;
+
+	(*soln) = openFile(outputDir, "summary.dat", "w");
+
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "-------------------------------------------------------- Problem Information -------------------------------------------------------\n");
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "Problem                            : %s\n", probName);
+	fprintf((*soln), "Number of stages                   : %d\n", numStages);
+	for ( t = 0; t < numStages; t++ ) {
+		fprintf((*soln),  "------------------------------------------------------------------------------------------------------------------------------------\n");
+		fprintf((*soln),  "Stage %d\n", t);
+		fprintf((*soln),  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
+		fprintf((*soln),  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
+		fprintf((*soln),  "Number of constraints              = %d\n", prob[t]->sp->mar);
+		if ( prob[t]->omegas != NULL ) {
+			fprintf((*soln),  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+			fprintf((*soln),  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
+					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
+		}
+		else
+			fprintf((*soln),  "Number of random variables (omega) = 0\n");
+	}
+
+	fprintf((*soln), "\n====================================================================================================================================\n");
+	fprintf((*soln), "----------------------------------------------------------- Optimization -----------------------------------------------------------\n");
+	fprintf((*soln), "====================================================================================================================================\n");
+	fprintf((*soln), "Algorithm                          : Two-stage Stochastic Decomposition\n");
+	fprintf((*soln), "Number of iterations               : %d\n", cell->k);
+	fprintf((*soln), "Lower bound estimate               : %f\n", cell->incumbEst);
+	fclose((*soln));
+
+}//END WriteStat
