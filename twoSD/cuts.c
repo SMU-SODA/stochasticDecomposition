@@ -9,7 +9,6 @@
  *
  */
 
-#include "cuts.h"
 #include "cell.h"
 
 extern configType config;

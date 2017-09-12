@@ -9,10 +9,6 @@
  *
  */
 
-#include "utils.h"
-#include "solver.h"
-#include "smps.h"
-#include "prob.h"
 #include "cell.h"
 
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
@@ -77,42 +73,42 @@ int parseCmdLine(int argc, char *argv[], string algoName, string probName, strin
 
 	/* request for problem name to be solved, the path is assumed to be provided in the configuration file */
 	if ( argc < 2 ) {
-		printf("Please enter the algorithm you want to use: ");
-		scanf("%s", algoName);
 		printf("Please enter the name of the problem: ");
 		scanf("%s", probName);
+		printf("Please enter the algorithm you want to use: ");
+		scanf("%s", algoName);
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
 		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 3 ) {
-		strcpy(algoName, argv[1]);
-		printf("Please enter the name of the problem: ");
-		scanf("%s", probName);
+		strcpy(probName, argv[1]);
+		printf("Please enter the algorithm you want to use: ");
+		scanf("%s", algoName);
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
 		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 4 ) {
-		strcpy(algoName, argv[1]);
-		strcpy(probName, argv[2]);
+		strcpy(probName, argv[1]);
+		strcpy(algoName, argv[2]);
 		strcpy(inputDir, "../spInput/");
 		printf("Using default input directory: %s\n", inputDir);
 		strcpy(outputDir, "../../spOutput/");
 		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else if ( argc < 5 ) {
-		strcpy(algoName, argv[1]);
-		strcpy(probName, argv[2]);
+		strcpy(probName, argv[1]);
+		strcpy(algoName, argv[2]);
 		strcpy(inputDir, argv[3]);
 		strcpy(outputDir, "../../spOutput/");
 		printf("All solution files will be written to the default output directory: %s\n", outputDir);
 	}
 	else {
-		strcpy(algoName, argv[1]);
-		strcpy(probName, argv[2]);
+		strcpy(probName, argv[1]);
+		strcpy(algoName, argv[2]);
 		strcpy(inputDir, argv[3]);
 		strcpy(outputDir, argv[4]);
 	}

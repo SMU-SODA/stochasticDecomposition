@@ -130,6 +130,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
 int readConfig();
 void freeCellType(cellType *cell);
 
+/* cuts.c */
 int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);

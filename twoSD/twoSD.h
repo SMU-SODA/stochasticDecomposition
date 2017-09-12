@@ -26,7 +26,8 @@
 int solveSDCell(stocType *stoc, probType **prob, cellType *cell);
 void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages);
 
-/* master.c */
+void verifySDSetup();
+
 int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);

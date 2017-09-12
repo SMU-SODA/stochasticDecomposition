@@ -256,21 +256,7 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 				else
 					multiplier = cell->omega->vals[obs][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
 
-			cut->alpha += (cell->sigma->vals[sigmaId * cuts.h
-
-#ifndef CUTS_H_
-#define CUTS_H_
-
-#include "utils.h"
-#include "solver.h"
-#include "smps.h"
-
-
-
-
-
-#endif /* CUTS_H_ */
-x].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
+			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
 
 			for (c = 1; c <= prob->num->cntCcols; c++)
 				cut->beta[prob->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;

@@ -29,13 +29,13 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	rhs = computeRHS(prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, omega->vals[omegaIdx]+offset);
 	if ( rhs == NULL ) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-		return 1;
+		return -1;
 	}
 
 	/* (b) change the right-hand side in the solver */
 	if ( changeRHS(subproblem->lp, prob->num->rows, indices, rhs + 1) ) {
 		errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
-		return 1;
+		return -1;
 	}
 
 	offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
@@ -43,13 +43,13 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	cost = computeCostCoeff(prob->num, prob->coord, prob->dBar, omega->vals[omegaIdx], offset);
 	if ( cost == NULL ) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
-		return 1;
+		return -1;
 	}
 
 	/* (d) change cost coefficients in the solver */
 	if ( changeObjx(subproblem->lp, prob->num->cols, indices, cost+1) ) {
 		errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver",0);
-		return 1;
+		return -1;
 	}
 
 #if defined(ALGO_CHECK)
@@ -60,11 +60,11 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			printf("Subproblem is infeasible: need to create feasibility cut.\n");
-			return 1;
+			return -1;
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-			return 1;
+			return -1;
 		}
 	}
 
@@ -78,7 +78,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	basisIdx = stochasticUpdates(prob, subproblem, basis, lambda, sigma, delta, deltaRowLength, omega, omegaIdx, newOmegaFlag, currentIter, TOLERANCE);
 	if ( basisIdx < 0 ) {
 		errMsg("algorithm", "solveSubprob", "stochastic updates failed", 0);
-		return 1;
+		return -1;
 	}
 
 #if defined(STOCH_CHECK)
