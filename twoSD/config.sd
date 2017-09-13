@@ -72,7 +72,7 @@ SCAN_LEN 256
 MAX_OBS	1000
 
 // Fraction of subproblem being solved in an iteration
-SUBPROB_SAMPLE_PCT	1
+SUBPROB_SAMPLE_PCT	0.5
 
 // Seed used to sample the subproblems.
 SUBPROB_SAMPLE_SEED	5339672949292608

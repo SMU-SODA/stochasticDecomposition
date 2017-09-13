@@ -10,6 +10,8 @@
 extern configType config;
 extern string outputDir;
 
+BOOL preTest(cellType *cell);
+
 int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
@@ -68,18 +70,27 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		if ( (cell->k-1) % 100 == 0)
 			printf("\nIteration-%4d: ", cell->k);
 #endif
+		/******* 1a. Optimality tests *******/
+		if (optimalBenders(prob, cell))
+			break;
 
-		/******* 1. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ( (candidCut = formBendersCut(prob[1], cell, cell->candidX, FALSE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
-		cell->ub = vXvSparse(cell->candidX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob[0]->num->cols, FALSE, 0, 0.0);
 
-		/******* 2. Optimality tests *******/
-		/* Begin by computing the upper bound, it is the candidate cut height at the candidate solution */
-		if (optimalBenders(prob, cell))
-			break;
+		/******* 4. Check improvement in predicted values at candidate solution *******/
+		if ( config.MASTER_TYPE == PROB_QP ) {
+			if ( cell->k > 1 ) {
+				/* If the incumbent has not changed in the current iteration */
+				checkImprovementBenders(prob[0], cell, candidCut);
+			}
+			else
+				cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->incumbX, prob[0]->num->cols, FALSE, cell->k, cell->lb);;
+		}
+		else
+			cell->incumbEst = vXvSparse(cell->candidX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob[0]->num->cols, FALSE, cell->k, cell->lb);
 
 		/******* 3. Solve the master problem to obtain the new candidate solution */
 		if ( solveBendersMaster(prob[0]->num, prob[0]->dBar, cell) ) {
@@ -101,11 +112,11 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 		if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
 			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
 			if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-				errMsg("allocation", "newOmega", "omega->probs", 0);
+				errMsg("allocation", "updateOmega", "omega->probs", 0);
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
 				omega->probs[cnt]= stoc->probs[0][cnt];
 				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
-					errMsg("allocation", "newOmega", "omega->vals[cnt]", 0);
+					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
 				for (i = 0; i < omega->numRV; i++)
 					omega->vals[cnt][i+1]=stoc->vals[i][cnt]-stoc->mean[i];
 				omega->vals[cnt][0] = oneNorm(omega->vals[cnt]+1, omega->numRV);
@@ -115,19 +126,23 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 			createSAA = TRUE;
 	}
 	else if ( strstr(stoc->type, "INDEP") != NULL ) {
-		omega->cnt = 1;
-		for ( i = 0; i < stoc->numOmega; i++ )
+		omega->cnt = 1; i = 0;
+		while ( i < stoc->numOmega ) {
 			omega->cnt *= stoc->numVals[i];
+			if (omega->cnt > config.MAX_OBS) {
+				createSAA = TRUE;
+				break;
+			}
+			i++;
+		}
 
-		if ( omega->cnt > config.MAX_OBS )
-			createSAA = TRUE;
-		else {
+		if ( !createSAA ){
 			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
 			if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-				errMsg("allocation", "newOmega", "omega->probs", 0);
+				errMsg("allocation", "updateOmega", "omega->probs", 0);
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
 				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
-					errMsg("allocation", "newOmega", "omega->vals[cnt]", 0);
+					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
 				omega->probs[cnt] = 1; base = omega->cnt;
 				for ( i = 0; i < omega->numRV; i++ ) {
 					base /= stoc->numVals[i];
@@ -139,13 +154,13 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 		}
 	}
 	else {
-		printf("\nStoch file has a continuous distribution. Setting up a Sample average approximation.\n");
 		createSAA = TRUE;
 	}
 
 	if ( config.SAA == 1 && createSAA ) {
-		printf("Include procedure to create SAA.\n");
-		//			omega->vals = setupSAA(stoc, &config.RUN_SEED, &omega->cnt);
+		printf("Encountered a continuous distribution or the total number of possible observations is greater than MAX_OBS (%d).\n", config.MAX_OBS);
+		mem_free(omega->vals);
+		omega->vals = setupSAA(stoc, &config.RUN_SEED, &omega->probs, &omega->cnt);
 	}
 
 }//END updateOmega()
@@ -167,7 +182,8 @@ int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 		return 1;
 	}
 
-	cell->candidEst = getObjective(cell->master->lp, config.MASTER_TYPE);
+	/* increment the number of problems solved during algorithm */
+	cell->LPcnt++;
 
 	/* Get the most recent optimal solution to master program */
 	if ( getPrimal(cell->master->lp, cell->candidX, num->cols) ) {
@@ -175,17 +191,18 @@ int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 		return 1;
 	}
 
-	/* increment the number of problems solved during algorithm */
-	cell->LPcnt++;
+	/* Get the dual solution too */
+	if ( getDual(cell->master->lp, cell->piM, cell->master->mar) ) {
+		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
+		return 1;
+	}
+	if ( getDualSlacks(cell->master->lp, cell->djM, num->cols) ) {
+		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
+		return 1;
+	}
 
 	if ( cell->master->type == PROB_QP ) {
-		/* Get the dual solution too */
-		status = getDual(cell->master->lp, cell->piM, cell->master->mar);
-		if ( status ) {
-			errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
-			return 1;
-		}
-
+		d2 = 0.0;
 		/* add the incumbent back to change from \Delta X to X */
 		for (i = 1; i <= num->cols; i++)
 			d2 += cell->candidX[i] * cell->candidX[i];
@@ -195,10 +212,13 @@ int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 		if (cell->k == 1)
 			cell->normDk_1 = d2;
 		cell->normDk = d2;
-
-		/* Calculate gamma for next improvement check on incumbent x. */
-		cell->gamma = cell->candidEst - cell->incumbEst;
 	}
+
+	/* Obtain the candidate estimate */
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols, FALSE, cell->k, cell->lb);
+
+	/* Calculate gamma for next improvement check on incumbent x. */
+	cell->gamma =  cell->candidEst - cell->incumbEst;
 
 	return 0;
 }//END solveMaster()
@@ -213,7 +233,7 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 	if (!(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
 		errMsg("allocation", "formSDCut", "istar", 0);
 	if (!(piCbarX= arr_alloc(cell->sigma->cnt, double)))
-			errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
 	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
 	for (cnt = 0; cnt < cell->sigma->cnt; cnt++)
 		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
@@ -252,9 +272,9 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 			sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
 			lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
 			if ( cnt == 0 )
-					multiplier = 1.0;
-				else
-					multiplier = cell->omega->vals[obs][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
+				multiplier = 1.0;
+			else
+				multiplier = cell->omega->vals[obs][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
 
 			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
 
@@ -273,16 +293,50 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 		return -1;
 	}
 
-	mem_free(istar);
+	mem_free(istar); mem_free(piCbarX);
 	return cutIdx;
 }//END formCut()
 
+int checkImprovementBenders(probType *prob, cellType *cell, int candidCut) {
+	double  candidEst;
+
+	/* Calculate height at new candidate x with newest cut included */
+	candidEst = vXvSparse(cell->candidX, prob->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob->num->cols, FALSE, cell->k, cell->lb);
+
+#if defined(ALGO_CHECK)
+	printf("AggcandidEst =%lf, AggIncumEst =%lf\n",AggcandidEst, cell->incumbEst);
+#endif
+
+	/* If we see considerable improvement, then change the incumbent */
+	if ((candidEst - cell->incumbEst) <= (config.R1 * cell->gamma)) {
+		/* when we find an improvement, then we need to replace the incumbent x with candidate x */
+		if ( replaceIncumbent(prob, cell, candidEst) ) {
+			errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
+			return 1;
+		}
+		cell->iCutIdx = candidCut;
+		cell->incumbChg = FALSE;
+		printf("+"); fflush(stdout);
+	}
+	else {
+		/* Update quad_scalar when no incumbent is found. */
+		cell->quadScalar = min(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
+		cell->normDk_1 = cell->normDk;
+
+		/* change the proximal term in the solver */
+		if ( changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar) ) {
+			errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
+			return 1;
+		}
+	}
+
+	return 0;
+}//END checkImprovement()
+
 BOOL optimalBenders(probType **prob, cellType *cell) {
-	double gap;
 
 	if ( cell->k > config.MIN_ITER ) {
-		gap = (cell->ub - cell->candidEst)/abs(cell->candidEst);
-		if ( gap <= config.EPSILON )
+		if ( preTest(cell) )
 			return TRUE;
 	}
 
@@ -319,11 +373,12 @@ void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell, string p
 	fprintf(soln, "\n====================================================================================================================================\n");
 	fprintf(soln, "----------------------------------------------------------- Optimization -----------------------------------------------------------\n");
 	fprintf(soln, "====================================================================================================================================\n");
-	fprintf(soln, "Algorithm                          : Benders Decomposition\n");
+	if ( config.MASTER_TYPE == PROB_QP )
+		fprintf(soln, "Algorithm                          : Regularized Benders Decomposition\n");
+	else
+		fprintf(soln, "Algorithm                          : Benders Decomposition\n");
 	fprintf(soln, "Number of iterations               : %d\n", cell->k);
-	fprintf(soln, "Lower bound estimate               : %lf\n", cell->candidEst);
-	fprintf(soln, "Upper bound estimate               : %lf\n", cell->ub);
-	fprintf(soln, "Optimality gap estimate            : %lf (%.3lf%%)\n", cell->ub - cell->candidEst, 100*(cell->ub - cell->candidEst)/cell->candidEst);
+	fprintf(soln, "Lower bound estimate               : %f\n", cell->incumbEst);
 	fclose(soln);
 
 }//END WriteStat

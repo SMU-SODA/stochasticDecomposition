@@ -537,10 +537,13 @@ intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
 int isElementIntvec(intvec vec, int lenVec, int elem) {
 	int n = 1;
 
-	while ( vec[n] != elem && n <= lenVec )
+	while ( n <= lenVec ) {
+		if ( vec[n] == elem )
+			break;
 		n++;
+	}
 
-	if ( n == (lenVec+1) )
+	if ( n > lenVec )
 		return -1;
 	else
 		return n;

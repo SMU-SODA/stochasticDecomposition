@@ -118,9 +118,9 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->iCutUpdt  = -1;
 		cell->incumbChg = FALSE;
 	}
-	cell->gamma 			= 0.0;
-	cell->normDk_1 			= 0.0;
-	cell->normDk 			= 0.0;
+	cell->gamma 	= 0.0;
+	cell->normDk_1 	= 0.0;
+	cell->normDk 	= 0.0;
 
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;

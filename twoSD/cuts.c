@@ -47,6 +47,40 @@ int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double l
 	return cell->cuts->cnt++;
 }//END addCuts2Master()
 
+int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
+
+	/* replace the incumbent solution with the candidate solution */
+	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
+	cell->incumbEst = candidEst;
+
+	/* update the proximal parameter based on estimated improvement */
+	if ( cell->normDk > config.TOLERANCE )
+		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
+			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
+			cell->quadScalar  = min(config.MAX_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar = max(config.MIN_QUAD_SCALAR, cell->quadScalar);
+		}
+
+	/* update the right-hand side and the bounds with new incumbent solution */
+	if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
+		errMsg("algorithm", "replaceIncumbent", "failed to change the right-hand side after incumbent change", 0);
+		return 1;
+	}
+
+	/* update the candidate cut as the new incumbent cut */
+	cell->iCutUpdt = cell->k;
+	cell->incumbChg = TRUE;
+
+	/* keep the two norm of solution*/
+	cell->normDk_1 = cell->normDk;
+	/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
+	cell->infeasIncumb = FALSE;
+	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
+	cell->gamma = 0.0;
+
+	return 0;
+}//END replaceIncumbent()
+
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
 double maxCutHeight(cutsType *cuts, vector xk, int betaLen, BOOL scaleCut, int currIter, double lb) {
 	double Sm = -INF, ht = 0.0;

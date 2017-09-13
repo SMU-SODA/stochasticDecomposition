@@ -142,7 +142,7 @@ int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-							/ (((b3 * r + b2) * r + b1) * r + one);
+									/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -160,13 +160,13 @@ int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-							/ ((d2 * r + d1) * r + one);
+									/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-							/ ((f2 * r + f1) * r + one);
+									/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -192,7 +192,7 @@ float randUniform(long long *SEED) {
 	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
 	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
 	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16)
-							+ (hi_bits >> 15);
+									+ (hi_bits >> 15);
 	return ((*SEED) < 0 ? ((*SEED) += 0x7FFFFFFFL) : (*SEED)) * 4.656612875E-10;
 }//END randUniform()
 
@@ -205,22 +205,40 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-vector* setupSAA(stocType *stoc, long long *seed, int *numSamples) {
+vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples) {
 	vector* simObs;
-	int 	obs;
+	int 	obs, idx, n;
 
 	/* number of samples in SAA */
 	printf("Enter the number of samples used for setting up the SAA : ");
 	scanf("%d", numSamples);
 
-	if ( !(simObs = (vector *) arr_alloc((*numSamples), vector)) )
-		errMsg("allocation", "setupSAA", "simObs", 0);
+	simObs = (vector *) arr_alloc((*numSamples), vector);
+	(*probs) = (vector) arr_alloc((*numSamples), vector);
 
-	if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
+	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			if ( !(simObs[obs] = (vector) arr_alloc(stoc->numOmega, double)) )
-				errMsg("allocation", "setupSAA", "simObs[n]", 0);
-			normal(stoc->mean, stoc->vals[0], stoc->numOmega, simObs[obs], seed);
+			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			idx = randInteger(seed, stoc->numVals[0]);
+			for (n = 0; n < stoc->numOmega; n++ )
+				simObs[obs][n+1] = stoc->vals[n][idx] - stoc->mean[n];
+			(*probs)[obs] = 1.0/(double) (*numSamples);
+		}
+	}
+	else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
+		for (obs = 0; obs < (*numSamples); obs++ ) {
+			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			for (n = 0; n < stoc->numOmega; n++ ) {
+				idx = randInteger(seed, stoc->numVals[n]);
+				simObs[obs][n+1] = stoc->vals[n][idx] - stoc->mean[n];
+			}
+			(*probs)[obs] = 1.0/(double) (*numSamples);
+		}
+	}
+	else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
+		for (obs = 0; obs < (*numSamples); obs++ ) {
+			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			normal(stoc->mean, stoc->vals[0], stoc->numOmega, simObs[obs]+1, seed);
 		}
 	}
 	else {

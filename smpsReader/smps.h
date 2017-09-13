@@ -113,6 +113,6 @@ int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
-vector* setupSAA(stocType *stoc, long long *seed, int *numSamples);
+vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples);
 
 #endif /* SMPS_H_ */

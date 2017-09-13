@@ -17,7 +17,6 @@
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
-#include "cuts.h"
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1
@@ -132,6 +131,7 @@ void freeCellType(cellType *cell);
 
 /* cuts.c */
 int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double lb);
+int replaceIncumbent(probType *prob, cellType *cell, double candidEst);;
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 double maxCutHeight(cutsType *cuts, vector xk, int betaLen, BOOL scaleCut, int currIter, double lb);

@@ -17,7 +17,6 @@
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
-#include "cuts.h"
 #include "cell.h"
 
 #undef ALGO_CHECK
@@ -36,8 +35,7 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
-int checkImprovement(probType *prob, cellType *cell, int candidCut);
-int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
+int checkImprovementSD(probType *prob, cellType *cell, int candidCut);
 
 /* optimal.c */
 BOOL optimalSD(probType **prob, cellType *cell);

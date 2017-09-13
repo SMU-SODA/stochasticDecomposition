@@ -49,7 +49,7 @@ BOOL preTest(cellType *cell) {
 	/* The candidate must be within some small percentage of incumbent cut */
 	/* rare situation for cell->candid_est < 0 and cell->incumb_est > 0 */
 	/* Note: cell->candidEst and cell->incumbEst could be 0 */
-	if (cell->candidEst >= 0){
+	if (cell->candidEst >= cell->lb){
 		cell->optFlag = (cell->candidEst >= (1 - config.PRE_EPSILON) * cell->incumbEst);
 	}
 	else

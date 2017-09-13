@@ -634,8 +634,10 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 	if ( !(basicCost = (vector) arr_alloc(numRows+1, double)) )
 		errMsg("allocation", "newBasis", "basicCost", 0);
 	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
-	for ( i = 1; i <= numRows; i++ )
-		basicCost[i] = costVector[basisHead[i]+1];
+	for ( i = 1; i <= numRows; i++ ) {
+		if ( basisHead[i] > 0 )
+			basicCost[i] = costVector[basisHead[i]+1];
+	}
 
 	if ( !(tempPsiRow = (vector) arr_alloc(numRows+1, double)) )
 		errMsg("allocation", "newBasis", "tempPsiRow", 0);
@@ -658,7 +660,7 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 	printSparseVector(B->gBar+1, basisHead, numRows);
 #endif
 
-	mem_free(basisHead); mem_free(phiHead); mem_free(basicCost);
+	mem_free(basisHead); mem_free(phiHead); mem_free(costVector); mem_free(basicCost); mem_free(tempPsiRow);
 	return B;
 }//END newBasis()
 

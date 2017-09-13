@@ -13,7 +13,6 @@
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
-#include "cuts.h"
 #include "cell.h"
 
 #undef ALGO_CHECK
@@ -23,8 +22,8 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell);
 void updateOmega(stocType *stoc, omegaType *omega);
 void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages);
 
-/* master.c */
 int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell);
+int checkImprovementBenders(probType *prob, cellType *cell, int candidCut);
 int addCut2BendersMaster(cellType *cell, oneCut *cut, int lenX);
 int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb);
 

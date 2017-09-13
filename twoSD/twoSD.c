@@ -61,11 +61,13 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	return 1;
 }//END algo()
 
-void verifySDSetup(pro) {
+void verifySDSetup() {
 
 	/* Solves the regularized version of the master problem */
-	config.MASTER_TYPE = PROB_QP;
-	printf("Warning: 2-SD uses a regularized master. MASTER_TYPE changed to %d.\n", config.MASTER_TYPE);
+	if ( config.MASTER_TYPE != PROB_QP ) {
+		config.MASTER_TYPE = PROB_QP;
+		printf("Warning: 2-SD uses a regularized master. MASTER_TYPE changed to %d.\n", config.MASTER_TYPE);
+	}
 
 }//END verifyAlgoSetup()
 
@@ -120,10 +122,11 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 			}
 			cell->iCutUpdt = cell->k;
 		}
+
 		/******* 5. Check improvement in predicted values at candidate solution *******/
 		if ( !(cell->incumbChg) && cell->k > 1)
 			/* If the incumbent has not changed in the current iteration */
-			checkImprovement(prob[0], cell, candidCut);
+			checkImprovementSD(prob[0], cell, candidCut);
 
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
@@ -175,16 +178,6 @@ int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 		return 1;
 	}
 
-	/* add the incumbent back to change from \Delta X to X */
-	for (i = 1; i <= num->cols; i++)
-		d2 += cell->candidX[i] * cell->candidX[i];
-	addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
-
-	/* update d_norm_k in soln_type. */
-	if (cell->k == 1)
-		cell->normDk_1 = d2;
-	cell->normDk = d2;
-
 	/* Get the dual solution too */
 	if ( getDual(cell->master->lp, cell->piM, cell->master->mar) ) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
@@ -194,6 +187,16 @@ int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
 	}
+
+	/* add the incumbent back to change from \Delta X to X */
+	for (i = 1; i <= num->cols; i++)
+		d2 += cell->candidX[i] * cell->candidX[i];
+	addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
+
+	/* update d_norm_k in soln_type. */
+	if (cell->k == 1)
+		cell->normDk_1 = d2;
+	cell->normDk = d2;
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
 	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols, TRUE, cell->k, lb);
@@ -405,14 +408,14 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
  * a lower difference between the candidate and incumbent x than the previous approximation gave, then the incumbent x is
  * updated to the candidate x, and the reference to the incumbent cut is updated as well.  The function returns TRUE if the
  * incumbent was updated; FALSE otherwise. */
-int checkImprovement(probType *prob, cellType *cell, int candidCut) {
+int checkImprovementSD(probType *prob, cellType *cell, int candidCut) {
 	double  candidEst;
 
 	/* Calculate height at new candidate x with newest cut included */
 	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->candidX, prob->num->cols, TRUE, cell->k, cell->lb);
 	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->incumbX, prob->num->cols, TRUE, cell->k, cell->lb);
 
-#ifdef SOL_CHECK
+#if defined(ALGO_CHECK)
 	printf("AggcandidEst =%lf, AggIncumEst =%lf\n",AggcandidEst, cell->incumbEst);
 #endif
 
@@ -441,40 +444,6 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 
 	return 0;
 }//END checkImprovement()
-
-int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
-
-	/* replace the incumbent solution with the candidate solution */
-	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
-	cell->incumbEst = candidEst;
-
-	/* update the proximal parameter based on estimated improvement */
-	if ( cell->normDk > config.TOLERANCE )
-		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
-			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
-			cell->quadScalar  = min(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = max(config.MIN_QUAD_SCALAR, cell->quadScalar);
-		}
-
-	/* update the right-hand side and the bounds with new incumbent solution */
-	if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
-		errMsg("algorithm", "replaceIncumbent", "failed to change the right-hand side after incumbent change", 0);
-		return 1;
-	}
-
-	/* update the candidate cut as the new incumbent cut */
-	cell->iCutUpdt = cell->k;
-	cell->incumbChg = TRUE;
-
-	/* keep the two norm of solution*/
-	cell->normDk_1 = cell->normDk;
-	/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
-	cell->infeasIncumb = FALSE;
-	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
-	cell->gamma = 0.0;
-
-	return 0;
-}//END replaceIncumbent()
 
 void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages) {
 	int t;
