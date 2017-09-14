@@ -74,7 +74,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
 	cell->piM = cell->djM = NULL;
-	cell->cuts = cell->fcuts = NULL;
+	cell->cuts = cell->fCuts = NULL;
 	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL; cell->basis = NULL;
 	cell->pi_ratio = NULL;
 
@@ -125,7 +125,6 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->cuts 	  = newCuts(cell->maxCuts);
-	cell->fcuts   = NULL;
 
 	/* solution parts of the cell */
 	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
@@ -149,8 +148,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
 		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 
-	cell->feasCnt 			= 0;
-	cell->infeasIncumb 		= FALSE;
+	cell->fCuts		= newCuts(cell->maxCuts);
+	cell->fCutsPool = newCuts(cell->maxCuts);
+	cell->feasCnt 		= 0;
+	cell->infeasIncumb 	= FALSE;
+	cell->fUpdt[0] = cell->fUpdt[1] = 0;
 
 	/* construct the QP using the current incumbent */
 	if ( config.MASTER_TYPE == PROB_QP ) {
@@ -261,7 +263,8 @@ void freeCellType(cellType *cell) {
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts);
-		if (cell->fcuts) freeCutsType(cell->fcuts);
+		if (cell->fCuts) freeCutsType(cell->fCuts);
+		if (cell->fCutsPool) freeCutsType(cell->fCutsPool);
 		if (cell->basis) freeBasisType(cell->basis);
 		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt);
 		if (cell->omega) freeOmegaType(cell->omega);

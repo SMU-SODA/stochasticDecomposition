@@ -236,6 +236,206 @@ int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx) {
 	return 0;
 }//END dropCut()
 
+int formFeasCut(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
+	int start, end;
+	int idx;
+
+	/* add new feasibility cuts to the cut pool */
+	updtFeasCutPool(prob[1], cell);
+
+	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
+	start = cell->fCuts->cnt;
+	checkFeasCutPool(cell->fCutsPool, cell->fCuts, prob[0]->num->cols, cell->incumbX, cell->candidX, &cell->infeasIncumb);
+	end = cell->fCuts->cnt;
+
+	/* add feasibility cuts to master problem */
+	if (end > start) {
+		for (idx = start; idx < end; idx++) {
+			addfCut(cell->master->type,cell->master->lp, prob[0]->num, cell->cuts->cnt, cell->incumbX, cell->fCuts->vals[idx], idx);
+			writeProblem(cell->master->lp, "masterCut.lp");
+		}
+		/* make room for dual solutions for new feasibility cuts added */
+		cell->piM = (vector) mem_realloc(cell->piM, prob[0]->num->rows+cell->cuts->cnt+cell->fCuts->cnt);
+	}
+
+	return 0;
+}//END formFeasCut()
+
+/*********************************************************************************************
+ This function adds new feasibility cuts. It first adds feasibility cuts from old pi's
+ associated with the new omega generated. Cuts from a new dual extreme ray(new pi) and all omegas
+ generated so far are added to the feasible_cuts_pool structure afterwards.
+ *********************************************************************************************/
+int updtFeasCutPool(probType *prob, cellType *cell) {
+	vector 	beta;
+	double	alpha;
+	int		m, n, c, deltaIdx, cutCnt;
+
+	if ( !(beta = (vector) arr_alloc(prob->num->prevCols+1, double)) )
+		errMsg("allocation", "updtFeasCutPool", "beta", 0);
+
+	/* keep track of added cuts to feasibility-cut pool */
+	cutCnt = cell->fCutsPool->cnt;
+
+	for ( n = cell->fUpdt[1]; n < cell->omega->cnt; n++ ) {
+		for ( m = cell->fUpdt[0]; m < cell->sigma->cnt; m++ ) {
+			deltaIdx = cell->sigma->lambdaIdx[m];
+			alpha = 0.0;
+			for (c = 0; c <= prob->num->prevCols; c++)
+				beta[c] = 0.0;
+			alpha = cell->sigma->vals[m].pib + cell->delta->vals[deltaIdx][n].pib;
+			for (c = 1; c <= prob->num->cntCcols; c++)
+				beta[prob->coord->colsC[c]] += cell->sigma->vals[m].piC[c];
+			for (c = 1; c <= prob->num->rvColCnt; c++)
+				beta[prob->coord->rvCols[c]] += cell->delta->vals[deltaIdx][n].piC[c];
+			add2CutPool(cell, alpha, beta, prob->num->prevCols, cell->omega->cnt);
+		}
+	}
+	cell->fUpdt[1] = cell->omega->cnt;
+	cell->fUpdt[0] = cell->sigma->cnt;
+
+	mem_free(beta);
+
+	return cutCnt;
+}//END updtFeasCutPool()
+
+/*********************************************************************************************
+ This function add a new feasibility cut to the cut pool using alpha and beta provided.
+ *********************************************************************************************/
+int add2CutPool(cellType *cell, double alpha, vector beta, int betaLen, int numOmega) {
+	oneCut 	*cut;
+	int 	cnt;
+
+	for (cnt = 0; cnt < cell->fCutsPool->cnt; cnt++) {
+		if (DBL_ABS(alpha - cell->fCutsPool->vals[cnt]->alpha) < config.TOLERANCE) {
+			if (equalVector(beta, cell->fCutsPool->vals[cnt]->beta, betaLen, config.TOLERANCE)) {
+				/* return 0 to indicate that no cut was added to the pool */
+				return 1;
+			}
+		}
+	}
+
+	if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
+		errMsg("allocation", "add2CutPool", "cut", 0);
+	cut->numSamples = cell->k;
+	cut->omegaCnt = numOmega;
+	cut->isIncumb = FALSE;
+
+	if ( !(cut->iStar = (intvec) arr_alloc(numOmega, int)) )
+		errMsg("allocation", "add2CutPool", "istar", 0);
+	if ( !(cut->beta = arr_alloc(betaLen+1, double)))
+		errMsg("allocation", "add2CutPool", "beta", 0);
+
+	cut->alpha = alpha;
+	for (cnt = 0; cnt <= betaLen; cnt++)
+		cut->beta[cnt] = beta[cnt];
+
+	cell->fCutsPool->vals[cell->fCutsPool->cnt++] = cut;
+
+	return 0;
+}//END add2CutPool()
+
+
+/*********************************************************************************************
+ The function identifies cuts from the feasibility cut pool which are voilated by the candidate
+ solution, and mark them to be added to master problem.
+ *********************************************************************************************/
+int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector incumbX, vector candidX, BOOL *infeasIncumb) {
+	double 	betaX, alpha;
+	int 	idx, c;
+	BOOL 	duplicCut;
+
+	for (idx = 0; idx < cutPool->cnt; idx++) {
+		duplicCut = FALSE;
+		alpha = cutPool->vals[idx]->alpha;
+		for (c = 0; c < cutsAdded->cnt; c++) {
+			if (DBL_ABS(alpha - cutsAdded->vals[c]->alpha) < config.TOLERANCE) {
+				if (equalVector(cutPool->vals[idx]->beta, cutsAdded->vals[c]->beta, betaLen, config.TOLERANCE)) {
+					duplicCut = TRUE;
+					break;
+				}
+			}
+		}
+
+		/* Add those cuts in cut pool that will be violated by incumbent solution */
+		betaX = vXv(cutPool->vals[idx]->beta, incumbX, NULL, betaLen);
+		if (betaX < alpha) {
+			(*infeasIncumb) = TRUE;
+			if (duplicCut == TRUE) {
+				printf("Incumbent violates one old cut from feasible cut pool (this cut also exists in feasCutsAdded)\n");
+				continue;
+			}
+			else
+				printf( "Incumbent violates one new cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
+			cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
+
+			printf("Cut added to master due to Incumbent violation\n");
+		}
+		else {
+			/* Check if the cut will be violated by the candidate solution*/
+			if (duplicCut == TRUE)
+				continue;
+			betaX = vXv(cutPool->vals[idx]->beta, candidX, NULL, betaLen);
+
+			if (betaX < alpha) {
+				printf("Candidate violates one cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
+				cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
+
+				printf("Cut added to master due to candidate violation\n");
+			}
+		}
+	}
+
+	return 0;
+}//END checkFeasCutPool()
+
+/*********************************************************************************************
+ This function will add new feasibility cut to the master problem. Unlike addCut(), we do not
+ rearrange the cuts while adding.
+ *********************************************************************************************/
+int addfCut(int type,LPptr lp, numType *num, int optCuts, vector incumbX, oneCut *cut, int idx) {
+	intvec 	indices;
+	double	rhs;
+	int		cnt, status;
+
+	/*
+     Initialize an array to specify columns of each coefficient in beta. The one-norm of beta
+     is temporarily used as the coefficient on eta (it is assumed to be replaced in the next
+     step in solveMaster()).
+	 */
+	if (!(indices = (intvec) arr_alloc(num->cols+1, int)))
+		errMsg("Allocation", "addCut", "coefCol",0);
+	for (cnt = 0; cnt < num->cols; cnt++)
+		indices[cnt + 1] = cnt;
+	indices[0] = num->cols;
+
+	/*
+     Add the cut (it's a ">=" constraint) to the master, with coefficients as specified in
+     beta, and right hand side as specified by alpha.
+     In the regularized QP method, we need to shift the rhs of the cut from 'x' to 'd' each
+     time we add a cut. (We do not need to worry about it when dropping a cut.) That is, in
+     regularized QP method, the rhs will become
+                                        alpha - beta * incumb_x
+	 instead of alpha as in the LP method.
+	 */
+	if (type == PROB_LP)
+		rhs = cut->alpha;
+	else
+		rhs = cut->alpha - vXv(cut->beta, incumbX, indices, num->cols);
+
+	/* add the row in the solver */
+	status = addRow(lp, num->cols+1, rhs, GE, 0, indices, cut->beta);
+	if (status){
+		errMsg("solver", "addCut", "failed to add new row to problem in solver",0);
+		return 1;
+	}
+	cut->rowNum = num->cols + optCuts + idx;
+
+	mem_free(indices);
+
+	return 0;
+}//END addfCut()
+
 void freeOneCut(oneCut *cut) {
 
 	if (cut) {

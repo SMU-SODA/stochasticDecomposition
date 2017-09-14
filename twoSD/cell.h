@@ -102,7 +102,9 @@ typedef struct {
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
-	cutsType    *fcuts;             /* feasibility cuts */
+	cutsType    *fCuts;             /* feasibility cuts */
+    cutsType 	*fCutsPool;			/* Pool of feasibility cuts */
+    int			fUpdt[2];			/* coordinate in delta structure for which the updates have been carried out */
 
 	basisType	*basis;				/* hold unique basis identified */
 	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
@@ -114,7 +116,9 @@ typedef struct {
 	vector      pi_ratio;
     BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
 
-	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
+    BOOL		optMode;
+    BOOL		subFeasFlag;
+    int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
 }cellType;
 

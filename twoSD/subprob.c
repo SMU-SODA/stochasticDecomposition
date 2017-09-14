@@ -75,7 +75,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 #endif
 
 	/* (f) update the stochastic elements in the problem */
-	basisIdx = stochasticUpdates(prob, subproblem, basis, lambda, sigma, delta, deltaRowLength, omega, omegaIdx, newOmegaFlag, currentIter, TOLERANCE);
+	basisIdx = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength, omega, omegaIdx, newOmegaFlag, currentIter, TOLERANCE);
 	if ( basisIdx < 0 ) {
 		errMsg("algorithm", "solveSubprob", "stochastic updates failed", 0);
 		return -1;

@@ -11,7 +11,7 @@
 
 #include "stoc.h"
 
-int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+int stochasticUpdates(probType *prob, LPptr *spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE) {
 	vector	piS;
 	intvec 	cstat, rstat;
@@ -28,16 +28,16 @@ int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, 
 		errMsg("allocation", "stochasticUpdates", "rstat", 0);
 
 	/* Obtain the status of columns and rows in the basis. */
-	if ( getBasis(subproblem->lp, cstat+1, rstat+1) ) {
+	if ( getBasis(spLP, cstat+1, rstat+1) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
 		return -1;
 	}
 	/* Record the dual and reduced cost on bounds. */
-	if ( getDual(subproblem->lp, piS, prob->num->rows) ) {
+	if ( getDual(spLP, piS, prob->num->rows) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
 		return -1;
 	}
-	if ( computeMU(subproblem->lp, cstat,  prob->num->cols, &mubBar) ) {
+	if ( computeMU(spLP, cstat,  prob->num->cols, &mubBar) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return -1;
 	}
@@ -51,7 +51,7 @@ int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, 
 		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
 
 		/* If the cost-coefficients are random, update the basis structure. */
-		basisIdx = calcBasis(subproblem->lp, basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
+		basisIdx = calcBasis(spLP, basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
 				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag, currentIter);
 
 		if ( basis->vals[basisIdx]->phiLength > 0) {

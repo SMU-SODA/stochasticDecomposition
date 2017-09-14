@@ -102,7 +102,7 @@ int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector o
 oneProblem *newSubproblem(oneProblem *subprob);
 
 /* stocUpdate.c */
-int stochasticUpdates(probType *prob, oneProblem *subproblem, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+int stochasticUpdates(probType *prob,  LPptr *spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, vector omegaVals, int obs,
 		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);

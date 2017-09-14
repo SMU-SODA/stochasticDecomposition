@@ -129,7 +129,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 			checkImprovementSD(prob[0], cell, candidCut);
 
 		/******* 6. Solve the master problem to obtain the new candidate solution */
-		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
+		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell) ) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
 			return 1;
 		}
@@ -141,11 +141,12 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 
 /* This function is the regularized QP version of master problem. The master problem is solved after the newest cut is added to master problem,
  the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
-int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb) {
+int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts, lb) ) {
+	/* TODO: Don't need to do this when resolving infeasibility */
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts, cell->lb) ) {
 		errMsg("algorithm", "solveMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -199,13 +200,72 @@ int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	cell->normDk = d2;
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols, TRUE, cell->k, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols, TRUE, cell->k, cell->lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;
 
 	return 0;
 }//END solveSDMaster()
+
+/* This function takes the SD code into "feasibility mode, from the "optimality mode". SD will not return to optimality mode
+ * until the a feasible candidate and incumbent solution are identified.*/
+/* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
+ until the candidate and incumbent solution are both feasible. */
+int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
+
+#ifdef TRACE
+	printf("\t\t~resolveInfeasibility()\n");
+#endif
+
+	int status;
+
+	/* QP master will be solved in feasibility mode */
+	cell->optMode = FALSE;
+
+	while ( TRUE ) {
+		/* form a feasibility cut */
+		formFeasCut(prob, cell, newOmegaFlag, omegaIdx);
+		(*newOmegaFlag) = FALSE;
+
+		/* relax the proximal term and change it in the solver */
+		cell->quadScalar = config.MIN_QUAD_SCALAR;
+		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, cell->quadScalar) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to change the proximal parameter", 0);
+			return 1;
+		}
+
+		/* Solver the master problem with the added feasibility cut */
+		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the master problem", 0);
+			return 1;
+		}
+
+		/* increment the count for number of infeasible master solutions encountered */
+		cell->feasCnt++;
+
+		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, omegaIdx, (*newOmegaFlag), cell->k, config.TOLERANCE) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
+			return 1;
+		}
+
+		/* end the feasibility mode if a feasible candidate solution is observed */
+		if (cell->subFeasFlag == TRUE)
+			break;
+	}
+
+	if ( cell->infeasIncumb == TRUE ) {
+		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
+		replaceIncumbent(prob, cell, cell->candidEst);
+	}
+
+	/* QP master will be solved in optimality mode again */
+	cell->optMode = TRUE;
+	return 0;
+
+}//END resolveInfeasibility()
+
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
