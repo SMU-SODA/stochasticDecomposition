@@ -2,5 +2,4 @@ TIME          sgpf5y3_block
 PERIODS       LP
     VH000100  R00002                   PERIOD00
     M1001100  R00064                   PERIOD01
-    M2001100  R00127                   PERIOD02
 ENDATA
