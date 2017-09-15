@@ -36,7 +36,7 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	}
 
 	/* Write solution statistics for optimization process */
-	soln = openFile(outputDir, "summary.dat", "w");
+	soln = openFile(outputDir, "results.dat", "w");
 	writeBendersStatistic(soln, prob, cell, probName, tim->numStages);
 	writeBendersStatistic(stdout, prob, cell, probName, tim->numStages);
 
@@ -229,6 +229,7 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 	intvec	istar;
 	double	multiplier, val, argmax;
 	int    	cutIdx, obs, c, cnt, lambdaIdx, sigmaIdx, offset;
+	BOOL	newBasisFlag;
 
 	if (!(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
 		errMsg("allocation", "formSDCut", "istar", 0);
@@ -248,7 +249,7 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 			if ( val <= config.SUBPROB_SAMPLE_PCT ) {
 				/* (a) Construct the subproblem with a given observation and master solution, solve the subproblem, and complete stochastic updates. */
 				istar[obs] = solveSubprob(prob, cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-						cell->omega, obs, FALSE, cell->k, config.TOLERANCE);
+						cell->omega, obs, FALSE, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag);
 				if ( istar[obs] < 0 ) {
 					errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 					mem_free(istar); return -1;
@@ -304,7 +305,7 @@ int checkImprovementBenders(probType *prob, cellType *cell, int candidCut) {
 	candidEst = vXvSparse(cell->candidX, prob->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob->num->cols, FALSE, cell->k, cell->lb);
 
 #if defined(ALGO_CHECK)
-	printf("AggcandidEst =%lf, AggIncumEst =%lf\n",AggcandidEst, cell->incumbEst);
+	printf("Candidate estimate = %lf, Incumbent estimate = %lf\n", candidEst, cell->incumbEst);
 #endif
 
 	/* If we see considerable improvement, then change the incumbent */

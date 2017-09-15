@@ -117,7 +117,7 @@ typedef struct {
     BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
 
     BOOL		optMode;
-    BOOL		subFeasFlag;
+    BOOL		spFeasFlag;			/* Indicates whether the subproblem is feasible */
     int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
 }cellType;
@@ -144,5 +144,12 @@ int reduceCuts(oneProblem *master, cutsType *cuts, BOOL scaleCut, vector candidX
 int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts);
+
+int formFeasCut(probType *prob, cellType *cell, BOOL *newOmegaFlag, BOOL newBasisFlag);
+int updtFeasCutPool(numType *num, coordType *coord, cutsType *fCutsPool, int fUpdt[2], basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega,
+		BOOL newOmegaFlag, BOOL newBasisFlag, int currentIter);
+int add2CutPool(cutsType *cuts, double alpha, vector beta, int betaLen, int numOmega, int numSamples);
+int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector incumbX, vector candidX, BOOL *infeasIncumb);
+int addfCut2Master(LPptr lp, oneCut *cut, vector incumbX, int lenX, int optCuts, int idx);
 
 #endif /* CELL_H_ */

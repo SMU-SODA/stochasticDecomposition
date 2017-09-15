@@ -148,6 +148,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
 		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 
+	cell->spFeasFlag = TRUE;
 	cell->fCuts		= newCuts(cell->maxCuts);
 	cell->fCutsPool = newCuts(cell->maxCuts);
 	cell->feasCnt 		= 0;

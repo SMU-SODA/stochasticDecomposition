@@ -23,7 +23,7 @@ TAU 2
 MIN_QUAD_SCALAR 0.001
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 0
+EVAL_FLAG 1
 
 // Random number seed for resampling omegas during evaluation
 EVAL_SEED	1354874229869110
@@ -72,7 +72,7 @@ SCAN_LEN 256
 MAX_OBS	1000
 
 // Fraction of subproblem being solved in an iteration
-SUBPROB_SAMPLE_PCT	0.5
+SUBPROB_SAMPLE_PCT	0.1
 
 // Seed used to sample the subproblems.
 SUBPROB_SAMPLE_SEED	5339672949292608

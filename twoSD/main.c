@@ -62,6 +62,7 @@ int main (int argc, char *argv[]) {
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	mem_free(outputDir);
 	closeSolver();
 
 	return 0;

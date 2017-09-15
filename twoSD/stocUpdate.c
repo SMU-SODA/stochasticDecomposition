@@ -11,13 +11,13 @@
 
 #include "stoc.h"
 
-int stochasticUpdates(probType *prob, LPptr *spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE) {
+int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag) {
 	vector	piS;
 	intvec 	cstat, rstat;
 	double	mubBar;
 	int 	basisIdx, lambdaIdx, sigmaIdx, cnt, offset;
-	BOOL	newBasisFlag, newLambdaFlag, newSigmaFlag;
+	BOOL	newSigmaFlag, newLambdaFlag;
 
 	/* Allocate memory. */
 	if ( !(piS = (vector) arr_alloc(prob->num->cols+1, double)) )
@@ -46,13 +46,13 @@ int stochasticUpdates(probType *prob, LPptr *spLP, basisType *basis, lambdaType 
 	if ( newOmegaFlag )
 		calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, newOmegaFlag, omegaIdx, deltaRowLength);
 
-	if ( prob->num->rvdOmCnt > 0 ) {
+	if ( prob->num->rvdOmCnt > 0) {
 		/* The random variables corresponding to cost coefficients are listed at the end of vector, the offset is used to index them */
 		offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
 
 		/* If the cost-coefficients are random, update the basis structure. */
 		basisIdx = calcBasis(spLP, basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
-				prob->coord->rvCols, prob->num->rvdOmCnt, &newBasisFlag, currentIter);
+				prob->coord->rvCols, prob->num->rvdOmCnt, newBasisFlag, currentIter);
 
 		if ( basis->vals[basisIdx]->phiLength > 0) {
 			/* Decompose the dual solution into deterministic and stochastic components. */
@@ -60,7 +60,7 @@ int stochasticUpdates(probType *prob, LPptr *spLP, basisType *basis, lambdaType 
 					basis->vals[basisIdx]->phiLength, piS, prob->num->rows);
 		}
 
-		if ( newBasisFlag ) {
+		if ( (*newBasisFlag) ) {
 			/* Calculations with respect to deterministic component of the dual solution */
 			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
 			lambdaIdx = basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, piS, lambda, &newLambdaFlag, TOLERANCE);
@@ -106,9 +106,11 @@ int stochasticUpdates(probType *prob, LPptr *spLP, basisType *basis, lambdaType 
 			basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
 
 			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength);
+			(*newBasisFlag) = TRUE;
 		}
 		else
 			basisIdx = sigmaIdx;
+
 	}
 
 	mem_free(piS); mem_free(cstat);	mem_free(rstat);

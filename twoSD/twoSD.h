@@ -23,7 +23,7 @@
 
 /* twoSD.c */
 int solveSDCell(stocType *stoc, probType **prob, cellType *cell);
-void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages);
+void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages, BOOL printAll);
 
 void verifySDSetup();
 
@@ -32,7 +32,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, doub
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb);
+int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag, BOOL isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
 int checkImprovementSD(probType *prob, cellType *cell, int candidCut);

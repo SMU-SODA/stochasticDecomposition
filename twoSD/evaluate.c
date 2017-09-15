@@ -112,13 +112,11 @@ int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vec
 	printf("Number of observations                 : %d\n", cnt);
 
 	/* Write the evaluation results to the summary file */
-	(*soln) = openFile(outputDir, "summary.dat", "a");
 	fprintf((*soln), "\n---------------------------------------- Evaluation ----------------------------------------\n\n");
 	fprintf((*soln), "Upper bound estimate                   : %lf\n", mean);
 	fprintf((*soln), "Error in estimation                    : %lf\n", 3.29 * stdev / mean);
 	fprintf((*soln), "Confidence interval at 95%%             : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
 	fprintf((*soln), "Number of observations                 : %d\n", cnt);
-	fclose((*soln));
 
 	mem_free(observ); mem_free(rhs); mem_free(objxIdx); mem_free(cost);
 	return 0;

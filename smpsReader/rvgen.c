@@ -177,6 +177,18 @@ int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed
 	return (1);
 }//normal()
 
+int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, long long *seed) {
+	int 	n;
+	double 	u;
+
+	for (n = 0; n < numOmega; n++) {
+		u = randUniform(seed);
+		observ[n] = scaleParam*pow(log(u), 1/shapeParam);
+	}
+
+	return 0;
+}//END weibull()
+
 float scalit(float lower, float upper, long long *seed) {
 	float val, wide;
 

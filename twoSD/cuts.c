@@ -26,6 +26,7 @@ int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double l
 	if ( config.MASTER_TYPE == PROB_QP )
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, cell->incumbX, NULL, lenX);
 
+	/* This is an optimality cut being added */
 	/* check to see if there is room for the candidate cut, else drop a cut */
 	if (cell->cuts->cnt == cell->maxCuts) {
 		/* make room for the latest cut */
@@ -35,13 +36,15 @@ int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double l
 		}
 	}
 
-	/* add the cut to the cell cuts structure as well as on the solver */
+	/* Add the cut to the cell cuts structure and assign a row number. */
 	cell->cuts->vals[cell->cuts->cnt] = cut;
+	cut->rowNum = cell->master->mar++;
+
+	/* Add the row in the solver */
 	if ( addRow(cell->master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return -1;
 	}
-	cut->rowNum = cell->master->mar++;
 
 	mem_free(indices);
 	return cell->cuts->cnt++;
@@ -236,26 +239,27 @@ int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx) {
 	return 0;
 }//END dropCut()
 
-int formFeasCut(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
+int formFeasCut(probType *prob, cellType *cell, BOOL *newOmegaFlag, BOOL newBasisFlag) {
 	int start, end;
 	int idx;
 
 	/* add new feasibility cuts to the cut pool */
-	updtFeasCutPool(prob[1], cell);
+	updtFeasCutPool(prob->num, prob->coord, cell->fCutsPool, cell->fUpdt, cell->basis, cell->sigma, cell->delta, cell->omega,
+			(*newOmegaFlag), newBasisFlag, cell->k);
 
 	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
 	start = cell->fCuts->cnt;
-	checkFeasCutPool(cell->fCutsPool, cell->fCuts, prob[0]->num->cols, cell->incumbX, cell->candidX, &cell->infeasIncumb);
+	checkFeasCutPool(cell->fCutsPool, cell->fCuts, prob->num->prevCols, cell->incumbX, cell->candidX, &cell->infeasIncumb);
 	end = cell->fCuts->cnt;
 
 	/* add feasibility cuts to master problem */
 	if (end > start) {
 		for (idx = start; idx < end; idx++) {
-			addfCut(cell->master->type,cell->master->lp, prob[0]->num, cell->cuts->cnt, cell->incumbX, cell->fCuts->vals[idx], idx);
-			writeProblem(cell->master->lp, "masterCut.lp");
+			addfCut2Master(cell->master->lp, cell->fCuts->vals[idx], cell->incumbX, prob->num->prevCols, cell->cuts->cnt, idx);
+			writeProblem(cell->master->lp, "feasMaster.lp");
 		}
 		/* make room for dual solutions for new feasibility cuts added */
-		cell->piM = (vector) mem_realloc(cell->piM, prob[0]->num->rows+cell->cuts->cnt+cell->fCuts->cnt);
+		cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fCuts->cnt);
 	}
 
 	return 0;
@@ -266,58 +270,82 @@ int formFeasCut(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaId
  associated with the new omega generated. Cuts from a new dual extreme ray(new pi) and all omegas
  generated so far are added to the feasible_cuts_pool structure afterwards.
  *********************************************************************************************/
-int updtFeasCutPool(probType *prob, cellType *cell) {
+int updtFeasCutPool(numType *num, coordType *coord, cutsType *fCutsPool, int fUpdt[2], basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega,
+		BOOL newOmegaFlag, BOOL newBasisFlag, int currentIter) {
 	vector 	beta;
-	double	alpha;
-	int		m, n, c, deltaIdx, cutCnt;
+	double	alpha, multiplier;
+	int		base, obs, cnt, c, cutCnt = 0, offset;
 
-	if ( !(beta = (vector) arr_alloc(prob->num->prevCols+1, double)) )
-		errMsg("allocation", "updtFeasCutPool", "beta", 0);
+	offset = num->rvbOmCnt + num->rvCOmCnt;
+	if ( newOmegaFlag ) {
+		for ( obs = fUpdt[1]; obs < omega->cnt; obs++ )
+			for ( base = 0; base < fUpdt[0]; base++ ) {
+				if ( !(beta = (vector) arr_alloc(num->prevCols+1, double)) )
+					errMsg("allocation", "updtFeasCutPool", "beta", 0);
+				for ( cnt = 0; cnt <= basis->vals[base]->phiLength; cnt++ ) {
+					if (cnt == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[obs][offset+basis->vals[base]->omegaIdx[cnt]];
 
-	/* keep track of added cuts to feasibility-cut pool */
-	cutCnt = cell->fCutsPool->cnt;
+					/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+					alpha = (sigma->vals[basis->vals[base]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[base]->lambdaIdx[cnt]][obs].pib)* multiplier;
 
-	for ( n = cell->fUpdt[1]; n < cell->omega->cnt; n++ ) {
-		for ( m = cell->fUpdt[0]; m < cell->sigma->cnt; m++ ) {
-			deltaIdx = cell->sigma->lambdaIdx[m];
-			alpha = 0.0;
-			for (c = 0; c <= prob->num->prevCols; c++)
-				beta[c] = 0.0;
-			alpha = cell->sigma->vals[m].pib + cell->delta->vals[deltaIdx][n].pib;
-			for (c = 1; c <= prob->num->cntCcols; c++)
-				beta[prob->coord->colsC[c]] += cell->sigma->vals[m].piC[c];
-			for (c = 1; c <= prob->num->rvColCnt; c++)
-				beta[prob->coord->rvCols[c]] += cell->delta->vals[deltaIdx][n].piC[c];
-			add2CutPool(cell, alpha, beta, prob->num->prevCols, cell->omega->cnt);
-		}
+					for (c = 1; c <= num->cntCcols; c++)
+						beta[coord->colsC[c]] += sigma->vals[basis->vals[base]->sigmaIdx[cnt]].piC[c] * multiplier;
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						beta[coord->rvCols[c]] += delta->vals[basis->vals[base]->lambdaIdx[cnt]][obs].piC[c] * multiplier;
+				}
+				cutCnt += add2CutPool(fCutsPool, alpha, beta, num->prevCols, omega->cnt, currentIter);
+			}
+		fUpdt[1] = omega->cnt;
 	}
-	cell->fUpdt[1] = cell->omega->cnt;
-	cell->fUpdt[0] = cell->sigma->cnt;
 
-	mem_free(beta);
+	if ( newBasisFlag ) {
+		for ( obs = 0; obs < omega->cnt; obs++ )
+			for ( base = fUpdt[0]; base < basis->cnt; base++ ) {
+				if ( !(beta = (vector) arr_alloc(num->prevCols+1, double)) )
+					errMsg("allocation", "updtFeasCutPool", "beta", 0);
+				for ( cnt = 0; cnt <= basis->vals[base]->phiLength; cnt++ ) {
+					if (cnt == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[obs][offset+basis->vals[base]->omegaIdx[cnt]];
+
+					/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+					alpha = (sigma->vals[basis->vals[base]->sigmaIdx[cnt]].pib + delta->vals[basis->vals[base]->lambdaIdx[cnt]][obs].pib)* multiplier;
+
+					for (c = 1; c <= num->cntCcols; c++)
+						beta[coord->colsC[c]] += sigma->vals[basis->vals[base]->sigmaIdx[cnt]].piC[c] * multiplier;
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						beta[coord->rvCols[c]] += delta->vals[basis->vals[base]->lambdaIdx[cnt]][obs].piC[c] * multiplier;
+				}
+				cutCnt += add2CutPool(fCutsPool, alpha, beta, num->prevCols, omega->cnt, currentIter);
+			}
+		fUpdt[0] = basis->cnt;
+	}
 
 	return cutCnt;
 }//END updtFeasCutPool()
 
-/*********************************************************************************************
- This function add a new feasibility cut to the cut pool using alpha and beta provided.
- *********************************************************************************************/
-int add2CutPool(cellType *cell, double alpha, vector beta, int betaLen, int numOmega) {
+/* This function add a new cut to the cut pool using alpha and beta provided. */
+int add2CutPool(cutsType *cuts, double alpha, vector beta, int betaLen, int numOmega, int numSamples) {
 	oneCut 	*cut;
 	int 	cnt;
 
-	for (cnt = 0; cnt < cell->fCutsPool->cnt; cnt++) {
-		if (DBL_ABS(alpha - cell->fCutsPool->vals[cnt]->alpha) < config.TOLERANCE) {
-			if (equalVector(beta, cell->fCutsPool->vals[cnt]->beta, betaLen, config.TOLERANCE)) {
+	for (cnt = 0; cnt < cuts->cnt; cnt++) {
+		if (DBL_ABS(alpha - cuts->vals[cnt]->alpha) < config.TOLERANCE) {
+			if (equalVector(beta, cuts->vals[cnt]->beta, betaLen, config.TOLERANCE)) {
 				/* return 0 to indicate that no cut was added to the pool */
-				return 1;
+				mem_free(beta);
+				return 0;
 			}
 		}
 	}
 
 	if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
 		errMsg("allocation", "add2CutPool", "cut", 0);
-	cut->numSamples = cell->k;
+	cut->numSamples = numSamples;
 	cut->omegaCnt = numOmega;
 	cut->isIncumb = FALSE;
 
@@ -327,19 +355,16 @@ int add2CutPool(cellType *cell, double alpha, vector beta, int betaLen, int numO
 		errMsg("allocation", "add2CutPool", "beta", 0);
 
 	cut->alpha = alpha;
-	for (cnt = 0; cnt <= betaLen; cnt++)
-		cut->beta[cnt] = beta[cnt];
+	cut->beta = beta;
 
-	cell->fCutsPool->vals[cell->fCutsPool->cnt++] = cut;
+	cuts->vals[cuts->cnt++] = cut;
 
-	return 0;
+	return 1;
 }//END add2CutPool()
 
 
-/*********************************************************************************************
- The function identifies cuts from the feasibility cut pool which are voilated by the candidate
- solution, and mark them to be added to master problem.
- *********************************************************************************************/
+/* The function identifies cuts from the feasibility cut pool which are voilated by the candidate solution, and mark them to be
+ * added to master problem. */
 int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector incumbX, vector candidX, BOOL *infeasIncumb) {
 	double 	betaX, alpha;
 	int 	idx, c;
@@ -389,50 +414,28 @@ int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector
 	return 0;
 }//END checkFeasCutPool()
 
-/*********************************************************************************************
- This function will add new feasibility cut to the master problem. Unlike addCut(), we do not
- rearrange the cuts while adding.
- *********************************************************************************************/
-int addfCut(int type,LPptr lp, numType *num, int optCuts, vector incumbX, oneCut *cut, int idx) {
+/* This function will add a new feasibility cut to the master problem. Unlike addCut(), we do not rearrange the cuts while adding. */
+int addfCut2Master(LPptr lp, oneCut *cut, vector incumbX, int lenX, int optCuts, int idx) {
 	intvec 	indices;
-	double	rhs;
-	int		cnt, status;
+	int		cnt;
 
-	/*
-     Initialize an array to specify columns of each coefficient in beta. The one-norm of beta
-     is temporarily used as the coefficient on eta (it is assumed to be replaced in the next
-     step in solveMaster()).
-	 */
-	if (!(indices = (intvec) arr_alloc(num->cols+1, int)))
+	if (!(indices = (intvec) arr_alloc(lenX+1, int)))
 		errMsg("Allocation", "addCut", "coefCol",0);
-	for (cnt = 0; cnt < num->cols; cnt++)
+	for (cnt = 0; cnt < lenX; cnt++)
 		indices[cnt + 1] = cnt;
-	indices[0] = num->cols;
+	indices[0] = lenX;
 
-	/*
-     Add the cut (it's a ">=" constraint) to the master, with coefficients as specified in
-     beta, and right hand side as specified by alpha.
-     In the regularized QP method, we need to shift the rhs of the cut from 'x' to 'd' each
-     time we add a cut. (We do not need to worry about it when dropping a cut.) That is, in
-     regularized QP method, the rhs will become
-                                        alpha - beta * incumb_x
-	 instead of alpha as in the LP method.
-	 */
-	if (type == PROB_LP)
-		rhs = cut->alpha;
-	else
-		rhs = cut->alpha - vXv(cut->beta, incumbX, indices, num->cols);
+	if ( config.MASTER_TYPE == PROB_QP )
+		cut->alphaIncumb = cut->alpha - vXv(cut->beta, incumbX, NULL, lenX);
 
 	/* add the row in the solver */
-	status = addRow(lp, num->cols+1, rhs, GE, 0, indices, cut->beta);
-	if (status){
-		errMsg("solver", "addCut", "failed to add new row to problem in solver",0);
+	if ( addRow(lp, lenX+1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+		errMsg("solver", "addCut", "failed to add new row to problem in solver", 0);
 		return 1;
 	}
-	cut->rowNum = num->cols + optCuts + idx;
+	cut->rowNum = lenX + optCuts + idx;
 
 	mem_free(indices);
-
 	return 0;
 }//END addfCut()
 

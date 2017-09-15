@@ -110,6 +110,7 @@ void generateOmega(stocType *stoc, vector observ, long long *seed);
 void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed);
 int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed);
+int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, long long *seed);
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
