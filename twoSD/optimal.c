@@ -115,13 +115,13 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		/* (h) check No. of fails. skip out of the loop if there's no hope of meeting the condition */
 		if ( rep + 1 - numPass >= (1 - config.PERCENT_PASS) * config.BOOTSTRAP_REP) {
 			/* The bootstrap test has failed */
-			mem_free(cdf); mem_free(observ); freeCutsType(gCuts);
+			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, FALSE);
 			return FALSE;
 		}
 	}//END replication loop
 
 	mem_free(cdf); mem_free(observ);
-	freeCutsType(gCuts);
+	freeCutsType(gCuts, FALSE);
 	return TRUE;
 
 }//END full_test()
@@ -169,7 +169,7 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 
 	/* Choose k observations according to cdf (k = number of iterations) */
 	for (obs = 0; obs < numSamples; obs++) {
-		sample = randInteger(&config.EVAL_SEED, numSamples);
+		sample = randInteger(&config.EVAL_SEED[0], numSamples);
 		for (cnt = 0; sample > cdf[cnt]; cnt++)
 			/* Loop until sample falls below cdf */;
 		observ[obs] = cnt;

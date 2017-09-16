@@ -123,11 +123,11 @@ lambdaType *newLambda(int maxLambda, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
 omegaType *newOmega(int numOmega, int numIter);
-void freeBasisType(basisType *basis);
+void freeBasisType(basisType *basis, BOOL partial);
 void freeOneBasis(oneBasis *B);
-void freeLambdaType(lambdaType *lambda);
-void freeSigmaType(sigmaType *sigma);
-void freeOmegaType(omegaType *omega);
-void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt);
+void freeLambdaType(lambdaType *lambda, BOOL partial);
+void freeSigmaType(sigmaType *sigma, BOOL partial);
+void freeOmegaType(omegaType *omega, BOOL partial);
+void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial);
 
 #endif /* STOC_H_ */

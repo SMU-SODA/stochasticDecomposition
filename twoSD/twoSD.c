@@ -17,7 +17,8 @@ extern string outputDir;
 int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
-	FILE 	*soln;
+	vector 	 meanSol = NULL;
+	FILE 	 *soln;
 
 	/* read algorithm configuration file */
 	if ( readConfig() )
@@ -27,7 +28,7 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	verifySDSetup();
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &meanSol) )
 		goto TERMINATE;
 
 
@@ -45,7 +46,7 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 	/* evaluating the optimal solution*/
 	if (config.EVAL_FLAG == 1) {
-		evaluateSD(&soln, stoc, prob, cell, cell->incumbX);
+		evaluate(soln, stoc, prob, cell, cell->incumbX);
 	}
 
 	fclose(soln);
@@ -98,7 +99,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
 		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.RUN_SEED);
+		generateOmega(stoc, observ, &config.RUN_SEED[0]);
 
 		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 		for ( m = 0; m < stoc->numOmega; m++ )
@@ -206,59 +207,6 @@ int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell) {
 
 	return 0;
 }//END solveSDMaster()
-
-/* This function takes the SD code into "feasibility mode, from the "optimality mode". SD will not return to optimality mode
- * until the a feasible candidate and incumbent solution are identified.*/
-/* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
- until the candidate and incumbent solution are both feasible. */
-int resolveInfeasibility(probType **prob, cellType *cell, BOOL newOmegaFlag, int omegaIdx) {
-	BOOL newBasisFlag;
-
-	/* QP master will be solved in feasibility mode */
-	cell->optMode = FALSE;
-
-	while ( TRUE ) {
-		/* form a feasibility cut */
-		formFeasCut(prob[1], cell, &newOmegaFlag, newBasisFlag);
-
-		/* relax the proximal term and change it in the solver */
-		cell->quadScalar = config.MIN_QUAD_SCALAR;
-		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, cell->quadScalar) ) {
-			errMsg("algorithm", "resolveInfeasibility", "failed to change the proximal parameter", 0);
-			return 1;
-		}
-
-		/* Solver the master problem with the added feasibility cut */
-		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell) ) {
-			errMsg("algorithm", "resolveInfeasibility", "failed to solve the master problem", 0);
-			return 1;
-		}
-
-		/* increment the count for number of infeasible master solutions encountered */
-		cell->feasCnt++;
-
-		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag) ) {
-			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
-			return 1;
-		}
-
-		/* end the feasibility mode if a feasible candidate solution is observed */
-		if (cell->spFeasFlag == TRUE)
-			break;
-	}
-
-	if ( cell->infeasIncumb == TRUE ) {
-		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
-		replaceIncumbent(prob[0], cell, cell->candidEst);
-	}
-
-	/* QP master will be solved in optimality mode again */
-	cell->optMode = TRUE;
-	return 0;
-
-}//END resolveInfeasibility()
-
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
@@ -376,7 +324,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	}
 
 	/* (c) add cut to the master problem  */
-	if ( (cutIdx = addCut2Master(cell, cut, TRUE, prob[1]->num->prevCols, cell->lb)) < 0 ) {
+	if ( (cutIdx = addCut2Master(cell, cell->cuts, cut, TRUE, prob[1]->num->prevCols, cell->lb, TRUE)) < 0 ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
 		return -1;
 	}

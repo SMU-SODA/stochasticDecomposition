@@ -696,7 +696,7 @@ basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int 
 	return basis;
 }//END newBasis()
 
-void freeBasisType(basisType *basis) {
+void freeBasisType(basisType *basis, BOOL partial) {
 	int n;
 
 	if ( basis ) {
@@ -704,6 +704,10 @@ void freeBasisType(basisType *basis) {
 			for ( n = 0; n < basis->cnt; n++ ) {
 				freeOneBasis(basis->vals[n]);
 				mem_free(basis->obsFeasible[n]);
+			}
+			if ( partial ) {
+				basis->cnt = 0;
+				return;
 			}
 			mem_free(basis->vals);
 			mem_free(basis->obsFeasible);
@@ -816,27 +820,35 @@ omegaType *newOmega(int numOmega, int numIter) {
 	return omega;
 }//END newOmega()
 
-void freeOmegaType(omegaType *omega) {
+void freeOmegaType(omegaType *omega, BOOL partial) {
 	int n;
 
-	if ( omega->weights ) mem_free(omega->weights);
-	if ( omega->probs ) mem_free(omega->probs);
 	if ( omega->vals ) {
 		for ( n = 0; n < omega->cnt; n++ )
 			if ( omega->vals[n] ) mem_free(omega->vals[n]);
+		if ( partial ) {
+			omega->cnt = 0;
+			return;
+		}
 		mem_free(omega->vals);
 	}
+	if ( omega->weights ) mem_free(omega->weights);
+	if ( omega->probs ) mem_free(omega->probs);
 	mem_free(omega);
 
 }//END freeOmegaType()
 
-void freeLambdaType(lambdaType *lambda) {
+void freeLambdaType(lambdaType *lambda, BOOL partial) {
 	int n;
 
 	if (lambda) {
 		if (lambda->vals) {
 			for ( n = 0; n < lambda->cnt; n++ )
 				if (lambda->vals[n]) mem_free(lambda->vals[n]);
+			if ( partial ) {
+				lambda->cnt = 0;
+				return;
+			}
 			mem_free(lambda->vals);
 		}
 		mem_free(lambda);
@@ -844,20 +856,24 @@ void freeLambdaType(lambdaType *lambda) {
 
 }//END freeLambdaType()
 
-void freeSigmaType(sigmaType *sigma) {
+void freeSigmaType(sigmaType *sigma, BOOL partial) {
 	int n;
 
 	if (sigma) {
-		if (sigma->lambdaIdx) mem_free(sigma->lambdaIdx);
 		for ( n = 0; n < sigma->cnt; n++ )
 			if (sigma->vals[n].piC) mem_free(sigma->vals[n].piC);
+		if ( partial ) {
+			sigma->cnt = 0;
+			return;
+		}
+		if (sigma->lambdaIdx) mem_free(sigma->lambdaIdx);
 		if (sigma->vals) mem_free(sigma->vals);
 		mem_free(sigma);
 	}
 
 }//END freeSigmaType()
 
-void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt) {
+void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial) {
 	int n, m;
 
 	if (delta) {
@@ -870,6 +886,8 @@ void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt) {
 					mem_free(delta->vals[n]);
 				}
 			}
+			if ( partial )
+				return;
 			mem_free(delta->vals);
 		}
 		mem_free(delta);

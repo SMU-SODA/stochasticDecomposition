@@ -19,8 +19,8 @@
 
 /* subroutines in benders.c */
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell);
-void updateOmega(stocType *stoc, omegaType *omega);
-void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages);
+void updateOmega(stocType *stoc, omegaType *omega, int *numSamples);
+void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell);
 
 int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell);
 int checkImprovementBenders(probType *prob, cellType *cell, int candidCut);

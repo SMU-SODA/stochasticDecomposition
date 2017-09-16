@@ -762,30 +762,34 @@ void freeOmegastuff(omegastuff *omegas) {
 
 }//END freeOmegastuff()
 
-void printDecomposeSummary(timeType *tim, probType **prob) {
+void printDecomposeSummary(FILE *fptr, string probName, timeType *tim, probType **prob) {
 	int t;
 
-	printf("====================================================================================================================================\n");
-	printf("Stage optimization problem for given input s_t = (x_t, omega_t) is in the following form : \n\n");
-	printf("\t\t\t\t h_t(s_t) = c_t*x_t + min d_t*u_t\n");
-	printf("\t\t\t\t                      s.t. D_t u_t = b_t - C_t x_t,\n\n");
-	printf("with the following linear dynamics: x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.\n\n");
-	printf("------------------------------------------------------------------------------------------------------------------------------------\n");
-	printf("Number of stages                   = %d\n", tim->numStages);
+	fprintf(fptr, "====================================================================================================================================\n");
+	fprintf(fptr, "Stage optimization problem for given input s_t = (x_t, omega_t) is in the following form : \n\n");
+	fprintf(fptr, "\t\t\t\t h_t(s_t) = c_t*x_t + min d_t*u_t\n");
+	fprintf(fptr, "\t\t\t\t                      s.t. D_t u_t = b_t - C_t x_t,\n\n");
+	fprintf(fptr, "with the following linear dynamics: x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.\n\n");
+	fprintf(fptr, "------------------------------------------------------------------------------------------------------------------------------------\n");
+	fprintf(fptr, "\n====================================================================================================================================\n");
+	fprintf(fptr, "-------------------------------------------------------- Problem Information -------------------------------------------------------\n");
+	fprintf(fptr, "====================================================================================================================================\n");
+	fprintf(fptr, "Problem                            : %s\n", probName);
+	fprintf(fptr, "Number of stages                   : %d\n", tim->numStages);
 	for ( t = 0; t < tim->numStages; t++ ) {
-		printf("------------------------------------------------------------------------------------------------------------------------------------\n");
-		printf("Stage %d\n", t);
-		printf("Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
-		printf("(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
-		printf("Number of constraints              = %d\n", prob[t]->sp->mar);
+		fprintf(fptr,  "------------------------------------------------------------------------------------------------------------------------------------\n");
+		fprintf(fptr,  "Stage %d\n", t);
+		fprintf(fptr,  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
+		fprintf(fptr,  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
+		fprintf(fptr,  "Number of constraints              = %d\n", prob[t]->sp->mar);
 		if ( prob[t]->omegas != NULL ) {
-			printf("Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
-			printf("(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
+			fprintf(fptr,  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+			fprintf(fptr,  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
 					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
 		}
 		else
-			printf("Number of random variables (omega) = 0\n");
+			fprintf(fptr,  "Number of random variables (omega) = 0\n");
 	}
-	printf("====================================================================================================================================\n");
+	fprintf(fptr, "====================================================================================================================================\n");
 
 }//printDecomposeSummary()

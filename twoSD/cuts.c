@@ -13,9 +13,21 @@
 
 extern configType config;
 
-int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double lb) {
+int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, BOOL scaleCut, int lenX, double lb, BOOL optCut) {
 	intvec 	indices;
 	int 	cnt;
+
+	/* If it is optimality cut being added, check to see if there is room for the candidate cut, else drop a cut */
+	if (cuts->cnt == cell->maxCuts && optCut) {
+		/* make room for the latest cut */
+		if( reduceCuts(cell->master, cuts, scaleCut, cell->candidX, cell->piM, lenX, lb, cell->k, &cell->iCutIdx, config.TOLERANCE) < 0 ) {
+			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
+			return -1;
+		}
+	}
+
+	if ( config.MASTER_TYPE == PROB_QP )
+		cut->alphaIncumb = cut->alpha - vXv(cut->beta, cell->incumbX, NULL, lenX);
 
 	if (!(indices = arr_alloc(lenX + 1, int)))
 		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta",0);
@@ -23,21 +35,8 @@ int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double l
 		indices[cnt] = cnt - 1;
 	indices[0] = lenX;
 
-	if ( config.MASTER_TYPE == PROB_QP )
-		cut->alphaIncumb = cut->alpha - vXv(cut->beta, cell->incumbX, NULL, lenX);
-
-	/* This is an optimality cut being added */
-	/* check to see if there is room for the candidate cut, else drop a cut */
-	if (cell->cuts->cnt == cell->maxCuts) {
-		/* make room for the latest cut */
-		if( reduceCuts(cell->master, cell->cuts, scaleCut, cell->candidX, cell->piM, lenX, lb, cell->k, &cell->iCutIdx, config.TOLERANCE) < 0 ) {
-			errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
-			return -1;
-		}
-	}
-
 	/* Add the cut to the cell cuts structure and assign a row number. */
-	cell->cuts->vals[cell->cuts->cnt] = cut;
+	cuts->vals[cuts->cnt] = cut;
 	cut->rowNum = cell->master->mar++;
 
 	/* Add the row in the solver */
@@ -47,8 +46,60 @@ int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double l
 	}
 
 	mem_free(indices);
-	return cell->cuts->cnt++;
+	return cuts->cnt++;
 }//END addCuts2Master()
+
+/* This function takes the SD code into "feasibility mode, from the "optimality mode". SD will not return to optimality mode
+ * until the a feasible candidate and incumbent solution are identified.*/
+/* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
+ until the candidate and incumbent solution are both feasible. */
+int resolveInfeasibility(probType **prob, cellType *cell, BOOL newOmegaFlag, int omegaIdx) {
+	BOOL newBasisFlag;
+
+	/* QP master will be solved in feasibility mode */
+	cell->optMode = FALSE;
+
+	while ( TRUE ) {
+		/* form a feasibility cut */
+		formFeasCut(prob[1], cell, &newOmegaFlag, newBasisFlag);
+
+		/* relax the proximal term and change it in the solver */
+		cell->quadScalar = config.MIN_QUAD_SCALAR;
+		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, cell->quadScalar) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to change the proximal parameter", 0);
+			return 1;
+		}
+
+		/* Solver the master problem with the added feasibility cut */
+		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the master problem", 0);
+			return 1;
+		}
+
+		/* increment the count for number of infeasible master solutions encountered */
+		cell->feasCnt++;
+
+		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
+			return 1;
+		}
+
+		/* end the feasibility mode if a feasible candidate solution is observed */
+		if (cell->spFeasFlag == TRUE)
+			break;
+	}
+
+	if ( cell->infeasIncumb == TRUE ) {
+		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
+		replaceIncumbent(prob[0], cell, cell->candidEst);
+	}
+
+	/* QP master will be solved in optimality mode again */
+	cell->optMode = TRUE;
+	return 0;
+
+}//END resolveInfeasibility()
 
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
@@ -240,27 +291,14 @@ int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx) {
 }//END dropCut()
 
 int formFeasCut(probType *prob, cellType *cell, BOOL *newOmegaFlag, BOOL newBasisFlag) {
-	int start, end;
-	int idx;
 
 	/* add new feasibility cuts to the cut pool */
 	updtFeasCutPool(prob->num, prob->coord, cell->fCutsPool, cell->fUpdt, cell->basis, cell->sigma, cell->delta, cell->omega,
 			(*newOmegaFlag), newBasisFlag, cell->k);
 
 	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
-	start = cell->fCuts->cnt;
-	checkFeasCutPool(cell->fCutsPool, cell->fCuts, prob->num->prevCols, cell->incumbX, cell->candidX, &cell->infeasIncumb);
-	end = cell->fCuts->cnt;
-
-	/* add feasibility cuts to master problem */
-	if (end > start) {
-		for (idx = start; idx < end; idx++) {
-			addfCut2Master(cell->master->lp, cell->fCuts->vals[idx], cell->incumbX, prob->num->prevCols, cell->cuts->cnt, idx);
-			writeProblem(cell->master->lp, "feasMaster.lp");
-		}
-		/* make room for dual solutions for new feasibility cuts added */
-		cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fCuts->cnt);
-	}
+	checkFeasCutPool(cell, prob->num->cols);
+	cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fCuts->cnt);
 
 	return 0;
 }//END formFeasCut()
@@ -365,17 +403,17 @@ int add2CutPool(cutsType *cuts, double alpha, vector beta, int betaLen, int numO
 
 /* The function identifies cuts from the feasibility cut pool which are voilated by the candidate solution, and mark them to be
  * added to master problem. */
-int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector incumbX, vector candidX, BOOL *infeasIncumb) {
+int checkFeasCutPool(cellType *cell, int lenX) {
 	double 	betaX, alpha;
 	int 	idx, c;
 	BOOL 	duplicCut;
 
-	for (idx = 0; idx < cutPool->cnt; idx++) {
+	for (idx = 0; idx < cell->fCutsPool->cnt; idx++) {
 		duplicCut = FALSE;
-		alpha = cutPool->vals[idx]->alpha;
-		for (c = 0; c < cutsAdded->cnt; c++) {
-			if (DBL_ABS(alpha - cutsAdded->vals[c]->alpha) < config.TOLERANCE) {
-				if (equalVector(cutPool->vals[idx]->beta, cutsAdded->vals[c]->beta, betaLen, config.TOLERANCE)) {
+		alpha = cell->fCutsPool->vals[idx]->alpha;
+		for (c = 0; c < cell->fCuts->cnt; c++) {
+			if (DBL_ABS(alpha - cell->fCuts->vals[c]->alpha) < config.TOLERANCE) {
+				if (equalVector(cell->fCutsPool->vals[idx]->beta, cell->fCuts->vals[c]->beta, lenX, config.TOLERANCE)) {
 					duplicCut = TRUE;
 					break;
 				}
@@ -383,61 +421,32 @@ int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector
 		}
 
 		/* Add those cuts in cut pool that will be violated by incumbent solution */
-		betaX = vXv(cutPool->vals[idx]->beta, incumbX, NULL, betaLen);
+		betaX = vXv(cell->fCutsPool->vals[idx]->beta, cell->incumbX, NULL, lenX);
 		if (betaX < alpha) {
-			(*infeasIncumb) = TRUE;
-			if (duplicCut == TRUE) {
+			cell->infeasIncumb = TRUE;
+			if (duplicCut == TRUE)
 				printf("Incumbent violates one old cut from feasible cut pool (this cut also exists in feasCutsAdded)\n");
-				continue;
-			}
-			else
+			else {
 				printf( "Incumbent violates one new cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
-			cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
-
-			printf("Cut added to master due to Incumbent violation\n");
+				addCut2Master(cell, cell->fCuts, cell->fCutsPool->vals[idx], FALSE, lenX, cell->lb, FALSE);
+			}
+			// cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
 		}
 		else {
 			/* Check if the cut will be violated by the candidate solution*/
 			if (duplicCut == TRUE)
 				continue;
-			betaX = vXv(cutPool->vals[idx]->beta, candidX, NULL, betaLen);
+			betaX = vXv(cell->fCutsPool->vals[idx]->beta, cell->candidX, NULL, lenX);
 
 			if (betaX < alpha) {
 				printf("Candidate violates one cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
-				cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
-
-				printf("Cut added to master due to candidate violation\n");
+				addCut2Master(cell, cell->fCuts, cell->fCutsPool->vals[idx], FALSE, lenX, cell->lb, FALSE);
 			}
 		}
 	}
 
 	return 0;
 }//END checkFeasCutPool()
-
-/* This function will add a new feasibility cut to the master problem. Unlike addCut(), we do not rearrange the cuts while adding. */
-int addfCut2Master(LPptr lp, oneCut *cut, vector incumbX, int lenX, int optCuts, int idx) {
-	intvec 	indices;
-	int		cnt;
-
-	if (!(indices = (intvec) arr_alloc(lenX+1, int)))
-		errMsg("Allocation", "addCut", "coefCol",0);
-	for (cnt = 0; cnt < lenX; cnt++)
-		indices[cnt + 1] = cnt;
-	indices[0] = lenX;
-
-	if ( config.MASTER_TYPE == PROB_QP )
-		cut->alphaIncumb = cut->alpha - vXv(cut->beta, incumbX, NULL, lenX);
-
-	/* add the row in the solver */
-	if ( addRow(lp, lenX+1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
-		errMsg("solver", "addCut", "failed to add new row to problem in solver", 0);
-		return 1;
-	}
-	cut->rowNum = lenX + optCuts + idx;
-
-	mem_free(indices);
-	return 0;
-}//END addfCut()
 
 void freeOneCut(oneCut *cut) {
 
@@ -450,11 +459,16 @@ void freeOneCut(oneCut *cut) {
 	}
 }
 
-void freeCutsType(cutsType *cuts) {
+void freeCutsType(cutsType *cuts, BOOL partial) {
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++)
 		freeOneCut(cuts->vals[cnt]);
-	mem_free(cuts->vals);
-	mem_free(cuts);
+
+	if ( partial )
+		cuts->cnt = 0;
+	else {
+		mem_free(cuts->vals);
+		mem_free(cuts);
+	}
 }//END freeCuts

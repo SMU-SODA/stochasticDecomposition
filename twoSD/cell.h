@@ -24,7 +24,8 @@
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	long long RUN_SEED;			/* seed used during optimization */
+	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
+	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
@@ -34,7 +35,8 @@ typedef struct{
 	double	EPSILON;			/* Optimality gap */
 
 	int		EVAL_FLAG;
-	long long EVAL_SEED;
+	int		NUM_EVALS;
+	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
 
@@ -52,8 +54,10 @@ typedef struct{
 
 	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
 	double  SUBPROB_SAMPLE_PCT;		/* Fraction of subproblem being solved in an iteration */
-	long long SUBPROB_SAMPLE_SEED;	/* Seed used to sample the subproblems. */
+	long long *SUBPROB_SAMPLE_SEED;	/* Seed used to sample the subproblems. */
 	int		SAA; 				/* Use SAA when continuous distribution in stoch file (1), or not (0) */
+
+	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (1), else (0) */
 }configType;
 
 /* The oneCut and cutsType data structures will be used to hold all information which can completely define the affine minorants (cuts) which
@@ -85,7 +89,6 @@ typedef struct {
 
 	vector      candidX;            /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
-	double		ub;					/* upper bound */
 
 	vector      incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
@@ -123,7 +126,7 @@ typedef struct {
 }cellType;
 
 /* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
 oneProblem *newMaster(oneProblem *orig, double lb);
 int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar);
@@ -131,10 +134,11 @@ int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, vector xk);
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
 int readConfig();
+int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, int numRows, double lb, BOOL cleanOmega);
 void freeCellType(cellType *cell);
 
 /* cuts.c */
-int addCut2Master(cellType *cell, oneCut *cut, BOOL scaleCut, int lenX, double lb);
+int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, BOOL scaleCut, int lenX, double lb, BOOL optCut);
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst);;
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
@@ -143,13 +147,15 @@ double cutHeight(oneCut *cut, vector xk, int betaLen, BOOL scaleCut, int currIte
 int reduceCuts(oneProblem *master, cutsType *cuts, BOOL scaleCut, vector candidX, vector pi, int betaLen, double lb, int currentIter, int *iCutIdx, double TOLERANCE);
 int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx);
 void freeOneCut(oneCut *cut);
-void freeCutsType(cutsType *cuts);
+void freeCutsType(cutsType *cuts, BOOL partial);
 
 int formFeasCut(probType *prob, cellType *cell, BOOL *newOmegaFlag, BOOL newBasisFlag);
 int updtFeasCutPool(numType *num, coordType *coord, cutsType *fCutsPool, int fUpdt[2], basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega,
 		BOOL newOmegaFlag, BOOL newBasisFlag, int currentIter);
 int add2CutPool(cutsType *cuts, double alpha, vector beta, int betaLen, int numOmega, int numSamples);
-int checkFeasCutPool(cutsType *cutPool, cutsType *cutsAdded, int betaLen, vector incumbX, vector candidX, BOOL *infeasIncumb);
-int addfCut2Master(LPptr lp, oneCut *cut, vector incumbX, int lenX, int optCuts, int idx);
+int checkFeasCutPool(cellType *cell, int lenX);
+
+/* evaluate.c */
+int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
 
 #endif /* CELL_H_ */

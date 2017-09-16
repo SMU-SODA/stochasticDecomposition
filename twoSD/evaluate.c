@@ -12,9 +12,8 @@
 #include "twoSD.h"
 
 extern configType config;
-extern string outputDir;
 
-int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
+int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 	vector 	observ, rhs, costTemp, cost;
 	intvec	objxIdx;
 	double 	obj, mean, variance, stdev, temp;
@@ -23,7 +22,7 @@ int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vec
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "evaluateOpt", "observ", 0);
 
-	printf("\nStarting evaluating.\n");
+	printf("\nStarting evaluation.\n");
 
 	/* initialize parameters used for evaluations */
 	cnt = 0.0; mean = 0.0; variance = 0.0; stdev = INFBOUND; cnt = 0;
@@ -50,7 +49,7 @@ int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vec
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.EVAL_SEED);
+		generateOmega(stoc, observ, &config.EVAL_SEED[0]);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
@@ -112,18 +111,13 @@ int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vec
 	printf("Number of observations                 : %d\n", cnt);
 
 	/* Write the evaluation results to the summary file */
-	fprintf((*soln), "\n---------------------------------------- Evaluation ----------------------------------------\n\n");
-	fprintf((*soln), "Upper bound estimate                   : %lf\n", mean);
-	fprintf((*soln), "Error in estimation                    : %lf\n", 3.29 * stdev / mean);
-	fprintf((*soln), "Confidence interval at 95%%             : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
-	fprintf((*soln), "Number of observations                 : %d\n", cnt);
+	fprintf(soln, "------------------------------------------------------------- Evaluation ----------------------------------------------------------\n");
+	fprintf(soln, "Upper bound estimate               : %lf\n", mean);
+	fprintf(soln, "Error in estimation                : %lf\n", 3.29 * stdev / mean);
+	fprintf(soln, "Confidence interval at 95%%         : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
+	fprintf(soln, "Number of observations             : %d\n", cnt);
 
 	mem_free(observ); mem_free(rhs); mem_free(objxIdx); mem_free(cost);
 	return 0;
 
 }//END evaluate()
-
-int evaluateBenders(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
-
-	return 0;
-}

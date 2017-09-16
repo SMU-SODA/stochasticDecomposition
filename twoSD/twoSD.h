@@ -47,7 +47,4 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
-/* evaluate.c */
-int evaluateSD(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
-
 #endif /* TWOSD_H_ */
