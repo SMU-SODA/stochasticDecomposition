@@ -226,6 +226,7 @@ vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples
 		printf("Enter the number of samples used for setting up the SAA : ");
 		scanf("%d", numSamples);
 	}
+	printf("Generating SAA with %d samples.\n", (*numSamples));
 
 	simObs = (vector *) arr_alloc((*numSamples), vector);
 	(*probs) = (vector) arr_alloc((*numSamples), vector);

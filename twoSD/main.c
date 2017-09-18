@@ -115,9 +115,9 @@ int parseCmdLine(int argc, char *argv[], string algoName, string probName, strin
 	}
 
 	/* Take care of the variants in algorithm names that can be entered */
-	if ( !(strcmp(algoName, "sd")) || !(strcmp(algoName, "2sd")) || !(strcmp(algoName, "SD")) || !(strcmp(algoName, "2SD")) )
-		strcpy(algoName, "2sd");
-	else if ( !(strcmp(algoName, "benders")) || !(strcmp(algoName, "Benders")) )
+	if ( !(strcmp(algoName, "twoSD")) || !(strcmp(algoName, "sd")) || !(strcmp(algoName, "2sd")) || !(strcmp(algoName, "SD")) || !(strcmp(algoName, "2SD")) )
+		strcpy(algoName, "twoSD");
+	else if ( !(strcmp(algoName, "Benders")) || !(strcmp(algoName, "benders")) )
 		strcpy(algoName, "benders");
 	else {
 		printf("Unknown algorithm name. Currently supported algorithms: \n"

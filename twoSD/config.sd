@@ -168,7 +168,4 @@ SUBPROB_SAMPLE_SEED	3690791960107163
 SUBPROB_SAMPLE_SEED 1627698145573959
 
 // Use SAA when continuous distribution in stoch file (1), or not (0)
-SAA 1
-
-// Maximum number of iterations before which SAA is invoked
-MAX_OBS	1000
+SAA 0

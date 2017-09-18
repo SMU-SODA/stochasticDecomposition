@@ -134,7 +134,8 @@ int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, vector xk);
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
 int readConfig();
-int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, int numRows, double lb, BOOL cleanOmega);
+void freeConfig();
+int cleanCellType(cellType *cell, probType *prob, vector xk);
 void freeCellType(cellType *cell);
 
 /* cuts.c */

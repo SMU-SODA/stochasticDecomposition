@@ -16,7 +16,7 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	vector 	 meanSol;
-	int 	 rep, numSamples = 0;
+	int 	 rep;
 	FILE 	*soln;
 
 	/* read algorithm configuration file */
@@ -34,14 +34,24 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 	for ( rep = 0; rep < config.NUM_REPS; rep++ ) {
 		fprintf(soln, "\n====================================================================================================================================\n");
-		fprintf(soln, "Replication-%d\n", rep);
+		fprintf(soln, "Replication-%d\n", rep+1);
+		fprintf(stdout, "\n====================================================================================================================================\n");
+		fprintf(stdout, "Replication-%d\n", rep+1);
+
 		/* setup the seed to be used in the current iteration */
 		config.RUN_SEED[0] = config.RUN_SEED[rep+1];
 		config.SUBPROB_SAMPLE_SEED[0] = config.SUBPROB_SAMPLE_SEED[rep+1];
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
+		if ( rep != 0 )
+			/* clean up the cell for the next replication */
+			if ( cleanCellType(cell, prob[0], meanSol) ) {
+				errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
+				goto TERMINATE;
+			}
+
 		/* Update omega structure */
-		updateOmega(stoc, cell->omega, &numSamples);
+		updateOmega(stoc, cell->omega);
 
 		/* Use two-stage algorithm to solve the problem */
 		if ( solveBendersCell(stoc, prob, cell) ) {
@@ -56,12 +66,6 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		/* evaluating the optimal solution*/
 		if (config.EVAL_FLAG == 1)
 			evaluate(soln, stoc, prob, cell, cell->incumbX);
-
-		/* clean up the cell for the next replication */
-		if ( cleanCellType(cell, prob[0]->dBar, meanSol, prob[0]->num->cols, prob[0]->num->rows, prob[0]->lb, FALSE) ) {
-			errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
-			goto TERMINATE;
-		}
 	}
 
 	fclose(soln);
@@ -70,11 +74,13 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	/* free up memory before leaving */
 	freeCellType(cell);
 	freeProbType(prob, 2);
+	mem_free(meanSol); freeConfig();
 	return 0;
 
 	TERMINATE:
 	if(cell) freeCellType(cell);
 	if(prob) freeProbType(prob, 2);
+	mem_free(meanSol); freeConfig();
 	return 1;
 }//END benders()
 
@@ -83,6 +89,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	/* Main loop of the algorithm */
 	while (TRUE) {
+//	while (cell->k < 10) {
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -96,7 +103,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 			break;
 
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formBendersCut(prob[1], cell, cell->candidX, FALSE)) < 0 ) {
+		if ( (candidCut = formBendersCut(prob, cell, cell->candidX, FALSE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
@@ -123,19 +130,18 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	return 0;
 }//END solveCell()
 
-void updateOmega(stocType *stoc, omegaType *omega, int *numSamples) {
+void updateOmega(stocType *stoc, omegaType *omega) {
 	int cnt, i, base, idx;
-	BOOL createSAA = FALSE;
 
-	if ( (*numSamples) > 0 ) {
+	if ( config.SAA == 1 ) {
 		/* If the sample size is given then an SAA is created */
 		mem_free(omega->vals);
-		omega->cnt = (*numSamples);
+		omega->cnt = config.MAX_OBS;
 		omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &omega->probs, &omega->cnt);
 		return;
 	}
 
-	/* If the samepl size is zero, then we will determine if a SAA needs to be constructed. If so, then it is generated , or else, discrete distribution is setup. */
+	/* If the sample size is zero, then we will determine if a SAA needs to be constructed. If so, then it is generated , or else, discrete distribution is setup. */
 	mem_free(omega->weights); omega->weights = NULL;
 	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
 		if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
@@ -153,7 +159,7 @@ void updateOmega(stocType *stoc, omegaType *omega, int *numSamples) {
 		}
 		else {
 			omega->cnt = 0;
-			createSAA = TRUE;
+			config.SAA = 1;
 		}
 	}
 	else if ( strstr(stoc->type, "INDEP") != NULL ) {
@@ -162,13 +168,13 @@ void updateOmega(stocType *stoc, omegaType *omega, int *numSamples) {
 			omega->cnt *= stoc->numVals[i];
 			if (omega->cnt > config.MAX_OBS) {
 				omega->cnt = 0;
-				createSAA = TRUE;
+				config.SAA = TRUE;
 				break;
 			}
 			i++;
 		}
 
-		if ( !createSAA ){
+		if ( !config.SAA ){
 			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
 			if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
 				errMsg("allocation", "updateOmega", "omega->probs", 0);
@@ -187,16 +193,15 @@ void updateOmega(stocType *stoc, omegaType *omega, int *numSamples) {
 	}
 	else {
 		omega->cnt = 0;
-		createSAA = TRUE;
+		config.SAA = 1;
 	}
 
-	if ( config.SAA == 1 && createSAA ) {
+	if ( config.SAA == 1 ) {
 		printf("\nEncountered a continuous distribution or the total number of possible observations is greater than MAX_OBS (%d).\n", config.MAX_OBS);
 		mem_free(omega->vals);
 		omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &omega->probs, &omega->cnt);
 	}
 
-	(*numSamples) = omega->cnt;
 }//END updateOmega()
 
 /* In this his function the master problem is solved after the newest cut is added to master problem, the incumbent cut is updated if necessary.
@@ -257,49 +262,66 @@ int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	return 0;
 }//END solveMaster()
 
-int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
+int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	oneCut 	*cut;
 	vector 	piCbarX;
 	intvec	istar;
 	double	multiplier, val, argmax;
 	int    	cutIdx, obs, c, cnt, lambdaIdx, sigmaIdx, offset;
-	BOOL	newBasisFlag;
+	BOOL	newBasisFlag, *solveSP;
 
-	if (!(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
-		errMsg("allocation", "formSDCut", "istar", 0);
-	if (!(piCbarX= arr_alloc(cell->sigma->cnt, double)))
-		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
-	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
-	for (cnt = 0; cnt < cell->sigma->cnt; cnt++)
-		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
-	offset = prob->num->rvbOmCnt + prob->num->rvCOmCnt;
+	if ( !(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
+		errMsg("allocation", "formBendersCut", "istar", 0);
+	if ( !(solveSP = (BOOL *) arr_alloc(cell->omega->cnt, BOOL)))
+		errMsg("allocation", "formBendersCut", "solveSP", 0);
 
-	/* Only a fraction (at least one) of subproblems are solved in any iteration, for the remainder the argmax operator is used */
+	/* Only a fraction (at least one) of subproblems are solved in any iteration. */
 	cnt = cell->LPcnt;
 	while (cnt == cell->LPcnt) {
 		for ( obs = 0; obs < cell->omega->cnt; obs++ ) {
 			val = randUniform(&config.SUBPROB_SAMPLE_SEED[0]);
-
 			if ( val <= config.SUBPROB_SAMPLE_PCT ) {
 				/* (a) Construct the subproblem with a given observation and master solution, solve the subproblem, and complete stochastic updates. */
-				istar[obs] = solveSubprob(prob, cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				istar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
 						cell->omega, obs, FALSE, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag);
 				if ( istar[obs] < 0 ) {
 					errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
-					mem_free(istar); return -1;
+					goto TERMINATE;;
 				}
 				cell->LPcnt++;
+
+				if ( !cell->spFeasFlag ) {
+					if ( resolveInfeasibility(prob, cell, FALSE, obs) ) {
+						errMsg("algorithm", "formBendersCut", "failed to resolve infeasibility", 0);
+						goto TERMINATE;
+					}
+					obs = 0;
+				}
+				solveSP[obs] = TRUE;
 			}
-			else {
-				/* (b) Use the argmax operator to identify the best basis */
-				istar[obs] = computeIstar(prob->num, prob->coord, cell->basis, cell->sigma, cell->delta, Xvect, piCbarX,
-						cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
-			}
+			else
+				solveSP[obs] = FALSE;
+		}
+	}
+
+	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
+	if (!(piCbarX= arr_alloc(cell->sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	for (cnt = 0; cnt < cell->sigma->cnt; cnt++)
+		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->colsC, prob[1]->num->cntCcols);
+	offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
+
+	/* The subproblems for the remainder of observations we use the argmax operator. */
+	for ( obs = 0; obs <cell->omega->cnt; obs++ ) {
+		if ( !solveSP[obs] ) {
+			/* (b) Use the argmax operator to identify the best basis */
+			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, Xvect, piCbarX,
+					cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
 		}
 	}
 
 	/* allocate memory to hold a new cut */
-	cut = newCut(prob->num->prevCols, cell->omega->cnt, cell->omega->cnt);
+	cut = newCut(prob[0]->num->cols, cell->omega->cnt, cell->omega->cnt);
 
 	/* Go through all the cuts and form the coefficients using the basis indentified in the previous step. */
 	for (obs = 0; obs < cell->omega->cnt; obs++) {
@@ -309,27 +331,28 @@ int formBendersCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) 
 			if ( cnt == 0 )
 				multiplier = 1.0;
 			else
-				multiplier = cell->omega->vals[obs][prob->num->rvbOmCnt+prob->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
+				multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
 
 			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
 
-			for (c = 1; c <= prob->num->cntCcols; c++)
-				cut->beta[prob->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
-			for (c = 1; c <= prob->num->rvCOmCnt; c++)
-				cut->beta[prob->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+			for (c = 1; c <= prob[1]->num->cntCcols; c++)
+				cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
+			for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
+				cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
 		}
 	}
 	cut->alphaIncumb = cut->alpha;
 	cut->beta[0] = 1.0;
 
 	/* (c) add cut to the master problem  */
-	if ( (cutIdx = addCut2Master(cell, cell->cuts, cut, FALSE, prob->num->prevCols, 0.0, TRUE)) < 0 ) {
+	if ( (cutIdx = addCut2Master(cell, cell->cuts, cut, FALSE, prob[0]->num->cols, 0.0, TRUE)) < 0 ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
-		return -1;
+		goto TERMINATE;
 	}
 
-	mem_free(istar); mem_free(piCbarX);
+	mem_free(istar); mem_free(piCbarX); mem_free(solveSP);
 	return cutIdx;
+	TERMINATE: mem_free(istar); mem_free(piCbarX); mem_free(solveSP); return -1;
 }//END formCut()
 
 int checkImprovementBenders(probType *prob, cellType *cell, int candidCut) {
@@ -375,16 +398,12 @@ BOOL optimalBenders(probType **prob, cellType *cell) {
 			return TRUE;
 	}
 
-#if defined(ALGO_CHECK)
-	printf("Optimality gap = (%.6lf - %.6lf) = %.6lf\n", cell->ub, cell->candidEst, cell->ub - cell->candidEst);
-#endif
-
 	return FALSE;
 }//END optimalBenders()
 
 void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell) {
 
-	fprintf(soln, "------------------------------------------------------------ Optimization ---------------------------------------------------------\n");
+	fprintf(soln, "\n------------------------------------------------------------ Optimization ---------------------------------------------------------\n");
 	if ( config.MASTER_TYPE == PROB_QP )
 		fprintf(soln, "Algorithm                          : Regularized Benders Decomposition\n");
 	else

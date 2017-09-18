@@ -97,8 +97,8 @@ int resolveInfeasibility(probType **prob, cellType *cell, BOOL newOmegaFlag, int
 
 	/* QP master will be solved in optimality mode again */
 	cell->optMode = TRUE;
-	return 0;
 
+	return 0;
 }//END resolveInfeasibility()
 
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
@@ -297,7 +297,7 @@ int formFeasCut(probType *prob, cellType *cell, BOOL *newOmegaFlag, BOOL newBasi
 			(*newOmegaFlag), newBasisFlag, cell->k);
 
 	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
-	checkFeasCutPool(cell, prob->num->cols);
+	checkFeasCutPool(cell, prob->num->prevCols);
 	cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fCuts->cnt);
 
 	return 0;
@@ -425,12 +425,11 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 		if (betaX < alpha) {
 			cell->infeasIncumb = TRUE;
 			if (duplicCut == TRUE)
-				printf("Incumbent violates one old cut from feasible cut pool (this cut also exists in feasCutsAdded)\n");
+				printf("Incumbent violates one old cut from feasible cut pool, but the cut already exists in the master problem.\n");
 			else {
-				printf( "Incumbent violates one new cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
+				printf( "Incumbent violates one new cut from feasible cut pool, also adding to master problem.\n");
 				addCut2Master(cell, cell->fCuts, cell->fCutsPool->vals[idx], FALSE, lenX, cell->lb, FALSE);
 			}
-			// cutsAdded->vals[cutsAdded->cnt++] = cutPool->vals[idx];
 		}
 		else {
 			/* Check if the cut will be violated by the candidate solution*/
@@ -444,6 +443,10 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 			}
 		}
 	}
+
+#if defined(ALGO_CHECK)
+	writeProblem(cell->master->lp, "cellMasterAfterFeasCuts.lp");
+#endif
 
 	return 0;
 }//END checkFeasCutPool()

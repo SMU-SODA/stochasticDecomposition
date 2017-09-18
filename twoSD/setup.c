@@ -190,10 +190,12 @@ int readConfig() {
 	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
 	config.SUBPROB_SAMPLE_SEED = (long long *) arr_alloc(maxReps+1, long long);
 	config.NUM_REPS = 0;
+	config.MAX_OBS = 0;
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
 		if (!(strcmp(line, "RUN_SEED"))) {
-			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_REPS++]);
+			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_REPS+1]);
+			config.NUM_REPS++;
 			if ( config.NUM_REPS > maxReps ) {
 				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
 				maxReps *= 2;
@@ -255,7 +257,7 @@ int readConfig() {
 		else if (!(strcmp(line, "SUBPROB_SAMPLE_PCT")))
 			fscanf(fptr, "%lf", &config.SUBPROB_SAMPLE_PCT);
 		else if (!(strcmp(line, "SUBPROB_SAMPLE_SEED"))) {
-			fscanf(fptr, "%lld", &config.SUBPROB_SAMPLE_SEED[r3]);
+			fscanf(fptr, "%lld", &config.SUBPROB_SAMPLE_SEED[r3++]);
 			if ( r3 > maxReps ) {
 				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
 				maxReps *= 2;
@@ -275,13 +277,23 @@ int readConfig() {
 	}
 
 	fclose(fptr);
-	if ( config.NUM_REPS != r3 )
+	if ( config.NUM_REPS != (r3 -1) )
 		errMsg("read", "readConfig", "number of SUBPROB_SAMPLE_SEED do not match NUM_REPS", 0);
+
+	if ( config.MULTIPLE_REP == 0 )
+		config.NUM_REPS = 1;
 
 	return 0;
 }//END readConfig()
 
-int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, int numRows, double lb, BOOL cleanOmega) {
+void freeConfig() {
+
+	if (config.RUN_SEED) mem_free(config.RUN_SEED);
+	if (config.EVAL_SEED) mem_free(config.EVAL_SEED);
+	if (config.SUBPROB_SAMPLE_SEED) mem_free(config.SUBPROB_SAMPLE_SEED);
+}//END freeConfig()
+
+int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	int cnt;
 
 	/* constants and arrays */
@@ -291,11 +303,11 @@ int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, in
 	cell->dualStableFlag = FALSE;
 	cell->spFeasFlag 	 = TRUE;
 
-	copyVector(xk, cell->candidX, numCols, TRUE);
-	cell->candidEst	= lb + vXvSparse(cell->candidX, dBar);
+	copyVector(xk, cell->candidX, prob->num->cols, TRUE);
+	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
 	if (config.MASTER_TYPE == PROB_QP) {
-		cell->incumbX   = duplicVector(xk, numCols);
+		copyVector(xk, cell->incumbX, prob->num->cols, TRUE);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;
@@ -307,13 +319,13 @@ int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, in
 	cell->normDk 	= 0.0;
 
 	/* oneProblem structures and solver elements */
-	for ( cnt = numRows+cell->cuts->cnt+cell->fCuts->cnt-1; cnt >= numRows; cnt-- )
+	for ( cnt = prob->num->rows+cell->cuts->cnt+cell->fCuts->cnt-1; cnt >= prob->num->rows; cnt-- )
 		if (  removeRow(cell->master->lp, cnt, cnt) ) {
 			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
 			return 1;
 		}
-	cell->master->mar = numRows;
-	if( changeQPproximal(cell->master->lp, numCols, cell->quadScalar)) {
+	cell->master->mar = prob->num->rows;
+	if( changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
 		errMsg("algorithm", "cleanCellType", "failed to change the proximal term", 0);
 		return 1;
 	}
@@ -331,8 +343,22 @@ int cleanCellType(cellType *cell, sparseVector *dBar, vector xk, int numCols, in
 	if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, TRUE);
 	if (cell->lambda) freeLambdaType(cell->lambda, TRUE);
 	if (cell->sigma) freeSigmaType(cell->sigma, TRUE);
-	if ( cleanOmega )
-		if (cell->omega) freeOmegaType(cell->omega, TRUE);
+	if (cell->omega) freeOmegaType(cell->omega, TRUE);
+
+	if ( config.MASTER_TYPE == PROB_QP ) {
+		if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
+			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
+			return NULL;
+		}
+
+		cell->incumbChg = FALSE;
+#if defined(SETUP_CHECK)
+		if ( writeProblem(cell->aster->lp, "cleanedQPMaster.lp") ) {
+			errMsg("write problem", "new_master", "failed to write master problem to file",0);
+			return NULL;
+		}
+#endif
+	}
 
 	return 0;
 }//END cleanCellType()

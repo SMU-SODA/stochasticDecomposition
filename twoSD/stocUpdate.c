@@ -151,6 +151,8 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
 				/* a. */
 				arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
+//				if ( cnt == 0 )
+//					printf("%lf", PiCbarX[sigmaIdx]);
 
 				/* b. */
 				arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
@@ -827,6 +829,7 @@ void freeOmegaType(omegaType *omega, BOOL partial) {
 		for ( n = 0; n < omega->cnt; n++ )
 			if ( omega->vals[n] ) mem_free(omega->vals[n]);
 		if ( partial ) {
+			if ( omega->probs ) mem_free(omega->probs);
 			omega->cnt = 0;
 			return;
 		}

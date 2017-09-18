@@ -20,10 +20,11 @@
 #include "cell.h"
 
 #undef ALGO_CHECK
+#define DETAILED
 
 /* twoSD.c */
 int solveSDCell(stocType *stoc, probType **prob, cellType *cell);
-void writeSDStatistic(FILE *soln, probType **prob, cellType *cell, string probName, int numStages, BOOL printAll);
+void writeSDStatistic(FILE *soln, probType **prob, cellType *cell);
 
 void verifySDSetup();
 
