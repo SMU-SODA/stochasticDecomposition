@@ -5,7 +5,7 @@ TOLERANCE    0.001
 MIN_ITER   5
 
 // Maximum number of iterations
-MAX_ITER   5000
+MAX_ITER   50000
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
@@ -126,14 +126,14 @@ EPSILON 0.001
 SCAN_LEN 256
 
 // 1 for multiple replications, 0 for single replication
-MULTIPLE_REP 1
+MULTIPLE_REP 0
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
 // Maximum number of iterations before which SAA is invoked
 MAX_OBS	1000
 
 // Fraction of subproblem being solved in an iteration
-SUBPROB_SAMPLE_PCT	0.1
+SUBPROB_SAMPLE_PCT	1.0
 
 // Seed used to sample the subproblems.
 SUBPROB_SAMPLE_SEED	8654069019158467

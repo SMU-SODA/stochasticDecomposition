@@ -80,7 +80,7 @@ int resolveInfeasibility(probType **prob, cellType *cell, BOOL newOmegaFlag, int
 		cell->feasCnt++;
 
 		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag) ) {
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag, &cell->time->subprobIter, &cell->time->argmaxIter) ) {
 			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
 			return 1;
 		}

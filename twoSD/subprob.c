@@ -15,10 +15,11 @@
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
 int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *spFeasFlag, BOOL *newBasisFlag) {
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *spFeasFlag, BOOL *newBasisFlag, double *subprobTime, double *argmaxTime) {
 	vector 	rhs, cost;
 	intvec	indices;
 	int  	status, n, offset = 0, basisIdx;
+	clock_t	tic;
 
 	if ( !(indices = (intvec) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
 		errMsg("allocation", "solve_subporb", "indices", 0);
@@ -52,6 +53,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 		return -1;
 	}
 
+	tic = clock();
 	/* (e) Solve the subproblem to obtain the optimal dual solution. */
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
@@ -63,6 +65,8 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 			return -1;
 		}
 	}
+	(*subprobTime) = ((double) (clock() - tic))/CLOCKS_PER_SEC;
+
 
 #if defined(STOCH_CHECK)
 	double obj;
@@ -70,6 +74,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 
+	tic = clock();
 	/* (f) update the stochastic elements in the problem */
 	basisIdx = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength, omega, omegaIdx, newOmegaFlag,
 			currentIter, TOLERANCE, newBasisFlag);
@@ -77,6 +82,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 		errMsg("algorithm", "solveSubprob", "stochastic updates failed", 0);
 		return -1;
 	}
+	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #if defined(STOCH_CHECK)
 	int sigmaIdx, lambdaIdx; double multiplier, obj1;

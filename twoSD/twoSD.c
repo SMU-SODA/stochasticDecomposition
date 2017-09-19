@@ -20,6 +20,7 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	vector 	 meanSol = NULL;
 	int		 rep;
 	FILE 	 *soln;
+	clock_t	 tic;
 
 	/* read algorithm configuration file */
 	if ( readConfig() )
@@ -55,11 +56,13 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 				goto TERMINATE;
 			}
 
+		tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if ( solveSDCell(stoc, prob, cell) ) {
 			errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
 			goto TERMINATE;
 		}
+		cell->time->repTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
 
 		/* Write solution statistics for optimization process */
 		writeSDStatistic(soln, prob, cell);
@@ -112,6 +115,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 	vector 	observ;
 	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;
+	clock_t	tic;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
@@ -120,7 +124,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
 		cell->k++;
-
+		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\nIteration-%d :: \n", cell->k);
 #else
@@ -168,6 +172,9 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
 			return 1;
 		}
+		cell->time->masterAccumTime += cell->time->masterIter; cell->time->subprobAccumTime += cell->time->subprobIter; cell->time->argmaxAccumTime += cell->time->argmaxIter;
+		cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = cell->time->argmaxIter = 0.0;
+		cell->time->iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time->iterAccumTime += cell->time->iterTime;
 	}//END while loop
 
 	mem_free(observ);
@@ -179,6 +186,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
+	clock_t	tic;
 
 	/* TODO: Don't need to do this when resolving infeasibility */
 	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts, cell->lb) ) {
@@ -198,12 +206,14 @@ int solveSDMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	writeProblem(cell->master->lp, "masterCell.lp");
 #endif
 
+	tic = clock();
 	/* solve the master problem */
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 		writeProblem(cell->master->lp, "error.lp");
 		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
 		return 1;
 	}
+	cell->time->masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 	/* increment the number of problems solved during algorithm */
 	cell->LPcnt++;
@@ -321,14 +331,14 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	oneCut 	*cut;
 	int    	cutIdx;
 	BOOL	newBasisFlag;
+	clock_t tic;
 
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 	if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag) < 0 ) {
+			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag, &cell->time->subprobIter, &cell->time->argmaxIter) < 0 ) {
 		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 		return -1;
 	}
-
 
 #if defined(ALGO_CHECK)
 	writeProblem(cell->subprob->lp, "subproblem.lp");
@@ -337,7 +347,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	if ( ! cell->spFeasFlag ) {
 		/* Subproblem is infeasible, resolve infeasibility */
 		if ( resolveInfeasibility(prob, cell, newOmegaFlag, omegaIdx) ) {
-			errMsg("algorihtm", "formSDCut", "failed to resolve infeasibility", 0);
+			errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
 			return -1;
 		}
 	}
@@ -350,13 +360,14 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	/* Since all updates with respect to new omega have been completed during candidate cut formation, the newOmegaFlag is turned off. */
 	newOmegaFlag = newBasisFlag = FALSE;
 
-
+	tic = clock();
 	/* (b) create an affine lower bound */
 	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
 	}
+	cell->time->argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	/* (c) add cut to the master problem  */
 	if ( (cutIdx = addCut2Master(cell, cell->cuts, cut, TRUE, prob[1]->num->prevCols, cell->lb, TRUE)) < 0 ) {
@@ -508,5 +519,10 @@ void writeSDStatistic(FILE *soln, probType **prob, cellType *cell) {
 	fprintf(soln, "Algorithm                          : Two-stage Stochastic Decomposition\n");
 	fprintf(soln, "Number of iterations               : %d\n", cell->k);
 	fprintf(soln, "Lower bound estimate               : %f\n", cell->incumbEst);
+	fprintf(soln, "Total time                         : %f\n", cell->time->repTime);
+	fprintf(soln, "Total time to solve master         : %f\n", cell->time->masterAccumTime);
+	fprintf(soln, "Total time to solve subproblems    : %f\n", cell->time->subprobAccumTime);
+	fprintf(soln, "Total time in argmax procedure     : %f\n", cell->time->argmaxAccumTime);
+	fprintf(soln, "Total time in verifying optimality : %f\n", cell->time->optTestAccumTime);
 
 }//END WriteStat

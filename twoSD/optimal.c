@@ -71,7 +71,9 @@ BOOL fullTest(probType **prob, cellType *cell) {
 	intvec  cdf, observ;
 	double  est, ht, LB=0.0;
 	int 	numPass = 0, rep, j;
+	clock_t	tic;
 
+	tic = clock();
 	/* (a) choose good cuts */
 	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
 
@@ -119,6 +121,9 @@ BOOL fullTest(probType **prob, cellType *cell) {
 			return FALSE;
 		}
 	}//END replication loop
+
+	cell->time->optTestIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
+	cell->time->optTestAccumTime += cell->time->optTestIter;
 
 	mem_free(cdf); mem_free(observ);
 	freeCutsType(gCuts, FALSE);

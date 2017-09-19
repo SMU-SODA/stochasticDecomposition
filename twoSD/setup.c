@@ -157,6 +157,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->infeasIncumb 	= FALSE;
 	cell->fUpdt[0] = cell->fUpdt[1] = 0;
 
+	if ( !(cell->time = (runTime *) mem_malloc(sizeof(runTime)) ) )
+		errMsg("setup", "newCell", "cell->runTime", 0);
+	cell->time->repTime = cell->time->iterTime = cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = cell->time->argmaxIter = 0.0;
+	cell->time->iterAccumTime = cell->time->masterAccumTime = cell->time->subprobAccumTime = cell->time->optTestAccumTime = cell->time->argmaxAccumTime = 0.0;
+
 	/* construct the QP using the current incumbent */
 	if ( config.MASTER_TYPE == PROB_QP ) {
 		if ( constructQP(prob[0], cell, cell->incumbX, cell->quadScalar) ) {
@@ -348,14 +353,14 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	if ( config.MASTER_TYPE == PROB_QP ) {
 		if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
-			return NULL;
+			return 1;
 		}
 
 		cell->incumbChg = FALSE;
 #if defined(SETUP_CHECK)
 		if ( writeProblem(cell->aster->lp, "cleanedQPMaster.lp") ) {
 			errMsg("write problem", "new_master", "failed to write master problem to file",0);
-			return NULL;
+			return 1;
 		}
 #endif
 	}
@@ -380,6 +385,7 @@ void freeCellType(cellType *cell) {
 		if (cell->lambda) freeLambdaType(cell->lambda, FALSE);
 		if (cell->sigma) freeSigmaType(cell->sigma, FALSE);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
+		if (cell->time) mem_free(cell->time);
 		mem_free(cell);
 	}
 

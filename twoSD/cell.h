@@ -79,6 +79,20 @@ typedef struct {
 }cutsType;
 
 typedef struct {
+	double	repTime;
+	double 	iterTime;
+	double 	masterIter;
+	double 	subprobIter;
+	double 	optTestIter;
+	double 	argmaxIter;
+	double 	iterAccumTime;
+	double 	masterAccumTime;
+	double 	subprobAccumTime;
+	double 	optTestAccumTime;
+	double 	argmaxAccumTime;
+}runTime;
+
+typedef struct {
 	int         k;                  /* number of iterations */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
@@ -123,6 +137,8 @@ typedef struct {
     BOOL		spFeasFlag;			/* Indicates whether the subproblem is feasible */
     int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+
+	runTime		*time;				/* Run time structure */
 }cellType;
 
 /* setup.c */

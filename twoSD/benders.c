@@ -17,7 +17,8 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	cellType *cell = NULL;
 	vector 	 meanSol;
 	int 	 rep;
-	FILE 	*soln;
+	FILE 	*solnFile;
+	clock_t	tic;
 
 	/* read algorithm configuration file */
 	if ( readConfig() )
@@ -28,13 +29,13 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		goto TERMINATE;
 
 	printf("Starting Benders decomposition.\n");
-	soln = openFile(outputDir, "results.dat", "w");
-	printDecomposeSummary(soln, probName, tim, prob);
+	solnFile = openFile(outputDir, "results.dat", "w");
+	printDecomposeSummary(solnFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
 	for ( rep = 0; rep < config.NUM_REPS; rep++ ) {
-		fprintf(soln, "\n====================================================================================================================================\n");
-		fprintf(soln, "Replication-%d\n", rep+1);
+		fprintf(solnFile, "\n====================================================================================================================================\n");
+		fprintf(solnFile, "Replication-%d\n", rep+1);
 		fprintf(stdout, "\n====================================================================================================================================\n");
 		fprintf(stdout, "Replication-%d\n", rep+1);
 
@@ -53,22 +54,24 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		/* Update omega structure */
 		updateOmega(stoc, cell->omega);
 
+		tic = clock();
 		/* Use two-stage algorithm to solve the problem */
 		if ( solveBendersCell(stoc, prob, cell) ) {
 			errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
 			goto TERMINATE;
 		}
+		cell->time->repTime = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 		/* Write solution statistics for optimization process */
-		writeBendersStatistic(soln, prob, cell);
+		writeBendersStatistic(solnFile, prob, cell);
 		writeBendersStatistic(stdout, prob, cell);
 
 		/* evaluating the optimal solution*/
 		if (config.EVAL_FLAG == 1)
-			evaluate(soln, stoc, prob, cell, cell->incumbX);
+			evaluate(solnFile, stoc, prob, cell, cell->incumbX);
 	}
 
-	fclose(soln);
+	fclose(solnFile);
 	printf("\nSuccessfully completed the L-shaped method.\n");
 
 	/* free up memory before leaving */
@@ -86,10 +89,11 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	int 	candidCut;
+	clock_t	tic;
 
 	/* Main loop of the algorithm */
 	while (TRUE) {
-//	while (cell->k < 10) {
+		tic = clock();
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -125,6 +129,9 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
 			return 1;
 		}
+		cell->time->masterAccumTime += cell->time->masterIter; cell->time->subprobAccumTime += cell->time->subprobIter; cell->time->argmaxAccumTime += cell->time->argmaxIter;
+		cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = cell->time->argmaxIter = 0.0;
+		cell->time->iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time->iterAccumTime += cell->time->iterTime;
 	}
 
 	return 0;
@@ -209,17 +216,20 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	double 	d2;
 	int 	status, i;
+	clock_t	tic;
 
 #if defined(ALGO_CHECK)
 	writeProblem(cell->master->lp,"cellMaster.lp");
 #endif
 
+	tic = clock();
 	/* solve the master problem */
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 		writeProblem(cell->master->lp, "error.lp");
 		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
 		return 1;
 	}
+	cell->time->masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 	/* increment the number of problems solved during algorithm */
 	cell->LPcnt++;
@@ -269,6 +279,7 @@ int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb)
 	double	multiplier, val, argmax;
 	int    	cutIdx, obs, c, cnt, lambdaIdx, sigmaIdx, offset;
 	BOOL	newBasisFlag, *solveSP;
+	clock_t	tic;
 
 	if ( !(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
 		errMsg("allocation", "formBendersCut", "istar", 0);
@@ -283,7 +294,7 @@ int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb)
 			if ( val <= config.SUBPROB_SAMPLE_PCT ) {
 				/* (a) Construct the subproblem with a given observation and master solution, solve the subproblem, and complete stochastic updates. */
 				istar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-						cell->omega, obs, FALSE, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag);
+						cell->omega, obs, FALSE, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag, &cell->time->subprobIter, &cell->time->argmaxIter);
 				if ( istar[obs] < 0 ) {
 					errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 					goto TERMINATE;;
@@ -311,6 +322,7 @@ int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb)
 		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->colsC, prob[1]->num->cntCcols);
 	offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
 
+	tic = clock();
 	/* The subproblems for the remainder of observations we use the argmax operator. */
 	for ( obs = 0; obs <cell->omega->cnt; obs++ ) {
 		if ( !solveSP[obs] ) {
@@ -319,11 +331,12 @@ int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb)
 					cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
 		}
 	}
+	cell->time->argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	/* allocate memory to hold a new cut */
 	cut = newCut(prob[0]->num->cols, cell->omega->cnt, cell->omega->cnt);
 
-	/* Go through all the cuts and form the coefficients using the basis indentified in the previous step. */
+	/* Go through all the cuts and form the coefficients using the basis identified in the previous step. */
 	for (obs = 0; obs < cell->omega->cnt; obs++) {
 		for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
 			sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
@@ -410,6 +423,11 @@ void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell) {
 		fprintf(soln, "Algorithm                          : Benders Decomposition\n");
 	fprintf(soln, "Number of iterations               : %d\n", cell->k);
 	fprintf(soln, "Lower bound estimate               : %f\n", cell->incumbEst);
+	fprintf(soln, "Total time                         : %f\n", cell->time->repTime);
+	fprintf(soln, "Total time to solve master         : %f\n", cell->time->masterAccumTime);
+	fprintf(soln, "Total time to solve subproblems    : %f\n", cell->time->subprobAccumTime);
+	fprintf(soln, "Total time in argmax procedure     : %f\n", cell->time->argmaxAccumTime);
+	fprintf(soln, "Total time in verifying optimality : %f\n", cell->time->optTestAccumTime);
 
 }//END WriteStat
 
