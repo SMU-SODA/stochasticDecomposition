@@ -70,7 +70,7 @@ int main (int argc, char *argv[]) {
 
 int parseCmdLine(int argc, char *argv[], string algoName, string probName, string inputDir) {
 
-	outputDir = (string) arr_alloc(NAMESIZE, char);
+	outputDir = (string) arr_alloc(BLOCKSIZE, char);
 
 	/* request for problem name to be solved, the path is assumed to be provided in the configuration file */
 	if ( argc < 2 ) {

@@ -129,11 +129,14 @@ SCAN_LEN 256
 MULTIPLE_REP 0
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
-// Maximum number of iterations before which SAA is invoked
-MAX_OBS	1000
+// Set to (1) if sample average approximation is to be constructed
+SAA 1
+
+// Number of observations to be used to set the sample average approximation
+MAX_OBS 1000
 
 // Fraction of subproblem being solved in an iteration
-SUBPROB_SAMPLE_PCT	1.0
+SUBPROB_SAMPLE_PCT 1.0
 
 // Seed used to sample the subproblems.
 SUBPROB_SAMPLE_SEED	8654069019158467
@@ -165,7 +168,5 @@ SUBPROB_SAMPLE_SEED	7108083357568830
 SUBPROB_SAMPLE_SEED	8598564187996089
 SUBPROB_SAMPLE_SEED	1348854001145810
 SUBPROB_SAMPLE_SEED	3690791960107163
-SUBPROB_SAMPLE_SEED 1627698145573959
+SUBPROB_SAMPLE_SEED 	1627698145573959
 
-// Use SAA when continuous distribution in stoch file (1), or not (0)
-SAA 0

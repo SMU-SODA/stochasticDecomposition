@@ -94,6 +94,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	/* Main loop of the algorithm */
 	while (TRUE) {
 		tic = clock();
+
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)

@@ -44,7 +44,7 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 
 	/* Update the column of delta structure if a new observation was encountered, and check the feasibility of existing bases with respect to new observation. */
 	if ( newOmegaFlag )
-		calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, newOmegaFlag, omegaIdx, deltaRowLength);
+		calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, newOmegaFlag, omegaIdx, deltaRowLength, TOLERANCE);
 
 	if ( prob->num->rvdOmCnt > 0) {
 		/* The random variables corresponding to cost coefficients are listed at the end of vector, the offset is used to index them */
@@ -86,7 +86,7 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 			}
 
 			/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
-			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength);
+			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength, TOLERANCE);
 		}
 	}
 	else {
@@ -105,7 +105,7 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 			basis->vals[basisIdx]->lambdaIdx[0] = lambdaIdx;
 			basis->vals[basisIdx]->sigmaIdx[0]  = sigmaIdx;
 
-			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength);
+			calcDelta(prob->num, prob->coord, basis, lambda, delta, omega, FALSE, basisIdx, deltaRowLength, TOLERANCE);
 			(*newBasisFlag) = TRUE;
 		}
 		else
@@ -126,8 +126,8 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
  * another due to elimination of non-distinct or redundant vectors. */
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX,
 		vector omegaVals, int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
-	double 	arg;
-	int 	sigmaIdx, lambdaIdx, cnt, i, maxCnt, basisUp, basisLow;
+	double 	arg, multiplier;
+	int 	sigmaIdx, lambdaIdx, cnt, n, maxCnt, basisUp, basisLow;
 
 	if (pi_eval == TRUE)
 		numSamples -= (numSamples / 10 + 1);
@@ -145,30 +145,21 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 		if ( basis->obsFeasible[cnt][obs] ) {
 			/* I. Compute argument using deterministic component of the dual solution */
-			sigmaIdx  = basis->vals[cnt]->sigmaIdx[0];
-			lambdaIdx = basis->vals[cnt]->lambdaIdx[0];
-
 			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
-				/* a. */
-				arg = sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx];
-//				if ( cnt == 0 )
-//					printf("%lf", PiCbarX[sigmaIdx]);
-
-				/* b. */
-				arg -= vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
-
-				/* II. Append argument using values computed from the stochastic component of the dual solution. */
-				for ( i = 1; i <= basis->vals[cnt]->phiLength; i++ ) {
-					sigmaIdx  = basis->vals[cnt]->sigmaIdx[i];
-					lambdaIdx = basis->vals[cnt]->lambdaIdx[i];
-
+				arg = 0.0;
+				for ( n = 0; n <= basis->vals[cnt]->phiLength; n++ ) {
+					sigmaIdx  = basis->vals[cnt]->sigmaIdx[n];
+					lambdaIdx = basis->vals[cnt]->lambdaIdx[n];
+					if ( n == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omegaVals[basis->vals[cnt]->omegaIdx[n]];
 					/* a. */
-					arg += omegaVals[basis->vals[cnt]->omegaIdx[i]]*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - PiCbarX[sigmaIdx]);
+					arg += multiplier*(sigma->vals[sigmaIdx].pib - PiCbarX[sigmaIdx]);
 
 					/* b. */
-					arg -= omegaVals[basis->vals[cnt]->omegaIdx[i]]*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt);
+					arg += multiplier*(delta->vals[lambdaIdx][obs].pib - vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCols, num->rvCOmCnt));
 				}
-
 				if (arg > (*argmax)) {
 					*argmax = arg;
 					maxCnt = cnt;
@@ -225,7 +216,7 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	return basis->cnt++;
 }//END calcBasis()
 
-int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter) {
+int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lambda, deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter, double TOLERANCE) {
 	int 		 cnt, c, offset[3], lambdaIdx;
 	vector 		 lambdaPi, piCrossC;
 	sparseVector bOmega, dOmega;
@@ -249,7 +240,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 		/* Loop though all the basis to establish feasibility with respect to new observations, and if feasible, compute delta elements for corresponding lambdas. */
 		for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 			/* Establish if the basis is feasible or not. */
-			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols);
+			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
 
 			if ( basis->obsFeasible[cnt][elemIdx] ) {
 				/* If the basis is feasible, then compute the delta elements. */
@@ -291,7 +282,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 			dOmega.val = omega->vals[cnt] + offset[2];
 
 			/* Establish the feasibility of new basis with respect to existing observations */
-			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols);
+			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
 
 			if ( basis->obsFeasible[elemIdx][cnt] ) {
 				/* If the basis is feasible, compute the delta elements */
@@ -326,7 +317,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 	return 0;
 }//END calcDelta()
 
-BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols) {
+BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols, double TOLERANCE) {
 	vector 	reducedCost;
 	int 	c;
 
@@ -341,7 +332,7 @@ BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCol
 		}
 		c = 1;
 		while ( c <= numCols) {
-			if ( (0*reducedCost[c]) < 0 ) {
+			if ( (reducedCost[c]) < -TOLERANCE) {
 				mem_free(reducedCost);
 				return FALSE;
 			}
@@ -639,7 +630,7 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 		errMsg("allocation", "newBasis", "basicCost", 0);
 	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
 	for ( i = 1; i <= numRows; i++ ) {
-		if ( basisHead[i] > 0 )
+		if ( basisHead[i] >= 0 )
 			basicCost[i] = costVector[basisHead[i]+1];
 	}
 

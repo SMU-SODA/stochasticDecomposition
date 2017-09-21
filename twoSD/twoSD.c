@@ -152,6 +152,7 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
+		newOmegaFlag = FALSE;
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
@@ -358,7 +359,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	}
 
 	/* Since all updates with respect to new omega have been completed during candidate cut formation, the newOmegaFlag is turned off. */
-	newOmegaFlag = newBasisFlag = FALSE;
+	newBasisFlag = FALSE;
 
 	tic = clock();
 	/* (b) create an affine lower bound */

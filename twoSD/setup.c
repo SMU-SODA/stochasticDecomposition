@@ -350,6 +350,10 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	if (cell->sigma) freeSigmaType(cell->sigma, TRUE);
 	if (cell->omega) freeOmegaType(cell->omega, TRUE);
 
+	/* reset all the clocks */
+	cell->time->repTime = cell->time->iterTime = cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = cell->time->argmaxIter = 0.0;
+	cell->time->iterAccumTime = cell->time->masterAccumTime = cell->time->subprobAccumTime = cell->time->optTestAccumTime = cell->time->argmaxAccumTime = 0.0;
+
 	if ( config.MASTER_TYPE == PROB_QP ) {
 		if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);

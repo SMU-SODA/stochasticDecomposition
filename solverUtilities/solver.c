@@ -17,7 +17,7 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-        changeLPSolverType(ALG_AUTOMATIC);
+        changeLPSolverType(ALG_PRIMAL);
         setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
 		setIntParam(PARAM_PREIND, ON);

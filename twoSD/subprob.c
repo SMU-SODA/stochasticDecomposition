@@ -67,6 +67,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	}
 	(*subprobTime) = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
+#if 1
+	writeProblem(subproblem->lp, "cellSubproblem.lp");
+#endif
 
 #if defined(STOCH_CHECK)
 	double obj;
@@ -96,9 +99,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 			multiplier = omega->vals[omegaIdx][prob->num->rvbOmCnt+prob->num->rvCOmCnt+basis->vals[basisIdx]->omegaIdx[n]];
 		obj1 += multiplier*(sigma->vals[sigmaIdx].pib - vXv(sigma->vals[sigmaIdx].piC, Xvect, prob->coord->colsC, prob->num->cntCcols));
 		obj1 += multiplier*(delta->vals[lambdaIdx][omegaIdx].pib - vXv(delta->vals[lambdaIdx][omegaIdx].piC,
-				omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvCOmCnt));
+				Xvect, prob->coord->rvCols, prob->num->rvCOmCnt));
 	}
-	printf("Objective function estimate    = %lf\n", obj1);
+	printf("\nObjective function estimate    = %lf\n", obj1);
 	if ( fabs(obj-obj1) > 0.001 )
 		printf("WARNING: The objective function and the estimate computed using stochastic elements do not match.\n");
 #endif
