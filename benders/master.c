@@ -132,17 +132,6 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 		cell->incumbChg = FALSE;
 		printf("+"); fflush(stdout);
 	}
-	else {
-		/* Update quad_scalar when no incumbent is found. */
-		cell->quadScalar = min(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
-		cell->normDk_1 = cell->normDk;
-
-		/* change the proximal term in the solver */
-		if ( changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar) ) {
-			errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
-			return 1;
-		}
-	}
 
 	return 0;
 }//END checkImprovement()
@@ -152,14 +141,6 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	/* replace the incumbent solution with the candidate solution */
 	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
 	cell->incumbEst = candidEst;
-
-	/* update the proximal parameter based on estimated improvement */
-	if ( cell->normDk > config.TOLERANCE )
-		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
-			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
-			cell->quadScalar  = min(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = max(config.MIN_QUAD_SCALAR, cell->quadScalar);
-		}
 
 	/* update the right-hand side and the bounds with new incumbent solution */
 	if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {

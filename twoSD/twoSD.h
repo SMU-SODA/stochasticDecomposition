@@ -20,7 +20,7 @@
 #include "cell.h"
 
 #undef ALGO_CHECK
-#undef DETAILED
+#define DETAILED
 
 /* twoSD.c */
 int solveSDCell(stocType *stoc, probType **prob, cellType *cell);

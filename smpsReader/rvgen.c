@@ -219,7 +219,7 @@ int randInteger(long long *SEED, int iMax) {
  * a simulated observation. */
 vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples) {
 	vector* simObs;
-	int 	obs, idx, n;
+	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
 		/* number of samples in SAA */
@@ -231,22 +231,17 @@ vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples
 	simObs = (vector *) arr_alloc((*numSamples), vector);
 	(*probs) = (vector) arr_alloc((*numSamples), vector);
 
-	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
+	if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
 			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
-			idx = randInteger(seed, stoc->numVals[0]);
-			for (n = 0; n < stoc->numOmega; n++ )
-				simObs[obs][n+1] = stoc->vals[n][idx] - stoc->mean[n];
+			generateBlocks(stoc, simObs[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
 			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
-			for (n = 0; n < stoc->numOmega; n++ ) {
-				idx = randInteger(seed, stoc->numVals[n]);
-				simObs[obs][n+1] = stoc->vals[n][idx] - stoc->mean[n];
-			}
+			generateIndep(stoc, simObs[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}

@@ -52,7 +52,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		generateOmega(stoc, observ, &config.EVAL_SEED[0]);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
+			observ[m] -= stoc->mean[m];
 
 		/* Change right-hand side with random observation */
 		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
@@ -83,6 +83,12 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		/* use subproblem objective and compute evaluation statistics */
 		obj = getObjective(cell->subprob->lp, PROB_LP);
 
+#if defined(ALGO_CHECK)
+		writeProblem(cell->subprob->lp, "evalSubprob.lp");
+		printf("Evaluation objective function = %lf.\n", obj);
+#endif
+
+
 		if ( cnt == 0 )
 			mean = obj;
 		else {
@@ -102,7 +108,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		if (!(cnt % 10000))
 			printf("\nObs:%d mean:%lf   error: %lf \n 0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
 	}//END while loop
-	mean += vXvSparse(Xvect, prob[0]->dBar);;
+	mean += vXvSparse(Xvect, prob[0]->dBar);
 
 	printf("\n\nEvaluation complete. Final evaluation results :: \n");
 	printf("Upper bound estimate               : %lf\n", mean);

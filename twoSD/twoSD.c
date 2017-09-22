@@ -69,16 +69,23 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		writeSDStatistic(stdout, prob, cell);
 
 #if defined(DETAILED)
+		FILE *dPtr, *iPtr;
+		dPtr = openFile(outputDir, "detailed.dat", "w");
 		int m;
-		fprintf(soln, "\nDetailed solution\n%s\tFirst occurrence\n", "Basis encountered");
-		fprintf(soln, "----------------------------------------------------------------------\n");
+		fprintf(dPtr, "\nDetailed solution\n%s\tFirst occurrence\n", "Basis encountered");
+		fprintf(dPtr, "----------------------------------------------------------------------\n");
 		for (int n = 0; n < cell->basis->cnt; n++ ) {
 			for (m = 0; m < cell->basis->rCodeLen; m++)
-				fprintf(soln, "%lu\t", cell->basis->vals[n]->rCode[m]);
+				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->rCode[m]);
 			for (m = 0; m < cell->basis->cCodeLen; m++)
-				fprintf(soln, "%lu\t", cell->basis->vals[n]->cCode[m]);
-			fprintf(soln, "%16d\n", cell->basis->vals[n]->ck);
+				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->cCode[m]);
+			fprintf(dPtr, "%16d\n", cell->basis->vals[n]->ck);
 		}
+		fclose(dPtr);
+		iPtr = openFile(outputDir, "incumb.dat", "w");
+		for ( m = 1; m <= prob[0]->num->cols; m++ )
+			fprintf(iPtr, "%lf\n", cell->incumbX[m]);
+		fclose(iPtr);
 #endif
 		/* evaluating the optimal solution*/
 		if (config.EVAL_FLAG == 1)

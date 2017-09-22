@@ -295,7 +295,7 @@ BOOL equalIntvec(intvec a, intvec b, int len) {
 	return TRUE;
 }//END equalIntvec()
 
-BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len) {  /* TODO: After merging 2SD_randomCost branch into main, move this subroutine to utilities */
+BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
@@ -496,7 +496,7 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq){
 }//END findElems()
 
 /* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_ */
-unsigned long *encodeIntvec(intvec stream, int len, int wordLength) { /* TODO: After merging 2SD_randomCost branch into main, move this subroutine to utilities */
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength) {
 	unsigned long *codeWord, temp;
 	int j, group, shift, codeLength;
 

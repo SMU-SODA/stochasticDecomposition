@@ -18,7 +18,7 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	vector 	 meanSol;
-	int 	 rep;
+	int 	 rep, m, n;
 	FILE 	*solnFile;
 	clock_t	tic;
 
@@ -29,6 +29,18 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &meanSol) )
 		goto TERMINATE;
+
+#if 0
+	FILE *iPtr;
+	system("pwd");
+	iPtr = openFile("../../spOutput/twoSD/lgsc/","incumb.dat", "r");
+	for (m = 1; m < prob[0]->num->cols; m++ )
+		fscanf(iPtr,"%lf", &cell->incumbX[m]);
+	fclose(iPtr);
+	cell->incumbX[0] = oneNorm(cell->incumbX, prob[0]->num->cols);
+	copyVector(cell->incumbX, meanSol, prob[0]->num->cols, TRUE);
+	copyVector(cell->incumbX, cell->candidX, prob[0]->num->cols, TRUE);
+#endif
 
 	printf("Starting Benders decomposition.\n");
 	solnFile = openFile(outputDir, "results.dat", "w");
@@ -56,6 +68,9 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		/* Update omega structure */
 		if ( config.SAA ) {
 			cell->omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->probs, &cell->omega->cnt);
+			for ( m = 0; m < cell->omega->cnt; m++ )
+				for ( n = 1; n <= stoc->numOmega; n++ )
+					cell->omega->vals[m][n] -= stoc->mean[n-1];
 		}
 
 		tic = clock();
@@ -71,8 +86,12 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		writeStatistic(stdout, prob, cell);
 
 		/* evaluating the optimal solution*/
-		if (config.EVAL_FLAG == 1)
-			evaluate(solnFile, stoc, prob, cell, cell->incumbX);
+		if (config.EVAL_FLAG == 1) {
+			if ( config.MASTER_TYPE == PROB_QP )
+				evaluate(solnFile, stoc, prob, cell, cell->incumbX);
+			else
+				evaluate(solnFile, stoc, prob, cell, cell->candidX);
+		}
 	}
 
 	fclose(solnFile);
@@ -102,10 +121,12 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->k++;
 
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
-		printf("\nIteration-%d :: \n", cell->k);
+		printf("\nIteration-%d :: Incumbent estimate = %lf; Candidate estimate = %lf.\n", cell->k, cell->incumbEst, cell->candidEst);
 #else
-		if ( (cell->k-1) % 100 == 0)
+		if ( (cell->k-1) % 100 == 0) {
+			printf("\nIncumbent estimate = %lf; Candidate estimate = %lf.", cell->incumbEst, cell->candidEst); fflush(stdout);
 			printf("\nIteration-%4d: ", cell->k);
+		}
 #endif
 		/******* 1a. Optimality tests *******/
 		if ( config.MASTER_TYPE == PROB_QP )
@@ -125,7 +146,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 				checkImprovement(prob[0], cell, candidCut);
 			}
 			else
-				cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->incumbX, prob[0]->num->cols);;
+				cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->incumbX, prob[0]->num->cols);
 		}
 		else {
 			cell->incumbEst = vXvSparse(cell->candidX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob[0]->num->cols);
@@ -160,10 +181,6 @@ BOOL optimal(cellType *cell) {
 			cell->optFlag = (cell->candidEst > (1 + config.EPSILON) * cell->incumbEst);
 		return cell->optFlag;
 	}
-
-#if defined(ALGO_CHECK)
-	printf("Incumbent estimate = %lf; Candidate estimate = %lf\n", cell->incumbEst, cell->candidEst); fflush(stdout);
-#endif
 
 	return FALSE;
 }//END optimal()
