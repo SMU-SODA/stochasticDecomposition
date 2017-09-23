@@ -297,7 +297,7 @@ omegaType *newOmega(stocType *stoc) {
 				}
 			}
 			else {
-				omega->cnt = 0;
+				omega->cnt = config.MAX_OBS;
 				config.SAA = 1;
 			}
 		}
@@ -306,7 +306,7 @@ omegaType *newOmega(stocType *stoc) {
 			while ( i < stoc->numOmega ) {
 				omega->cnt *= stoc->numVals[i];
 				if (omega->cnt > config.MAX_OBS) {
-					omega->cnt = 0;
+					omega->cnt = config.MAX_OBS;
 					config.SAA = 1;
 					break;
 				}
@@ -331,7 +331,7 @@ omegaType *newOmega(stocType *stoc) {
 			}
 		}
 		else {
-			omega->cnt = 0;
+			omega->cnt = config.MAX_OBS;
 			config.SAA = 1;
 		}
 
