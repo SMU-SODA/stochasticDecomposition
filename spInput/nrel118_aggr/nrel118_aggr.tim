@@ -1,4 +1,4 @@
 TIME          nrel118_aggr
 PERIODS	      2
-    g0(1)      RU(1)                  TIME1
-    g1(2,1)      RU0(1)                  TIME2
+    g0(1)      RUg(1)                  TIME1
+    r1(2,8)      RU0(8)                  TIME2
