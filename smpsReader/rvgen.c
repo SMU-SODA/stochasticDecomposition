@@ -86,7 +86,7 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 	for ( n = 0; n < stoc->numPerGroup[groupID]; n++) {
 		val = scalit(0, 1, seed);
 		cumm = 0;
-		for ( m = 0; val > cumm; ++m )
+		for ( m = 0; val > cumm && m < stoc->numVals[stoc->groupBeg[groupID]+n]; ++m )
 			cumm += stoc->probs[stoc->groupBeg[groupID] + n][m];
 		observ[stoc->groupBeg[groupID]+n] = stoc->vals[stoc->groupBeg[groupID]+n][m-1];
 	}

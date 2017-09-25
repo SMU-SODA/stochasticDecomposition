@@ -20,7 +20,7 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 	BOOL	newSigmaFlag, newLambdaFlag;
 
 	/* Allocate memory. */
-	if ( !(piS = (vector) arr_alloc(prob->num->cols+1, double)) )
+	if ( !(piS = (vector) arr_alloc(prob->num->rows+1, double)) )
 		errMsg("allocation", "stochasticUpdates", "piS", 0);
 	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
@@ -113,7 +113,8 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 
 	}
 
-	mem_free(piS); mem_free(cstat);	mem_free(rstat);
+	mem_free(piS);
+	mem_free(cstat);	mem_free(rstat);
 	return basisIdx;
 }//End stochasticUpdates()
 

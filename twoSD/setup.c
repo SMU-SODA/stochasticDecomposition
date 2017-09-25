@@ -257,10 +257,10 @@ int readConfig() {
 		else if (!(strcmp(line, "PRE_EPSILON")))
 			fscanf(fptr, "%lf", &config.PRE_EPSILON);
 
-		else if (!(strcmp(line, "MAX_OBS")))
-			fscanf(fptr, "%d", &config.MAX_OBS);
 		else if (!(strcmp(line, "SUBPROB_SAMPLE_PCT")))
 			fscanf(fptr, "%lf", &config.SUBPROB_SAMPLE_PCT);
+		else if (!(strcmp(line, "SUBPROB_SAMPLE_CNT")))
+			fscanf(fptr, "%d", &config.SUBPROB_SAMPLE_CNT);
 		else if (!(strcmp(line, "SUBPROB_SAMPLE_SEED"))) {
 			fscanf(fptr, "%lld", &config.SUBPROB_SAMPLE_SEED[r3++]);
 			if ( r3 > maxReps ) {
@@ -270,6 +270,8 @@ int readConfig() {
 		}
 		else if (!(strcmp(line, "SAA")))
 			fscanf(fptr, "%d", &config.SAA);
+		else if (!(strcmp(line, "MAX_OBS")))
+			fscanf(fptr, "%d", &config.MAX_OBS);
 
 		else if (!(strcmp(line, "MULTIPLE_REP")))
 					fscanf(fptr, "%d", &config.MULTIPLE_REP);

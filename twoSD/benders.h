@@ -26,7 +26,10 @@ void writeBendersStatistic(FILE *soln, probType **prob, cellType *cell);
 int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell);
 int checkImprovementBenders(probType *prob, cellType *cell, int candidCut);
 int addCut2BendersMaster(cellType *cell, oneCut *cut, int lenX);
-int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb);
+int formBendersCutPct(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb);
+int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb);
+
+int resolveInfeasibility(probType **prob, cellType *cell, BOOL newOmegaFlag, int omegaIdx);
 
 /* optimal.c */
 BOOL optimalBenders(probType **prob, cellType *cell);

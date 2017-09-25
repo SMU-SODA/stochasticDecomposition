@@ -108,9 +108,17 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 			break;
 
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formBendersCut(prob, cell, cell->candidX, FALSE)) < 0 ) {
-			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			return 1;
+		if ( config.SUBPROB_SAMPLE_CNT == 0 ) {
+			if ( (candidCut = formBendersCutPct(prob, cell, cell->candidX, FALSE)) < 0 ) {
+				errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+				return 1;
+			}
+		}
+		else {
+			if ( (candidCut = formBendersCutCnt(prob, cell, cell->candidX, FALSE)) < 0 ) {
+				errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+				return 1;
+			}
 		}
 
 		/******* 4. Check improvement in predicted values at candidate solution *******/
@@ -273,7 +281,7 @@ int solveBendersMaster(numType *num, sparseVector *dBar, cellType *cell) {
 	return 0;
 }//END solveMaster()
 
-int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb) {
+int formBendersCutPct(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	oneCut 	*cut;
 	vector 	piCbarX;
 	intvec	istar;
@@ -314,6 +322,95 @@ int formBendersCut(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb)
 			else
 				solveSP[obs] = FALSE;
 		}
+	}
+
+	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
+	if (!(piCbarX= arr_alloc(cell->sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	for (cnt = 0; cnt < cell->sigma->cnt; cnt++)
+		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->colsC, prob[1]->num->cntCcols);
+	offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
+
+	tic = clock();
+	/* The subproblems for the remainder of observations we use the argmax operator. */
+	for ( obs = 0; obs <cell->omega->cnt; obs++ ) {
+		if ( !solveSP[obs] ) {
+			/* (b) Use the argmax operator to identify the best basis */
+			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, Xvect, piCbarX,
+					cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
+		}
+	}
+	cell->time->argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
+
+	/* allocate memory to hold a new cut */
+	cut = newCut(prob[0]->num->cols, cell->omega->cnt, cell->omega->cnt);
+
+	/* Go through all the cuts and form the coefficients using the basis identified in the previous step. */
+	for (obs = 0; obs < cell->omega->cnt; obs++) {
+		for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
+			sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
+			lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
+			if ( cnt == 0 )
+				multiplier = 1.0;
+			else
+				multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
+
+			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
+
+			for (c = 1; c <= prob[1]->num->cntCcols; c++)
+				cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
+			for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
+				cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+		}
+	}
+	cut->alphaIncumb = cut->alpha;
+	cut->beta[0] = 1.0;
+
+	/* (c) add cut to the master problem  */
+	if ( (cutIdx = addCut2Master(cell, cell->cuts, cut, FALSE, prob[0]->num->cols, 0.0, TRUE)) < 0 ) {
+		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
+		goto TERMINATE;
+	}
+
+	mem_free(istar); mem_free(piCbarX); mem_free(solveSP);
+	return cutIdx;
+	TERMINATE: mem_free(istar); mem_free(piCbarX); mem_free(solveSP); return -1;
+}//END formCut()
+
+int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncumb) {
+	oneCut 	*cut;
+	vector 	piCbarX;
+	intvec	istar;
+	double	multiplier, argmax;
+	int    	cutIdx, obs, c, cnt, lambdaIdx, sigmaIdx, offset;
+	BOOL	newBasisFlag, *solveSP;
+	clock_t	tic;
+
+	if ( !(istar = (intvec) arr_alloc(cell->omega->cnt, int)) )
+		errMsg("allocation", "formBendersCut", "istar", 0);
+	if ( !(solveSP = (BOOL *) arr_alloc(cell->omega->cnt, BOOL)))
+		errMsg("allocation", "formBendersCut", "solveSP", 0);
+
+	/* Only a fraction (at least one) of subproblems are solved in any iteration. */
+	cnt = cell->LPcnt;
+	while (cell->LPcnt < cnt + config.SUBPROB_SAMPLE_CNT) {
+		obs = randInteger(&config.SUBPROB_SAMPLE_SEED[0], cell->omega->cnt);
+		if ( !solveSP[obs] )
+			istar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+					cell->omega, obs, FALSE, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag, &cell->time->subprobIter, &cell->time->argmaxIter);
+		if ( istar[obs] < 0 ) {
+			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+			goto TERMINATE;;
+		}
+		cell->LPcnt++;
+		if ( !cell->spFeasFlag ) {
+			if ( resolveInfeasibility(prob, cell, FALSE, obs) ) {
+				errMsg("algorithm", "formBendersCut", "failed to resolve infeasibility", 0);
+				goto TERMINATE;
+			}
+			obs = 0;
+		}
+		solveSP[obs] = TRUE;
 	}
 
 	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */

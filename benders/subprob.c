@@ -86,7 +86,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 		return 1;
 	}
 
-	mem_free(rhs); mem_free(cost); mem_free(indices);
+	mem_free(rhs);
+	mem_free(cost);
+	mem_free(indices);
 	return 0;
 }// END solveSubprob()
 

@@ -52,10 +52,11 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
-	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
+	int		SUBPROB_SAMPLE_CNT;		/* Number of subproblems being solved */
 	double  SUBPROB_SAMPLE_PCT;		/* Fraction of subproblem being solved in an iteration */
 	long long *SUBPROB_SAMPLE_SEED;	/* Seed used to sample the subproblems. */
 	int		SAA; 				/* Use SAA when continuous distribution in stoch file (1), or not (0) */
+	int		MAX_OBS;			/* Maximum number of iterations before which SAA is invoked */
 
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (1), else (0) */
 }configType;

@@ -22,7 +22,7 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	int    	cutIdx, obs, c;
 	clock_t	tic;
 
-	if ( !(piS = (vector) arr_alloc(prob->num->cols+1, double)) )
+	if ( !(piS = (vector) arr_alloc(prob->num->rows+1, double)) )
 		errMsg("allocation", "stochasticUpdates", "piS", 0);
 	bOmega.cnt = prob->num->rvbOmCnt; bOmega.col = prob->coord->omegaRow;
 	COmega.cnt = prob->num->rvCOmCnt; COmega.col = prob->coord->omegaCol + prob->num->rvbOmCnt; COmega.row = prob->coord->omegaRow + prob->num->rvbOmCnt;
