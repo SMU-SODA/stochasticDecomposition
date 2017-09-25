@@ -169,7 +169,10 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		}
 	}
 
-	return maxCnt;
+	if ( (*argmax == -DBL_MAX ) )
+		return -1;
+	else
+		return maxCnt;
 }//END computeIstar
 
 int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt, BOOL *newBasisFlag, int currentIter) {

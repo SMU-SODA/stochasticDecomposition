@@ -69,6 +69,26 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		/* evaluating the optimal solution*/
 		if (config.EVAL_FLAG == 1)
 			evaluate(solnFile, stoc, prob, cell, cell->incumbX);
+
+#if defined(DETAILED)
+		FILE *dPtr, *iPtr;
+		dPtr = openFile(outputDir, "detailed.dat", "w");
+		int m;
+		fprintf(dPtr, "\nDetailed solution\n%s\tFirst occurrence\n", "Basis encountered");
+		fprintf(dPtr, "----------------------------------------------------------------------\n");
+		for (int n = 0; n < cell->basis->cnt; n++ ) {
+			for (m = 0; m < cell->basis->rCodeLen; m++)
+				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->rCode[m]);
+			for (m = 0; m < cell->basis->cCodeLen; m++)
+				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->cCode[m]);
+			fprintf(dPtr, "%16d\n", cell->basis->vals[n]->ck);
+		}
+		fclose(dPtr);
+		iPtr = openFile(outputDir, "incumb.dat", "w");
+		for ( m = 1; m <= prob[0]->num->cols; m++ )
+			fprintf(iPtr, "%lf\n", cell->incumbX[m]);
+		fclose(iPtr);
+#endif
 	}
 
 	fclose(solnFile);
@@ -415,7 +435,7 @@ int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncu
 
 	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
 	if (!(piCbarX= arr_alloc(cell->sigma->cnt, double)))
-		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+		errMsg("Allocation", "SDCut", "pi_T821043bar_x",0);
 	for (cnt = 0; cnt < cell->sigma->cnt; cnt++)
 		piCbarX[cnt] = vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->colsC, prob[1]->num->cntCcols);
 	offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
@@ -428,6 +448,63 @@ int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncu
 			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, Xvect, piCbarX,
 					cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
 		}
+#if 0
+		if ( !solveSP[obs] ) {
+			vector rhs, cost; intvec indices; int status;
+
+			if ( !(indices = (intvec) arr_alloc(max(prob[1]->num->rows, prob[1]->num->cols), int)) )
+				errMsg("allocation", "solve_subporb", "indices", 0);
+			for ( int n = 0; n < max(prob[1]->num->rows,prob[1]->num->cols); n++ )
+				indices[n] = n;
+			offset = 0;
+
+			/* (a) compute the right-hand side using current observation and first-stage solution */
+			rhs = computeRHS(prob[1]->num, prob[1]->coord, prob[1]->bBar, prob[1]->Cbar, Xvect, cell->omega->vals[obs]+offset);
+			if ( rhs == NULL ) {
+				errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
+				return -1;
+			}
+
+			/* (b) change the right-hand side in the solver */
+			if ( changeRHS(cell->subprob->lp, prob[1]->num->rows, indices, rhs + 1) ) {
+				errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
+				return -1;
+			}
+
+			offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
+			/* (c) compute the cost coefficients using current observation */
+			cost = computeCostCoeff(prob[1]->num, prob[1]->coord, prob[1]->dBar, cell->omega->vals[obs], offset);
+			if ( cost == NULL ) {
+				errMsg("algorithm", "solveSubprob", "failed to compute cell->subprob cost coefficients", 0);
+				return -1;
+			}
+
+			/* (d) change cost coefficients in the solver */
+			if ( changeObjx(cell->subprob->lp, prob[1]->num->cols, indices, cost+1) ) {
+				errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver",0);
+				return -1;
+			}
+
+			tic = clock();
+			/* (e) Solve the cell->subprob to obtain the optimal dual solution. */
+			if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
+				if ( status == STAT_INFEASIBLE ) {
+					printf("Subproblem is infeasible: need to create feasibility cut.\n");
+				}
+				else {
+					errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
+					return -1;
+				}
+			}
+			printf("Subproblem objective and estimate = (%lf, %lf)\n", getObjective(cell->subprob->lp, PROB_LP), argmax);
+
+			if ( (getObjective(cell->subprob->lp, PROB_LP) - argmax ) < -config.TOLERANCE)
+				return -1;
+
+			mem_free(indices); mem_free(rhs); mem_free(cost);
+		}
+#endif
+
 	}
 	cell->time->argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 

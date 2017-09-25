@@ -16,7 +16,7 @@
 #include "cell.h"
 
 #undef ALGO_CHECK
-#define DETAILED
+#undef DETAILED
 
 /* subroutines in benders.c */
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell);
