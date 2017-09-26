@@ -70,10 +70,13 @@ int twoSD(oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 #if defined(DETAILED)
 		FILE *dPtr, *iPtr;
-		dPtr = openFile(outputDir, "detailed.dat", "w");
+		dPtr = openFile(outputDir, "basisDetails.dat", "w");
 		int m;
-		fprintf(dPtr, "\nDetailed solution\n%s\tFirst occurrence\n", "Basis encountered");
-		fprintf(dPtr, "----------------------------------------------------------------------\n");
+		for (m = 0; m < cell->basis->rCodeLen; m++)
+			fprintf(dPtr, "code[%d]\t", m);
+		for (m = 0; m < cell->basis->cCodeLen; m++)
+			fprintf(dPtr, "code[%d]\t", m + cell->basis->rCodeLen);
+		fprintf(dPtr,"Iter\n");
 		for (int n = 0; n < cell->basis->cnt; n++ ) {
 			for (m = 0; m < cell->basis->rCodeLen; m++)
 				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->rCode[m]);
@@ -123,6 +126,11 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 	int		m, omegaIdx, candidCut;
 	BOOL 	newOmegaFlag;
 	clock_t	tic;
+
+#if defined(DETAILED)
+		FILE *pFile;
+		pFile = openFile(outputDir, "progress.dat", "w");
+#endif
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
@@ -175,6 +183,10 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 			/* If the incumbent has not changed in the current iteration */
 			checkImprovementSD(prob[0], cell, candidCut);
 
+#if defined(DETAILED)
+		fprintf(pFile, "%lf\n", cell->incumbEst);
+#endif
+
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveSDMaster(prob[0]->num, prob[0]->dBar, cell) ) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
@@ -185,6 +197,9 @@ int solveSDCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time->iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time->iterAccumTime += cell->time->iterTime;
 	}//END while loop
 
+#if defined(DETAILED)
+	fclose(pFile);
+#endif
 	mem_free(observ);
 	return 0;
 }//END solveCell()

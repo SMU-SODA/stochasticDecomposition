@@ -808,9 +808,10 @@ omegaType *newOmega(int numOmega, int numIter) {
 		errMsg("allocation","newOmega", "omega", 0);
 	if ( !(omega->weights = (intvec) arr_alloc(numIter, int)) )
 		errMsg("allocation", "newOmega", "omega->weight", 0);
+	if ( !(omega->probs = (vector) arr_alloc(numIter, double)) )
+		errMsg("allocation", "newOmega", "omega->probs", 0);
 	if ( !(omega->vals = (vector *) arr_alloc(numIter, vector)) )
 		errMsg("allocation", "newOmega", "omega->vals", 0);
-	omega->probs = NULL;
 	omega->numRV = numOmega;
 	omega->cnt = 0;
 
@@ -824,7 +825,6 @@ void freeOmegaType(omegaType *omega, BOOL partial) {
 		for ( n = 0; n < omega->cnt; n++ )
 			if ( omega->vals[n] ) mem_free(omega->vals[n]);
 		if ( partial ) {
-			if ( omega->probs ) mem_free(omega->probs);
 			omega->cnt = 0;
 			return;
 		}

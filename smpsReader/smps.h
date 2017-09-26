@@ -114,6 +114,6 @@ int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, l
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
-vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples);
+int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples);
 
 #endif /* SMPS_H_ */

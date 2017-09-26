@@ -217,8 +217,7 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples) {
-	vector* simObs;
+int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples) {
 	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
@@ -228,33 +227,33 @@ vector* setupSAA(stocType *stoc, long long *seed, vector *probs, int *numSamples
 	}
 	printf("Generating SAA with %d samples.\n", (*numSamples));
 
-	simObs = (vector *) arr_alloc((*numSamples), vector);
-	(*probs) = (vector) arr_alloc((*numSamples), vector);
+	(*simObservVals) = (vector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(vector));
+	(*probs) = (vector) mem_realloc((*probs), (*numSamples)*sizeof(double));
 
 	if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
-			generateBlocks(stoc, simObs[obs]+1, 0, seed);
+			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			generateBlocks(stoc, (*simObservVals)[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
-			generateIndep(stoc, simObs[obs]+1, 0, seed);
+			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			generateIndep(stoc, (*simObservVals)[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			simObs[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
-			normal(stoc->mean, stoc->vals[0], stoc->numOmega, simObs[obs]+1, seed);
+			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			normal(stoc->mean, stoc->vals[0], stoc->numOmega, (*simObservVals)[obs]+1, seed);
 		}
 	}
 	else {
 		errMsg("sampling", "setupSAA", "no procedure for simulating distribution type", 0);
-		return NULL;
+		return 1;
 	}
 
-	return simObs;
+	return 0;
 }//END setupSAA

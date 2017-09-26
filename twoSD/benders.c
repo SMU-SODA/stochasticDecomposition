@@ -16,7 +16,7 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	vector 	 meanSol;
-	int 	 rep;
+	int 	 rep, m, n;
 	FILE 	*solnFile;
 	clock_t	tic;
 
@@ -33,6 +33,9 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	printDecomposeSummary(solnFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
+	/* Setup the omega structure if the number of observations is finite and less than MAX_OBS */
+	updateOmega(stoc, cell->omega);
+
 	for ( rep = 0; rep < config.NUM_REPS; rep++ ) {
 		fprintf(solnFile, "\n====================================================================================================================================\n");
 		fprintf(solnFile, "Replication-%d\n", rep+1);
@@ -44,15 +47,23 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		config.SUBPROB_SAMPLE_SEED[0] = config.SUBPROB_SAMPLE_SEED[rep+1];
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
-		if ( rep != 0 )
+		if ( rep != 0 ) {
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
 				errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
 				goto TERMINATE;
 			}
+			cell->omega->cnt = config.MAX_OBS;
+		}
 
 		/* Update omega structure */
-		updateOmega(stoc, cell->omega);
+		if ( config.SAA ) {
+			setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->vals, &cell->omega->probs, &cell->omega->cnt);
+			for ( m = 0; m < cell->omega->cnt; m++ )
+				for ( n = 1; n <= stoc->numOmega; n++ )
+					cell->omega->vals[m][n] -= stoc->mean[n-1];
+			config.MAX_OBS = cell->omega->cnt;
+		}
 
 		tic = clock();
 		/* Use two-stage algorithm to solve the problem */
@@ -72,11 +83,13 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 #if defined(DETAILED)
 		FILE *dPtr, *iPtr;
-		dPtr = openFile(outputDir, "detailed.dat", "w");
-		int m;
-		fprintf(dPtr, "\nDetailed solution\n%s\tFirst occurrence\n", "Basis encountered");
-		fprintf(dPtr, "----------------------------------------------------------------------\n");
-		for (int n = 0; n < cell->basis->cnt; n++ ) {
+		dPtr = openFile(outputDir, "basisDetails.dat", "w");
+		for (m = 0; m < cell->basis->rCodeLen; m++)
+			fprintf(dPtr, "code[%d]\t", m);
+		for (m = 0; m < cell->basis->cCodeLen; m++)
+			fprintf(dPtr, "code[%d]\t", m + cell->basis->rCodeLen);
+		fprintf(dPtr,"Iter\n");
+		for ( n = 0; n < cell->basis->cnt; n++ ) {
 			for (m = 0; m < cell->basis->rCodeLen; m++)
 				fprintf(dPtr, "%lu\t", cell->basis->vals[n]->rCode[m]);
 			for (m = 0; m < cell->basis->cCodeLen; m++)
@@ -110,6 +123,11 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	int 	candidCut;
 	clock_t	tic;
+
+#if defined(DETAILED)
+		FILE *pFile;
+		pFile = openFile(outputDir, "progress.dat", "w");
+#endif
 
 	/* Main loop of the algorithm */
 	while (TRUE) {
@@ -153,6 +171,10 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		else
 			cell->incumbEst = vXvSparse(cell->candidX, prob[0]->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob[0]->num->cols, FALSE, cell->k, cell->lb);
 
+#if defined(DETAILED)
+		fprintf(pFile, "%lf\n", cell->incumbEst);
+#endif
+
 		/******* 3. Solve the master problem to obtain the new candidate solution */
 		if ( solveBendersMaster(prob[0]->num, prob[0]->dBar, cell) ) {
 			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
@@ -163,17 +185,17 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time->iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time->iterAccumTime += cell->time->iterTime;
 	}
 
+#if defined(DETAILED)
+	fclose(pFile);
+#endif
 	return 0;
 }//END solveCell()
 
 void updateOmega(stocType *stoc, omegaType *omega) {
 	int cnt, i, base, idx;
 
-	if ( config.SAA == 1 ) {
-		/* If the sample size is given then an SAA is created */
-		mem_free(omega->vals);
+	if ( config.SAA == 1) {
 		omega->cnt = config.MAX_OBS;
-		omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &omega->probs, &omega->cnt);
 		return;
 	}
 
@@ -182,8 +204,7 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
 		if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
 			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
-			if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-				errMsg("allocation", "updateOmega", "omega->probs", 0);
+			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
 				omega->probs[cnt]= stoc->probs[0][cnt];
 				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
@@ -194,7 +215,7 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 			}
 		}
 		else {
-			omega->cnt = 0;
+			omega->cnt = config.MAX_OBS;
 			config.SAA = 1;
 		}
 	}
@@ -203,8 +224,8 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 		while ( i < stoc->numOmega ) {
 			omega->cnt *= stoc->numVals[i];
 			if (omega->cnt > config.MAX_OBS) {
-				omega->cnt = 0;
-				config.SAA = TRUE;
+				omega->cnt = config.MAX_OBS;
+				config.SAA = 1;
 				break;
 			}
 			i++;
@@ -212,8 +233,7 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 
 		if ( !config.SAA ){
 			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
-			if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-				errMsg("allocation", "updateOmega", "omega->probs", 0);
+			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
 				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
 					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
@@ -228,14 +248,8 @@ void updateOmega(stocType *stoc, omegaType *omega) {
 		}
 	}
 	else {
-		omega->cnt = 0;
+		omega->cnt = config.MAX_OBS;
 		config.SAA = 1;
-	}
-
-	if ( config.SAA == 1 ) {
-		printf("\nEncountered a continuous distribution or the total number of possible observations is greater than MAX_OBS (%d).\n", config.MAX_OBS);
-		mem_free(omega->vals);
-		omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &omega->probs, &omega->cnt);
 	}
 
 }//END updateOmega()
@@ -367,20 +381,22 @@ int formBendersCutPct(probType **prob, cellType *cell, vector Xvect, BOOL isIncu
 
 	/* Go through all the cuts and form the coefficients using the basis identified in the previous step. */
 	for (obs = 0; obs < cell->omega->cnt; obs++) {
-		for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
-			sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
-			lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
-			if ( cnt == 0 )
-				multiplier = 1.0;
-			else
-				multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
+		if ( istar[obs] >= 0 ) {
+			for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
+				sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
+				lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
+				if ( cnt == 0 )
+					multiplier = 1.0;
+				else
+					multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
 
-			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
+				cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
 
-			for (c = 1; c <= prob[1]->num->cntCcols; c++)
-				cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
-			for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
-				cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+				for (c = 1; c <= prob[1]->num->cntCcols; c++)
+					cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
+				for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
+					cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+			}
 		}
 	}
 	cut->alphaIncumb = cut->alpha;
@@ -448,63 +464,6 @@ int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncu
 			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, Xvect, piCbarX,
 					cell->omega->vals[obs]+offset, obs, cell->k, FALSE, &argmax, FALSE);
 		}
-#if 0
-		if ( !solveSP[obs] ) {
-			vector rhs, cost; intvec indices; int status;
-
-			if ( !(indices = (intvec) arr_alloc(max(prob[1]->num->rows, prob[1]->num->cols), int)) )
-				errMsg("allocation", "solve_subporb", "indices", 0);
-			for ( int n = 0; n < max(prob[1]->num->rows,prob[1]->num->cols); n++ )
-				indices[n] = n;
-			offset = 0;
-
-			/* (a) compute the right-hand side using current observation and first-stage solution */
-			rhs = computeRHS(prob[1]->num, prob[1]->coord, prob[1]->bBar, prob[1]->Cbar, Xvect, cell->omega->vals[obs]+offset);
-			if ( rhs == NULL ) {
-				errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-				return -1;
-			}
-
-			/* (b) change the right-hand side in the solver */
-			if ( changeRHS(cell->subprob->lp, prob[1]->num->rows, indices, rhs + 1) ) {
-				errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
-				return -1;
-			}
-
-			offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
-			/* (c) compute the cost coefficients using current observation */
-			cost = computeCostCoeff(prob[1]->num, prob[1]->coord, prob[1]->dBar, cell->omega->vals[obs], offset);
-			if ( cost == NULL ) {
-				errMsg("algorithm", "solveSubprob", "failed to compute cell->subprob cost coefficients", 0);
-				return -1;
-			}
-
-			/* (d) change cost coefficients in the solver */
-			if ( changeObjx(cell->subprob->lp, prob[1]->num->cols, indices, cost+1) ) {
-				errMsg("solver", "solve_subprob", "failed to change the cost coefficients in the solver",0);
-				return -1;
-			}
-
-			tic = clock();
-			/* (e) Solve the cell->subprob to obtain the optimal dual solution. */
-			if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
-				if ( status == STAT_INFEASIBLE ) {
-					printf("Subproblem is infeasible: need to create feasibility cut.\n");
-				}
-				else {
-					errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-					return -1;
-				}
-			}
-			printf("Subproblem objective and estimate = (%lf, %lf)\n", getObjective(cell->subprob->lp, PROB_LP), argmax);
-
-			if ( (getObjective(cell->subprob->lp, PROB_LP) - argmax ) < -config.TOLERANCE)
-				return -1;
-
-			mem_free(indices); mem_free(rhs); mem_free(cost);
-		}
-#endif
-
 	}
 	cell->time->argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
@@ -513,20 +472,22 @@ int formBendersCutCnt(probType **prob, cellType *cell, vector Xvect, BOOL isIncu
 
 	/* Go through all the cuts and form the coefficients using the basis identified in the previous step. */
 	for (obs = 0; obs < cell->omega->cnt; obs++) {
-		for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
-			sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
-			lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
-			if ( cnt == 0 )
-				multiplier = 1.0;
-			else
-				multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
+		if ( istar[obs] >= 0 ) {
+			for ( cnt = 0; cnt <= cell->basis->vals[istar[obs]]->phiLength; cnt++ ) {
+				sigmaIdx  = cell->basis->vals[istar[obs]]->sigmaIdx[cnt];
+				lambdaIdx = cell->basis->vals[istar[obs]]->lambdaIdx[cnt];
+				if ( cnt == 0 )
+					multiplier = 1.0;
+				else
+					multiplier = cell->omega->vals[obs][prob[1]->num->rvbOmCnt+prob[1]->num->rvCOmCnt+cell->basis->vals[istar[obs]]->omegaIdx[cnt]];
 
-			cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
+				cut->alpha += (cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib)*cell->omega->probs[obs]*multiplier;
 
-			for (c = 1; c <= prob[1]->num->cntCcols; c++)
-				cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
-			for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
-				cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+				for (c = 1; c <= prob[1]->num->cntCcols; c++)
+					cut->beta[prob[1]->coord->colsC[c]] += cell->sigma->vals[sigmaIdx].piC[c]*cell->omega->probs[obs]*multiplier;
+				for (c = 1; c <= prob[1]->num->rvCOmCnt; c++)
+					cut->beta[prob[1]->coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c]*cell->omega->probs[obs]*multiplier;
+			}
 		}
 	}
 	cut->alphaIncumb = cut->alpha;
