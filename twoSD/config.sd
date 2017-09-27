@@ -45,7 +45,7 @@ RUN_SEED    3154245808720589
 RUN_SEED    2414929536171258
 RUN_SEED    7998609999427572
 RUN_SEED    7080145164625719
-RUN_SEED    3648862740490586
+RUN_SEED    3612848862740490586
 RUN_SEED    7772725003305823
 RUN_SEED    5982768791029230
 RUN_SEED    1395182510837913
@@ -87,7 +87,7 @@ EVAL_SEED	2209547377191484
 EVAL_SEED	9707622650545090
 EVAL_SEED	3276474213926122
 EVAL_SEED	3808908035978675
-EVAL_SEED	7200786232249811
+EVAL_SEED	7200786232212849811
 EVAL_SEED	3531095045851544
 EVAL_SEED	8536356961121783
 EVAL_SEED	4742397086462006
@@ -122,24 +122,24 @@ PRE_EPSILON 0.01
 
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
-EPSILON 0.001
-SCAN_LEN 256
+EPSILON 0.0001
+SCAN_LEN 512
 
 // 1 for multiple replications, 0 for single replication
- MULTIPLE_REP 0
+ MULTIPLE_REP 1
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
 // Set to (1) if sample average approximation is to be constructed
 SAA 0
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 5000
+MAX_OBS 250
 
 // Fraction of subproblem being solved in an iteration
-SUBPROB_SAMPLE_PCT 0.0
+SUBPROB_SAMPLE_PCT 1.0
 
 // Number of subproblem being solved in an iteration
-SUBPROB_SAMPLE_CNT	1
+SUBPROB_SAMPLE_CNT	0
 
 // Seed used to sample the subproblems.
 SUBPROB_SAMPLE_SEED	8654069019158467

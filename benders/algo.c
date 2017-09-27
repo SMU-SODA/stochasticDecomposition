@@ -22,10 +22,6 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	FILE 	*solnFile;
 	clock_t	tic;
 
-	/* read algorithm configuration file */
-	if ( readConfig() )
-		goto TERMINATE;
-
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &meanSol) )
 		goto TERMINATE;
@@ -67,7 +63,7 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 		/* Update omega structure */
 		if ( config.SAA ) {
-			cell->omega->vals = setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->probs, &cell->omega->cnt);
+			setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->vals, &cell->omega->probs, &cell->omega->cnt);
 			for ( m = 0; m < cell->omega->cnt; m++ )
 				for ( n = 1; n <= stoc->numOmega; n++ )
 					cell->omega->vals[m][n] -= stoc->mean[n-1];

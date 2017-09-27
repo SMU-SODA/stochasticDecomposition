@@ -2,7 +2,7 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER   10
+MIN_ITER   128
 
 // Maximum number of iterations
 MAX_ITER   5000
@@ -108,11 +108,11 @@ R2 0.95
 R3 2
 
 // 1 for multiple replications, 0 for single replication
-	MULTIPLE_REP 0
+ MULTIPLE_REP 1
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
 // Set to (1) if sample average approximation is to be constructed
-SAA 0
+SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 0
+MAX_OBS 250

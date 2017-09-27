@@ -199,7 +199,6 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 		cnt = cell->omega->cnt;
 		if (cell->omega) freeOmegaType(cell->omega, TRUE);
 		cell->omega->cnt = cnt;
-		mem_free(cell->omega->vals);
 	}
 
 	/* reset all the clocks */

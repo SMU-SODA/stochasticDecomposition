@@ -281,61 +281,67 @@ omegaType *newOmega(stocType *stoc) {
 
 	if ( !(omega = (omegaType *) mem_malloc(sizeof(omegaType))) )
 		errMsg("allocation","newOmega", "omega", 0);
+	if ( !(omega->probs = (vector) arr_alloc(100, double)) )
+		errMsg("allocation", "newOmega", "omega->probs", 0);
+	if ( !(omega->vals = (vector *) arr_alloc(100, vector)) )
+		errMsg("allocation", "newOmega", "omega->vals", 0);
 	omega->cnt = 0; omega->numRV = stoc->numOmega;
-	config.SAA = 0;
+
+	if ( config.SAA == 1 ) {
+		omega->cnt = config.MAX_OBS;
+		return omega;
+	}
 
 	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
-			if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
-				omega->vals = (vector *) arr_alloc(omega->cnt, vector);
-				if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-					errMsg("allocation", "updateOmega", "omega->probs", 0);
-				for ( cnt = 0; cnt < omega->cnt; cnt++) {
-					omega->probs[cnt]= stoc->probs[0][cnt];
-					if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
-						errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
-					for (i = 0; i < omega->numRV; i++)
-						omega->vals[cnt][i+1]=stoc->vals[i][cnt]-stoc->mean[i];
-					omega->vals[cnt][0] = oneNorm(omega->vals[cnt]+1, omega->numRV);
-				}
-			}
-			else {
-				omega->cnt = config.MAX_OBS;
-				config.SAA = 1;
-			}
-		}
-		else if ( strstr(stoc->type, "INDEP") != NULL ) {
-			omega->cnt = 1; i = 0;
-			while ( i < stoc->numOmega ) {
-				omega->cnt *= stoc->numVals[i];
-				if (omega->cnt > config.MAX_OBS) {
-					omega->cnt = config.MAX_OBS;
-					config.SAA = 1;
-					break;
-				}
-				i++;
-			}
-
-			if ( !config.SAA ){
-				omega->vals = (vector *) arr_alloc(omega->cnt, vector);
-				if ( !(omega->probs = (vector) arr_alloc(omega->cnt, double)))
-					errMsg("allocation", "updateOmega", "omega->probs", 0);
-				for ( cnt = 0; cnt < omega->cnt; cnt++) {
-					if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
-						errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
-					omega->probs[cnt] = 1; base = omega->cnt;
-					for ( i = 0; i < omega->numRV; i++ ) {
-						base /= stoc->numVals[i];
-						idx = (int)((double) cnt / (double) base) % stoc->numVals[i];
-						omega->vals[cnt][i+1] = stoc->vals[i][idx]-stoc->mean[i];
-						omega->probs[cnt] *= stoc->probs[i][idx];
-					}
-				}
+		if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
+			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
+			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
+			for ( cnt = 0; cnt < omega->cnt; cnt++) {
+				omega->probs[cnt]= stoc->probs[0][cnt];
+				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
+					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
+				for (i = 0; i < omega->numRV; i++)
+					omega->vals[cnt][i+1]=stoc->vals[i][cnt]-stoc->mean[i];
+				omega->vals[cnt][0] = oneNorm(omega->vals[cnt]+1, omega->numRV);
 			}
 		}
 		else {
 			omega->cnt = config.MAX_OBS;
 			config.SAA = 1;
 		}
+	}
+	else if ( strstr(stoc->type, "INDEP") != NULL ) {
+		omega->cnt = 1; i = 0;
+		while ( i < stoc->numOmega ) {
+			omega->cnt *= stoc->numVals[i];
+			if (omega->cnt > config.MAX_OBS) {
+				omega->cnt = config.MAX_OBS;
+				config.SAA = 1;
+				break;
+			}
+			i++;
+		}
+
+		if ( !config.SAA ){
+			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
+			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
+			for ( cnt = 0; cnt < omega->cnt; cnt++) {
+				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
+					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
+				omega->probs[cnt] = 1; base = omega->cnt;
+				for ( i = 0; i < omega->numRV; i++ ) {
+					base /= stoc->numVals[i];
+					idx = (int)((double) cnt / (double) base) % stoc->numVals[i];
+					omega->vals[cnt][i+1] = stoc->vals[i][idx]-stoc->mean[i];
+					omega->probs[cnt] *= stoc->probs[i][idx];
+				}
+			}
+		}
+	}
+	else {
+		omega->cnt = config.MAX_OBS;
+		config.SAA = 1;
+	}
 
 	return omega;
 }//END newOmega()
@@ -345,9 +351,9 @@ void freeOmegaType(omegaType *omega, BOOL partial) {
 
 	if ( omega->vals ) {
 		for ( n = 0; n < omega->cnt; n++ )
-			if ( omega->vals[n] ) mem_free(omega->vals[n]);
+			if ( omega->vals[n] )
+				mem_free(omega->vals[n]);
 		if ( partial ) {
-			if ( omega->probs ) mem_free(omega->probs);
 			omega->cnt = 0;
 			return;
 		}

@@ -258,7 +258,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 					delta->vals[lambdaIdx][elemIdx].pib = vXvSparse(lambdaPi, &bOmega);
 					if ( num->rvCOmCnt != 0 ) {
 						piCrossC = vxMSparse(lambdaPi, &COmega, num->prevCols);
-						delta->vals[lambdaIdx][elemIdx].piC = reduceVector(piCrossC, coord->rvCols, num->rvColCnt);
+						delta->vals[lambdaIdx][elemIdx].piC = reduceVector(piCrossC, coord->rvCols, num->rvCOmCnt);
 						mem_free(piCrossC);
 					}
 					else

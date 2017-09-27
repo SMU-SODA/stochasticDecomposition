@@ -52,6 +52,7 @@ int main (int argc, char *argv[]) {
 	freeStocType(stoc);
 	mem_free(outputDir);
 	closeSolver();
+	freeConfig();
 	return 0;
 }//END main()
 
