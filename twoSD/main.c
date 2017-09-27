@@ -46,13 +46,13 @@ int main (int argc, char *argv[]) {
 	/* setup the data structures based on the algorithm selected */
 	if ( !(strcmp(algoName, "benders")) ) {
 		if ( benders(orig, tim, stoc, probName) ) {
-			errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
+			errMsg("allocation", "main", "failed to solve the problem using Benders decomposition", 0);
 			goto TERMINATE;
 		}
 	}
 	else {
 		if ( twoSD(orig, tim, stoc, probName) ) {
-			errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
+			errMsg("allocation", "main", "failed to solve the problem using stochastic decomposition", 0);
 			goto TERMINATE;
 		}
 	}

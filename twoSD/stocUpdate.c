@@ -330,7 +330,7 @@ BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCol
 
 	if ( rvdOmCnt > 0 ) {
 		copyVector(B->gBar, reducedCost, numCols, TRUE);
-		addVectors(reducedCost, dOmega, rvCols, rvdOmCnt);
+		addVectors(reducedCost, dOmega, rvCols, rvdOmCnt); //TODO
 		if ( B->phiLength > 0 ) {
 			MSparsexvSub(B->psi, dOmega, reducedCost);
 		}

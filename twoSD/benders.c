@@ -48,12 +48,13 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
 		if ( rep != 0 ) {
+			m = cell->omega->cnt;
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
 				errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
 				goto TERMINATE;
 			}
-			cell->omega->cnt = config.MAX_OBS;
+			cell->omega->cnt = m;
 		}
 
 		/* Update omega structure */
@@ -62,7 +63,6 @@ int benders (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 			for ( m = 0; m < cell->omega->cnt; m++ )
 				for ( n = 1; n <= stoc->numOmega; n++ )
 					cell->omega->vals[m][n] -= stoc->mean[n-1];
-			config.MAX_OBS = cell->omega->cnt;
 		}
 
 		tic = clock();

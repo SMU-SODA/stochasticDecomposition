@@ -118,6 +118,7 @@ void verifySDSetup() {
 		config.MASTER_TYPE = PROB_QP;
 		printf("Warning: 2-SD uses a regularized master. MASTER_TYPE changed to %d.\n", config.MASTER_TYPE);
 	}
+	config.SAA = 1;
 
 }//END verifyAlgoSetup()
 

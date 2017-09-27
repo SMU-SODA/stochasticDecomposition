@@ -350,7 +350,9 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, TRUE);
 	if (cell->lambda) freeLambdaType(cell->lambda, TRUE);
 	if (cell->sigma) freeSigmaType(cell->sigma, TRUE);
-	if (cell->omega) freeOmegaType(cell->omega, TRUE);
+	if (config.SAA == 1 ) {
+		if (cell->omega) freeOmegaType(cell->omega, TRUE);
+	}
 
 	/* reset all the clocks */
 	cell->time->repTime = cell->time->iterTime = cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = cell->time->argmaxIter = 0.0;
