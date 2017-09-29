@@ -18,7 +18,7 @@
 
 #define 	NAMESIZE			32
 #define		BLOCKSIZE			256
-#define 	WORDLENGTH 			64
+#define 	WORDLENGTH			8*sizeof(unsigned long)
 
 #define 	INF					DBL_MAX
 
@@ -108,6 +108,7 @@ void freeSparseVector(sparseVector *v);
 int isElementIntvec(intvec vec, int lenVec, int elem);
 intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB);
 
-unsigned long *encodeIntvec(intvec stream, int len, int wordLength);
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength, int maxValue);
+intvec decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue);
 
 #endif /* UTILS_H_ */

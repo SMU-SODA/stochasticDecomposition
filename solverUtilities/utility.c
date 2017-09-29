@@ -495,26 +495,47 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq){
 	return elemUniq;
 }//END findElems()
 
-/* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_ */
-unsigned long *encodeIntvec(intvec stream, int len, int wordLength) {
+/* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_. The _maxValue indicates the maximum value of decoded integer.*/
+unsigned long *encodeIntvec(intvec stream, int len, int wordLength, int maxValue) {
 	unsigned long *codeWord, temp;
-	int j, group, shift, codeLength;
+	int j, group, shift, codeLength, numBits;
 
-	codeLength = ceil((double) len/ (double) wordLength) + 1;
+	numBits = (int) ceil(log2(maxValue));
+	codeLength = ceil((double) numBits*len/ (double) wordLength) + 1;
 
 	if ( !(codeWord = (unsigned long *) arr_alloc(codeLength, unsigned long)))
 		errMsg("allocation", "encodeIntVec", "codeWord", 0);
 
 	for (j = 1; j <= len; j++) {
-		group = j/wordLength + 1;
-		shift = wordLength - (j % wordLength);
+		group = numBits*(j-1)/wordLength + 1;
+		shift = wordLength - numBits*(j % wordLength);
 		temp = (unsigned long) stream[j] << shift;
 		codeWord[group] |= temp;
 	}
 
 	return codeWord;
-}//END encodeIntVec()
+}//END encodeIntvec()
 
+/* Decode the column and return the total number of 1's */
+intvec decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue) {
+	intvec 	stream;
+	int 	j, group, shift, numBits, mask = 0;
+
+    numBits = (int) ceil(log2(maxValue));
+    for ( j = 0; j < numBits; j++ )
+    	mask = (mask << 1) + 1;
+    stream = (intvec) arr_alloc(len+1, int);
+
+    /* Let's decode phi_col */
+    for (j = 1; j <= len; j++) {
+        group = numBits*(j-1)/wordLength + 1;
+        shift = wordLength - numBits*(j % wordLength);
+        stream[j] = (unsigned long) codeWord[group] >> shift;
+        stream[j] = stream[j] & mask;
+    }
+
+    return stream;
+}//END decodeIntvec()
 
 /* This subroutine extracts elements which are common to the two input integer vectors _a_ and _b_ */
 intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
