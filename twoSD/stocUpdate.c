@@ -180,8 +180,8 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 	int		cnt;
 
 	/* encode the row and column status */
-	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH);
-	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH);
+	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
+	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
 
 	/* check to see if the current basis was encountered before */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
@@ -191,6 +191,7 @@ int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int 
 			mem_free(codedRow); mem_free(codedCol);
 #if defined (STOCH_CHECK)
 			printf("An old basis encountered :: %d\n", cnt);
+			printf("Column status = "); printIntvec(cstat, numCols, NULL);
 #endif
 			(*newBasisFlag) = FALSE;
 			return cnt;
@@ -244,7 +245,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 		/* Loop though all the basis to establish feasibility with respect to new observations, and if feasible, compute delta elements for corresponding lambdas. */
 		for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 			/* Establish if the basis is feasible or not. */
-			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
+			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
 
 			if ( basis->obsFeasible[cnt][elemIdx] ) {
 				/* If the basis is feasible, then compute the delta elements. */
@@ -286,7 +287,7 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 			dOmega.val = omega->vals[cnt] + offset[2];
 
 			/* Establish the feasibility of new basis with respect to existing observations */
-			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], basis->feasSenx, dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
+			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], dOmega.val, dOmega.col, dOmega.cnt, num->cols, TOLERANCE);
 
 			if ( basis->obsFeasible[elemIdx][cnt] ) {
 				/* If the basis is feasible, compute the delta elements */
@@ -321,30 +322,41 @@ int calcDelta(numType *num, coordType *coord, basisType *basis, lambdaType *lamb
 	return 0;
 }//END calcDelta()
 
-BOOL checkBasisFeasibility(oneBasis *B, vector senx, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols, double TOLERANCE) {
+BOOL checkBasisFeasibility(oneBasis *B, vector dOmega, intvec rvCols, int rvdOmCnt, int numCols, double TOLERANCE) {
 	vector 	reducedCost;
+	intvec	cstat;
 	int 	c;
 
-	if ( !(reducedCost = (vector) arr_alloc(numCols+1, double)) )
-		errMsg("allocation", "calcDelta", "costVector", 0);
-
 	if ( rvdOmCnt > 0 ) {
+		/* Compute the reduced cost */
+		if ( !(reducedCost = (vector) arr_alloc(numCols+1, double)) )
+			errMsg("allocation", "calcDelta", "costVector", 0);
+
 		copyVector(B->gBar, reducedCost, numCols, TRUE);
 		addVectors(reducedCost, dOmega, rvCols, rvdOmCnt); //TODO
 		if ( B->phiLength > 0 ) {
 			MSparsexvSub(B->psi, dOmega, reducedCost);
 		}
+
+		/* Decode the basis column status to determine how the reduced cost must be evaluated */
+		cstat = decodeIntvec(B->cCode, numCols, WORDLENGTH, 3);
+
+#if defined(STOCH_CHECK)
+		printf("Column status = "); printIntvec(cstat, numCols, NULL);
+#endif
+
 		c = 1;
-		while ( c <= numCols) {
-			if ( (reducedCost[c]) < -TOLERANCE) {
+		while ( c <= numCols ) {
+			if ( reducedCost[c] < -TOLERANCE && cstat[c] != AT_UPPER ) {
 				mem_free(reducedCost);
 				return FALSE;
 			}
 			c++;
 		}
+
+		mem_free(reducedCost);
 	}
 
-	mem_free(reducedCost);
 	return TRUE;
 }//END checkBasisFeasibility()
 
@@ -665,9 +677,9 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 
 /* This function allocates a new basisType data structure which holds all the unique basis discovered by the algorithm. It returns a pointer to the
  * structure. */
-basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int wordLength) {
+basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 	basisType *basis;
-	int n;
+	int numBits = 2; 		/* The column or row status in a basis is indicated by an integer 0,1,2, or 3. We need 2 bits to encode this information. */
 
 	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
 		errMsg("allocation", "newBasisType", "basis", 0);
@@ -675,20 +687,9 @@ basisType *newBasisType(string senx, int numIter, int numCols, int numRows, int 
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
 	if ( !(basis->obsFeasible = (BOOL **) arr_alloc(numIter, BOOL *)))
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
-	if ( !(basis->feasSenx = (vector) arr_alloc(numRows+1, double)) )
-		errMsg("allocation", "newBasisType", "basis->feasSenx", 0);
 	basis->cnt = 0;
-	basis->cCodeLen = ceil(numCols/wordLength) + 1;
-	basis->rCodeLen = ceil(numRows/wordLength) + 1;
-
-	for (n = 1; n <= numRows; n++ ) {
-		if ( senx[n-1] == 'E' )
-			basis->feasSenx[n] = 0;
-		else if ( senx[n-1] == 'L' )
-			basis->feasSenx[n] = -1;
-		else if ( senx[n-1] == 'G' )
-			basis->feasSenx[n] = 1;
-	}
+	basis->cCodeLen = ceil(numBits*numCols/wordLength) + 1;
+	basis->rCodeLen = ceil(numBits*numRows/wordLength) + 1;
 
 	return basis;
 }//END newBasis()
@@ -709,7 +710,6 @@ void freeBasisType(basisType *basis, BOOL partial) {
 			mem_free(basis->vals);
 			mem_free(basis->obsFeasible);
 		}
-		if (basis->feasSenx) mem_free(basis->feasSenx);
 		mem_free(basis);
 	}
 

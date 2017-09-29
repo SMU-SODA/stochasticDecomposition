@@ -153,7 +153,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 3. Solve the master problem to obtain the new candidate solution */
 		if ( solveMaster(prob[0]->num, prob[0]->dBar, cell) ) {
-			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
+			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 			return 1;
 		}
 		cell->time->masterAccumTime += cell->time->masterIter; cell->time->subprobAccumTime += cell->time->subprobIter;
