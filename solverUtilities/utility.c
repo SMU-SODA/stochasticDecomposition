@@ -25,6 +25,29 @@ FILE *openFile(string outputDir, string fname, char *mode) {
 	return fptr;
 }//END openFile()
 
+void createOutputDir(string outputDir, string algoName, string probName) {
+	struct stat st;
+	char buffer[2*BLOCKSIZE];
+
+	strcat(outputDir,algoName);
+	strcat(outputDir,"/");
+	if ( stat(outputDir, &st) ) {
+		sprintf(buffer, "mkdir %s", outputDir);
+		system(buffer);
+	}
+	strcat(outputDir, probName);
+	strcat(outputDir, "/");
+	if ( stat(outputDir, &st) ) {
+		sprintf(buffer, "mkdir %s", outputDir);
+		system(buffer);
+	}
+	else {
+		sprintf(buffer, "rm -r %s*", outputDir);
+		system(buffer);
+	}
+
+}//END createOutputDir()
+
 void errMsg(string type, string place, string item, int quit){
 	fprintf(stderr, "\nError :: Type - %s;  Function - %s(); Item - %s\n", type, place, item);
 	if (quit)
