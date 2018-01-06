@@ -19,6 +19,7 @@ typedef struct {
 	int		prevRows;		/* number of rows in previous stage, is set to 0 for root-stage (master) */
 	int		prevCols;		/* number of columns in previous stage, is set to 0 for root-stage (master) */
 	int     cntCcols;  		/* number of columns in T which have at least one non-zero element */
+	int     cntCrows;  		/* number of rows in T which have at least one non-zero element */
 	int		numRV;			/* total number of random variables */
 	int 	rvRowCnt;		/* number of rows effected by randomness */
 	int 	rvColCnt;		/* number of columns effected by randomness */
@@ -34,21 +35,18 @@ typedef struct {
 
 /* structure to hold coordinate information at each stage */
 typedef struct {
-	intvec	omegaRow;		/* list of all random variable rows */
-	intvec	omegaCol;		/* list of all random variable columns */
-	intvec	colsC;			/* list of columns in transfer matrix with at least non-zero element in them */
+	intvec	allRVRows;		/* list of all random variable rows */
+	intvec	allRVCols;		/* list of all random variable columns */
+	intvec	CCols;			/* list of columns in transfer matrix with at least non-zero element in them */
+	intvec	CRows;			/* list of rows in transfer matrix with at least non-zero element in them */
 	intvec	rvCols;			/* list of all columns in transfer matrix with at least one random element */
 	intvec	rvRows;			/* list of all rows with at least one random variable */
+	intvec	rvbOmRows;		/* list of all right-hand sides with random variables */
+	intvec	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
+	intvec	rvCOmCols;		/* list of all columns with coefficients with random variables */
+	intvec	rvCOmRows;		/* list of all rows with coefficients with random variables */
+	intvec	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
-
-/* structure to hold exogenous information at each stage */
-typedef struct {
-	int		numRV;			/* total number of random variables */
-	int		beg;			/* indicates the beginning of stage random variables in the entire observation vector */
-	intvec	row;			/* row coordinate for random variable; -1 indicates cost coefficients */
-	intvec	col;			/* column coordinates for random variable; -1 indicates right-hand side */
-	vector	mean;			/* vector of mean values */
-}omegastuff;
 
 /* structure for the problem type:
  * c_t^\top x_t + \min  d_t^\top u_t + \expect{h_{t+}(s_{t+})}
@@ -60,7 +58,6 @@ typedef struct{
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
 	coordType		*coord;			/* structure which holds the necessary coordinates of the problem */
-	omegastuff		*omegas;		/* exogenous information relevant to the problem */
 	sparseVector	*aBar;			/* dynamics vector a_{t+} */
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */
@@ -69,6 +66,8 @@ typedef struct{
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
+	vector			mean;			/* Vector of mean values of random variables. */
+	int				omBeg;			/* Beginning of omega vector */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
 
@@ -78,7 +77,6 @@ vector meanProblem(oneProblem *orig, stocType *stoc);
 vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
-void freeOmegastuff(omegastuff *omegas);
 void printDecomposeSummary(FILE *fptr, string probName, timeType *tim, probType **prob);
 
 #endif /* PROB_H_ */

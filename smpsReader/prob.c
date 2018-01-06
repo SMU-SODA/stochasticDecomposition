@@ -310,34 +310,33 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 	for ( t = 0; t < tim->numStages; t++ ) {
 		if ( !(prob[t]->num = (numType *) mem_malloc(sizeof(numType))) )
 			errMsg("allocation", "newProb", "prob[t]->num",0);
+
 		prob[t]->num->cols = prob[t]->sp->mac;
 		prob[t]->num->rows = prob[t]->sp->mar;
-		if ( t == 0 )
-			prob[t]->num->prevCols = prob[t]->num->prevRows = 0;
-		else {
-			prob[t]->num->prevCols = prob[t-1]->num->cols;
-			prob[t]->num->prevRows = prob[t-1]->num->rows;
-		}
-	}
-
-	/* decompose the stochastic elements of the problem */
-	for ( t = 0; t < tim->numStages; t++ ) {
-		if ( t == 0)
-			prob[t]->omegas = NULL;
-		else {
-			if ( !(prob[t]->omegas = (omegastuff *) mem_malloc(sizeof(omegastuff))) )
-				errMsg("allocation", "newProb", "prob->omegas", 0);
-			prob[t]->omegas->col = NULL; prob[t]->omegas->mean = NULL; prob[t]->omegas->row = NULL;
-			prob[t]->omegas->numRV = 0; prob[t]->omegas->beg = -1;
-		}
+		prob[t]->num->intCols = prob[t]->sp->numInt;
+		prob[t]->num->binCols = prob[t]->sp->numBin;
 		prob[t]->num->numRV = prob[t]->num->rvColCnt = prob[t]->num->rvRowCnt = 0;
 		prob[t]->num->rvAOmCnt = prob[t]->num->rvBOmCnt = prob[t]->num->rvCOmCnt = prob[t]->num->rvDOmCnt = 0;
 		prob[t]->num->rvaOmCnt = prob[t]->num->rvbOmCnt = prob[t]->num->rvcOmCnt = prob[t]->num->rvdOmCnt = 0;
-		prob[t]->num->intCols = prob[t]->sp->numInt;
-		prob[t]->num->binCols = prob[t]->sp->numBin;
+
+		if ( t == 0 ) {
+			prob[t]->mean = NULL;
+			prob[t]->coord = NULL;
+			prob[t]->num->prevCols = prob[t]->num->prevRows = prob[t]->num->cntCcols = prob[t]->num->cntCrows = 0;
+		}
+		else {
+			if ( !(prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType))) )
+				errMsg("allocation", "newProb", "prob[t]->coord",0);
+			prob[t]->num->prevCols = prob[t-1]->num->cols;
+			prob[t]->num->prevRows = prob[t-1]->num->rows;
+			prob[t]->coord->CCols = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
+			prob[t]->coord->CRows = findElems(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
+			prob[t]->coord->allRVCols = prob[t]->coord->allRVRows = prob[t]->coord->rvCols = prob[t]->coord->rvRows = NULL;
+			prob[t]->coord->rvCOmCols = prob[t]->coord->rvCOmRows = prob[t]->coord->rvbOmRows = prob[t]->coord->rvdOmCols = NULL;
+		}
 	}
 
-	/* go through the list of random variable and assign them to appropriate parts (right-hand side and objective coefficients) */
+	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to appropriate parts (right-hand side and objective coefficients) */
 	for ( m = 0; m < stoc->numOmega; m++ ) {
 		if ( stoc->col[m] == -1 ) {
 			/* randomness in right-hand side */
@@ -365,113 +364,94 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 			return NULL;
 		}
 
-		if ( prob[t]->omegas->numRV == 0) {
-			if ( !(prob[t]->omegas->col = (intvec) arr_alloc(stoc->numOmega+1, int)) )
-				errMsg("allocation", "newProb", "prob->omegas->col", 0);
-			if ( !(prob[t]->omegas->row = (intvec) arr_alloc(stoc->numOmega+1, int)) )
-				errMsg("allocation", "newProb", "prob->omegas->row", 0);
-			if ( !(prob[t]->omegas->mean = (vector) arr_alloc(stoc->numOmega+1, double)) )
-				errMsg("allocation", "newProb", "prob->omegas->mean", 0);
-			prob[t]->omegas->beg = m;
+		if ( prob[t]->num->numRV == 0) {
+			if ( !(prob[t]->coord->allRVCols = (intvec) arr_alloc(stoc->numOmega+1, int)) )
+				errMsg("allocation", "newProb", "prob->coord->allRVCols", 0);
+			if ( !(prob[t]->coord->allRVRows= (intvec) arr_alloc(stoc->numOmega+1, int)) )
+				errMsg("allocation", "newProb", "prob->coord->allRVRows", 0);
+			if ( !(prob[t]->coord->rvOffset = (intvec) arr_alloc(3, int)))
+				errMsg("allocation", "newProb", "prob->coord->rOffset", 0);
+			if ( !(prob[t]->mean = (vector) arr_alloc(stoc->numOmega+1, double)) )
+				errMsg("allocation", "newProb", "prob->mean", 0);
+			prob[t]->omBeg = m;
 		}
 
-		if ( stoc->col[m] == -1 )
-			prob[t]->omegas->col[prob[t]->omegas->numRV+1] = -1;
-		else
-			prob[t]->omegas->col[prob[t]->omegas->numRV+1] = stoc->col[m] - tim->col[t]+1;
-		if ( stoc->row[m] == -1 )
-			prob[t]->omegas->row[prob[t]->omegas->numRV+1] = -1;
-		else
-			prob[t]->omegas->row[prob[t]->omegas->numRV+1] = stoc->row[m] - tim->row[t]+1;
-		prob[t]->omegas->mean[prob[t]->omegas->numRV+1] = stoc->mean[m];
-		prob[t]->omegas->numRV++;
 		prob[t]->num->numRV++;
-		if ( stoc->row[m] == -1 )
-			/* random variable in objective coefficient */
-			prob[t]->num->rvdOmCnt++;
-		if ( stoc->col[m] == -1)
-			/* random variable in right-hand side */
-			prob[t]->num->rvbOmCnt++;
-		else if ( stoc->col[m] < tim->col[t] )
-			/* random variable in transfer matrix */
-			prob[t]->num->rvCOmCnt++;
-	}
+		prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
+		prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
+		prob[t]->mean[prob[t]->num->numRV] = stoc->mean[m];
 
-	for ( t = 1; t < tim->numStages; t++ ) {
-		if (prob[t]->omegas->numRV == 0) {
-			freeOmegastuff(prob[t]->omegas);
-			prob[t]->omegas = NULL;
-		}
-		else {
-			prob[t]->omegas->col = (intvec) mem_realloc(prob[t]->omegas->col, (prob[t]->omegas->numRV+1)*sizeof(int));
-			prob[t]->omegas->row = (intvec) mem_realloc(prob[t]->omegas->row, (prob[t]->omegas->numRV+1)*sizeof(int));
-			prob[t]->omegas->mean = (vector) mem_realloc(prob[t]->omegas->mean, (prob[t]->omegas->numRV+1)*sizeof(double));
-		}
-	}
-
-	/* save coordinate information in coordType */
-	prob[0]->coord = NULL;
-	for ( t = 1; t < tim->numStages; t++ ) {
-		if ( !(prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType))) )
-			errMsg("allocation", "newProb", "prob[t]->coord",0);
-
-		if ( prob[t]->omegas != NULL ) {
-			if ( !(prob[t]->coord->omegaCol = (intvec) arr_alloc(prob[t]->num->numRV+1, int)) )
-				errMsg("allocation", "newProb", "prob[t]->coord->omegaCol", 0);
-			if ( !(prob[t]->coord->omegaRow = (intvec) arr_alloc(prob[t]->num->numRV+1, int)) )
-				errMsg("allocation", "newProb", "prob[t]->coord->omegaCol", 0);
-			for ( m = 1; m <= prob[t]->num->numRV; m++ ) {
-				prob[t]->coord->omegaCol[m] = prob[t]->omegas->col[m];
-				prob[t]->coord->omegaRow[m] = prob[t]->omegas->row[m];
+		if ( stoc->col[m] == -1 && stoc->row[m] != -1 ) {
+			/* Right-hand side */
+			if ( prob[t]->num->rvbOmCnt == 0 ) {
+				prob[t]->coord->rvbOmRows = (intvec) arr_alloc(stoc->numOmega+1, int);
+				prob[t]->coord->rvOffset[0] = m;
 			}
-			prob[t]->coord->rvCols = findElems(prob[t]->coord->omegaCol, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
-			prob[t]->coord->rvRows = findElems(prob[t]->coord->omegaRow, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
+			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
+		}
+		else if ( stoc->col[m] != -1 && stoc->row[m] != -1 ) {
+			/* Transfer matrix */
+			if ( prob[t]->num->rvCOmCnt == 0 ) {
+				prob[t]->coord->rvCOmCols = (intvec) arr_alloc(stoc->numOmega, int);
+				prob[t]->coord->rvCOmRows = (intvec) arr_alloc(stoc->numOmega, int);
+				prob[t]->coord->rvOffset[1] = m;
+			}
+			prob[t]->num->rvCOmCnt++;
+			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
+			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
 		}
 		else {
-			prob[t]->coord->omegaCol = NULL;
-			prob[t]->coord->omegaRow = NULL;
-			prob[t]->coord->rvCols = NULL;
-			prob[t]->coord->rvRows = NULL;
+			/* Cost coefficients */
+			if ( prob[t]->num->rvdOmCnt == 0 ) {
+				prob[t]->coord->rvdOmCols = (intvec) arr_alloc(stoc->numOmega+1,int);
+				prob[t]->coord->rvOffset[2] = m;
+			}
+			prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 		}
-		prob[t]->coord->colsC = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
+	}
+
+	for ( t = 1; t < tim->numStages; t++ ) {
+		prob[t]->coord->rvCols = findElems(prob[t]->coord->allRVCols, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
+		prob[t]->coord->rvRows = findElems(prob[t]->coord->allRVRows, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
 	}
 
 	/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
-	cOffset = 0;
 	for ( t = 1; t < tim->numStages; t++ ) {
-		for ( m = 1; m <= prob[t]->num->numRV; m++ ) {
-			if ( prob[t]->coord->omegaCol[m] == -1) {
-				i = 1;
-				while ( i <= prob[t]->bBar->cnt ) {
-					if ( prob[t]->bBar->col[i] == prob[t]->coord->omegaRow[m])
-						break;
-					i++;
-				}
-				prob[t]->bBar->val[i] = stoc->mean[cOffset+m-1];
+		/* Right-hand side */
+		for ( m = 1; m <= prob[t]->num->rvbOmCnt; m++ ) {
+			i = 1;
+			while ( i <= prob[t]->bBar->cnt ) {
+				if ( prob[t]->bBar->col[i] == prob[t]->coord->rvbOmRows[m])
+					break;
+				i++;
 			}
-			else if (prob[t]->coord->omegaRow[m] == -1) {
-				i = 1;
-				while ( i <= prob[t]->dBar->cnt) {
-					if ( prob[t]->dBar->col[i] == prob[t]->coord->omegaCol[m])
-						break;
-					i++;
-				}
-				prob[t]->dBar->val[i] = stoc->mean[cOffset+m-1];
-			}
-			else {
-				i = 1;
-				while ( i <= prob[t]->Cbar->cnt ) {
-					if ( prob[t]->Cbar->col[i] == prob[t]->coord->omegaCol[m] && prob[t]->Cbar->row[i] == prob[t]->coord->omegaRow[m] )
-						break;
-					i++;
-				}
-				prob[t]->Cbar->val[i] = stoc->mean[cOffset+m-1];
-			}
+			prob[t]->bBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[0]+m-1];
 		}
-		cOffset += prob[t]->num->numRV;
+
+		/* Transfer matrix */
+		for ( m = 1; m <= prob[t]->num->rvCOmCnt; m++ ) {
+			i = 1;
+			while ( i <= prob[t]->num->rvCOmCnt ) {
+				if ( prob[t]->Cbar->col[i] == prob[t]->coord->rvCOmCols[m] && prob[t]->Cbar->row[i] == prob[t]->coord->rvCOmRows[m] )
+					break;
+				i++;
+			}
+			prob[t]->Cbar->val[i] = stoc->mean[prob[t]->coord->rvOffset[1]+m-1];
+		}
+
+		/* Cost coefficients */
+		for ( m = 1; m <= prob[t]->num->rvdOmCnt; m++ ) {
+			i = 1;
+			while ( i <= prob[t]->dBar->cnt ) {
+				if ( prob[t]->dBar->col[i] == prob[t]->coord->rvdOmCols[m])
+					break;
+				i++;
+			}
+			prob[t]->dBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[2]+m-1];
+		}
 	}
 
-#if 1
+#if defined(DECOMPOSE_CHECK)
 	t = 1;
 	prob[t]->sp->lp = setupProblem(prob[t]->sp->name, prob[t]->sp->type, prob[t]->sp->mac, prob[t]->sp->mar, prob[t]->sp->objsen, prob[t]->sp->objx, prob[t]->sp->rhsx, prob[t]->sp->senx,
 			prob[t]->sp->matbeg, prob[t]->sp->matcnt, prob[t]->sp->matind, prob[t]->sp->matval, prob[t]->sp->bdl, prob[t]->sp->bdu, NULL, prob[t]->sp->cname, prob[t]->sp->rname,
@@ -718,19 +698,19 @@ void freeProbType(probType **prob, int T) {
 	if ( prob ) {
 		for ( t = 0; t < T; t++ ) {
 			if (prob[t]) {
-				if ( prob[t]->Abar ) freeSparseMatrix(prob[t]->Abar);
-				if ( prob[t]->Bbar ) freeSparseMatrix(prob[t]->Bbar);
-				if ( prob[t]->Cbar ) freeSparseMatrix(prob[t]->Cbar);
-				if ( prob[t]->Dbar ) freeSparseMatrix(prob[t]->Dbar);
-				if ( prob[t]->aBar ) freeSparseVector(prob[t]->aBar);
-				if ( prob[t]->bBar ) freeSparseVector(prob[t]->bBar);
-				if ( prob[t]->cBar ) freeSparseVector(prob[t]->cBar);
-				if ( prob[t]->dBar ) freeSparseVector(prob[t]->dBar);
-				if ( prob[t]->sp ) freeOneProblem(prob[t]->sp);
-				if ( prob[t]->name) mem_free(prob[t]->name);
-				if ( prob[t]->num ) mem_free(prob[t]->num);
-				if ( prob[t]->coord) freeCoordType(prob[t]->coord);
-				if ( prob[t]->omegas) freeOmegastuff(prob[t]->omegas);
+				if (prob[t]->Abar) freeSparseMatrix(prob[t]->Abar);
+				if (prob[t]->Bbar) freeSparseMatrix(prob[t]->Bbar);
+				if (prob[t]->Cbar) freeSparseMatrix(prob[t]->Cbar);
+				if (prob[t]->Dbar) freeSparseMatrix(prob[t]->Dbar);
+				if (prob[t]->aBar) freeSparseVector(prob[t]->aBar);
+				if (prob[t]->bBar) freeSparseVector(prob[t]->bBar);
+				if (prob[t]->cBar) freeSparseVector(prob[t]->cBar);
+				if (prob[t]->dBar) freeSparseVector(prob[t]->dBar);
+				if (prob[t]->sp) freeOneProblem(prob[t]->sp);
+				if (prob[t]->name) mem_free(prob[t]->name);
+				if (prob[t]->num) mem_free(prob[t]->num);
+				if (prob[t]->coord) freeCoordType(prob[t]->coord);
+				if (prob[t]->mean) mem_free(prob[t]->mean);
 				mem_free(prob[t]);
 			}
 		}
@@ -742,25 +722,20 @@ void freeProbType(probType **prob, int T) {
 /* free up the coordType */
 void freeCoordType (coordType *coord) {
 
-	if (coord->omegaCol) mem_free(coord->omegaCol);
-	if (coord->omegaRow) mem_free(coord->omegaRow);
-	if (coord->colsC) mem_free(coord->colsC);
+	if (coord->allRVCols) mem_free(coord->allRVCols);
+	if (coord->allRVRows) mem_free(coord->allRVRows);
+	if (coord->CCols) mem_free(coord->CCols);
+	if (coord->CRows) mem_free(coord->CRows);
 	if (coord->rvCols) mem_free(coord->rvCols);
 	if (coord->rvRows) mem_free(coord->rvRows);
-
+	if (coord->rvbOmRows) mem_free(coord->rvbOmRows);
+	if (coord->rvdOmCols) mem_free(coord->rvdOmCols);
+	if (coord->rvCOmCols) mem_free(coord->rvCOmCols);
+	if (coord->rvCOmRows) mem_free(coord->rvCOmRows);
+	if (coord->rvOffset) mem_free(coord->rvOffset);
 	mem_free(coord);
 
 }//END freeCoordType()
-
-/* free up omegaStuff */
-void freeOmegastuff(omegastuff *omegas) {
-
-	if (omegas->col) mem_free(omegas->col);
-	if (omegas->row) mem_free(omegas->row);
-	if (omegas->mean) mem_free(omegas->mean);
-	mem_free(omegas);
-
-}//END freeOmegastuff()
 
 void printDecomposeSummary(FILE *fptr, string probName, timeType *tim, probType **prob) {
 	int t;
@@ -782,8 +757,8 @@ void printDecomposeSummary(FILE *fptr, string probName, timeType *tim, probType 
 		fprintf(fptr,  "Number of decision variables (u_t) = %d\t\t", prob[t]->sp->mac);
 		fprintf(fptr,  "(Continuous = %d\tInteger = %d\tBinary = %d)\n", prob[t]->sp->mac - prob[t]->sp->numInt - prob[t]->sp->numBin, prob[t]->sp->numInt, prob[t]->sp->numBin);
 		fprintf(fptr,  "Number of constraints              = %d\n", prob[t]->sp->mar);
-		if ( prob[t]->omegas != NULL ) {
-			fprintf(fptr,  "Number of random variables (omega) = %d\t\t", prob[t]->omegas->numRV);
+		if ( prob[t]->num->numRV != 0 ) {
+			fprintf(fptr,  "Number of random variables (omega) = %d\t\t", prob[t]->num->numRV);
 			fprintf(fptr,  "(a_t = %d; b_t = %d; c_t = %d; d_t = %d; A_t = %d; B_t = %d; C_t = %d; D_t = %d)\n", prob[t]->num->rvaOmCnt, prob[t]->num->rvbOmCnt, prob[t]->num->rvcOmCnt, prob[t]->num->rvdOmCnt,
 					prob[t]->num->rvAOmCnt, prob[t]->num->rvBOmCnt, prob[t]->num->rvCOmCnt, prob[t]->num->rvDOmCnt);
 		}

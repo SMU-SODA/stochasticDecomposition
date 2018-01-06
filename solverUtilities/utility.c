@@ -424,12 +424,12 @@ void printVector(vector vec, int len, FILE *fptr){
 
 	if ( fptr == NULL ) {
 		for ( n = 1; n <= len; n++ )
-			printf("%4.3lf ", vec[n]);
+			printf("%4.6lf ", vec[n]);
 		printf("\n");
 	}
 	else {
 		for ( n = 1; n <= len; n++ )
-			fprintf(fptr, "%4.3lf\t", vec[n]);
+			fprintf(fptr, "%4.6lf\t", vec[n]);
 		fprintf(fptr, "\n");
 	}
 
@@ -439,7 +439,7 @@ void printVectorWName(vector vec, string *vecName, int len, FILE *fptr){
 	int n;
 
 	for ( n = 1; n <= len; n++ ) {
-		fprintf(fptr, "%s\t\t%4.3lf\n ", vecName[n-1],vec[n]);
+		fprintf(fptr, "%s\t\t%4.6lf\n ", vecName[n-1],vec[n]);
 		fprintf(fptr, "\n");
 	}
 

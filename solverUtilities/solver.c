@@ -151,7 +151,7 @@ int getDualSlacks(LPptr lp, vector Dj, int length){
 int getBasis(LPptr lp, intvec cstat, intvec rstat){
 	int status;
 
-	status = CPXgetbase(env, lp, cstat, rstat);
+	status = CPXgetbase(env, lp, cstat+1, rstat+1);
 	if ( status )
 		solverErrmsg(status);
 
