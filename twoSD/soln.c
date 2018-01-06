@@ -50,7 +50,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	}
 
 	if ( changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar) ) {
-		errMsg("setup", "newCell", "failed to add the proximal term to QP", 0);
+		errMsg("setup", "checkImprovement", "failed to add the proximal term to QP", 0);
 		return 1;
 	}
 
