@@ -20,7 +20,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	int 	status, stat1, i;
 
 	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts, lb) ) {
-		errMsg("algorithm", "solveMaster", "failed to change the eta column coefficients", 0);
+		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
 
@@ -39,7 +39,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	/* solve the master problem */
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTERTYPE, &stat1) ) {
 		writeProblem(cell->master->lp, "error.lp");
-		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
+		errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
 		return 1;
 	}
 
@@ -49,7 +49,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, 
 	/* Get the most recent optimal solution to master program */
 	status = getPrimal(cell->master->lp, cell->candidX, num->cols);
 	if ( status ) {
-		errMsg("algorithm", "solveMaster", "failed to obtain the primal solution for master", 0);
+		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
 	}
 
@@ -129,7 +129,7 @@ int constructQP(probType *prob, LPptr lp, vector incumbX) {
 	int cnt;
 
 	if ( !(rhs = (vector) arr_alloc(prob->num->cols, double)))
-		errMsg("allocation", "constructQp", "rhs", 0);
+		errMsg("allocation", "constructQP", "rhs", 0);
 	if ( (!(indices = (intvec) arr_alloc(prob->num->cols, int))) )
 		errMsg("allocation", "constructQP", "indices", 0);
 
@@ -143,13 +143,13 @@ int constructQP(probType *prob, LPptr lp, vector incumbX) {
 
 	/* Now we change the right-hand of the master problem. */
 	if ( changeRHS(lp, prob->num->rows, indices, rhs + 1) ) {
-		errMsg("algorithm", "newMaster", "failed to change the rhs", 0);
+		errMsg("algorithm", "constructQP", "failed to change the rhs", 0);
 		return 1;
 	}
 
 	/* change QP bounds */
 	if ( changeQPbds(lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX) ) {
-		errMsg("algorithm", "newMaster", "failed to change the bounds", 0);
+		errMsg("algorithm", "constructQP", "failed to change the bounds", 0);
 		return 1;
 	}
 
@@ -172,7 +172,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, doub
 
 		status = changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum+1);
 		if ( status ) {
-			errMsg("solver", "chgEtaCol", "failed to change eta column in the stage problem", 0);
+			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
 			return 1;
 		}
 	}
@@ -220,7 +220,7 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 
 	/* Now we change the right-hand of the master problem. */
 	if ( changeRHS(lp, cuts->cnt, indices, rhs) ) {
-		errMsg("solver", "changeQPrhs", "failed to change the right-hand side in the solver", 0);
+		errMsg("solver", "updateRHS", "failed to change the right-hand side in the solver", 0);
 		return 1;
 	}
 
@@ -236,7 +236,7 @@ int changeQPproximal(LPptr lp, int numCols, double sigma) {
 	vector qsepvec;
 
 	if (!(qsepvec = arr_alloc(numCols+1, double)))
-		errMsg("Allocation", "constructQP", "qsepvec",0);
+		errMsg("Allocation", "changeQPproximal", "qsepvec",0);
 
 	/* Construct Q matrix, which is simply a diagonal matrix. */
 	for (n = 0; n < numCols; n++)
@@ -245,7 +245,7 @@ int changeQPproximal(LPptr lp, int numCols, double sigma) {
 
 	/* Now copy the Q matrix for QP problem. */
 	if ( copyQPseparable(lp, qsepvec) ) {
-		errMsg("solver", "constructQP", "failed to copy Q matrix", 0);
+		errMsg("solver", "changeQPproximal", "failed to copy Q matrix", 0);
 		return 1;
 	}
 
@@ -259,9 +259,9 @@ int changeQPrhs(probType *prob, cellType *cell) {
 	intvec 	indices;
 
 	if (!(rhs =(vector) arr_alloc(cell->master->mar+cell->maxCuts+1, double)))
-		errMsg("Allocation", "changeRhs", "rhs",0);
+		errMsg("Allocation", "changeQPrhs", "rhs",0);
 	if (!(indices =(intvec) arr_alloc(cell->master->mar+cell->maxCuts, int)))
-		errMsg("Allocation", "changeRhs", "indices",0);
+		errMsg("Allocation", "changeQPrhs", "indices",0);
 
 	/* Be careful with the one_norm!! In the CxX() routine, it assumes the 0th element is reserved for the 1_norm, in the returned vector, the T sparse
          vector, and the x vector. */
@@ -289,7 +289,7 @@ int changeQPrhs(probType *prob, cellType *cell) {
 	/* Now we change the right-hand of the master problem. */
 	status = changeRHS(cell->master->lp, offset, indices, rhs + 1);
 	if ( status ) {
-		errMsg("algorithm", "changeRhs", "failed to change the rhs", 0);
+		errMsg("algorithm", "changeQPrhs", "failed to change the rhs", 0);
 		return 1;
 	}
 #ifdef RHS_CHECK
@@ -310,18 +310,18 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 	char 	*llu, *ulu;
 
 	if (!(lbounds = arr_alloc(numCols, double)))
-		errMsg("Allocation", "changeBounds", "lbounds",0);
+		errMsg("Allocation", "changeQPbds", "lbounds",0);
 	if (!(lindices = arr_alloc(numCols, int)))
-		errMsg("Allocation", "change_bounds", "lindices",0);
+		errMsg("Allocation", "changeQPbds", "lindices",0);
 	if (!(llu = arr_alloc(numCols, char)))
-		errMsg("Allocation", "changeBounds", "llu",0);
+		errMsg("Allocation", "changeQPbds", "llu",0);
 
 	if (!(ubounds = arr_alloc(numCols, double)))
-		errMsg("Allocation", "change_bounds", "ubounds",0);
+		errMsg("Allocation", "changeQPbds", "ubounds",0);
 	if (!(uindices = arr_alloc(numCols, int)))
-		errMsg("Allocation", "changeBounds", "uindices",0);
+		errMsg("Allocation", "changeQPbds", "uindices",0);
 	if (!(ulu = arr_alloc(numCols, char)))
-		errMsg("Allocation", "changeBounds", "ulu",0);
+		errMsg("Allocation", "changeQPbds", "ulu",0);
 
 	/* Change the Upper Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
@@ -332,7 +332,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 
 	status = changeBDS(lp, numCols, uindices, ulu, ubounds);
 	if (status) {
-		errMsg("algorithm", "changeQP", "failed to change the upper bound in the solver", 0);
+		errMsg("algorithm", "changeQPbds", "failed to change the upper bound in the solver", 0);
 		return 1;
 	}
 
@@ -345,7 +345,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 
 	status = changeBDS(lp, numCols, lindices, llu, lbounds);
 	if (status) {
-		errMsg("algorithm", "changeQP", "failed to change the lower bound in the solver", 0);
+		errMsg("algorithm", "changeQPbds", "failed to change the lower bound in the solver", 0);
 		return 1;
 	}
 
@@ -364,7 +364,7 @@ oneProblem *newMaster(probType *prob, vector xk) {
 	char        *q;
 
 	if (!(master = (oneProblem *) mem_malloc (sizeof(oneProblem))))
-		errMsg("Memory allocation", "new_master", "Faile to allocate memory to mcell->sp", 0);
+		errMsg("Memory allocation", "newMaster", "Faile to allocate memory to mcell->sp", 0);
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Allocating memory to master -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	master->type 	= config.MASTERTYPE;                  	/* type of problem: LP, QP, MIP or MIQP */
@@ -381,41 +381,41 @@ oneProblem *newMaster(probType *prob, vector xk) {
 
 	/* Allocate memory to the information whose type is string */
 	if (!(master->name = (string) arr_alloc(NAMESIZE, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->name",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->name",0);
 	if (!(master->senx = (string) arr_alloc(master->marsz,char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->senx",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->senx",0);
 	if (!(master->ctype = (string) arr_alloc(master->macsz,char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->ctype",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->ctype",0);
 	if (!(master->objname = (string) arr_alloc(NAMESIZE,char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objname",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->objname",0);
 	if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->rname",0);
 	if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->rstore",0);
 	if (!(master->cname = (string*) arr_alloc(master->macsz,string)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cname",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->cname",0);
 	if (!(master->cstore = (string) arr_alloc(master->cstorsz, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cstore",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->cstore",0);
 
 	/* Allocate memory to the information whose type is vector */
 	if (!(master->objx = (vector) arr_alloc(master->macsz, double)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objx",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->objx",0);
 	if (!(master->rhsx = (vector) arr_alloc(master->marsz, double)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rhsx",0);
+		errMsg("Allocation", "newMaster", "Fail to allocate memory to master->rhsx",0);
 	if (!(master->matval = (vector) arr_alloc(master->matsz, double)))
-		errMsg("allocation", "new_master", "master->matval",0);
+		errMsg("allocation", "newMaster", "master->matval",0);
 	if (!(master->bdl = (vector) arr_alloc(master->macsz, double)))
-		errMsg("allocation", "new_master", "master->bdl",0);
+		errMsg("allocation", "newMaster", "master->bdl",0);
 	if (!(master->bdu = (vector) arr_alloc(master->macsz, double)))
-		errMsg("allocation", "new_master", "master->bdu",0);
+		errMsg("allocation", "newMaster", "master->bdu",0);
 
 	/* Allocate memory to the information whose type is intvec */
 	if (!(master->matbeg = (intvec) arr_alloc(master->macsz, int)))
-		errMsg("allocation", "new_master", "master->matbeg",0);
+		errMsg("allocation", "newMaster", "master->matbeg",0);
 	if (!(master->matcnt = (intvec) arr_alloc(master->macsz, int)))
-		errMsg("allocation", "new_master", "master->matcnt",0);
+		errMsg("allocation", "newMaster", "master->matcnt",0);
 	if (!(master->matind = (intvec) arr_alloc(master->matsz, int)))
-		errMsg("allocation", "new_master", "master->matind",0);
+		errMsg("allocation", "newMaster", "master->matind",0);
 
 	strcpy(master->name, prob->sp->name);           /* Copy problem name */
 	strcpy(master->objname, prob->sp->objname);     /* Copy objective name */
@@ -484,14 +484,14 @@ oneProblem *newMaster(probType *prob, vector xk) {
 	/* Load the copy into CPLEX */
 	master->lp = setupProblem(master->name, master->type, master->mac, master->mar, master->objsen, master->objx, master->rhsx, master->senx, master->matbeg, master->matcnt,master->matind, master->matval, master->bdl, master->bdu, NULL, master->cname, master->rname, master->ctype);
 	if ( master->lp == NULL ) {
-		errMsg("Problem Setup", "new_master", "failed to setup master problem in the solver",0);
+		errMsg("Problem Setup", "newMaster", "failed to setup master problem in the solver",0);
 		return NULL;
 	}
 
 #if 0
 	status = writeProblem(master->lp, "newMaster.lp");
 	if ( status ) {
-		errMsg("write problem", "new_master", "failed to write master problem to file",0);
+		errMsg("write problem", "newMaster", "failed to write master problem to file",0);
 		return NULL;
 	}
 #endif

@@ -22,7 +22,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 	int  	status, n;
 
     if ( !(indices = (intvec) arr_alloc(prob->num->rows, int)) )
-        errMsg("allocation", "solve_subporb", "indices", 0);
+        errMsg("allocation", "solveSubprob", "indices", 0);
     for ( n = 0; n < prob->num->rows; n++ )
     	indices[n] = n;
 
@@ -35,7 +35,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
 
     /* change the right-hand side in the solver */
     if ( changeRHS(cell->subprob->lp, prob->num->rows, indices, rhs + 1) ) {
-        errMsg("solver", "solve_subprob", "failed to change the right-hand side in the solver",0);
+        errMsg("solver", "solveSubprob", "failed to change the right-hand side in the solver",0);
         return 1;
     }
 
@@ -46,7 +46,7 @@ int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOO
     /* (c) Solve the subproblem to obtain the optimal dual solution. */
     if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
         if ( status == STAT_INFEASIBLE ) {
-            printf("Subproblem is infeasible: need to create feasibility cut.\n");
+            errMsg("solver", "solveSubprob", "Subproblem is infeasible: need to create feasibility cut.", 0);
             return 1;
         }
         else {
@@ -107,7 +107,7 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
     Comega.row = coord->omegaRow + num->rvbOmCnt; Comega.val = obs + num->rvbOmCnt;
 
     if (!(rhs =(vector) arr_alloc(num->rows+1, double)))
-        errMsg("Allocation", "computeRhs", "rhs",0);
+        errMsg("Allocation", "computeRHS", "rhs",0);
 
     /* Start with the values of b(omega) -- both fixed and varying */
     for (cnt = 1; cnt <= bBar->cnt; cnt++)
@@ -147,9 +147,9 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
     Comega.row = coord->omegaRow + num->rvbOmCnt; Comega.val = observ + num->rvbOmCnt;
 
     if ( !(indices = (intvec) arr_alloc(num->rows, int)) )
-        errMsg("allocation", "chgRHSwRand", "indices", 0);
+        errMsg("allocation", "chgRHSwObserv", "indices", 0);
     if ( !(rhs = (vector) arr_alloc(num->rows+1, double)) )
-        errMsg("allocation", "chgRHSwRand", "rhs", 0);
+        errMsg("allocation", "chgRHSwObserv", "rhs", 0);
 
     /* copy right-hand side modified with mean information */
     for ( cnt = 1; cnt <= num->rows; cnt++ ) {
@@ -167,7 +167,7 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
     /* change the right-hand side in the solver */
     stat1 = changeRHS(lp, num->rows, indices, rhs + 1);
     if ( stat1 ) {
-        errMsg("solver", "chgRHSwRand", "failed to change the right-hand side in the solver",0);
+        errMsg("solver", "chgRHSwObserv", "failed to change the right-hand side in the solver",0);
         return 1;
     }
 
@@ -181,7 +181,7 @@ oneProblem *newSubprob(probType *subprob) {
     /* since the basic structure of subproblem is not modified during the course of the algorithm, we just load it onto the solver */
     subprob->sp->lp = setupProblem(subprob->sp->name, subprob->sp->type, subprob->sp->mac, subprob->sp->mar, subprob->sp->objsen, subprob->sp->objx, subprob->sp->rhsx, subprob->sp->senx,subprob->sp->matbeg, subprob->sp->matcnt, subprob->sp->matind, subprob->sp->matval, subprob->sp->bdl, subprob->sp->bdu, NULL, subprob->sp->cname, subprob->sp->rname, subprob->sp->ctype);
     if ( subprob->sp->lp == NULL ) {
-        errMsg("Problem Setup", "new_subprob", "subprob->sp",0);
+        errMsg("Problem Setup", "newSubprob", "subprob->sp",0);
         return NULL;
     }
 
