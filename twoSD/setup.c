@@ -69,7 +69,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	/* allocate memory to all cells used in the algorithm. The first cell belongs to the master problem, while the rest correspond to each of the
 	 * sub-agents in the problem.  */
 	if (!(cell = (cellType *) mem_malloc(sizeof(cellType))) )
-		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
+		errMsg("Memory allocation", "newCell", "failed to allocate memory to cell",0);
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
 	cell->piS = cell->piM = cell->djM = NULL;
@@ -127,11 +127,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 
 	/* solution parts of the cell */
 	if ( !(cell->piS = (vector) arr_alloc(prob[1]->num->rows + 1, double)) )
-		errMsg("allocation", "newMaster", "cell->pi", 0);
+		errMsg("allocation", "newCell", "cell->pi", 0);
 	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
-		errMsg("allocation", "newMaster", "cell->di", 0);
+		errMsg("allocation", "newCell", "cell->di", 0);
 	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
-		errMsg("allocation", "newMaster", "cell->piM", 0);
+		errMsg("allocation", "newCell", "cell->piM", 0);
 	cell->mubBar = 0.0;
 
 	/* stochastic elements */

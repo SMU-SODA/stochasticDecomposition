@@ -19,7 +19,7 @@ int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL n
 
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 	if ( solveSubprob(prob, cell, Xvect, omegaIdx, newOmegaFlag) ) {
-		errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
+		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 		return -1;
 	}
 
@@ -117,7 +117,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	if (pi_eval_flag == TRUE) {
 		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
-			vari = calc_var(pi_ratio, NULL, NULL, 0);
+			vari = calcVariance(pi_ratio, NULL, NULL, 0);
 
 		if (DBL_ABS(vari) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
 			*dualStableFlag = FALSE;
@@ -348,7 +348,7 @@ int dropCut(cellType *cell, int cutIdx) {
  ** This function calculate the variance of the
  ** vector x.
  */
-double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size) {
+double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size) {
 	double mean, vari, temp;
 	int count, length;
 	double stdev;
@@ -362,8 +362,7 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 	else
 		length = config.SCAN_LEN;
 
-	for (count = 1; count < length; count++)
-	{
+	for (count = 1; count < length; count++) {
 		temp = mean;
 		mean = mean + (x[count] - mean) / (double) (count + 1);
 		vari = (1 - 1 / (double) count) * vari
@@ -371,12 +370,8 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 	}
 
 	if (mean_value != NULL)
-	{
 		*mean_value = mean;
-	}
-	if (stdev_value != NULL)
-	{
-		//TODO:(HG) why divide vari by count?
+	if (stdev_value != NULL) {
 		stdev = sqrt(vari / (double) count);
 		*stdev_value = stdev;
 	}
@@ -389,7 +384,7 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
  ** This function prints the relevant information in a cut.
  ** It is meant to be used for debugging.
  \***********************************************************************/
-void print_cut(cutsType *cuts, numType *num, int idx) {
+void printCut(cutsType *cuts, numType *num, int idx) {
 	int cnt;
 
 	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->cutObs,

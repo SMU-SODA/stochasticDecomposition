@@ -240,23 +240,23 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 	int cnt, i;
 
 	if (!(bk = arr_alloc(prob->num->rows+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to bk", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to bk", 0);
 	if (!(lambda = arr_alloc(prob->num->rows+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to lambda", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to lambda", 0);
 	if (!(A_Trans = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to A_Trans", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to A_Trans", 0);
 	if (!(A_Trans->val = arr_alloc(prob->Dbar->cnt+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to A_Trans->val", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to A_Trans->val", 0);
 	if (!(A_Trans->row = arr_alloc(prob->Dbar->cnt+1, int)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to A_Trans->row", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to A_Trans->row", 0);
 	if (!(A_Trans->col = arr_alloc(prob->Dbar->cnt+1, int)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to A_Trans->col", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to A_Trans->col", 0);
 	if (!(A_Trans_lambda = arr_alloc(prob->num->cols+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to A_lambda", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to A_lambda", 0);
 	if (!(Bk_theta = arr_alloc(prob->num->cols+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to Bk_theta", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to Bk_theta", 0);
 	if (!(q_vec = arr_alloc(prob->num->cols+1, double)))
-		errMsg("Allocation", "cal_temp_lb", "fail to allocate memory to q_vec", 0);
+		errMsg("Allocation", "calcBootstrpLB", "fail to allocate memory to q_vec", 0);
 
 	/* 1a. Calculate bk, which is A*incumb_x - b. Note: in fact, we are
 	 ** calculating -bk here, due to the way function MSparsexvSub works. Also be aware of the one-norm. */

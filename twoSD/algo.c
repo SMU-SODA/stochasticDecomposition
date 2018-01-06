@@ -63,7 +63,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
-		errMsg("allocation", "solveMASP", "observ", 0);
+		errMsg("allocation", "solveCell", "observ", 0);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
@@ -111,7 +111,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, 
 
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->sp->mar, prob[0]->lb) ) {
-			errMsg("algorithm", "solveMASP", "failed to solve master problem", 0);
+			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 			return 1;
 		}
 	}//END while loop

@@ -20,14 +20,14 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 	int		cnt, status, m;
 
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
-		errMsg("allocation", "evaluateOpt", "observ", 0);
+		errMsg("allocation", "evaluate", "observ", 0);
 
 	printf("\nStarting evaluating.\n");
 
 	/* initialize parameters used for evaluations */
 	cnt = 0.0; mean = 0.0; variance = 0.0; stdev = INFBOUND; cnt = 0;
 	if (!(rhs =(vector) arr_alloc(prob[1]->num->rows+1, double)))
-		errMsg("Allocation", "computeRhs", "rhs",0);
+		errMsg("Allocation", "evaluate", "rhs",0);
 
 	/* change the right hand side with the solution */
 	chgRHSwSoln(prob[1]->bBar, prob[1]->Cbar, rhs, Xvect);
@@ -40,7 +40,7 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 
 		/* Change right-hand side with random observation */
 		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
-			errMsg("algorithm", "evaluateOpt", "failed to setup the subproblem",0);
+			errMsg("algorithm", "evaluate", "failed to setup the subproblem",0);
 			return 1;
 		}
 
@@ -51,7 +51,7 @@ int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vecto
 				return 1;
 			}
 			else {
-				errMsg("algorithm", "evaluateOpt", "failed to solve subproblem in solver", 0);
+				errMsg("algorithm", "evaluate", "failed to solve subproblem in solver", 0);
 				return 1;
 			}
 		}

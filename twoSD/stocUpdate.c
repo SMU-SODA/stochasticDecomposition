@@ -39,8 +39,6 @@ int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparse
     if (newLambdaFlag)
         calcDeltaRow(maxIter, num, coord, omega, lambda, lambdaIdx, delta);
 
-
-
     return sigmaIdx;
 }//END stochasticUpdates
 
@@ -267,14 +265,14 @@ lambdaType *newLambda(int num_iter, int numLambda, int numRVrows) {
     int cnt;
 
     if (!(lambda = (lambdaType *) mem_malloc (sizeof(lambdaType))))
-        errMsg("allocation", "new_lambda", "lambda",0);
+        errMsg("allocation", "newLambda", "lambda",0);
 
     if (!(lambda->vals = arr_alloc(num_iter, vector)))
-        errMsg("allocation", "new_lambda", "lambda->val",0);
+        errMsg("allocation", "newLambda", "lambda->val",0);
 
     for (cnt = 0; cnt < numLambda; cnt++)
         if (!(lambda->vals[cnt] = arr_alloc(numRVrows + 1, double)))
-            errMsg("allocation", "new_lambda", "lambda->val[cnt]",0);
+            errMsg("allocation", "newLambda", "lambda->val[cnt]",0);
 
     lambda->cnt = numLambda;
 
@@ -289,16 +287,16 @@ sigmaType *newSigma(int numIter, int numNzCols, int numPi) {
     int cnt;
 
     if (!(sigma = (sigmaType *) mem_malloc (sizeof(sigmaType))))
-        errMsg("allocation", "new_sigma", "sigma",0);
+        errMsg("allocation", "newSigma", "sigma",0);
     if (!(sigma->lambdaIdx = (intvec) arr_alloc(numIter, int)))
-        errMsg("allocation", "new_sigma", "sigma->lambIdx",0);
+        errMsg("allocation", "newSigma", "sigma->lambIdx",0);
     if (!(sigma->ck = (intvec) arr_alloc(numIter, int)))
-        errMsg("allocation", "new_sigma", "sigma->ck",0);
+        errMsg("allocation", "newSigma", "sigma->ck",0);
     if (!(sigma->vals = arr_alloc(numIter, pixbCType)))
-        errMsg("allocation", "new_sigma", "sigma->vals",0);
+        errMsg("allocation", "newSigma", "sigma->vals",0);
     for (cnt = 0; cnt < numPi && cnt < numIter; cnt++)
         if (!(sigma->vals[cnt].piC = arr_alloc(numNzCols+1, double)))
-            errMsg("allocation", "new_sigma", "sigma->val[cnt]",0);
+            errMsg("allocation", "newSigma", "sigma->val[cnt]",0);
 
     sigma->cnt = numPi;
 
@@ -318,9 +316,9 @@ deltaType *newDelta(int numIter) {
     deltaType *delta;
 
     if (!(delta = (deltaType *) mem_malloc (sizeof(deltaType))))
-        errMsg("Allocation", "new_delta", "d",0);
+        errMsg("Allocation", "newDelta", "d",0);
     if (!(delta->vals = (pixbCType **) arr_alloc(numIter, pixbCType *)))
-        errMsg("Allocation", "new_delta", "d->val",0);
+        errMsg("Allocation", "newDelta", "d->val",0);
     return delta;
 }//END newDelta
 
