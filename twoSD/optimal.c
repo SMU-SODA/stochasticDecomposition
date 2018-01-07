@@ -74,6 +74,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 	double  est, ht, LB=0.0;
 	int 	numPass = 0, rep, j;
 
+	clock_t tic = clock();
 	/* (a) choose good cuts */
 	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
 
@@ -101,7 +102,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		}
 
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach, we don't include the incumb_x * c in estimate */
-		if (config.MASTERTYPE == 1)
+		if (config.MASTER_TYPE == 1)
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
 		else
 			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
@@ -117,13 +118,13 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		/* (h) check No. of fails. skip out of the loop if there's no hope of meeting the condition */
 		if ( rep + 1 - numPass >= (1 - config.PERCENT_PASS) * config.BOOTSTRAP_REP) {
 			/* The bootstrap test has failed */
-			mem_free(cdf); mem_free(observ); freeCutsType(gCuts);
+			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, FALSE);
 			return FALSE;
 		}
 	}//END replication loop
 
 	mem_free(cdf); mem_free(observ);
-	freeCutsType(gCuts);
+	freeCutsType(gCuts, FALSE);
 	return TRUE;
 
 }//END full_test()
@@ -140,7 +141,7 @@ cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
 
 	for ( cnt = 0; cnt < cuts->cnt; cnt++ ) {
 		if (pi[cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
-			gCuts->vals[gCuts->cnt] = newCut(lenX, cuts->vals[cnt]->omegaCnt, cuts->vals[cnt]->cutObs);
+			gCuts->vals[gCuts->cnt] = newCut(lenX, cuts->vals[cnt]->omegaCnt, cuts->vals[cnt]->numSamples);
 			copyIntvec(cuts->vals[cnt]->iStar, gCuts->vals[gCuts->cnt]->iStar, cuts->vals[cnt]->omegaCnt);
 			gCuts->vals[gCuts->cnt]->rowNum = cuts->vals[cnt]->rowNum;
 			gCuts->cnt++;
@@ -156,9 +157,9 @@ void empiricalDistribution(omegaType *omega, intvec cdf) {
 	int cnt;
 
 	/* Calculate an integer cdf distribution for observations */
-	cdf[0] = omega->weight[0];
+	cdf[0] = omega->weights[0];
 	for (cnt = 1; cnt < omega->cnt; cnt++)
-		cdf[cnt] = cdf[cnt - 1] + omega->weight[cnt];
+		cdf[cnt] = cdf[cnt - 1] + omega->weights[cnt];
 
 }//END empirical_distrib
 
@@ -171,7 +172,7 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 
 	/* Choose k observations according to cdf (k = number of iterations) */
 	for (obs = 0; obs < numSamples; obs++) {
-		sample = randInteger(&config.EVAL_SEED, numSamples);
+		sample = randInteger(&config.EVAL_SEED[0], numSamples);
 		for (cnt = 0; sample > cdf[cnt]; cnt++)
 			/* Loop until sample falls below cdf */;
 		observ[obs] = cnt;
@@ -181,8 +182,7 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
  * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
 void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
-	int cnt, obs, idx, count;
-	iType iStar;
+	int cnt, obs, idx, count, istar;
 
 	/* Loop through all the cuts and reform them */
 	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
@@ -196,16 +196,15 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 		for (obs = 0; obs < k; obs++) {
 			/* Only sum values if the cut has an istar for this observation */
 			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
-				iStar.sigma = gCuts->vals[cnt]->iStar[observ[obs]];
-				iStar.delta = sigma->lambdaIdx[iStar.sigma];
+				istar = gCuts->vals[cnt]->iStar[observ[obs]];
 
-				gCuts->vals[cnt]->alpha += sigma->vals[iStar.sigma].pib + delta->vals[iStar.delta][observ[obs]].pib;
+				gCuts->vals[cnt]->alpha += sigma->vals[istar].pib + delta->vals[sigma->lambdaIdx[istar]][observ[obs]].pib;
 
 				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[iStar.sigma].piC[idx];
+					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[istar].piC[idx];
 
-				for (idx = 1; idx <= num->rvColCnt; idx++)
-					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[iStar.delta][observ[obs]].piC[idx];
+				for (idx = 1; idx <= num->rvCOmCnt; idx++)
+					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[sigma->lambdaIdx[istar]][observ[obs]].piC[idx];
 
 				count++;
 			}
@@ -293,7 +292,7 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 	Vk_theta = 0.0;
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
 		/* 3a. Obtain theta from c->pi */
-		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->cutObs) * piM[cuts->vals[cnt]->rowNum + 1];
+		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
 
 		/* 3a. Obtain theta from c->pi */
 		Vk_theta += theta*(cuts->vals[cnt]->alpha - vXv(cuts->vals[cnt]->beta, incumbX, NULL, prob->num->cols));

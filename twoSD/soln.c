@@ -28,8 +28,8 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->k, cell->candidX, prob->num->cols, cell->lb);;
 	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->k, cell->incumbX, prob->num->cols, cell->lb);
 
-#ifdef SOL_CHECK
-	printf("AggcandidEst =%lf, AggIncumEst =%lf\n",AggcandidEst, cell->incumbEst);
+#ifdef ALGO_CHECK
+	printf("Candidate estimate = %lf, Incumbent estimate = %lf\n",candidEst, cell->incumbEst);
 #endif
 
 	/* If we see considerable improvement, then change the incumbent */
@@ -72,12 +72,8 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 		}
 
 	/* update the right-hand side and the bounds with new incumbent solution */
-	if ( changeQPrhs(prob, cell) ) {
+	if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
 		errMsg("algorithm", "replaceIncumbent", "failed to change the right-hand side after incumbent change", 0);
-		return 1;
-	}
-	if ( changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, cell->incumbX) ) {
-		errMsg("algorithm", "replaceIncumbent", "failed to change the bounds after incumbent update", 0);
 		return 1;
 	}
 
@@ -94,37 +90,4 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
 	return 0;
 }//END replaceIncumbent()
-
-/* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb) {
-	double Sm = -INF, ht = 0.0;
-	int cnt;
-
-	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		ht = cutHeight(cuts->vals[cnt], currIter, xk, betaLen, lb);
-		if (Sm < ht) {
-			Sm = ht;
-		}
-	}
-
-	return Sm;
-}//END maxCutHeight
-
-/* This function calculates and returns the height of a given cut at a given X.  It includes the k/(k-1) update, but does not include
- * the coefficients due to the cell. */
-double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb) {
-	double height;
-	double t_over_k = ((double) cut->cutObs / (double) currIter);
-
-	/* A cut is calculated as alpha - beta x X */
-	height = cut->alpha - vXv(cut->beta, xk, NULL, betaLen);
-
-	/* Weight cut based on number of observations used to form it */
-	height *= t_over_k;
-
-	/* Updated for optimality cut height*/
-	height += (1 - t_over_k) * lb;
-
-	return height;
-}//END cutHeight()
 
