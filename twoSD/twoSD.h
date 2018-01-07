@@ -16,44 +16,52 @@
 #include "solver.h"
 #include "smps.h"
 #include "prob.h"
+#include "stoc.h"
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1
-#define INF	DBL_MAX
 
 #undef STOCH_CHECK
 #undef ALGO_CHECK
 
+/* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
+-configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	long long RUN_SEED;			/* seed used during optimization */
+	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
+	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
-	int		MASTERTYPE;			/* type of master problem */
-	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
+	int		MASTER_TYPE;		/* type of master problem */
 	int		TAU;				/* Frequency at which the incumbent is updated */
 	double	MIN_QUAD_SCALAR;	/* Minimum value for regularizing parameter */
+	double	EPSILON;			/* Optimality gap */
+
+	int		EVAL_FLAG;
+	int		NUM_EVALS;
+	long long *EVAL_SEED;
+	int		EVAL_MIN_ITER;
+	double	EVAL_ERROR;
+
+	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
 	double 	MAX_QUAD_SCALAR;	/* Maximum value for regularizing parameter */
 	double	R1;
 	double	R2;
 	double	R3;
 	int		PI_EVAL_START;
 	int		PI_CYCLE;
-	int		SCAN_LEN;
-	int		EVAL_FLAG;
-	long long EVAL_SEED;
-	int		EVAL_MIN_ITER;
-	double	EVAL_ERROR;
-	double  PRE_EPSILON;
-	double	EPSILON;
 	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
+	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
+	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
+
+	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (1), else (0) */
 }configType;
 
 typedef struct {
 	double  alpha;                  /* scalar value for the righ-hand side */
 	vector  beta;                   /* coefficients of the master problems's primal variables */
-	int 	cutObs;					/* number of samples on which the given cut was based */
+	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	intvec	iStar;					/* indices of maximal pi for each distint observation */
 	BOOL	isIncumb;				/* indicates if the cut is an incumbent cut */
@@ -67,102 +75,19 @@ typedef struct {
 	oneCut  **vals;
 }cutsType;
 
-/* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Toward
- * this end, pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
-typedef struct{
-	double 	pib;
-	vector 	piC;
-} pixbCType;
-
-/* The lambda structure stores some of the dual variable values from every distinct dual vector obtained during the program.  Each vector contains
- * only those dual variables whose corresponding rows in the subproblem constraint matrix contain random elements.  _val_ is an array of
- * these dual vectors (thus it is 2-D). _row_ gives the corresponding row number for a given dual variable in _val_.  _cnt_ represents
- * the number of dual vectors currently stored in lambda. */
 typedef struct {
-	int 	cnt;
-	vector 	*vals;
-} lambdaType;
-
-/* The sigma matrix contains the values of Pi x bBar and Pi x Cbar  for all values of pi obtained so far (note it does not depend on
- * observations of omega).  _col_ gives the column number of each non-zero element in pi X Cbar.  _val_ is an array of values
- * for pi X bBar and pi X Cbar, one entry for each pi.  Note that values  which are always zero (because Rbar or Cbar is zero there) are not
- * stored.  The _lamb_ array is the same size as the _val_ array, and for each element in _val_ the corresponding element in _lamb_ references
- * the dual vector in lambda that was used to calculate that entry in sigma. */
-typedef struct {
-	int 		cnt;
-	pixbCType 	*vals;
-	intvec		lambdaIdx;
-	intvec		ck; 				/* record the iteration # when sigma was created */
-} sigmaType;
-
-/* When calculating istar for a cut, it is useful to have two separate references into the sigma and delta structures, since each dual vector
- * is stored in two places -- part in sigma and part in delta.  The final entry in cut->istar[] will just be the _sigma_ field of this structure. */
-typedef struct {
-	int delta;
-	int sigma;
-} iType;
-
-/* The delta matrix contains the values of lambda_pi X bOmega and lambda_pi X Comega for all values of pi and all observations of omega.
- * _col_ gives the column number of the each non-zero element in the multiplication of lambda_pi X Comega (the same elements are non-zero
- * each time).  _val_ is an array of vectors of (lambda_pi X bOmega, lambda_pi X Comega) pairs of calculations.  A row in _val_ corresponds
- * to a distinct dual vector, and a column in _val_ corresponds to a distinct observation of omega.  Thus, every pi-omega combination is
- * represented here, and the size of the delta matrix can be determine from lambda->cnt and omega->cnt.
- * Note that when elements of omega get dropped, vacant columns appear in delta.  This is ok, but be sure to loop carefully! */
-typedef struct {
-	pixbCType 	**vals;
-} deltaType;
-
-/**************************************************************************\
- ** Omega stores the set of observations which have been made so far.
- **
- **   Each observation consists of a vector of realizations of random
- ** variables with discrete distributions.  Since every distribution is
- ** discrete, an observation is just stored as a vector of indices into a
- ** distribution array containing the possible values.  _idx_ is an array
- ** of such vectors.  Each rv occurs in the R vector or T matrix which
- ** (along with the candidate X) make up the rhs of the subproblem.
- **
- **   The _row_ and _col_ arrays give the coordinates in R and T of each rv
- ** realization in a vector.  If _col_ is zero for a given entry, then the
- ** realization comes from R; otherwise, it comes from T.  The field _RT_
- ** represents a vector of actual realizations (as opposed to indices) of
- ** omega for both the Romega and Tomega structures (only one observation's
- ** worth of omega).
- **
- **   The _weight_ field specifies the number of times a particular outcome
- ** has been observed (it starts at 1 when the outcome is first generated,
- ** and increments every time the same outcome is observed again).  _cnt_
- ** just specifies the number of distinct outcomes which have been observed
- ** and stored in the omega structure.
- **
- **   If the problem gets too large, some unexciting omegas may be dropped.
- ** So, _filter_ (same length as _weight_) describes which vectors in the
- ** _idx_ array are actually filled with observations.  _next_ references
- ** the place to start in the _filter_ array when trying to find the next
- ** available position in _idx_.  _most_ represents the number of
- ** elements needed to store all elements in the _idx_ array, from
- ** the first to the last.  (It is the greatest index at which an
- ** observation is stored in the _idx_ array, plus one).   Finally,
- ** _last_ indicates the index of omega from which we started dropping
- ** omegas last time -- so we only "need" to go from omega.most down
- ** to omega.last when dropping them this time (we'll miss some).
- \**************************************************************************/
-typedef struct {
-	int 	cnt;
-	intvec	weight;                 /* number of times that an omega is observed */
-	vector	*vals;
-} omegaType;
-
-typedef struct{
-    double		iterSolTime;        /* time of solving prob in each iter */
-    double		totSolTime;         /* time of solving prob(cumulated) */
-    double		iterCutGenTime;         /* time of generating cuts for each time */
-    double  	totCutGenTime;      /* time of generating cuts(cumulated) */
-    double		iterTime;        /* time for each iter (solveAgent) */
-    double      totTime;     /* total time of doing a iteration for subprob */
-//    vector  	masterIterTime;     /* time for each iter (within the while loop) */
-//    double      totMasterIterTime;  /* time of cumulated iteration time */
-}runTimeType;
+	double	repTime;
+	double 	iterTime;
+	double 	masterIter;
+	double 	subprobIter;
+	double 	optTestIter;
+	double 	argmaxIter;
+	double 	iterAccumTime;
+	double 	masterAccumTime;
+	double 	subprobAccumTime;
+	double 	optTestAccumTime;
+	double 	argmaxAccumTime;
+}runTime;
 
 typedef struct {
 	int         k;                  /* number of iterations */
@@ -186,14 +111,14 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	vector      piS;                 /* subproblem dual information */
-	double      mubBar;				/* dual slack information for subproblem */
 	vector 		piM;				/* master dual information */
 	vector      djM;                /* master reduced cost vector */
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
+    cutsType 	*fcutsPool;			/* Pool of feasibility cuts */
+    int			fUpdt[2];			/* coordinate in delta structure for which the updates have been carried out */
 
 	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
 	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
@@ -204,46 +129,46 @@ typedef struct {
 	vector      pi_ratio;
     BOOL        dualStableFlag; 	/* indicates if dual variables are stable */
 
+    BOOL 		optMode;			/* When false, the algorithm tries to resolve infeasibility */
+
+    BOOL		spFeasFlag;			/* Indicates whether the subproblem is feasible */
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
-	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
+
+	runTime		time;				/* Run time structure */
 }cellType;
 
 /* twoSD.c */
-void parseCmdLine(string probName);
-int readConfig(string inputDir);
+void parseCmdLine(int argc, char *argv[], string probName, string inputDir);
+int readConfig();
 
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
-int solveCell(stocType *stoc, probType **prob, cellType *cell, string inputDir, string probName);
-void writeStatistic(FILE **soln, probType *prob, cellType *cell, string probName);
+int solveCell(stocType *stoc, probType **prob, cellType *cell);
+void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
+int cleanCellType(cellType *cell, probType *prob, vector xk);
 void freeCellType(cellType *cell);
 
 /* master.c */
-int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, int IniRow, double lb);
-int addCut2Master(cellType *cell, oneCut *cut, int lenX, double lb);
-int constructQP(probType *prob, LPptr lp, vector incumbX);
-int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
-int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
-int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts, double lb);
+int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
+int addCut2Master(oneProblem *master, oneCut *cut, vector vectX, int lenX);
+int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar);
+int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
-int changeQPrhs(probType *prob, cellType *cell);
+int changeQPrhs(probType *prob, cellType *cell, vector xk);
 int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
-oneProblem *newMaster(probType *prob, vector xk);
+oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
+int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL *newOmegaFlag, double lb);
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb);
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax);
-iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
-		vector PiCbarX, double *argmax, int ictr);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb);
@@ -251,34 +176,8 @@ int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
 void printCut(cutsType *cuts, numType *num, int idx);
 void freeOneCut(oneCut *cut);
-void freeCutsType(cutsType *cuts);
+void freeCutsType(cutsType *cuts, BOOL partial);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
-
-/* subprob.c */
-int solveSubprob(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag);
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
-oneProblem *newSubprob(probType *subprob);
-
-/* stocUpdate.c */
-int stochasticUpdates(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, lambdaType *lambda, sigmaType *sigma,
-                       deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int omegaIdx, int maxIter, int iter, vector pi, double mubBar);
-void calcDeltaCol(numType *num, coordType *coord, lambdaType *lambda, vector observ, int omegaIdx, deltaType *delta);
-int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag);
-int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
-              int idxLambda, BOOL newLambdaFlag, int iter, sigmaType *sigma, BOOL *newSigmaFlag);
-int calcDeltaRow(int maxIter, numType *num, coordType *coord, omegaType *omega, lambdaType *lambda, int lambdaIdx, deltaType *delta);
-int calcOmega(vector observ, int begin, int end, omegaType *omega, BOOL *newOmegaFlag);
-int computeMU(LPptr lp, int numCols, double *mubBar);
-lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
-sigmaType *newSigma(int numIter, int numNzCols, int numPi);
-deltaType *newDelta(int numIter);
-omegaType *newOmega(int numIter);
-void freeLambdaType(lambdaType *lambda);
-void freeSigmaType(sigmaType *sigma);
-void freeOmegaType(omegaType *omega);
-void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt);
 
 /* soln.c */
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
@@ -297,6 +196,7 @@ void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
 /* evaluate.c */
-int evaluate(FILE **soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */
