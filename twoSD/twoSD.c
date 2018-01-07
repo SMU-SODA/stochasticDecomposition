@@ -26,19 +26,15 @@ int main (int argc, char *argv[]) {
 	/* open solver environment */
 	openSolver();
 
+	/* read problem information */
+	parseCmdLine(argc, argv, probName, inputDir);
+
 	/* read algorithm configuration files */
-	status = readConfig(inputDir);
+	status = readConfig();
 	if ( status ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
-
-	/* read problem information */
-	/* request for problem name to be solved, the path should be provided in the configuration file */
-	if ( argc < 2 )
-		parseCmdLine(probName);
-	else
-		strcpy(probName, argv[1]);
 
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
@@ -67,17 +63,44 @@ int main (int argc, char *argv[]) {
 	return 0;
 }//END main()
 
-void parseCmdLine(string probName) {
+void parseCmdLine(int argc, char *argv[], string probName, string inputDir) {
 
-	printf("Please enter the name of the problem: ");
-	scanf("%s", probName);
+	outputDir = (string) arr_alloc(BLOCKSIZE, char);
 
-}//END parseCmdLine
+	/* request for problem name to be solved, the path is assumed to be provided in the configuration file */
+	if ( argc < 2 ) {
+		printf("Please enter the name of the problem: ");
+		scanf("%s", probName);
+		strcpy(inputDir, "../spInput/");
+		printf("Using default input directory: %s\n", inputDir);
+		strcpy(outputDir, "../../spOutput/");
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
+	}
+	else if ( argc < 3 ) {
+		strcpy(probName, argv[1]);
+		strcpy(inputDir, "../spInput/");
+		printf("Using default input directory: %s\n", inputDir);
+		strcpy(outputDir, "../../spOutput/");
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
+	}
+	else if ( argc < 4 ) {
+		strcpy(probName, argv[1]);
+		strcpy(inputDir, argv[2]);
+		strcpy(outputDir, "../../spOutput/");
+		printf("All solution files will be written to the default output directory: %s\n", outputDir);
+	}
+	else {
+		strcpy(probName, argv[1]);
+		strcpy(inputDir, argv[2]);
+		strcpy(outputDir, argv[3]);
+	}
 
-int readConfig(string inputDir) {
+}//END parseCmdLine()
+
+int readConfig() {
 	FILE 	*fptr;
 	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
-	int 	status;
+	int 	status, r2 = 1, maxReps = 30;
 
 	fptr = fopen("config.sd", "r");
 	if ( fptr == NULL ) {
@@ -85,24 +108,27 @@ int readConfig(string inputDir) {
 		return 1;
 	}
 
-	if ( !(outputDir = (string) mem_malloc(BLOCKSIZE*sizeof(char))) )
-		errMsg("allocation", "readConfig", "outputDir", 0);
+	config.RUN_SEED = (long long *) arr_alloc(maxReps+1, long long);
+	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
+	config.NUM_REPS = 0;
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
-		if (!(strcmp(line, "INPUTDIR")))
-			fscanf(fptr, "%s", inputDir);
-		else if (!(strcmp(line, "OUTPUTDIR")))
-			fscanf(fptr, "%s", outputDir);
-		else if (!(strcmp(line, "RUN_SEED")))
-			fscanf(fptr, "%lld", &config.RUN_SEED);
+		if (!(strcmp(line, "RUN_SEED"))) {
+			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_REPS+1]);
+			config.NUM_REPS++;
+			if ( config.NUM_REPS > maxReps ) {
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
+				maxReps *= 2;
+			}
+		}
 		else if (!(strcmp(line, "TOLERANCE")))
 			fscanf(fptr, "%lf", &config.TOLERANCE);
 		else if (!(strcmp(line, "MIN_ITER")))
 			fscanf(fptr, "%d", &config.MIN_ITER);
 		else if (!(strcmp(line, "MAX_ITER")))
 			fscanf(fptr, "%d", &config.MAX_ITER);
-		else if (!(strcmp(line, "MASTERTYPE")))
-			fscanf(fptr, "%d", &config.MASTERTYPE);
+		else if (!(strcmp(line, "MASTER_TYPE")))
+			fscanf(fptr, "%d", &config.MASTER_TYPE);
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
 		else if (!(strcmp(line, "TAU")))
@@ -121,12 +147,19 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%d", &config.PI_EVAL_START);
 		else if (!(strcmp(line, "PI_CYCLE")))
 			fscanf(fptr, "%d", &config.PI_CYCLE);
+		else if (!(strcmp(line, "PERCENT_PASS")))
+			fscanf(fptr, "%lf", &config.PERCENT_PASS);
 		else if (!(strcmp(line, "SCAN_LEN")))
 			fscanf(fptr, "%d", &config.SCAN_LEN);
 		else if (!(strcmp(line, "EVAL_FLAG")))
 			fscanf(fptr, "%d", &config.EVAL_FLAG);
-		else if (!(strcmp(line, "EVAL_SEED")))
-			fscanf(fptr, "%lld", &config.EVAL_SEED);
+		else if (!(strcmp(line, "EVAL_SEED"))) {
+			fscanf(fptr, "%lld", &config.EVAL_SEED[r2++]);
+			if ( r2 > maxReps ) {
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
+				maxReps *= 2;
+			}
+		}
 		else if (!(strcmp(line, "EVAL_MIN_ITER")))
 			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
 		else if (!(strcmp(line, "EVAL_ERROR")))
@@ -137,6 +170,8 @@ int readConfig(string inputDir) {
 			fscanf(fptr, "%lf", &config.EPSILON);
 		else if (!(strcmp(line, "BOOTSTRAP_REP")))
 			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
+		else if (!(strcmp(line, "MULTIPLE_REP")))
+			fscanf(fptr, "%d", &config.MULTIPLE_REP);
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {
@@ -146,6 +181,9 @@ int readConfig(string inputDir) {
 	}
 
 	fclose(fptr);
+
+	if ( config.MULTIPLE_REP == 0 )
+		config.NUM_REPS = 1;
 
 	return 0;
 }//END readConfig()

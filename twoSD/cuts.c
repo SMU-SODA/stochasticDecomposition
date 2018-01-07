@@ -13,44 +13,71 @@
 
 extern configType config;
 
-int formSDCut(probType *prob, cellType *cell, vector Xvect, int omegaIdx, BOOL newOmegaFlag) {
-	oneCut *cut;
-	int    cutIdx;
+int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx);
+int formFeasCut(probType *prob, cellType *cell);
+int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
+int checkFeasCutPool(cellType *cell, int lenX);
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut);
+
+int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL *newOmegaFlag, double lb) {
+	oneCut 	*cut;
+	int    	cutIdx;
+	BOOL	newSigmaFlag;
 
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-	if ( solveSubprob(prob, cell, Xvect, omegaIdx, newOmegaFlag) ) {
+	if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newSigmaFlag,
+			&cell->time.subprobIter, &cell->time.argmaxIter) ){
 		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 		return -1;
 	}
 
+#if defined(ALGO_CHECK)
+	writeProblem(cell->subprob->lp, "subproblem.lp");
+#endif
+
+	if ( ! cell->spFeasFlag ) {
+		/* Subproblem is infeasible, resolve infeasibility */
+		if ( resolveInfeasibility(prob, cell, newOmegaFlag, omegaIdx) ) {
+			errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+			return -1;
+		}
+	}
+	else if ( cell->fcutsPool->cnt > 0 && (*newOmegaFlag) ) {
+		/* Subproblem is feasible, however new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+		 * to see if new feasibility cuts need to be added. */
+
+	}
+
 	/* (b) create an affine lower bound */
-	cut = SDCut(prob->num, prob->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	clock_t tic = clock();
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
 	}
+	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
-	/* (c) add cut to the master problem  */
-	if ( (cutIdx = addCut2Master(cell, cut, prob->num->prevCols, cell->lb)) < 0 ) {
+	/* (c) add cut to the structure and master problem  */
+	if ( addCut2Pool(cell, cut, prob[0]->num->cols, lb, FALSE) < 0) {
+		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
+		return -1;
+	}
+	if ( (cutIdx = addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols)) < 0 ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
 		return -1;
 	}
+
 	return cutIdx;
 }//END formCut()
 
 oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
-	iType istar_new;
-	iType istar_old;
-	iType 	istar;
 	vector 	piCbarX, beta;
+	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0;
+	int	 	istarAll, istarNew, istar, c, obs;
 	BOOL    pi_eval_flag = FALSE;
-	double  argmax_all;
-	double  argmax_new;
-	double  argmax_old;
-	double  alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, vari = 1.0;
-	int 	c, cnt, obs;
 
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
@@ -65,61 +92,50 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	if (numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
 		pi_eval_flag = TRUE;
 
-	/* Calculate (Pi x Cbar) x X by mult. each VxT by X, one at a time */
-	for (cnt = 0; cnt < sigma->cnt; cnt++) {
-		piCbarX[cnt] = 0;
-		for (c = 1; c <= num->cntCcols; c++)
-			piCbarX[cnt] += sigma->vals[cnt].piC[c] * Xvect[coord->colsC[c]];
-	}
-
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istar_old = computeIstar(num, coord, sigma, delta, Xvect, piCbarX, obs, numSamples, pi_eval_flag, &argmax_old);
-			istar_new = compute_new_istar(obs, cut, sigma, delta, Xvect, num, coord, piCbarX, &argmax_new, numSamples);
+			istarAll = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
 
-			if (argmax_new > argmax_old) {
-				argmax_all = argmax_new;
-				istar.sigma = istar_new.sigma;
-				istar.delta = istar_new.delta;
+			if (argmaxNew > argmaxAll) {
+				argmax = argmaxNew; istar  = istarNew;
 			}
 			else {
-				argmax_all = argmax_old;
-				istar.sigma = istar_old.sigma;
-				istar.delta = istar_old.delta;
+				argmax = argmaxAll; istar = istarAll;
 			}
 
-			argmax_dif_sum += max(argmax_old - lb, 0) * omega->weight[obs];
-			argmax_all_sum += max(argmax_all - lb, 0) * omega->weight[obs];
+			argmax_dif_sum += max(argmaxAll - lb, 0) * omega->weights[obs];
+			argmax_all_sum += max(argmax - lb, 0) * omega->weights[obs];
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, sigma, delta, Xvect, piCbarX, obs, numSamples, pi_eval_flag, &argmax_all);
+			istar = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
 		}
 
-		if ( istar.delta < 0 || istar.sigma < 0) {
+		if (istar < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
 			return NULL;
 		}
-		cut->iStar[obs] = istar.sigma;
+		cut->iStar[obs] = istar;
 
 		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-		alpha += sigma->vals[istar.sigma].pib * omega->weight[obs];
-		alpha += delta->vals[istar.delta][obs].pib * omega->weight[obs];
+		alpha += sigma->vals[istar].pib * omega->weights[obs];
+		alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
-			beta[coord->colsC[c]] += sigma->vals[istar.sigma].piC[c] * omega->weight[obs];
+			beta[coord->colsC[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
-			beta[coord->rvCols[c]] += delta->vals[istar.delta][obs].piC[c] * omega->weight[obs];
+			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
 	}
 
 	if (pi_eval_flag == TRUE) {
 		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
-			vari = calcVariance(pi_ratio, NULL, NULL, 0);
+			variance = calcVariance(pi_ratio, NULL, NULL, 0);
 
-		if (DBL_ABS(vari) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
+		if (DBL_ABS(variance) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
 			*dualStableFlag = FALSE;
 		else
 			*dualStableFlag = TRUE;
@@ -139,88 +155,38 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	return cut;
 }//END SDCut
 
-/*This function loops through all the dual vectors found so far and returns the index of the one which satisfies the expression:
- * 				argmax { Pi x (R - T x X) | all Pi }
- * where X, R, and T are given.  It is calculated in this form:
- * 				Pi x bBar + Pi x bomega + (Pi x Cbar) x X + (Pi x Comega) x X.
- * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
- * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
- * another due to elimination of non-distinct or redundant vectors. */
-iType computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, vector PiCbarX, int obs,
-		int ictr, BOOL pi_eval, double *argmax) {
-	iType 	ans;
-	ans.delta = 0;
-	ans.sigma = 0;
-	double 	arg;
-	int 	sigPi, delPi;
-	int     new_pisz;
+/* This function loops through a set of cuts and find the highest cut height at the specified position x */
+double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb) {
+	double Sm = -INF, ht = 0.0;
+	int cnt;
 
-	if (pi_eval == TRUE)
-		new_pisz = ictr / 10 + 1;
-	else
-		new_pisz = 0;
-
-	ictr -= new_pisz;
-
-	*argmax = -DBL_MAX;
-	for (sigPi = 0; sigPi < sigma->cnt; sigPi++) {
-		if (sigma->ck[sigPi] <= ictr) {
-			/* Find the row in delta corresponding to this row in sigma */
-			delPi = sigma->lambdaIdx[sigPi];
-
-			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			arg = sigma->vals[sigPi].pib + delta->vals[delPi][obs].pib - PiCbarX[sigPi];
-
-			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[delPi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				ans.sigma = sigPi;
-				ans.delta = delPi;
-			}
+	for (cnt = 0; cnt < cuts->cnt; cnt++) {
+		ht = cutHeight(cuts->vals[cnt], currIter, xk, betaLen, lb);
+		if (Sm < ht) {
+			Sm = ht;
 		}
 	}
 
-	return ans;
-}//END computeIstar
+	return Sm;
+}//END maxCutHeight
 
-// TODO: Redundant function
-iType compute_new_istar(int obs, oneCut *cut, sigmaType *sigma, deltaType *delta, vector Xvect, numType *num, coordType *coord,
-		vector PiCbarX, double *argmax, int ictr) {
-	iType ans;
-	ans.delta = 0;
-	ans.sigma = 0;
-	double arg;
-	int sig_pi, del_pi;
-	int new_pisz;
+/* This function calculates and returns the height of a given cut at a given X.  It includes the k/(k-1) update, but does not include
+ * the coefficients due to the cell. */
+double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb) {
+	double height;
+	double t_over_k = ((double) cut->numSamples / (double) currIter);
 
-	new_pisz = ictr / 10 + 1;
-	ictr -= new_pisz; /* evaluate the pi's generated in the last 10% iterations */
+	/* A cut is calculated as alpha - beta x X */
+	height = cut->alpha - vXv(cut->beta, xk, NULL, betaLen);
 
-	*argmax = -DBL_MAX;
-	for (sig_pi = 0; sig_pi < sigma->cnt; sig_pi++) {
-		if (sigma->ck[sig_pi] > ictr) {
-			/* Find the row in delta corresponding to this row in sigma */
-			del_pi = sigma->lambdaIdx[sig_pi];
+	/* Weight cut based on number of observations used to form it */
+	height *= t_over_k;
 
-			/* Start with (Pi x Rbar) + (Pi x Romega) + (Pi x Tbar) x X */
-			arg = sigma->vals[sig_pi].pib + delta->vals[del_pi][obs].pib
-					- PiCbarX[sig_pi];
+	/* Updated for optimality cut height*/
+	height += (1 - t_over_k) * lb;
 
-			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[del_pi][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				ans.sigma = sig_pi;
-				ans.delta = del_pi;
-			}
-		}
-	}
-
-	return ans;
-}//END computer_new_istar
+	return height;
+}//END cutHeight()
 
 /* This function allocates memory for the arrays inside a single cut, and initializes its values accordingly.  The cut structure
  * itself is assumed to be already allocated.  Note, each beta vector contains room for its one-norm, thought it just gets filled
@@ -229,7 +195,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	oneCut *cut;
 
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
-	cut->cutObs   = numSamples;
+	cut->numSamples = numSamples;
 	cut->omegaCnt = numIstar;
 	cut->slackCnt = 0;
 	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
@@ -277,15 +243,14 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb
 			/* avoid dropping incumbent cut and newly added cuts */
 			continue;
 
-		if (cell->cuts->vals[idx]->cutObs < minObs && DBL_ABS(pi[cell->cuts->vals[idx]->rowNum + 1]) <= config.TOLERANCE ) {
-			minObs = cell->cuts->vals[idx]->cutObs;
+		if (cell->cuts->vals[idx]->numSamples < minObs && DBL_ABS(pi[cell->cuts->vals[idx]->rowNum + 1]) <= config.TOLERANCE ) {
+			minObs = cell->cuts->vals[idx]->numSamples;
 			oldestCut = idx;
 		}
 	}
 
 	/* if the oldest loose cut is the most recently added cut, then the cut with minimium cut height will be dropped */
 	if ( oldestCut == cell->cuts->cnt ) {
-		//minHeight = cutHeight(lbType, cell[agentIdx]->cuts->vals[0], cell[agentIdx]->k, candidX, betaLen, lb);
 		minHeight = cutHeight(cell->cuts->vals[0], cell->k, candidX, betaLen, lb);
 		oldestCut = 0;
 
@@ -293,7 +258,6 @@ int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb
 			if (idx == cell->iCutIdx)
 				continue;
 
-			//height = cutHeight(lbType, cell[agentIdx]->cuts->vals[idx], cell[agentIdx]->k, candidX, betaLen, lb);
 			height = cutHeight(cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
 			if (height < minHeight) {
 				minHeight = height;
@@ -333,9 +297,16 @@ int dropCut(cellType *cell, int cutIdx) {
 	if ( cell->iCutIdx == cell->cuts->cnt )
 		cell->iCutIdx = cutIdx;
 
+	/* Decrement the row number of all optimality cuts which were added after the cut that was just dropped */
 	for (idx = 0; idx < cell->cuts->cnt; idx++) {
 		if (cell->cuts->vals[idx]->rowNum > deletedRow)
 			--cell->cuts->vals[idx]->rowNum;
+	}
+
+	/* Decrement the row number of all feasibility cuts which were added after the cut that was just dropped */
+	for (idx = 0; idx < cell->fcuts->cnt; idx++) {
+		if (cell->fcuts->vals[idx]->rowNum > deletedRow)
+			--cell->fcuts->vals[idx]->rowNum;
 	}
 
 	/* decrease the number of rows on solver */
@@ -378,16 +349,178 @@ double calcVariance(double *x, double *mean_value, double *stdev_value, int batc
 
 	return vari;
 
-}//END calc_var
+}//END calcVariance()
 
-/***********************************************************************\
- ** This function prints the relevant information in a cut.
- ** It is meant to be used for debugging.
- \***********************************************************************/
+/* This function takes the SD code into "feasibility mode, from the "optimality mode". SD will not return to optimality mode
+ * until the a feasible candidate and incumbent solution are identified.*/
+/* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
+ until the candidate and incumbent solution are both feasible. */
+int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
+	BOOL newSigmaFlag;
+
+	/* QP master will be solved in feasibility mode */
+	cell->optMode = FALSE;
+
+	while ( TRUE ) {
+		/* form a feasibility cut */
+		formFeasCut(prob[1], cell);
+
+		/* relax the proximal term and change it in the solver */
+		cell->quadScalar = config.MIN_QUAD_SCALAR;
+		if ( changeQPproximal(cell->master->lp, prob[0]->num->cols, cell->quadScalar) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to change the proximal parameter", 0);
+			return 1;
+		}
+
+		/* Solver the master problem with the added feasibility cut */
+		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the master problem", 0);
+			return 1;
+		}
+
+		/* increment the count for number of infeasible master solutions encountered */
+		cell->feasCnt++;
+
+		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newSigmaFlag,
+				&cell->time.subprobIter, &cell->time.argmaxIter) ) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
+			return 1;
+		}
+
+		/* end the feasibility mode if a feasible candidate solution is observed */
+		if (cell->spFeasFlag == TRUE)
+			break;
+	}
+
+	if ( cell->infeasIncumb == TRUE ) {
+		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
+		replaceIncumbent(prob[0], cell, cell->candidEst);
+	}
+
+	/* QP master will be solved in optimality mode again */
+	cell->optMode = TRUE;
+
+	return 0;
+}//END resolveInfeasibility()
+
+int formFeasCut(probType *prob, cellType *cell) {
+
+	/* add new feasibility cuts to the cut pool */
+	updtFeasCutPool(prob->num, prob->coord, cell);
+
+	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
+	checkFeasCutPool(cell, prob->num->prevCols);
+	cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fcuts->cnt);
+
+	return 0;
+}//END formFeasCut()
+
+/* This function adds new feasibility cuts. It first adds feasibility cuts from old pi's associated with the new omega generated.
+ * Cuts from a new dual extreme ray(new pi) and all omegas generated so far are added to the feasible_cuts_pool structure afterwards. */
+int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
+	oneCut	*cut;
+	int		idx, obs, c, initCutsCnt, lastCutsCnt;
+
+	initCutsCnt = cell->fcutsPool->cnt;
+	for ( obs = cell->fUpdt[1]; obs < cell->omega->cnt; obs++ )
+		for ( idx = 0; idx < cell->fUpdt[0]; idx++ ) {
+			if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
+				errMsg("allocation", "add2CutPool", "cut", 0);
+			if ( !(cut->beta = (vector) arr_alloc(num->prevCols+1, double)) )
+				errMsg("allocation", "updtFeasCutPool", "beta", 0);
+			cut->iStar = NULL; cut->numSamples = cell->k; cut->omegaCnt = cell->omega->cnt; cut->isIncumb = FALSE;
+
+			/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
+
+			for (c = 1; c <= num->cntCcols; c++)
+				cut->beta[coord->colsC[c]] += cell->sigma->vals[idx].piC[c];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
+
+			lastCutsCnt = addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+		}
+	cell->fUpdt[1] = cell->omega->cnt;
+
+	for ( obs = 0; obs < cell->omega->cnt; obs++ )
+		for ( idx = cell->fUpdt[0]; idx < cell->sigma->cnt; idx++ ) {
+			if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
+				errMsg("allocation", "add2CutPool", "cut", 0);
+			if ( !(cut->beta = (vector) arr_alloc(num->prevCols+1, double)) )
+				errMsg("allocation", "updtFeasCutPool", "beta", 0);
+			cut->iStar = NULL; cut->numSamples = cell->k; cut->omegaCnt = cell->omega->cnt; cut->isIncumb = FALSE;
+
+			/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
+
+			for (c = 1; c <= num->cntCcols; c++)
+				cut->beta[coord->colsC[c]] += cell->sigma->vals[idx].piC[c];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
+
+			lastCutsCnt = addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+		}
+	cell->fUpdt[0] = cell->sigma->cnt;
+
+	return (lastCutsCnt - initCutsCnt);
+}//END updtFeasCutPool()
+
+/* The function identifies cuts from the feasibility cut pool which are voilated by the candidate solution, and mark them to be
+ * added to master problem. */
+int checkFeasCutPool(cellType *cell, int lenX) {
+	double 	betaX, alpha;
+	int 	idx, c;
+	BOOL 	duplicCut;
+
+	for (idx = 0; idx < cell->fcutsPool->cnt; idx++) {
+		duplicCut = FALSE;
+		alpha = cell->fcutsPool->vals[idx]->alpha;
+		for (c = 0; c < cell->fcuts->cnt; c++) {
+			if (DBL_ABS(alpha - cell->fcuts->vals[c]->alpha) < config.TOLERANCE) {
+				if (equalVector(cell->fcutsPool->vals[idx]->beta, cell->fcuts->vals[c]->beta, lenX, config.TOLERANCE)) {
+					duplicCut = TRUE;
+					break;
+				}
+			}
+		}
+
+		/* Add those cuts in cut pool that will be violated by incumbent solution */
+		betaX = vXv(cell->fcutsPool->vals[idx]->beta, cell->incumbX, NULL, lenX);
+		if (betaX < alpha) {
+			cell->infeasIncumb = TRUE;
+			if (duplicCut == TRUE)
+				printf("Incumbent violates one old cut from feasible cut pool, but the cut already exists in the master problem.\n");
+			else {
+				printf( "Incumbent violates one new cut from feasible cut pool, also adding to master problem.\n");
+				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX);
+			}
+		}
+		else {
+			/* Check if the cut will be violated by the candidate solution*/
+			if (duplicCut == TRUE)
+				continue;
+			betaX = vXv(cell->fcutsPool->vals[idx]->beta, cell->candidX, NULL, lenX);
+
+			if (betaX < alpha) {
+				printf("Candidate violates one cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
+				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX);
+			}
+		}
+	}
+
+#if defined(ALGO_CHECK)
+	writeProblem(cell->master->lp, "cellMasterAfterFeasCuts.lp");
+#endif
+
+	return 0;
+}//END checkFeasCutPool()
+
+/* This function prints the relevant information in a cut. It is meant to be used for debugging. */
 void printCut(cutsType *cuts, numType *num, int idx) {
 	int cnt;
 
-	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->cutObs,
+	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->numSamples,
 			cuts->vals[idx]->omegaCnt, cuts->vals[idx]->alpha);
 	for (cnt = 0; cnt <= num->cols; cnt++)
 		printf("%f ", cuts->vals[idx]->beta[cnt]);
@@ -395,7 +528,7 @@ void printCut(cutsType *cuts, numType *num, int idx) {
 	for (cnt = 0; cnt < cuts->vals[idx]->omegaCnt; cnt++)
 		printf("%d ", cuts->vals[idx]->iStar[cnt]);
 	printf("\n");
-}
+}//END printCut()
 
 void freeOneCut(oneCut *cut) {
 
@@ -406,13 +539,58 @@ void freeOneCut(oneCut *cut) {
 			mem_free(cut->beta);
 		mem_free(cut);
 	}
-}
+}//END freeOneCut()
 
-void freeCutsType(cutsType *cuts) {
+void freeCutsType(cutsType *cuts, BOOL partial) {
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++)
 		freeOneCut(cuts->vals[cnt]);
-	mem_free(cuts->vals);
-	mem_free(cuts);
-}//END freeCuts
+
+	if ( partial )
+		cuts->cnt = 0;
+	else {
+		mem_free(cuts->vals);
+		mem_free(cuts);
+	}
+}//END freeCutsType()
+
+/* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
+ * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
+ * duplicate of existing cut before it is added to the pool. */
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut) {
+	int	cnt;
+
+	if ( feasCut ) {
+		/* If we are adding a feasibility cut, make sure there are no duplicates */
+		for (cnt = 0; cnt < cell->fcuts->cnt; cnt++) {
+			if (DBL_ABS(cut->alpha - cell->fcuts->vals[cnt]->alpha) < config.TOLERANCE) {
+				if (equalVector(cut->beta, cell->fcuts->vals[cnt]->beta, lenX, config.TOLERANCE)) {
+					/* return 0 to indicate that no cut was added to the pool */
+					freeOneCut(cut);
+					return 0;
+				}
+			}
+		}
+		cell->fcuts->vals[cell->fcuts->cnt] = cut;
+		return cell->fcuts->cnt++;
+	}
+	else {
+		if (cell->cuts->cnt >= cell->maxCuts) {
+			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
+			 * then make room by reducing the cuts from the structure. */
+			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
+				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
+				return -1;
+			}
+		}
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		return cell->cuts->cnt++;
+	}
+
+	/* TODO: In the original SD code, the feasbility cuts are dropped so that the new optimality cut is added at the end of previous optimality cuts.
+	 * The feasibility cuts are added back once the new optimality cut is added. It is not clear why this is necessary, if we keep track of the row
+	 * numbers of optimality cuts and the row numbers are appropriately decremented in dropCut(). */
+	addCut2Master(cell->master, cut, cell->incumbX, lenX);
+
+}//END addCut()
