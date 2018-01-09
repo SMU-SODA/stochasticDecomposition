@@ -74,7 +74,7 @@ int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType 
  * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
-int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, int obs,
+int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, int obs,
 		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
 	double 	arg;
 	int 	cnt, maxCnt, sigmaUp, sigmaLow;
@@ -94,7 +94,7 @@ int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *de
 	for (cnt = 0; cnt < sigma->cnt; cnt++) {
 		if ( sigma->ck[cnt] > sigmaLow && sigma->ck[cnt] <= sigmaUp ) {
 			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			arg = sigma->vals[cnt].pib + delta->vals[sigma->lambdaIdx[cnt]][obs].pib - vXv(sigma->vals[cnt].piC, Xvect, coord->colsC, num->cntCcols);
+			arg = sigma->vals[cnt].pib + delta->vals[sigma->lambdaIdx[cnt]][obs].pib - piCbarX[cnt];
 
 			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
 			arg -= vXv(delta->vals[sigma->lambdaIdx[cnt]][obs].piC, Xvect, coord->rvCols, num->rvColCnt);

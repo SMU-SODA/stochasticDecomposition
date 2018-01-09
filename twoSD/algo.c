@@ -21,7 +21,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	FILE 	*soln;
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &meanSol) )
 		goto TERMINATE;
 
 	printf("Starting two-stage stochastic decomposition.\n");

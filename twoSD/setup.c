@@ -13,12 +13,12 @@
 
 extern configType config;
 
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell) {
-	vector	meanSol, lb;
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol) {
+	vector	lb;
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
-	meanSol = meanProblem(orig, stoc);
+	(*meanSol) = meanProblem(orig, stoc);
 	if ( meanSol == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to setup and solve mean value problem", 0);
 		return 1;
@@ -50,13 +50,13 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	}
 
 	/* create the cells which will be used in the algorithms */
-	(*cell) = newCell(stoc, (*prob), meanSol);
+	(*cell) = newCell(stoc, (*prob), (*meanSol));
 	if ( (*cell) == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to create the necessary cell structure", 0);
 		return 1;
 	}
 
-	mem_free(meanSol); mem_free(lb);
+	mem_free(lb);
 
 	return 0;
 }//END setupAlgo()

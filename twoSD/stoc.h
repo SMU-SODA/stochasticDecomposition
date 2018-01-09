@@ -80,7 +80,7 @@ oneProblem *newSubprob(oneProblem *sp);
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength, omegaType *omega,
 		int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE);
-int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector Xvect, int obs,
+int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, int obs,
 		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
 void calcDelta(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta, int deltaRowLength, int elemIdx,
 		BOOL newOmegaFlag);

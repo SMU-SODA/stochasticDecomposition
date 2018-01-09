@@ -32,10 +32,6 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 		return -1;
 	}
 
-#if defined(ALGO_CHECK)
-	writeProblem(cell->subprob->lp, "subproblem.lp");
-#endif
-
 	if ( ! cell->spFeasFlag ) {
 		/* Subproblem is infeasible, resolve infeasibility */
 		if ( resolveInfeasibility(prob, cell, newOmegaFlag, omegaIdx) ) {
@@ -82,9 +78,12 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
 
-	/* Need to store  Pi x Cbar x X independently of observation loop */
+	/* Pre-compute pi x Cbar x x as it is independent of observations */
 	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
 		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	for (c = 0; c < sigma->cnt; c++)
+		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->colsC, num->cntCcols);
+
 	if ( !(beta = (vector) arr_alloc(num->prevCols + 1, double)) )
 		errMsg("Allocation", "SDCut", "beta", 0);
 
@@ -96,8 +95,8 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
-			istarNew = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
+			istarAll = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
 
 			if (argmaxNew > argmaxAll) {
 				argmax = argmaxNew; istar  = istarNew;
@@ -111,7 +110,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, sigma, delta, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
+			istar = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
 		}
 
 		if (istar < 0) {
