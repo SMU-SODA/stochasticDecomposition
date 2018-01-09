@@ -149,7 +149,7 @@ void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL 
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
 int cleanCellType(cellType *cell, probType *prob, vector xk);
 void freeCellType(cellType *cell);
