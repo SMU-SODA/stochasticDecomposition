@@ -44,8 +44,10 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaTyp
 	writeProblem(cell->subprob->lp, "subproblem.lp");
 #endif
 
-	tic = clock();
 	/* (c) Solve the subproblem to obtain the optimal dual solution. */
+	tic = clock();
+	changeLPSolverType(ALG_AUTOMATIC);
+    setIntParam(PARAM_PREIND, OFF);
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			/* Set the subproblem feasibility flag to false and proceed to complete stochastic updates. These updates are
@@ -58,6 +60,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaTyp
 			return 1;
 		}
 	}
+	setIntParam(PARAM_PREIND, ON);
 	(*subprobTime) = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 #ifdef STOCH_CHECK

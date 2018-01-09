@@ -36,8 +36,9 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	writeProblem(cell->master->lp, "masterCell.lp");
 #endif
 
-	clock_t tic = clock();
 	/* solve the master problem */
+	clock_t tic = clock();
+	changeQPSolverType(ALG_CONCURRENT);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 		writeProblem(cell->master->lp, "error.lp");
 		errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
@@ -390,38 +391,27 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	/* Copy the all column information from the original master problem */
 	cnt = 0;
 	for (j = 0; j < orig->mac; j++) {
-		/* Copy objective function coefficients */
-		master->objx[j] = orig->objx[j];
-		/* Copy the decision variable type */
-		master->ctype[j] = orig->ctype[j];
-		/* Copy the upper bound and lower bound */
-		master->bdu[j] = orig->bdu[j];
+		master->objx[j] = orig->objx[j];		/* Copy objective function coefficients */
+		master->ctype[j] = orig->ctype[j];		/* Copy the decision variable type */
+		master->bdu[j] = orig->bdu[j];			/* Copy the upper bound and lower bound */
 		master->bdl[j] = orig->bdl[j];
-		/* Copy column names, offset by length */
-		master->cname[j] = orig->cname[j] + colOffset;
-		/* Copy the master sparse matrix beginning position of each column */
-		master->matbeg[j] = cnt;
-		/* Copy the sparse matrix non-zero element count */
-		master->matcnt[j] = orig->matcnt[j];
+		master->cname[j] = orig->cname[j] + colOffset; /* Copy column names, offset by length */
+		master->matbeg[j] = cnt;				/* Copy the master sparse matrix beginning position of each column */
+		master->matcnt[j] = orig->matcnt[j];	/* Copy the sparse matrix non-zero element count */
 		master->ctype[j] = orig->ctype[j];
 		/* Loop through all non-zero elements in this column */
 		for (idx = orig->matbeg[j]; idx < orig->matbeg[j] + orig->matcnt[j]; idx++) {
-			/* Copy the non-zero coefficient */
-			master->matval[cnt] = orig->matval[idx];
-			/* Copy the row entry of the non-zero elements */
-			master->matind[cnt] = orig->matind[idx];
+			master->matval[cnt] = orig->matval[idx];	/* Copy the non-zero coefficient */
+			master->matind[cnt] = orig->matind[idx];	/* Copy the row entry of the non-zero elements */
 			cnt++;
 		}
 	}
 
 	/* Copy all information concerning rows of master */
 	for (r = 0; r < orig->mar; r++) {
-		/* Copy the right hand side value */
-		master->rhsx[r] = orig->rhsx[r];
-		/* Copy the constraint sense */
-		master->senx[r] = orig->senx[r];
-		/* Copy row names, offset by length */
-		master->rname[r] = orig->rname[r] + rowOffset;
+		master->rhsx[r] = orig->rhsx[r];		/* Copy the right hand side value */
+		master->senx[r] = orig->senx[r];		/* Copy the constraint sense */
+		master->rname[r] = orig->rname[r] + rowOffset;	/* Copy row names, offset by length */
 	}
 
 	/* Initialize information for the extra column in the new master. */
