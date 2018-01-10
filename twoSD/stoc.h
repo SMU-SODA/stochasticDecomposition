@@ -76,7 +76,11 @@ typedef struct {
 	int				phiLength;	/* Number of basic columns with random cost coefficients */
 	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
 	intvec			omegaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
+	intvec			sigmaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
+	intvec			lambdaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
 	vector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
+	vector			gBar;
+	sparseMatrix	*psi;		/* The simplex tableau matrix corresponding to the basis. */
 }oneBasis;
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
@@ -91,8 +95,8 @@ typedef struct {
 }basisType;
 
 /* subprob.c */
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newSigmaFlag,
+int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newBasisFlag,
 		double *subprobTime, double *argmaxTime);
 int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
 int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, vector observ);
@@ -102,12 +106,12 @@ int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec
 oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
-int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength, omegaType *omega,
-		int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE);
-int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, int obs,
-		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
-void calcDelta(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta, int deltaRowLength, int elemIdx,
-		BOOL newOmegaFlag);
+int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag);
+int computeIstar(numType *num, coordType *coord, basisType *basis, deltaType *delta, vector Xvect, int obs, int numSamples,
+		BOOL pi_eval, double *argmax, BOOL isNew);
+int calcDelta(numType *num, coordType *coord, string senx, basisType *basis, lambdaType *lambda, sigmaType *sigma,
+		deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter, double TOLERANCE);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
               int idxLambda, BOOL newLambdaFlag, int currentIter, sigmaType *sigma, BOOL *newSigmaFlag, double TOLERANCE);
@@ -121,5 +125,16 @@ void freeLambdaType(lambdaType *lambda, BOOL partial);
 void freeSigmaType(sigmaType *sigma, BOOL partial);
 void freeOmegaType(omegaType *omega, BOOL partial);
 void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial);
+
+/* randCost.c */
+int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt,
+		BOOL *newBasisFlag, int currentIter);
+int decomposeDualSolution(LPptr spLP, oneBasis *B, vector omegaVals, int numRows);
+oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvdOmCols, int basisDim, int numCols, int numRows, int rvdOmCnt,
+		int currentIter, sparseVector *dBar);
+BOOL checkBasisFeasibility(oneBasis *B, sparseVector dOmega, string senx, int numCols, int numRows, double TOLERANCE);
+basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
+void freeOneBasis(oneBasis *B);
+void freeBasisType(basisType *basis, BOOL partial);
 
 #endif /* STOC_H_ */

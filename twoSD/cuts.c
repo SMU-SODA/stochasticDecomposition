@@ -22,11 +22,11 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut);
 int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL *newOmegaFlag, double lb) {
 	oneCut 	*cut;
 	int    	cutIdx;
-	BOOL	newSigmaFlag;
+	BOOL	newBasisFlag;
 
 	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-	if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newSigmaFlag,
+	if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
 			&cell->time.subprobIter, &cell->time.argmaxIter) ){
 		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 		return -1;
@@ -47,7 +47,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
-	cut = SDCut(prob[1]->num, prob[1]->coord, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->sigma, cell->basis, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -80,7 +80,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, basisType *basis, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
 	vector 	piCbarX, beta;
@@ -108,8 +108,8 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
-			istarNew = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
+			istarAll = computeIstar(num, coord, basis, delta,  Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, basis, delta, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
 
 			if (argmaxNew > argmaxAll) {
 				argmax = argmaxNew; istar  = istarNew;
@@ -123,7 +123,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, sigma, delta, piCbarX, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
+			istar = computeIstar(num, coord, basis, delta, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
 		}
 
 		if (istar < 0) {
@@ -132,19 +132,19 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 		}
 		cut->iStar[obs] = istar;
 
-		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+		/* TODO(RCSD): All stochastic information in stored in delta structure.
 		alpha += sigma->vals[istar].pib * omega->weights[obs];
 		alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
 			beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
-			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
+			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs]; */
 
-		/* TODO(RCSD): All stochastic information in stored in delta structure.
+		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
 		alpha += omega->weights[obs]*delta->vals[istar][obs].pib;
 		for ( c = 1; c <= num->cntCcols; c++ )
-			beta[coord->CCols[c]] += omega->weights[obs]*delta->vals[istar][obs].piC[c]; */
+			beta[coord->CCols[c]] += omega->weights[obs]*delta->vals[istar][obs].piC[c];
 	}
 
 	if (pi_eval_flag == TRUE) {
@@ -370,7 +370,7 @@ double calcVariance(double *x, double *mean_value, double *stdev_value, int batc
 /* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
  until the candidate and incumbent solution are both feasible. */
 int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
-	BOOL newSigmaFlag;
+	BOOL newBasisFlag;
 
 	/* QP master will be solved in feasibility mode */
 	cell->optMode = FALSE;
@@ -395,8 +395,8 @@ int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, in
 		/* increment the count for number of infeasible master solutions encountered */
 		cell->feasCnt++;
 
-		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newSigmaFlag,
+		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
 				&cell->time.subprobIter, &cell->time.argmaxIter) ) {
 			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
 			return 1;

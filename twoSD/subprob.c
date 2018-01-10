@@ -14,8 +14,8 @@
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newSigmaFlag,
+int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newBasisFlag,
 		double *subprobTime, double *argmaxTime) {
 	int  	status, basisIdx;
 	clock_t tic;
@@ -65,8 +65,8 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaTyp
 
 	tic = clock();
 	/* (d) update the stochastic elements in the problem */
-	basisIdx = stochasticUpdates(prob, subproblem->lp, lambda, sigma, delta, deltaRowLength, omega,
-			omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE);
+	basisIdx = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
+			omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag);
 	(*newOmegaFlag) = FALSE;
 	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 

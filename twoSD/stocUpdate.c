@@ -11,63 +11,100 @@
 
 #include "twoSD.h"
 
-/* This function updates all the structures necessary for forming a stochastic cut. The latest observation of omega and the latest dual solution
- * to the subproblem are added to their appropriate structures. Then Pi x b and Pi x C are computed and for the latest omega and dual vector,
- * and are added to the appropriate structures.
- * Note that the new column of delta is computed before a new row in lambda is calculated and before the new row in delta is completed,
- * so that the intersection of the new row and new column in delta is only computed once (they overlap at the bottom, right-hand corner). */
-int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength, omegaType *omega,
-		int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE) {
-	vector 	piS;
-	intvec	cstat, rstat;
+int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag) {
+	vector 	piDet;
+	intvec 	cstat, rstat;
 	double	mubBar;
-    int 	lambdaIdx, sigmaIdx;
-    BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
+	int 	basisIdx, lambdaIdx, sigmaIdx, cnt;
+	BOOL	newSigmaFlag, newLambdaFlag;
 
 	/* Allocate memory. */
 	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
 	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
 		errMsg("allocation", "stochasticUpdates", "rstat", 0);
-	if ( !(piS = (vector) arr_alloc(prob->num->rows+1, double)) )
-		errMsg("allocation", "stochasticUpdates", "piDet", 0);
 
 	/* Obtain the status of columns and rows in the basis. */
 	if ( getBasis(spLP, cstat, rstat) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
 		return -1;
 	}
-	/* Record the dual and reduced cost on bounds. */
-	if ( getDual(spLP, piS, prob->num->rows) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
-		return 1;
-	}
-
 	if ( computeMU(spLP, cstat,  prob->num->cols, &mubBar) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
 		return -1;
 	}
 
-    /* Only need to calculate column if new observation of omega found */
-    if (newOmegaFlag)
-    	calcDelta(prob->num, prob->coord, lambda, omega, delta, deltaRowLength, omegaIdx, newOmegaFlag);
+	/* Update the column of delta structure if a new observation was encountered, and check the feasibility of existing bases with respect to new observation. */
+	if ( newOmegaFlag )
+		calcDelta(prob->num, prob->coord, prob->sp->senx, basis, lambda, sigma, delta, omega, newOmegaFlag, omegaIdx, deltaRowLength, TOLERANCE);
 
-    /* extract the dual solutions corresponding to rows with random elements in them */
-    lambdaIdx = calcLambda(prob->num, prob->coord, piS, lambda, &newLambdaFlag, TOLERANCE);
+	if ( prob->num->rvdOmCnt == 0 ) {
+		if ( !(piDet = (vector) arr_alloc(prob->num->rows+1, double)) )
+			errMsg("allocation", "stochasticUpdates", "piDet", 0);
 
-    /* compute Pi x bBar and Pi x Cbar */
-    sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, piS, mubBar, lambdaIdx, newLambdaFlag,
-    		currentIter, sigma, &newSigmaFlag, TOLERANCE);
+		/* Record the dual and reduced cost on bounds. */
+		if ( getDual(spLP, piDet, prob->num->rows) ) {
+			errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+			return 1;
+		}
 
-    /* Only need to calculate row if a distinct lambda was found. We could use Pi, instead of lambda(Pi), for this calculation, */
-    /* and save the time for expanding/reducing vector even though the lambda is the same, the current Pi might be a
-     distinct one due to the variations in sigma*/
-    if (newLambdaFlag)
-    	calcDelta(prob->num, prob->coord, lambda, omega, delta, deltaRowLength, lambdaIdx, FALSE);
+		/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+		lambdaIdx = calcLambda(prob->num, prob->coord, piDet, lambda, &newLambdaFlag, TOLERANCE);
 
-    mem_free(piS); mem_free(cstat);
-    return sigmaIdx;
-}//END stochasticUpdates
+		/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+		sigmaIdx = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, piDet, mubBar,
+				lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+
+		if ( newSigmaFlag ) {
+			/* Update the basis structure. */
+			basis->vals[sigmaIdx] = newBasis(NULL, 0, 0, 0, 0, 0, 0, 0, currentIter, NULL);
+			basis->vals[sigmaIdx]->lambdaIdx[0] = lambdaIdx;
+			basis->vals[sigmaIdx]->sigmaIdx[0] = sigmaIdx;
+			basis->cnt++;
+		}
+
+		/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
+		calcDelta(prob->num, prob->coord, prob->sp->senx, basis, lambda, sigma, delta, omega, FALSE, sigmaIdx, deltaRowLength, TOLERANCE);
+	}
+	else {
+		/* Update the basis structure. */
+		basisIdx = calcBasis(spLP, basis, prob->dBar, cstat, prob->num->cols, rstat, prob->num->rows,
+				prob->coord->rvCols, prob->num->rvdOmCnt, newBasisFlag, currentIter);
+
+		if ( (*newBasisFlag) ) {
+			/* Decompose the dual solution into deterministic and stochastic components. */
+			if ( decomposeDualSolution(spLP, basis->vals[basisIdx], omega->vals[omegaIdx]+prob->coord->rvOffset[2], prob->num->rows) ) {
+				errMsg("algorithm", "stochasticUpdates", "failed to decompose the dual solution", 0);
+				return -1;
+			}
+
+			/* Calculations with respect to deterministic component of the dual solution */
+			/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+			lambdaIdx = basis->vals[basisIdx]->lambdaIdx[0] = calcLambda(prob->num, prob->coord, basis->vals[basisIdx]->piDet, lambda, &newLambdaFlag, TOLERANCE);
+
+			/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+			basis->vals[basisIdx]->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, basis->vals[basisIdx]->piDet, mubBar,
+					lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+
+			/* Calculations with respect to stochastic component of the dual solution */
+			for (cnt = 0; cnt < basis->vals[basisIdx]->phiLength; cnt++ ) {
+				/* Extract the deterministic component of dual solutions corresponding to rows with random elements in them */
+				lambdaIdx = basis->vals[basisIdx]->lambdaIdx[cnt+1] = calcLambda(prob->num, prob->coord, basis->vals[basisIdx]->phi[cnt], lambda, &newLambdaFlag, TOLERANCE);
+
+				/* Compute the product of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
+				basis->vals[basisIdx]->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, basis->vals[basisIdx]->phi[cnt], mubBar,
+						lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+			}
+
+			/* Establish the feasibility of the new basis with respect to all the observations encountered thus far and compute the corresponding delta elements. */
+			calcDelta(prob->num, prob->coord, prob->sp->senx, basis, lambda, sigma, delta, omega, FALSE, basisIdx, deltaRowLength, TOLERANCE);
+		}
+	}
+
+	mem_free(cstat);	mem_free(rstat);
+	return basisIdx;
+}//End stochasticUpdates()
 
 /*This function loops through all the dual vectors found so far and returns the index of the one which satisfies the expression:
  * 				argmax { Pi x (R - T x X) | all Pi }
@@ -76,34 +113,32 @@ int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType 
  * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
  * containing two indices.  (While both indices point to pieces of the dual vectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant vectors. */
-int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, int obs,
-		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
+int computeIstar(numType *num, coordType *coord, basisType *basis, deltaType *delta, vector Xvect, int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew) {
 	double 	arg;
-	int 	cnt, maxCnt, sigmaUp, sigmaLow;
+	int 	cnt, maxCnt, basisUp, basisLow;
 
 	if (pi_eval == TRUE)
 		numSamples -= (numSamples / 10 + 1);
 
 	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
 	if ( !isNew ) {
-		sigmaUp = numSamples; sigmaLow = -INT_MAX;
+		basisUp = numSamples; basisLow = -INT_MAX;
 	}
 	else {
-		sigmaUp = INT_MAX; sigmaLow = numSamples;
+		basisUp = INT_MAX; basisLow = numSamples;
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
-	for (cnt = 0; cnt < sigma->cnt; cnt++) {
-		if ( sigma->ck[cnt] > sigmaLow && sigma->ck[cnt] <= sigmaUp ) {
-			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			arg = sigma->vals[cnt].pib + delta->vals[sigma->lambdaIdx[cnt]][obs].pib - piCbarX[cnt];
-
-			/* Subtract (Pi x Comega) x X. Multiply only non-zero VxT values */
-			arg -= vXv(delta->vals[sigma->lambdaIdx[cnt]][obs].piC, Xvect, coord->rvCols, num->rvColCnt);
-
-			if (arg > (*argmax)) {
-				*argmax = arg;
-				maxCnt = cnt;
+	/* Run through the list of basis to choose the one which provides the best lower bound */
+	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+		if ( basis->obsFeasible[cnt][obs] ) {
+			/* I. Compute argument using deterministic component of the dual solution */
+			if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
+				arg = delta->vals[cnt][obs].pib - vXv(delta->vals[cnt][obs].piC, Xvect, coord->CCols, num->cntCcols);
+				if (arg > (*argmax)) {
+					*argmax = arg;
+					maxCnt = cnt;
+				}
 			}
 		}
 	}
@@ -118,67 +153,123 @@ int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *de
  * are calculated for all values of lambda_pi, for the new C(omega) and b(omega).  Room in the array has already been allocated, so the function
  * only fills it, in the column specified by _obs_. It is assumed that this observation is distinct from all previous ones, and thus a new column
  * must be calculated. */
-void calcDelta(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta, int deltaRowLength, int elemIdx,
-		BOOL newOmegaFlag) {
-    int 	idx;
-    sparseVector bomega;
-    sparseMatrix Comega;
-    vector 	lambdaPi, piCrossC;
+int calcDelta(numType *num, coordType *coord, string senx, basisType *basis, lambdaType *lambda, sigmaType *sigma,
+		deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter, double TOLERANCE) {
+	sparseMatrix COmega;
+	sparseVector bOmega, dOmega;
+	vector 		 lambdaPi, piCrossC;
+	double		 multiplier;
+	int 		 cnt, c, m, lambdaIdx, sigmaIdx, omegaIdx;
 
-    bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows;
-    Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols + num->rvbOmCnt;
-    Comega.row = coord->rvCOmRows + num->rvbOmCnt;
+	/* extract the coordinates and number of random elements */
+	bOmega.cnt = num->rvbOmCnt;	bOmega.col = coord->rvbOmRows;
+	COmega.cnt = num->rvCOmCnt; COmega.col = coord->rvCOmCols; COmega.row = coord->rvCOmRows;
+	dOmega.cnt = num->rvdOmCnt; dOmega.col = coord->rvdOmCols;
 
-    if ( newOmegaFlag ) {
+	if ( newOmegaFlag ) {
 		/* Case I: New observation encountered. */
-        bomega.val= omega->vals[elemIdx];
-        Comega.val = omega->vals[elemIdx] + num->rvbOmCnt;
+		bOmega.val = coord->rvOffset[0] + omega->vals[elemIdx];
+		COmega.val = coord->rvOffset[1] + omega->vals[elemIdx];
+		dOmega.val = coord->rvOffset[2] + omega->vals[elemIdx];
 
-        /* For all dual vectors, lambda(pi), calculate pi X bomega and pi X Comega */
-        for (idx = 0; idx < lambda->cnt; idx++) {
-            /* Retrieve a new (sparse) dual vector, and expand it into a full vector */
-            lambdaPi = expandVector(lambda->vals[idx], coord->rvRows, num->rvRowCnt, num->rows);
+		/* Loop though all the basis to establish feasibility with respect to new observations, and if feasible, compute delta elements for corresponding lambdas. */
+		for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+			/* Establish if the basis is feasible or not. */
+			basis->obsFeasible[cnt][elemIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega, senx, num->cols, num->rows, TOLERANCE);
 
-            /* Multiply the dual vector by the observation of bomega and Comega */
-            /* Reduce PIxb from its full vector form into a sparse vector */
-            delta->vals[idx][elemIdx].pib = vXvSparse(lambdaPi, &bomega);
-            if ( num->rvColCnt != 0 ) {
-            	piCrossC = vxMSparse(lambdaPi, &Comega, num->prevCols);
-            	delta->vals[idx][elemIdx].piC = reduceVector(piCrossC, coord->rvCols, num->rvColCnt);
-                mem_free(piCrossC);
-            }
-            else
-            	delta->vals[idx][elemIdx].piC = NULL;
+			if ( basis->obsFeasible[cnt][elemIdx] ) {
+				/* If the basis is feasible, then compute the delta elements. */
+				piCrossC = (vector) arr_alloc(num->prevCols+1, double);
 
-            mem_free(lambdaPi);
-        }
-    }
-    else {
-		/* Case II: New dual vector encountered. */
-        if ( !(delta->vals[elemIdx] = (pixbCType *) arr_alloc(deltaRowLength, pixbCType)))
-            errMsg("allocation", "calcDeltaRow", "delta->val[cnt]", 0);
+				for ( c = 0; c <= basis->vals[cnt]->phiLength; c++ ) {
+					lambdaIdx = basis->vals[cnt]->lambdaIdx[c];
+					sigmaIdx  = basis->vals[cnt]->sigmaIdx[c];
 
-        /* expand the compressed lambda vector */
-        lambdaPi = expandVector(lambda->vals[elemIdx], coord->rvRows, num->rvRowCnt, num->rows);
+					/* Retrieve a new (sparse) dual vector, and expand it into a full vector */
+					lambdaPi = expandVector(lambda->vals[lambdaIdx], coord->rvRows, num->rvRowCnt, num->rows);
 
-        /* go through all the observations and compute pi x b and pi x C */
-        for (idx = 0; idx < omega->cnt; idx++) {
+					/* The scaling factor dependent on the random cost coefficients. */
+					if ( c == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[elemIdx][omegaIdx];
 
-            bomega.val= omega->vals[idx];
-            Comega.val = omega->vals[idx] + num->rvbOmCnt;
+					/* Intercept */
+					delta->vals[cnt][elemIdx].pib += multiplier*(sigma->vals[sigmaIdx].pib + vXvSparse(lambdaPi, &bOmega));
 
-            delta->vals[elemIdx][idx].pib = vXvSparse(lambdaPi, &bomega);
-            if ( num->rvColCnt != 0 ) {
-            	piCrossC = vxMSparse(lambdaPi, &Comega, num->prevCols);
-            	delta->vals[elemIdx][idx].piC = reduceVector(piCrossC, coord->rvCols, num->rvColCnt);
-                mem_free(piCrossC);
-            }
-            else
-            	delta->vals[elemIdx][idx].piC = NULL;
-        }
-        mem_free(lambdaPi);
-    }
+					/* Sub-gradient */
+					for ( m = 1; m <= num->cntCcols; m++ )
+						piCrossC[coord->CCols[m]] += multiplier*sigma->vals[sigmaIdx].piC[m];
+					for ( m = 1; m <= num->rvCOmCnt; m++ )
+						piCrossC[COmega.col[m]] += multiplier*lambdaPi[m]*COmega.val[COmega.row[m]];
+					mem_free(lambdaPi);
+				}
+				delta->vals[cnt][elemIdx].piC = reduceVector(piCrossC, coord->CCols, num->cntCcols);
+				mem_free(piCrossC);
+			}
+			else
+				delta->vals[cnt][elemIdx].piC = NULL;
+		}
+	}
+	else {
+		/* Case II: New basis encountered. */
+		if ( !(basis->obsFeasible[elemIdx] = (BOOL*) arr_alloc(maxIter, BOOL)) )
+			errMsg("allocation", "calcDelta", "basis->obsFeasibility[n]", 0);
 
+		if (!(delta->vals[elemIdx] = arr_alloc(maxIter, pixbCType)))
+			errMsg("allocation", "calcDelta", "delta->vals", 0);
+
+		/* Loop through all the observations and establish feasibility of new basis with respect to each. If the new basis is feasible compute the delta elements
+		 for all lambdas associated with the new basis. */
+		for ( cnt = 0; cnt < omega->cnt; cnt++ ) {
+			dOmega.val = coord->rvOffset[2]+omega->vals[cnt];
+
+			/* Establish the feasibility of new basis with respect to existing observations */
+			basis->obsFeasible[elemIdx][cnt] = checkBasisFeasibility(basis->vals[elemIdx], dOmega, senx, num->cols, num->rows, TOLERANCE);
+
+			if ( basis->obsFeasible[elemIdx][cnt] ) {
+				/* If the basis is feasible, compute the delta elements */
+				piCrossC = (vector) arr_alloc(num->prevCols+1, double);
+
+				bOmega.val = coord->rvOffset[0]+omega->vals[cnt];
+				COmega.val = coord->rvOffset[1]+omega->vals[cnt];
+
+				for ( c = 0; c <= basis->vals[elemIdx]->phiLength; c++ ) {
+					/* Retrieve a new (sparse) dual vector, and expand it into a full vector */
+					lambdaIdx = basis->vals[elemIdx]->lambdaIdx[c];
+					sigmaIdx  = basis->vals[elemIdx]->sigmaIdx[c];
+
+
+					/* Retrieve a new (sparse) dual vector, and expand it into a full vector */
+					lambdaPi = expandVector(lambda->vals[lambdaIdx], coord->rvRows, num->rvRowCnt, num->rows);
+
+					/* The scaling factor dependent on the random cost coefficients. */
+					if ( c == 0 )
+						multiplier = 1.0;
+					else {
+						omegaIdx  = coord->rvOffset[2] + basis->vals[elemIdx]->omegaIdx[c];
+						multiplier = omega->vals[cnt][omegaIdx];
+					}
+
+					/* Intercept */
+					delta->vals[elemIdx][cnt].pib += multiplier*(sigma->vals[sigmaIdx].pib + vXvSparse(lambdaPi, &bOmega));
+
+					/* subgradient */
+					for ( m = 1; m <= num->cntCcols; m++ )
+						piCrossC[coord->CCols[m]] += multiplier*sigma->vals[sigmaIdx].piC[m];
+					for ( m = 1; m <= num->rvCOmCnt; m++ )
+						piCrossC[COmega.col[m]] += multiplier*lambdaPi[m]*COmega.val[COmega.row[m]];
+					mem_free(lambdaPi);
+				}
+				delta->vals[elemIdx][cnt].piC = reduceVector(piCrossC, coord->CCols, num->cntCcols);
+				mem_free(piCrossC);
+			}
+			else
+				delta->vals[elemIdx][cnt].piC = NULL;
+		}
+	}
+
+	return 0;
 }//END calcDelta()
 
 /* This function stores a new lambda_pi vector in the lambda structure.  Each lambda_pi represents only those dual variables whose rows in the

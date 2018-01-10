@@ -139,7 +139,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->lambda = newLambda(length, 0, prob[1]->num->rvRowCnt);
 	cell->sigma  = newSigma(length, prob[1]->num->cntCcols, 0);
 	cell->delta  = newDelta(length);
-	cell->omega  = newOmega(config.MAX_ITER);
+	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
 
 	cell->optFlag 			= FALSE;
 	cell->dualStableFlag 	= FALSE;
