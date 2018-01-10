@@ -373,12 +373,13 @@ deltaType *newDelta(int numIter) {
         errMsg("Allocation", "newDelta", "d",0);
     if (!(delta->vals = (pixbCType **) arr_alloc(numIter, pixbCType *)))
         errMsg("Allocation", "newDelta", "d->val",0);
+
     return delta;
 }//END newDelta
 
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a vector to hold an array of
  * observation and the weights associated with it. */
-omegaType *newOmega(int numIter) {
+omegaType *newOmega(int numOmega, int numIter) {
     omegaType *omega;
 
     if ( !(omega = (omegaType *) mem_malloc(sizeof(omegaType))) )
@@ -387,6 +388,7 @@ omegaType *newOmega(int numIter) {
         errMsg("allocation", "newOmega", "omega->weights", 0);
     if ( !(omega->vals = (vector *) arr_alloc(numIter, vector)) )
         errMsg("allocation", "newOmega", "omega->vals", 0);
+    omega->numRV = numOmega;
     omega->cnt = 0;
 
     return omega;
@@ -405,7 +407,6 @@ void freeOmegaType(omegaType *omega, BOOL partial) {
 		mem_free(omega->vals);
 	}
 	if ( omega->weights ) mem_free(omega->weights);
-//	if ( omega->probs ) mem_free(omega->probs);
 	mem_free(omega);
 
 }//END freeOmegaType()

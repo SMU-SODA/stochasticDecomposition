@@ -206,6 +206,12 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 				for (idx = 1; idx <= num->rvCOmCnt; idx++)
 					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[sigma->lambdaIdx[istar]][observ[obs]].piC[idx];
 
+				/* TODO(RCSD): All stochastic information in stored in delta structure.
+				 * 				gCuts->vals[cnt]->alpha += delta->vals[iStar][observ[obs]].pib;
+						for (idx = 1; idx <= num->cntCcols; idx++)
+					gCuts->vals[cnt]->beta[coord->CCols[idx]] += delta->vals[iStar][observ[obs]].piC[idx];
+				 *  */
+
 				count++;
 			}
 		}

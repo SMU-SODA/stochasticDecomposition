@@ -15,7 +15,8 @@ extern configType config;
 extern string outputDir;
 
 int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
-	vector 	observ, rhs;
+	vector 	observ, rhs, cost, costTemp;
+	intvec   objxIdx;
 	double 	obj, mean, variance, stdev, temp;
 	int		cnt, status, m;
 
@@ -31,6 +32,18 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 	if (!(rhs =(vector) arr_alloc(prob[1]->num->rows+1, double)))
 		errMsg("Allocation", "evaluate", "rhs",0);
 
+	/* cost coefficients */
+	if ( !(cost = (vector) arr_alloc(prob[1]->num->rvdOmCnt+1, double)) )
+		errMsg("allocation", "evaluate", "cost", 0);
+	if ( !(objxIdx = (intvec) arr_alloc(prob[1]->num->cols+1, int)) )
+		errMsg("allocation", "evaluate", "objxIdx", 0);
+	costTemp = expandVector(prob[1]->dBar->val, prob[1]->dBar->col, prob[1]->dBar->cnt, prob[1]->num->cols);
+	for (m = 1; m <= prob[1]->num->rvdOmCnt; m++ ) {
+		objxIdx[m] = prob[1]->coord->rvdOmCols[m] - 1;
+		cost[m] = costTemp[prob[1]->coord->rvdOmCols[m]];
+	}
+	mem_free(costTemp);
+
 	/* change the right hand side with the solution */
 	chgRHSwSoln(prob[1]->bBar, prob[1]->Cbar, rhs, Xvect);
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
@@ -44,6 +57,14 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
 			return 1;
+		}
+
+		/* Change cost coefficients with random observations */
+		if ( prob[1]->num->rvdOmCnt > 0 ) {
+			if ( chgObjxwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
+				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
+				return 1;
+			}
 		}
 
 		if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
@@ -85,7 +106,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 	writeEvaluationSummary(soln, mean, stdev, cnt);
 	writeEvaluationSummary(stdout, mean, stdev, cnt);
 
-	mem_free(observ); mem_free(rhs);
+	mem_free(observ); mem_free(rhs);  mem_free(objxIdx); mem_free(cost);
 	return 0;
 
 }//END evaluate()

@@ -40,7 +40,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 		}
 	}
 	else if ( cell->fcutsPool->cnt > 0 && (*newOmegaFlag) ) {
-		/* Subproblem is feasible, however new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+		/* TODO: Subproblem is feasible, however new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
 		 * to see if new feasibility cuts need to be added. */
 
 	}
@@ -53,6 +53,19 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 		return -1;
 	}
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
+
+#if defined(BASIS_CHECK)
+	/* Solve the subproblem to verify if the argmax operation yields a lower bound */
+	for ( int cnt = 0; cnt < cell->omega->cnt; cnt++ ) {
+		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL, &cell->time->subprobIter, &cell->time->argmaxIter) < 0 ) {
+			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
+			return -1;
+		}
+		printf("Subproblem solve for omega-%d = %lf\n", cnt, getObjective(cell->subprob->lp, PROB_LP));
+	}
+#endif
 
 	/* (c) add cut to the structure and master problem  */
 	if ( addCut2Pool(cell, cut, prob[0]->num->cols, lb, FALSE) < 0) {
@@ -127,6 +140,11 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 			beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
 			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
+
+		/* TODO(RCSD): All stochastic information in stored in delta structure.
+		alpha += omega->weights[obs]*delta->vals[istar][obs].pib;
+		for ( c = 1; c <= num->cntCcols; c++ )
+			beta[coord->CCols[c]] += omega->weights[obs]*delta->vals[istar][obs].piC[c]; */
 	}
 
 	if (pi_eval_flag == TRUE) {
@@ -144,9 +162,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 
 	for (c = 1; c <= num->prevCols; c++)
 		cut->beta[c] = beta[c] / numSamples;
-
-	/* coefficient of eta coloumn */
-	cut->beta[0] = 1.0;
+	cut->beta[0] = 1.0;			/* coefficient of eta coloumn */
 
 	mem_free(piCbarX);
 	mem_free(beta);
@@ -196,7 +212,6 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
 	cut->numSamples = numSamples;
 	cut->omegaCnt = numIstar;
-	cut->slackCnt = 0;
 	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
@@ -586,10 +601,5 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut) 
 		cell->cuts->vals[cell->cuts->cnt] = cut;
 		return cell->cuts->cnt++;
 	}
-
-	/* TODO: In the original SD code, the feasbility cuts are dropped so that the new optimality cut is added at the end of previous optimality cuts.
-	 * The feasibility cuts are added back once the new optimality cut is added. It is not clear why this is necessary, if we keep track of the row
-	 * numbers of optimality cuts and the row numbers are appropriately decremented in dropCut(). */
-	addCut2Master(cell->master, cut, cell->incumbX, lenX);
 
 }//END addCut()

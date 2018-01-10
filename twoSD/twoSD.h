@@ -124,6 +124,7 @@ typedef struct {
 	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
 	deltaType   *delta;				/* calculations based on realization and dual solutions observed */
 	omegaType 	*omega;				/* all realizations observed during the algorithm */
+	basisType	*basis;				/* hold unique basis identified */
 
     BOOL        optFlag;
 	vector      pi_ratio;

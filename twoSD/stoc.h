@@ -68,6 +68,28 @@ typedef struct {
 	pixbCType 	**vals;
 } deltaType;
 
+typedef struct {
+	int				ck;			/* The first time the basis was encountered. */
+	int				weight;		/* Frequency of observation for each unique basis */
+	unsigned long 	*rCode;		/* Encoded row status in the basis (currently not being used */
+	unsigned long	*cCode;		/* Encoded column status in the basis */
+	int				phiLength;	/* Number of basic columns with random cost coefficients */
+	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
+	intvec			omegaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
+	vector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
+}oneBasis;
+
+/* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
+ * This structure will be at the heart of all calculations related to stochastic updates. */
+typedef struct {
+	int			basisDim;	/* The dimension of the basis matrix */
+	int			cnt;		/* Number of unique basis encountered by the algorithm */
+	int			rCodeLen;	/* Length of encoded row status */
+	int			cCodeLen;	/* Length of encoded column status */
+	BOOL		**obsFeasible;
+	oneBasis	**vals;		/* a structure for each basis */
+}basisType;
+
 /* subprob.c */
 int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newSigmaFlag,
@@ -94,7 +116,7 @@ int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
-omegaType *newOmega(int numIter);
+omegaType *newOmega(int numOmega, int numIter);
 void freeLambdaType(lambdaType *lambda, BOOL partial);
 void freeSigmaType(sigmaType *sigma, BOOL partial);
 void freeOmegaType(omegaType *omega, BOOL partial);
