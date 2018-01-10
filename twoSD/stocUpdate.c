@@ -19,7 +19,7 @@
 int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength, omegaType *omega,
 		int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE) {
 	vector 	piS;
-	intvec	cstat;
+	intvec	cstat, rstat;
 	double	mubBar;
     int 	lambdaIdx, sigmaIdx;
     BOOL 	newLambdaFlag= FALSE, newSigmaFlag= FALSE;
@@ -27,11 +27,13 @@ int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType 
 	/* Allocate memory. */
 	if ( !(cstat = (intvec) arr_alloc( prob->num->cols+1, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
+	if ( !(rstat = (intvec) arr_alloc( prob->num->rows+1, int)))
+		errMsg("allocation", "stochasticUpdates", "rstat", 0);
 	if ( !(piS = (vector) arr_alloc(prob->num->rows+1, double)) )
 		errMsg("allocation", "stochasticUpdates", "piDet", 0);
 
 	/* Obtain the status of columns and rows in the basis. */
-	if ( getBasis(spLP, cstat, NULL) ) {
+	if ( getBasis(spLP, cstat, rstat) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
 		return -1;
 	}
