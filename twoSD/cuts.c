@@ -82,7 +82,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
 		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
 	for (c = 0; c < sigma->cnt; c++)
-		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->colsC, num->cntCcols);
+		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
 	if ( !(beta = (vector) arr_alloc(num->prevCols + 1, double)) )
 		errMsg("Allocation", "SDCut", "beta", 0);
@@ -124,7 +124,7 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta
 		alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
 		for (c = 1; c <= num->cntCcols; c++)
-			beta[coord->colsC[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
+			beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
 		for (c = 1; c <= num->rvColCnt; c++)
 			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
 	}
@@ -434,7 +434,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
 
 			for (c = 1; c <= num->cntCcols; c++)
-				cut->beta[coord->colsC[c]] += cell->sigma->vals[idx].piC[c];
+				cut->beta[coord->CCols[c]] += cell->sigma->vals[idx].piC[c];
 			for (c = 1; c <= num->rvCOmCnt; c++)
 				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
 
@@ -454,7 +454,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
 
 			for (c = 1; c <= num->cntCcols; c++)
-				cut->beta[coord->colsC[c]] += cell->sigma->vals[idx].piC[c];
+				cut->beta[coord->CCols[c]] += cell->sigma->vals[idx].piC[c];
 			for (c = 1; c <= num->rvCOmCnt; c++)
 				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
 
