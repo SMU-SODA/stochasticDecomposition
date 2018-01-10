@@ -123,9 +123,9 @@ void calcDelta(numType *num, coordType *coord, lambdaType *lambda, omegaType *om
     sparseMatrix Comega;
     vector 	lambdaPi, piCrossC;
 
-    bomega.cnt = num->rvbOmCnt;	bomega.col = coord->omegaRow;
-    Comega.cnt = num->rvCOmCnt; Comega.col = coord->omegaCol + num->rvbOmCnt;
-    Comega.row = coord->omegaRow + num->rvbOmCnt;
+    bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows;
+    Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols + num->rvbOmCnt;
+    Comega.row = coord->rvCOmRows + num->rvbOmCnt;
 
     if ( newOmegaFlag ) {
 		/* Case I: New observation encountered. */
@@ -216,7 +216,7 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
     pibBar = vXvSparse(pi, bBar) + mubBar;
 
     temp = vxMSparse(pi, CBar, num->prevCols);
-    piCBar = reduceVector(temp, coord->colsC, num->cntCcols);
+    piCBar = reduceVector(temp, coord->CCols, num->cntCcols);
     mem_free(temp);
 
     if (!newLambdaFlag){

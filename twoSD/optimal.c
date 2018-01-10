@@ -201,7 +201,7 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 				gCuts->vals[cnt]->alpha += sigma->vals[istar].pib + delta->vals[sigma->lambdaIdx[istar]][observ[obs]].pib;
 
 				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->colsC[idx]] += sigma->vals[istar].piC[idx];
+					gCuts->vals[cnt]->beta[coord->CCols[idx]] += sigma->vals[istar].piC[idx];
 
 				for (idx = 1; idx <= num->rvCOmCnt; idx++)
 					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[sigma->lambdaIdx[istar]][observ[obs]].piC[idx];
