@@ -103,7 +103,7 @@ double getObjective(LPptr lp, int type) {
 
 int getPrimal(LPptr lp, vector X, int length) {
 	int status;
-    
+
 	status = CPXgetx(env, lp, X+1, 0, length-1);
 	if ( status )
 		solverErrmsg(status);
@@ -151,9 +151,21 @@ int getDualSlacks(LPptr lp, vector Dj, int length){
 int getBasis(LPptr lp, intvec cstat, intvec rstat){
 	int status;
 
-	status = CPXgetbase(env, lp, cstat+1, rstat+1);
-	if ( status )
-		solverErrmsg(status);
+	if ( rstat != NULL && cstat != NULL ) {
+		status = CPXgetbase(env, lp, cstat+1, rstat+1);
+		if ( status )
+			solverErrmsg(status);
+	}
+	else if ( rstat != NULL ) {
+		status = CPXgetbase(env, lp, NULL, rstat+1);
+		if ( status )
+			solverErrmsg(status);
+	}
+	else if ( cstat != NULL ) {
+		status = CPXgetbase(env, lp, cstat+1, NULL);
+		if ( status )
+			solverErrmsg(status);
+	}
 
 	return status;
 }//END get_basis()
