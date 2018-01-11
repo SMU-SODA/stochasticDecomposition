@@ -54,12 +54,13 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	}
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
-#if defined(BASIS_CHECK)
+#if defined(STOCH_CHECK)
 	/* Solve the subproblem to verify if the argmax operation yields a lower bound */
 	for ( int cnt = 0; cnt < cell->omega->cnt; cnt++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL, &cell->time->subprobIter, &cell->time->argmaxIter) < 0 ) {
+				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
+				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
@@ -85,7 +86,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	oneCut *cut;
 	vector 	piCbarX, beta;
 	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0, multiplier;
-	int	 	istarAll, istarNew, istar, idx, c, obs, sigmaIdx, omegaIdx, lambdaIdx;
+	int	 	istarAll, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	BOOL    pi_eval_flag = FALSE;
 
 	/* allocate memory to hold a new cut */
@@ -135,21 +136,32 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		}
 		cut->iStar[obs] = istar;
 
-		for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
-			sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
-			lambdaIdx = basis->vals[istar]->lambdaIdx[idx];
-			if ( idx == 0 )
-				multiplier = 1.0;
-			else
-				multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
+		if ( num->rvdOmCnt > 0 ) {
+			for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
+				sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+				lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+				if ( idx == 0 )
+					multiplier = 1.0;
+				else
+					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
-			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-			alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
+				/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+				alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
+
+				for (c = 1; c <= num->cntCcols; c++)
+					beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+				for (c = 1; c <= num->rvCOmCnt; c++)
+					beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
+			}
+		}
+		else {
+			alpha += sigma->vals[istar].pib * omega->weights[obs];
+			alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
 			for (c = 1; c <= num->cntCcols; c++)
-				beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+				beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
 			for (c = 1; c <= num->rvCOmCnt; c++)
-				beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
+				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
 		}
 	}
 

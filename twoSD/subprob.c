@@ -17,7 +17,7 @@
 int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newBasisFlag,
 		double *subprobTime, double *argmaxTime) {
-	int  	status, basisIdx;
+	int  	status;
 	clock_t tic;
 
 	/* (a) compute and change the right-hand side using current observation and first-stage solution */
@@ -65,7 +65,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 
 	tic = clock();
 	/* (d) update the stochastic elements in the problem */
-	basisIdx = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
+	status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
 			omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag);
 	(*newOmegaFlag) = FALSE;
 	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
@@ -73,7 +73,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 #ifdef STOCH_CHECK
 	obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
 	obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
-			omega->vals[omegaIdx], prob->coord->rvCols, prob->num->rvColCnt);
+			omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 	printf("Objective function estimate    = %lf\n", obj);
 #endif
 
@@ -148,7 +148,7 @@ int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBa
 		return -1;
 	}
 
-	mem_free(indices);
+	mem_free(indices); mem_free(cost);
 	return 0;
 }//END computeCostCoeff()
 

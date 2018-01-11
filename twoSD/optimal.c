@@ -123,6 +123,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 			return FALSE;
 		}
 	}//END replication loop
+	cell->time.optTestIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	mem_free(cdf); mem_free(observ);
 	freeCutsType(gCuts, FALSE);
@@ -203,7 +204,7 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 				for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
 					sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
-					lambdaIdx = basis->vals[istar]->lambdaIdx[idx];
+					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
 					if ( idx == 0 )
 						multiplier = 1.0;
 					else

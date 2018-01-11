@@ -51,7 +51,6 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 
 		B->omegaIdx = (intvec) mem_realloc(B->omegaIdx, (B->phiLength+1)*sizeof(int));
 		B->sigmaIdx = (intvec) mem_realloc(B->sigmaIdx, (B->phiLength+1)*sizeof(int));
-		B->lambdaIdx = (intvec) mem_realloc(B->lambdaIdx, (B->phiLength+1)*sizeof(int));
 
 		if ( !(B->psi = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
 			errMsg("allocation", "newBasis", "B->psi", 0);
@@ -89,11 +88,11 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 #if defined (STOCH_CHECK)
 	printf("New basis identified     :: \n");
 	printf("\tNumber of basic columns with random cost coefficients      = %d\n", B->phiLength);
-	if ( basis->vals[cnt]->phiLength > 0 ) {
+	if ( B->phiLength > 0 ) {
 		printf("\tIndex in observation vector corresponding to basic columns = "); printIntvec(B->omegaIdx, B->phiLength, NULL);
 		printf("\tPhi = ");
 		for (int i = 0; i < B->phiLength; i++ ) {
-			printf("\t\t"); printVector(B->phi[i], numRows, NULL);
+			printf("\t\t"); printVector(B->phi[i], num->rows, NULL);
 		}
 	}
 	else {
@@ -101,7 +100,7 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 		printf("\tPhi = NULL\n");
 	}
 	printf("Deterministic component of reduced cost  = ");
-	printSparseVector(B->gBar+1, basisHead, numRows);
+	printSparseVector(B->gBar+1, basisHead, num->rows);
 #endif
 #if defined(BASIS_CHECK)
 	extern string outputDir;
@@ -123,7 +122,15 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
 	oneBasis *B;
 	intvec 	cstat, rstat;
-	unsigned long *codedCol, *codedRow;
+
+	/* allocate memory to elements of the basis structure */
+	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
+		errMsg("allocation", "newBasis", "B", 0);
+	B->sigmaIdx = (intvec) arr_alloc(1, int);
+	B->ck    	 = currentIter;
+	B->weight 	 = 1;
+	B->phiLength = 0;
+	B->phi 		 = NULL; B->omegaIdx = NULL; B->gBar = NULL; B->piDet = NULL; B->psi = NULL;
 
 	/* Allocate memory. */
 	if ( !(cstat = (intvec) arr_alloc( numCols+1, int)))
@@ -131,25 +138,20 @@ oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
 	if ( !(rstat = (intvec) arr_alloc( numRows+1, int)))
 		errMsg("allocation", "stochasticUpdates", "rstat", 0);
 
-	/* encode the row and column status */
-	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
-	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
-
-	/* allocate memory to elements of the basis structure */
-	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
-		errMsg("allocation", "newBasis", "B", 0);
-	B->sigmaIdx = (intvec) arr_alloc(1, int);
-	B->lambdaIdx = (intvec) arr_alloc(1, int);
-	B->cCode  	 = codedCol; B->rCode     = codedRow;
-	B->ck    	 = currentIter;
-	B->weight 	 = 1;
-	B->phiLength = 0;
-	B->phi 		 = NULL; B->omegaIdx = NULL; B->gBar = B->piDet = NULL; B->psi = NULL;
-
-	if ( computeMU(lp, cstat,  numCols, &B->mubBar) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+	/* Obtain the status of columns and rows in the basis. */
+	if ( getBasis(lp, cstat, rstat) ) {
+		errMsg("algorithm", "newBasis", "failed to get the basis column and row status", 0);
 		return NULL;
 	}
+
+	if ( computeMU(lp, cstat,  numCols, &B->mubBar) ) {
+		errMsg("algorithm", "newBasis", "failed to compute mubBar for subproblem", 0);
+		return NULL;
+	}
+
+	/* encode the row and column status */
+	B->cCode = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
+	B->rCode = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
 
 	mem_free(cstat); mem_free(rstat);
 	return B;
@@ -246,8 +248,8 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
 	basis->cnt = 0;
 	basis->basisDim = min(numRows, numCols);
-	basis->cCodeLen = ceil((double) numBits*numCols/ (double) wordLength) + 1;
-	basis->rCodeLen = ceil((double) numBits*numRows/(double) wordLength) + 1;
+	basis->cCodeLen = ceil((double) numBits*numCols/ (double) wordLength);
+	basis->rCodeLen = ceil((double) numBits*numRows/(double) wordLength);
 
 	return basis;
 }//END newBasis()
@@ -258,7 +260,6 @@ void freeOneBasis(oneBasis *B) {
 	if ( B ) {
 		if (B->cCode) mem_free(B->cCode);
 		if (B->rCode) mem_free(B->rCode);
-		if (B->lambdaIdx) mem_free(B->lambdaIdx);
 		if (B->sigmaIdx) mem_free(B->sigmaIdx);
 		if (B->omegaIdx) mem_free(B->omegaIdx);
 		if (B->gBar) mem_free(B->gBar);

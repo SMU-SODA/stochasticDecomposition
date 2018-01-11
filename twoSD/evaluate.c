@@ -12,7 +12,6 @@
 #include "twoSD.h"
 
 extern configType config;
-extern string outputDir;
 
 int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
 	vector 	observ, rhs, cost, costTemp;

@@ -77,7 +77,6 @@ typedef struct {
 	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
 	intvec			omegaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
 	intvec			sigmaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
-	intvec			lambdaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
 	vector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
 	double			mubBar;
 	vector			gBar;
