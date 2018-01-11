@@ -47,7 +47,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
-	cut = SDCut(prob[1]->num, prob[1]->coord, cell->sigma, cell->basis, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -80,12 +80,12 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, basisType *basis, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
 	vector 	piCbarX, beta;
-	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0;
-	int	 	istarAll, istarNew, istar, c, obs;
+	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0, multiplier;
+	int	 	istarAll, istarNew, istar, idx, c, obs, sigmaIdx, omegaIdx, lambdaIdx;
 	BOOL    pi_eval_flag = FALSE;
 
 	/* allocate memory to hold a new cut */
@@ -108,8 +108,10 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, basisType *basis
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, basis, delta,  Xvect, obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
-			istarNew = computeIstar(num, coord, basis, delta, Xvect, obs, numSamples, TRUE, &argmaxNew, TRUE);
+			istarAll = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
+					obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
+					obs, numSamples, TRUE, &argmaxNew, TRUE);
 
 			if (argmaxNew > argmaxAll) {
 				argmax = argmaxNew; istar  = istarNew;
@@ -123,7 +125,8 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, basisType *basis
 		}
 		else {
 			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, basis, delta, Xvect, obs, numSamples, pi_eval_flag, &argmax, FALSE);
+			istar = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
+					obs, numSamples, pi_eval_flag, &argmax, FALSE);
 		}
 
 		if (istar < 0) {
@@ -132,19 +135,22 @@ oneCut *SDCut(numType *num, coordType *coord, sigmaType *sigma, basisType *basis
 		}
 		cut->iStar[obs] = istar;
 
-		/* TODO(RCSD): All stochastic information in stored in delta structure.
-		alpha += sigma->vals[istar].pib * omega->weights[obs];
-		alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
+		for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
+			sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+			lambdaIdx = basis->vals[istar]->lambdaIdx[idx];
+			if ( idx == 0 )
+				multiplier = 1.0;
+			else
+				multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
-		for (c = 1; c <= num->cntCcols; c++)
-			beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
-		for (c = 1; c <= num->rvColCnt; c++)
-			beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs]; */
+			/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+			alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
 
-		/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-		alpha += omega->weights[obs]*delta->vals[istar][obs].pib;
-		for ( c = 1; c <= num->cntCcols; c++ )
-			beta[coord->CCols[c]] += omega->weights[obs]*delta->vals[istar][obs].piC[c];
+			for (c = 1; c <= num->cntCcols; c++)
+				beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
+		}
 	}
 
 	if (pi_eval_flag == TRUE) {

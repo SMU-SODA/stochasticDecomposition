@@ -91,7 +91,8 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		resampleOmega(cdf, observ, cell->k-1);
 
 		/* (d) reform the good cuts by plugging in the omegas */
-		reformCuts(cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord,
+				gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
@@ -181,8 +182,10 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
  * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
-void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
-	int cnt, obs, idx, count, istar;
+void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
+		cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
+	double multiplier;
+	int cnt, obs, idx, count, c, istar, sigmaIdx, lambdaIdx;
 
 	/* Loop through all the cuts and reform them */
 	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
@@ -198,20 +201,22 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
 				istar = gCuts->vals[cnt]->iStar[observ[obs]];
 
-				gCuts->vals[cnt]->alpha += sigma->vals[istar].pib + delta->vals[sigma->lambdaIdx[istar]][observ[obs]].pib;
+				for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
+					sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+					lambdaIdx = basis->vals[istar]->lambdaIdx[idx];
+					if ( idx == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
-				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->CCols[idx]] += sigma->vals[istar].piC[idx];
+					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+					gCuts->vals[cnt]->alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
 
-				for (idx = 1; idx <= num->rvCOmCnt; idx++)
-					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[sigma->lambdaIdx[istar]][observ[obs]].piC[idx];
-
-				/* TODO(RCSD): All stochastic information in stored in delta structure.
-				 * 				gCuts->vals[cnt]->alpha += delta->vals[iStar][observ[obs]].pib;
-						for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->CCols[idx]] += delta->vals[iStar][observ[obs]].piC[idx];
-				 *  */
-
+					for (c = 1; c <= num->cntCcols; c++)
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
+				}
 				count++;
 			}
 		}

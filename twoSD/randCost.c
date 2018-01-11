@@ -11,80 +11,17 @@
 
 #include "twoSD.h"
 
-int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt,
-		BOOL *newBasisFlag, int currentIter) {
-	unsigned long *codedCol, *codedRow;
-	int		cnt;
-
-	/* encode the row and column status */
-	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
-	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
-
-	/* check to see if the current basis was encountered before */
-	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-		if ( equalLongIntvec(codedCol, basis->vals[cnt]->cCode, basis->cCodeLen) && equalLongIntvec(codedRow, basis->vals[cnt]->rCode, basis->rCodeLen) ) {
-			/* The basis is the same as one encountered before */
-			basis->vals[cnt]->weight++;
-			mem_free(codedRow); mem_free(codedCol);
-#if defined (STOCH_CHECK)
-			printf("An old basis encountered :: %d\n", cnt);
-			printf("Column status = "); printIntvec(cstat, numCols, NULL);
-#endif
-			(*newBasisFlag) = FALSE;
-			return cnt;
-		}
-	}
-
-	/* New basis encountered, add it to the list */
-	(*newBasisFlag) = TRUE;
-	basis->vals[cnt] = newBasis(lp, codedCol, codedRow, rvCols, basis->basisDim, numCols, numRows, rvdOmCnt, currentIter, dBar);
-
-#if defined (STOCH_CHECK)
-	printf("New basis identified     :: %d\n", cnt);
-	printf("\tNumber of basic columns with random cost coefficients      = %d\n", basis->vals[cnt]->phiLength);
-	if ( basis->vals[cnt]->phiLength > 0 ) {
-		printf("\tIndex in observation vector corresponding to basic columns = "); printIntvec(basis->vals[cnt]->omegaIdx, basis->vals[cnt]->phiLength, NULL);
-		printf("\tPhi = ");
-		for (int i = 0; i < basis->vals[cnt]->phiLength; i++ ) {
-			printf("\t\t"); printVector(basis->vals[cnt]->phi[i], numRows, NULL);
-		}
-	}
-	else {
-		printf("\tBasic stochastic columns                                   = NULL\n");
-		printf("\tPhi = NULL\n");
-	}
-#endif
-
-	return basis->cnt++;
-}//END calcBasis()
-
-oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvdOmCols, int basisDim, int numCols, int numRows, int rvdOmCnt,
-		int currentIter, sparseVector *dBar) {
-	oneBasis *B;
-	vector 	 tempPsiRow, costVector, basicCost;
-	intvec	 basisHead, phiHead;
-	int 	 i, j;
-
-	/* allocate memory to elements of the basis structure */
-	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
-		errMsg("allocation", "newBasis", "B", 0);
-	B->sigmaIdx = (intvec) arr_alloc(1, int);
-	B->lambdaIdx = (intvec) arr_alloc(1, int);
-	B->cCode  	 = codedCol; B->rCode     = codedRow;
-	B->ck    	 = currentIter;
-	B->weight 	 = 1;
-	B->phiLength = 0;
-	B->phi 		 = NULL; B->omegaIdx = NULL; B->gBar = B->piDet = NULL; B->psi = NULL;
-
-	if ( rvdOmCnt == 0 )
-		return B;
+void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim) {
+	vector	basicCost, costVector, tempPsiRow;
+	intvec 	basisHead, phiHead;
+	int		i, j;
 
 	/* Allocate memory for the basis header. */
 	if ( !(basisHead = (intvec) arr_alloc(basisDim+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
-	if ( !(phiHead = (intvec) arr_alloc(rvdOmCnt+1, int)) )
+	if ( !(phiHead = (intvec) arr_alloc(num->rvdOmCnt+1, int)) )
 		errMsg("allocation", "calcBasis", "basisHead", 0);
-	if ( !(B->gBar = (vector) arr_alloc(numCols+1, double)) )
+	if ( !(B->gBar = (vector) arr_alloc(num->cols+1, double)) )
 		errMsg("allocation", "newBasis", "B->gBar", 0);
 
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative
@@ -92,14 +29,14 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 	getBasisHead(lp, basisHead+1, NULL);
 
 	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
-	for ( i = 1; i <= rvdOmCnt; i++ ) {		/* Loop through all the columns with random cost coefficients to see if any of them are basic */
-		if ( (phiHead[i] = isElementIntvec(basisHead, basisDim, (rvdOmCols[i]-1) )) > 0 ) {
+	for ( i = 1; i <= num->rvdOmCnt; i++ ) {		/* Loop through all the columns with random cost coefficients to see if any of them are basic */
+		if ( (phiHead[i] = isElementIntvec(basisHead, basisDim, (coord->rvdOmCols[i]-1) )) > 0 ) {
 			/* _idx_ > 0 gives the index of column with random cost coefficient in the basis head */
 			if ( B->phiLength == 0 ) {
-				if ( !(B->phi = (vector *) arr_alloc(rvdOmCnt, vector)) )
+				if ( !(B->phi = (vector *) arr_alloc(num->rvdOmCnt, vector)) )
 					errMsg("allocation", "newBasis", "B->phi", 0);
-				if ( !(B->omegaIdx = (intvec) arr_alloc(rvdOmCnt+1, int)) )
-						errMsg("allocation", "newBasis", "B->lambdaIdx", 0);
+				if ( !(B->omegaIdx = (intvec) arr_alloc(num->rvdOmCnt+1, int)) )
+					errMsg("allocation", "newBasis", "B->lambdaIdx", 0);
 			}
 			if ( !(B->phi[B->phiLength] = (vector) arr_alloc(basisDim+1, double)) )
 				errMsg("allocation", "calcBasis", "B->phi[i]", 0);
@@ -118,28 +55,28 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 
 		if ( !(B->psi = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
 			errMsg("allocation", "newBasis", "B->psi", 0);
-		B->psi->val = (vector) arr_alloc(numCols*B->phiLength+1, double);
-		B->psi->col = (intvec) arr_alloc(numCols*B->phiLength+1, int);
-		B->psi->row = (intvec) arr_alloc(numCols*B->phiLength+1, int);
+		B->psi->val = (vector) arr_alloc(num->cols*B->phiLength+1, double);
+		B->psi->col = (intvec) arr_alloc(num->cols*B->phiLength+1, int);
+		B->psi->row = (intvec) arr_alloc(num->cols*B->phiLength+1, int);
 		B->psi->cnt = 0;
 	}
 
 	/* Extract the basic variable cost vector and psi matrix (the tableau entries) */
 	if ( !(basicCost = (vector) arr_alloc(basisDim+1, double)) )
 		errMsg("allocation", "newBasis", "basicCost", 0);
-	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, numCols);
+	costVector = expandVector(dBar->val, dBar->col, dBar->cnt, num->cols);
 	for ( i = 1; i <= basisDim; i++ ) {
 		if ( basisHead[i] >= 0 )
 			basicCost[i] = costVector[basisHead[i]+1];
 	}
 
-	if ( !(tempPsiRow = (vector) arr_alloc(numRows+1, double)) )
+	if ( !(tempPsiRow = (vector) arr_alloc(num->rows+1, double)) )
 		errMsg("allocation", "newBasis", "tempPsiRow", 0);
 
-	for ( i = 1; i <= numCols; i++ ) {
+	for ( i = 1; i <= num->cols; i++ ) {
 		getBasisInvACol(lp, i-1, tempPsiRow+1);
 
-		B->gBar[i] = costVector[i] - vXv(tempPsiRow, basicCost, NULL, numRows);
+		B->gBar[i] = costVector[i] - vXv(tempPsiRow, basicCost, NULL, num->rows);
 
 		for ( j = 1; j <= B->phiLength; j++ ) {
 			B->psi->row[B->psi->cnt+1] = i;
@@ -149,11 +86,23 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 		}
 	}
 
-#if defined(STOCH_CHECK)
+#if defined (STOCH_CHECK)
+	printf("New basis identified     :: \n");
+	printf("\tNumber of basic columns with random cost coefficients      = %d\n", B->phiLength);
+	if ( basis->vals[cnt]->phiLength > 0 ) {
+		printf("\tIndex in observation vector corresponding to basic columns = "); printIntvec(B->omegaIdx, B->phiLength, NULL);
+		printf("\tPhi = ");
+		for (int i = 0; i < B->phiLength; i++ ) {
+			printf("\t\t"); printVector(B->phi[i], numRows, NULL);
+		}
+	}
+	else {
+		printf("\tBasic stochastic columns                                   = NULL\n");
+		printf("\tPhi = NULL\n");
+	}
 	printf("Deterministic component of reduced cost  = ");
 	printSparseVector(B->gBar+1, basisHead, numRows);
 #endif
-
 #if defined(BASIS_CHECK)
 	extern string outputDir;
 	FILE *bFile; vector temp;
@@ -168,17 +117,52 @@ oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, i
 #endif
 
 	mem_free(basisHead); mem_free(phiHead); mem_free(costVector); mem_free(basicCost); mem_free(tempPsiRow);
+
+}//END calcBasis()
+
+oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
+	oneBasis *B;
+	intvec 	cstat, rstat;
+	unsigned long *codedCol, *codedRow;
+
+	/* Allocate memory. */
+	if ( !(cstat = (intvec) arr_alloc( numCols+1, int)))
+		errMsg("allocation", "stochasticUpdates", "cstat", 0);
+	if ( !(rstat = (intvec) arr_alloc( numRows+1, int)))
+		errMsg("allocation", "stochasticUpdates", "rstat", 0);
+
+	/* encode the row and column status */
+	codedCol = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
+	codedRow = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
+
+	/* allocate memory to elements of the basis structure */
+	if ( !(B = (oneBasis *) mem_malloc(sizeof(oneBasis))))
+		errMsg("allocation", "newBasis", "B", 0);
+	B->sigmaIdx = (intvec) arr_alloc(1, int);
+	B->lambdaIdx = (intvec) arr_alloc(1, int);
+	B->cCode  	 = codedCol; B->rCode     = codedRow;
+	B->ck    	 = currentIter;
+	B->weight 	 = 1;
+	B->phiLength = 0;
+	B->phi 		 = NULL; B->omegaIdx = NULL; B->gBar = B->piDet = NULL; B->psi = NULL;
+
+	if ( computeMU(lp, cstat,  numCols, &B->mubBar) ) {
+		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
+		return NULL;
+	}
+
+	mem_free(cstat); mem_free(rstat);
 	return B;
 }//END newBasis()
 
-int decomposeDualSolution(LPptr spLP, oneBasis *B, vector omegaVals, int numRows) {
+int decomposeDualSolution(LPptr lp, oneBasis *B, vector omegaVals, int numRows) {
 	int n, i;
 
 	if ( !(B->piDet = (vector) arr_alloc(numRows+1, double)) )
 		errMsg("allocation", "decomposeDualSolution", "piS", 0);
 
 	/* Record the dual and reduced cost on bounds. */
-	if ( getDual(spLP, B->piDet, numRows) ) {
+	if ( getDual(lp, B->piDet, numRows) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
 		return 1;
 	}

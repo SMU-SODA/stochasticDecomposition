@@ -121,7 +121,7 @@ int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, spa
 		return 1;
 	}
 
-	mem_free(indices);
+	mem_free(indices); mem_free(rhs);
 	return 0;
 }//END computeRHS()
 

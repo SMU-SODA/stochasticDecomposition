@@ -79,6 +79,7 @@ typedef struct {
 	intvec			sigmaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
 	intvec			lambdaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
 	vector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
+	double			mubBar;
 	vector			gBar;
 	sparseMatrix	*psi;		/* The simplex tableau matrix corresponding to the basis. */
 }oneBasis;
@@ -108,10 +109,9 @@ oneProblem *newSubprob(oneProblem *sp);
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag);
-int computeIstar(numType *num, coordType *coord, basisType *basis, deltaType *delta, vector Xvect, int obs, int numSamples,
-		BOOL pi_eval, double *argmax, BOOL isNew);
-int calcDelta(numType *num, coordType *coord, string senx, basisType *basis, lambdaType *lambda, sigmaType *sigma,
-		deltaType *delta, omegaType *omega, BOOL newOmegaFlag, int elemIdx, int maxIter, double TOLERANCE);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, vector observ,
+		int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
+int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, BOOL newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
               int idxLambda, BOOL newLambdaFlag, int currentIter, sigmaType *sigma, BOOL *newSigmaFlag, double TOLERANCE);
@@ -127,11 +127,9 @@ void freeOmegaType(omegaType *omega, BOOL partial);
 void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial);
 
 /* randCost.c */
-int calcBasis(LPptr lp, basisType *basis, sparseVector *dBar, intvec cstat, int numCols, intvec rstat, int numRows, intvec rvCols, int rvdOmCnt,
-		BOOL *newBasisFlag, int currentIter);
+void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim);
 int decomposeDualSolution(LPptr spLP, oneBasis *B, vector omegaVals, int numRows);
-oneBasis *newBasis(LPptr lp, unsigned long *codedCol, unsigned long *codedRow, intvec rvdOmCols, int basisDim, int numCols, int numRows, int rvdOmCnt,
-		int currentIter, sparseVector *dBar);
+oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter);
 BOOL checkBasisFeasibility(oneBasis *B, sparseVector dOmega, string senx, int numCols, int numRows, double TOLERANCE);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
 void freeOneBasis(oneBasis *B);
