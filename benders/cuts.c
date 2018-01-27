@@ -13,12 +13,6 @@
 
 extern configType config;
 
-#define BASIS_CHECK
-
-#if defined(BASIS_CHECK)
-extern string outputDir;
-#endif
-
 int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	oneCut 	*cut;
 	vector 	piS, beta, temp, piCBar;
@@ -33,15 +27,6 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	bOmega.cnt = prob->num->rvbOmCnt; bOmega.col = prob->coord->rvbOmRows;
 	COmega.cnt = prob->num->rvCOmCnt; COmega.col = prob->coord->rvCOmCols; COmega.row = prob->coord->rvCOmRows;
 
-#if defined(BASIS_CHECK)
-	intvec cstat, rstat;
-	FILE *dPtr;
-
-	dPtr= openFile(outputDir, "basisDetails.dat", "a");
-
-	cstat = (intvec) arr_alloc(prob->num->cols+1, int);
-	rstat = (intvec) arr_alloc(prob->num->rows+1, int);
-#endif
 	/* Only a fraction (at least one) of subproblems are solved in any iteration. */
 	for ( obs = 0; obs < cell->omega->cnt; obs++ ) {
 		tic = clock();
@@ -78,28 +63,6 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 #if defined(STOCH_CHECK)
 		printf("Objective estimate computed as cut height = %lf\n", alpha - vXv(beta, Xvect, NULL, prob->num->prevCols));
 #endif
-#if defined(BASIS_CHECK)
-		int m, len;
-		unsigned long *codedCol, *codedRow;
-
-		if ( getBasis(cell->subprob->lp, cstat, rstat) ) {
-			errMsg("algorithm", "stochasticUpdates", "failed to get the basis column and row status", 0);
-			return -1;
-		}
-
-		/* encode the row and column status */
-		codedCol = encodeIntvec(cstat, prob->num->cols, WORDLENGTH, 3);
-		codedRow = encodeIntvec(rstat, prob->num->rows, WORDLENGTH, 3);
-
-		len = ceil((double) 2*prob->num->cols/ (double) 64) + 1;
-		for ( m = 0; m < len; m++ )
-			fprintf(dPtr, "%lu\t", codedCol[m]);
-		len = ceil((double) 2*prob->num->rows/ (double) 64) + 1;
-		for ( m = 0; m < len; m++ )
-			fprintf(dPtr, "%lu\t", codedRow[m]);
-		fprintf(dPtr, "\n");
-		mem_free(codedCol); mem_free(codedRow);
-#endif
 		if ( config.MULTICUT ) {
 			cut->alpha = alpha;
 			for (c = 1; c <= prob->num->prevCols; c++)
@@ -114,9 +77,6 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 		}
 		mem_free(beta);
 	}
-#if defined(BASIS_CHECK)
-	mem_free(cstat); mem_free(rstat);
-#endif
 
 	cut->beta[0] = 1.0;
 	if ( config.MASTER_TYPE == PROB_QP )
