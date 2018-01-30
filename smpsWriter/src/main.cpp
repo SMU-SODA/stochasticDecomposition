@@ -11,32 +11,33 @@
 
 #include "writer.hpp"
 
-
-
 int main (int argc, char *argv[]) {
 	string probName;
 
 	/* Request for problem name */
-	parseCmdLine(argc, argv, probName);
+	parseCmdLine(argc, argv, &probName);
 
 	/* Invoke the appropriate subroutine based on problem name. */
-	switch (probName) {
-	case "sgpf":
-
+	if ( probName == "sgpf") {
+		if ( createSGPFInstance() )
+			perror("Failed to create the instance.\n");
+	}
+	else {
+		perror("No subroutine to support this problem.\n");
 	}
 
 	return 0;
 }//END main()
 
-void parseCmdLine(int argc, char *argv[], string probName) {
+void parseCmdLine(int argc, char *argv[], string *probName) {
 
 	switch (argc) {
 	case 2:
-		probName = argv[1];
+		*probName = argv[1];
 		break;
 	case 1:
 		cout << "Enter problem name : ";
-		cin >> probName;
+		cin >> *probName;
 		break;
 	default:
 		break;

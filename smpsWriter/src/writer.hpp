@@ -26,6 +26,10 @@ class smpsModel {
 
 };
 
-void parseCmdLine(int argc, char *argv[], string probName);
+void parseCmdLine(int argc, char *argv[], string *probName);
+
+int createSGPFInstance();
+int createSGPFcor();
+void defineSGPFData(IloEnv env);
 
 #endif /* WRITER_HPP_ */
