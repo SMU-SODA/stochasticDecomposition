@@ -20,76 +20,93 @@
 
 ILOSTLBEGIN
 
-int numT, numMaturities, numAdq;
+int numMaturities, numAdq;
 vector<double> ret, initVol;
 vector<int> stdMaturities;
 vector<vector<double>> retBorrow, retLend;
 
 int createSGPFInstance() {
 
+	SMPSmodel sgpf;
+
+	/* Setup model parameters */
+	defineSGPFData();
+
 	/* Generate cor file */
-	createSGPFcor();
+	createSGPFcor(sgpf);
+
+	/* Generate tim file */
+	createSGPFtim(sgpf);
 
 	return 0;
 }//END createSGPFInstance()
 
-int createSGPFcor() {
-
-	IloEnv env;
+int createSGPFcor(SMPSmodel &sgpf) {
 	char elemName[NAMESIZE];
 
 	try {
-		IloModel model(env);
+		IloEnv   env;
+		sprintf(elemName, "sgpf%dy%d", sgpf.numPeriods, sgpf.numStages);
+		IloModel model(env, elemName);
 
-		/* Setup model parameters */
-		defineSGPFData(env);
-
-		/* Decision variables: declaration */
-		IloArray<IloNumVarArray> borrow(env, numT);
-		IloArray<IloNumVarArray> lend(env, numT);
-		IloArray<IloNumVarArray> vol(env, numT);
-		IloNumVarArray totalVol(env, numT, 0, IloInfinity);
+		/**************** Decision variables *****************/
+		/* assign aliases */
+		IloArray<IloNumVarArray> borrow(env, sgpf.numPeriods);
+		IloArray<IloNumVarArray> lend(env, sgpf.numPeriods);
+		IloArray<IloNumVarArray> volume(env, sgpf.numPeriods);
+		IloNumVarArray totalVolume (env, sgpf.numPeriods, 0, IloInfinity);
 
 		/* Load the decision variables onto the solver */
-		for ( int t = 0; t < numT; t++ ) {
+		for ( int t = 0; t < sgpf.numPeriods; t++ ) {
 			borrow[t] = IloNumVarArray (env, numMaturities, 0, IloInfinity);
 			lend[t] = IloNumVarArray (env, numMaturities, 0, IloInfinity);
-			vol[t] = IloNumVarArray (env, numMaturities, 0, IloInfinity);
+			volume[t] = IloNumVarArray (env, numMaturities, 0, IloInfinity);
 
 			for ( int i = 0; i < numMaturities; i++ ) {
+				auto it = find(stdMaturities.begin(), stdMaturities.end(), i);
+
 				/* Volume of maturity borrowed */
 				sprintf(elemName, "borrow[%d][%d]", t, i);
 				borrow[t][i].setName(elemName); model.add(borrow[t][i]);
+				if ( i == 0 )
+					sgpf.timCols.push_back(elemName);
+				if ( t != 0 && it !=  stdMaturities.end() )
+					sgpf.stocCols.push_back(elemName);
 
 				/* Volume of maturity lent */
 				sprintf(elemName, "lend[%d][%d]", t, i);
 				lend[t][i].setName(elemName); model.add(lend[t][i]);
+				if ( t != 0 && it !=  stdMaturities.end() )
+					sgpf.stocCols.push_back(elemName);
 
 				/* State/volume of the maturity. */
-				sprintf(elemName, "vol[%d][%d]", t, i);
-				vol[t][i].setName(elemName); model.add(vol[t][i]);
+				sprintf(elemName, "volume[%d][%d]", t, i);
+				volume[t][i].setName(elemName); model.add(volume[t][i]);
 			}
 
 			/* State of the portfolio */
-			sprintf(elemName, "totalVol[%d]", t);
-			totalVol[t].setName(elemName); model.add(totalVol[t]);
+			sprintf(elemName, "totalVolume[%d]", t);
+			totalVolume[t].setName(elemName);
+			model.add(totalVolume[t]);
+			if ( t != 0 )
+				sgpf.stocCols.push_back(elemName);
 		}
 
 		/* Objective function */
 		IloObjective obj = IloMinimize(env, 0.0);
 		IloExpr totalCost(env);
-		for ( int t = 0; t < numT; t++) {
+		for ( int t = 0; t < sgpf.numPeriods; t++) {
 			for ( int i = 0; i < (int) stdMaturities.size(); i++ ) {
 				totalCost += (retBorrow[t][stdMaturities[i]]*borrow[t][stdMaturities[i]] - retLend[t][stdMaturities[i]]*lend[t][i]);
 			}
-			totalCost += ret[t]*totalVol[t];
+			totalCost += ret[t]*totalVolume[t];
 		}
 		obj.setExpr(totalCost);
 		model.add(obj);
 		totalCost.end();
 
 		/* Constraints */
-		for ( int t = 0; t < numT; t++ ) {
+		for ( int t = 0; t < sgpf.numPeriods; t++ ) {
 			/* a. State dynamics for a standard maturity */
 			for ( int i = 0; i < numMaturities; i++ ) {
 				IloExpr expr (env);
@@ -100,14 +117,16 @@ int createSGPFcor() {
 					if ( t != 0 ) {
 						/* The bonds are one year closer to maturity, therefore a _(i+1)_ bond in previous time is now a _i_ time periods
 						 * away from maturity. */
-						expr = vol[t][i] - vol[t-1][i+1] - borrow[t][i] + lend[t][i];
+						expr = volume[t][i] - volume[t-1][i+1] - borrow[t][i] + lend[t][i];
 						IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 					}
 					else {
-						expr = vol[t][i] - borrow[t][i] + lend[t][i];
+						expr = volume[t][i] - borrow[t][i] + lend[t][i];
 						IloConstraint c(expr == initVol[i+1]); c.setName(elemName); model.add(c);
 					}
 				}
+				if ( i == 0 )
+					sgpf.timRows.push_back(elemName);
 			}
 
 			/* b. State dynamics for a non-standard maturity */
@@ -118,11 +137,11 @@ int createSGPFcor() {
 				vector<int>::iterator it = find(stdMaturities.begin(), stdMaturities.end(), i);
 				if ( it ==  stdMaturities.end() ) {
 					if ( t != 0) {
-						expr = vol[t][i] - vol[t-1][i];
+						expr = volume[t][i] - volume[t-1][i];
 						IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 					}
 					else {
-						expr = vol[t][i];
+						expr = volume[t][i];
 						IloConstraint c(expr == initVol[i]); c.setName(elemName); model.add(c);
 					}
 				}
@@ -133,9 +152,9 @@ int createSGPFcor() {
 				IloExpr expr (env);
 				sprintf(elemName, "pfState[%d]", t);
 
-				expr = totalVol[t];
+				expr = totalVolume[t];
 				for ( int i = 0; i < numMaturities; i++ ) {
-					expr -= vol[t][i];
+					expr -= volume[t][i];
 				}
 				IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 			}
@@ -145,15 +164,17 @@ int createSGPFcor() {
 				IloExpr expr (env);
 				sprintf(elemName, "volChange[%d]", t);
 
+				sgpf.stocRows.push_back(elemName);
+
 				double initTotalVol = 0.0;
-				expr = totalVol[t];
+				expr = totalVolume[t];
 				if ( t == 0 ) {
 					for ( int i = 0; i < numMaturities; i++ ) {
 						initTotalVol += initVol[i];
 					}
 				}
 				else {
-					expr -= totalVol[t-1];
+					expr -= totalVolume[t-1];
 				}
 				IloConstraint c(expr == initTotalVol); c.setName(elemName); model.add(c);
 			}
@@ -162,6 +183,8 @@ int createSGPFcor() {
 			{
 				IloExpr expr (env);
 				sprintf(elemName, "adequacy[%d]", t);
+
+				sgpf.stocRows.push_back(elemName);
 
 				for ( int i = 0; i < numMaturities; i++ ) {
 					vector<int>::iterator it = find(stdMaturities.begin(), stdMaturities.end(), i);
@@ -173,7 +196,7 @@ int createSGPFcor() {
 
 				if ( t != 0 ) {
 					for ( int i = 0; i < numAdq; i++ ) {
-						expr -= vol[t-1][i];
+						expr -= volume[t-1][i];
 					}
 				}
 				else {
@@ -186,8 +209,9 @@ int createSGPFcor() {
 		}
 
 		IloCplex cplex(model);
-		cplex.exportModel("sgpf.lp");
-		cplex.solve();
+		sprintf(elemName, "sgpf%dy%d.lp", sgpf.numPeriods, sgpf.numStages);
+		cplex.exportModel(elemName);
+		env.end();
 	}
 	catch (IloException& ex) {
 		cerr << "Error: " << ex << endl;
@@ -195,14 +219,47 @@ int createSGPFcor() {
 	catch (...) {
 		cerr << "Error" << endl;
 	}
-	env.end();
 
 	return 0;
 }//END createSGPF()
 
-void defineSGPFData(IloEnv env) {
+int createSGPFtim(SMPSmodel sgpf) {
+	ofstream tFile;
+	char fName[NAMESIZE];
 
-	numT = 3;			/* Number of time periods */
+	sprintf(fName, "sgpf%dy%d.tim", sgpf.numPeriods, sgpf.numStages);
+	tFile.open(fName);
+	tFile << "TIME   sgpf" << sgpf.numPeriods << "y" << sgpf.numStages << endl;
+
+	tFile << "PERIODS" << endl;
+	for (int t = 0; t < sgpf.numStages; t++ )
+		tFile << "    " << sgpf.timCols[t] << "\t" << sgpf.timRows[t] << endl;
+	tFile << "ENDATA" << endl;
+	tFile.close();
+
+	return 0;
+}//END createSGPFtim()
+
+int createSGPFstoc (SMPSmodel sgpf) {
+	ofstream sFile;
+	char fName[NAMESIZE];
+
+	sprintf(fName, "sgpf%dy%d.sto", sgpf.numPeriods, sgpf.numStages);
+	sFile.open(fName);
+	sFile << "INDEP          WEINER" << endl;
+	for (int c = 0; c < (int) sgpf.stocCols.size(); c++ ) {
+		sFile << "    " << sgpf.stocCols[c] << "\t" << sgpf.objName << "0\t1" << endl;
+	}
+	for (int r = 0; r < (int) sgpf.stocRows.size(); r++ ) {
+		sFile << "    " << "RHS\t" << sgpf.stocRows[r] << "0\t1" << endl;
+	}
+	sFile.close();
+
+	return 0;
+}//END createSGPFtim()
+
+void defineSGPFData() {
+
 	numMaturities = 60;	/* Total number of maturities */
 	numAdq = 3;			/* Number of maturities used to ensure adequacy (M in the paper) */
 

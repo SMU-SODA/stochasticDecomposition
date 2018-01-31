@@ -13,6 +13,7 @@
 #define WRITER_HPP_
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <algorithm>
 
@@ -22,14 +23,22 @@ using namespace std;
 
 #define NAMESIZE 32
 
-class smpsModel {
+class SMPSmodel {
 
+public:
+	SMPSmodel();
+	~SMPSmodel();
+
+	int numStages, numPeriods;
+	vector<string> timCols, timRows, stocRows, stocCols;
+	string objName;
 };
 
 void parseCmdLine(int argc, char *argv[], string *probName);
 
 int createSGPFInstance();
-int createSGPFcor();
-void defineSGPFData(IloEnv env);
+int createSGPFcor(SMPSmodel &sgpf);
+int createSGPFtim(SMPSmodel sgpf);
+void defineSGPFData();
 
 #endif /* WRITER_HPP_ */
