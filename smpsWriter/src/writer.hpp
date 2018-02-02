@@ -15,13 +15,20 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cmath>
+#include <random>
+#include <iomanip>
 #include <algorithm>
+#include <string>
+#include <sys/stat.h>
 
 #include <ilcplex/ilocplex.h>
 
 using namespace std;
 
 #define NAMESIZE 32
+
+#define TOLERANCE 0.00001
 
 class SMPSmodel {
 
@@ -32,13 +39,12 @@ public:
 	int numStages, numPeriods;
 	vector<string> timCols, timRows, stocRows, stocCols;
 	string objName;
+
+	string dir = "../spInput";
 };
 
 void parseCmdLine(int argc, char *argv[], string *probName);
 
 int createSGPFInstance();
-int createSGPFcor(SMPSmodel &sgpf);
-int createSGPFtim(SMPSmodel sgpf);
-void defineSGPFData();
 
 #endif /* WRITER_HPP_ */
