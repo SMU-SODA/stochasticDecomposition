@@ -25,10 +25,12 @@ public:
 	vector<double> ret, initVol;
 	vector<int> stdMaturities;
 	vector<vector<double>> retBorrow, retLend;
+
+	vector<double> initRet;
 };
 
 void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data);
-int createSGPFcor(SMPSmodel &sgpf, SGPFdata data);
+int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data);
 int createSGPFtim(SMPSmodel sgpf);
 int createSGPFstoc (SMPSmodel sgpf, SGPFdata data);
 
@@ -63,7 +65,7 @@ int createSGPFInstance() {
 	return 0;
 }//END createSGPFInstance()
 
-int createSGPFcor(SMPSmodel &sgpf, SGPFdata data) {
+int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 	char elemName[NAMESIZE];
 
 	try {
@@ -92,14 +94,18 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata data) {
 					borrow[t][i].setName(elemName); model.add(borrow[t][i]);
 					if ( i == 0 )
 						sgpf.timCols.push_back(elemName);
-					if ( t != 0 )
+					if ( t != 0 ) {
 						sgpf.stocCols.push_back(elemName);
+						data.initRet.push_back(data.retBorrow[0][i]);
+					}
 
 					/* Volume of maturity lent */
 					sprintf(elemName, "lend[%d][%d]", t, i);
 					lend[t][i].setName(elemName); model.add(lend[t][i]);
-					if ( t != 0 )
+					if ( t != 0 ) {
 						sgpf.stocCols.push_back(elemName);
+						data.initRet.push_back(data.retLend[0][i]);
+					}
 				}
 
 				/* State/volume of the maturity. */
@@ -110,8 +116,10 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata data) {
 			/* State of the portfolio */
 			sprintf(elemName, "totalVolume[%d]", t);
 			totalVolume[t].setName(elemName); model.add(totalVolume[t]);
-			if ( t != 0 )
+			if ( t != 0 ) {
 				sgpf.stocCols.push_back(elemName);
+				data.initRet.push_back(data.ret[0]);
+			}
 		}
 
 		/* Objective function */
@@ -275,12 +283,12 @@ int createSGPFstoc (SMPSmodel sgpf, SGPFdata data) {
 	sFile.open(fName);
 	sprintf(fName, "sgpf%dy%d", sgpf.numPeriods, sgpf.numStages);
 	sFile << "STOCH"  << setw(14) << fName << endl;
-	sFile << "INDEP          WEINER" << endl;
+	sFile << "INDEP          WIENER" << endl;
 	for (int c = 0; c < (int) sgpf.stocCols.size(); c++ ) {
-		sFile << "    " << setw(14) << sgpf.stocCols[c] << setw(14) << sgpf.objName << "\t0\t1" << endl;
+		sFile << "    " << setw(14) << sgpf.stocCols[c] << setw(14) << sgpf.objName << setw(14) << data.initRet[c] << "\t" << 1 << endl;
 	}
 	for (int r = 0; r < (int) sgpf.stocRows.size(); r++ ) {
-		sFile << "    " << setw(14) << "RHS" << setw(14) << sgpf.stocRows[r] << "\t" << 0.001*vals << "\t" << 0.00005*vals << endl;
+		sFile << "    " << setw(14) << "RHS" << setw(14) << sgpf.stocRows[r] << setw(14) << 0.001*vals << "\t" << 0.00005*vals << endl;
 	}
 	sFile << "ENDATA" << endl;
 	sFile.close();
@@ -312,10 +320,10 @@ void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data) {
 	data.numStd = (int) data.stdMaturities.size();
 
 	/* Return rate for return, borrowing, lending */
-	data.ret = vector<double> (sgpf.numPeriods);
-	data.retBorrow = vector< vector<double>> (sgpf.numPeriods, vector<double> (data.numStd) );
-	data.retLend = vector< vector<double>> (sgpf.numPeriods, vector<double> (data.numStd) );
-	data.initVol = vector<double> (data.numMaturities);
+	data.ret 		= vector<double> (sgpf.numPeriods);
+	data.retBorrow 	= vector< vector<double>> (sgpf.numPeriods, vector<double> (data.numStd) );
+	data.retLend 	= vector< vector<double>> (sgpf.numPeriods, vector<double> (data.numStd) );
+	data.initVol 	= vector<double> (data.numMaturities);
 
 	default_random_engine generator{static_cast<long unsigned int>(3554548844580680)};
 	normal_distribution <double> distribution(0.0,1.0);

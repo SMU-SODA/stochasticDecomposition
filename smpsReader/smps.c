@@ -524,9 +524,8 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 		}
 	}
 	else if ( strstr(fields[1], "NORMAL") != NULL ) {
-		/* store the type of stochastic process encountered */
-		if ( strcmp(fields[1], "NORMAL") )
-			stoc->sim = TRUE;
+		/* continuous distribution, use a simulator */
+		stoc->sim = TRUE;
 		sprintf(stoc->type, "INDEP_%s",fields[1]);
 
 		if ( !(stoc->vals[0] = (vector) arr_alloc(maxOmegas, double)) )
