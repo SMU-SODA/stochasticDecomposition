@@ -404,7 +404,7 @@ void copyIntvec (intvec a, intvec b, int len) {
 
 }//END copyVector()
 
-void addVectors(vector a, vector b, intvec indices, int len){
+void addVectors(vector a, vector b, intvec indices, int len) {
 	int n;
 
 	if ( indices == NULL ) {

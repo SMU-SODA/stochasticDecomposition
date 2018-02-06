@@ -335,7 +335,8 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 
 stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim) {
 	stocType *stoc;
-	char	probpath[2*BLOCKSIZE], line[BLOCKSIZE], **fields, fieldType;
+	string 	*rvRows, *rvCols, *fields;
+	char	probpath[2*BLOCKSIZE], line[BLOCKSIZE], fieldType;
 	FILE	*fptr;
 	int		maxOmegas = 1000, maxVals = 4000, n, numFields, maxFields = 10;
 
@@ -381,7 +382,7 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	stoc->numOmega = 0;
 	stoc->numGroups = 0;
 	stoc->sim = FALSE;
-	stoc->arma = NULL;
+	stoc->mod = NULL;
 
 	/* STOCH section: read problem name and compare with that read earlier */
 	if ( fgets(line, sizeof line, fptr) != NULL )
@@ -397,31 +398,38 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 		}
 
 	while ( !(getLine(&fptr, fields, &fieldType, &numFields)) ) {
+		START_OVER: /* Used to continue parsing the stoch file when there are many stochastic elements. */
 		if ( !(strcmp(fields[0], "INDEP")) ) {
-			if ( readIndep(fptr, fields, orig, maxOmegas, maxVals, stoc) ) {
+			if ( readIndep(fptr, fields, orig, maxOmegas, maxVals, stoc, &rvRows, &rvCols) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with independent data", 0);
 				return NULL;
 			}
+			goto START_OVER;
 		}
-		else if ( !(strcmp(fields[0], "BLOCKS")) ) {
-			if ( readBlocks(fptr, fields, orig, maxOmegas, maxVals, stoc) ) {
+		if ( !(strcmp(fields[0], "BLOCKS")) ) {
+			if ( readBlocks(fptr, fields, orig, maxOmegas, maxVals, stoc, &rvRows, &rvCols) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with blocks", 0);
 				return NULL;
 			}
+			goto START_OVER;
 		}
-		else if ( !(strcmp(fields[0], "SCENARIOS")) ) {
+		if ( !(strcmp(fields[0], "SCENARIOS")) ) {
 			if ( readScenarios(fptr, fields, orig, tim, maxOmegas, maxVals, stoc) ) {
 				errMsg("read", "readStoc", "failed to read stoch file with scenarios", 0);
 				return NULL;
 			}
+			goto START_OVER;
 		}
-		else if ( !(strcmp(fields[0], "ENDATA")) )
+		if ( !(strcmp(fields[0], "ENDATA")) )
 			break;
-		else
-			continue;
 	}
 
 	/* free allocated memory */
+	for ( n = 0; n < stoc->numOmega; n++ ) {
+		if(rvCols[n]) mem_free(rvCols[n]);
+		if(rvRows[n]) mem_free(rvRows[n]);
+	}
+	mem_free(rvCols); mem_free(rvRows);
 	for (n = 0; n < maxFields; n++ )
 		if (fields[n]) mem_free(fields[n]);
 	mem_free(fields);
@@ -430,15 +438,17 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	return stoc;
 }//END readStoc()
 
-int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc) {
-	string 	*rvRows, *rvCols;
+int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string 	**rvRows, string **rvCols) {
 	char	strType;
 	int		n, numFields;
 
+	/* Mark where the group beings */
+	stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
+
 	/* allocate memory to hold the names of random variable */
-	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !((*rvRows) = (string *) arr_alloc(maxOmegas, string)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
-	if ( !(rvCols = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !((*rvCols) = (string *) arr_alloc(maxOmegas, string)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
@@ -455,23 +465,23 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 				return 1;
 			}
 			while (n >= 0 ) {
-				if ( !(strcmp(fields[0], rvCols[n])) && !(strcmp(fields[1], rvRows[n])) )
+				if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
 					break;
 				n--;
 			}
 			if ( n == -1 ) {
 				/* new random variable encountered */
-				if ( !(rvRows[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				if ( !(rvCols[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
 				if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
 					errMsg("allocation", "readIndep","omega.vals[n]", 0);
 				if ( !(stoc->probs[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
 					errMsg("allocation", "readIndep", "omega.probs[n]", 0);
 
-				strcpy(rvCols[stoc->numOmega], fields[0]);
-				strcpy(rvRows[stoc->numOmega], fields[1]);
+				strcpy((*rvCols)[stoc->numOmega], fields[0]);
+				strcpy((*rvRows)[stoc->numOmega], fields[1]);
 				stoc->numVals[stoc->numOmega++] = 0;
 				/* identify row and column coordinates in the problem */
 				if ( !(strcmp(fields[0], "RHS")) )
@@ -479,7 +489,7 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 				else {
 					n = 0;
 					while ( n < orig->mac ){
-						if ( !(strcmp(rvCols[stoc->numOmega-1], orig->cname[n])) )
+						if ( !(strcmp((*rvCols)[stoc->numOmega-1], orig->cname[n])) )
 							break;
 						n++;
 					}
@@ -494,7 +504,7 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 				else {
 					n = 0;
 					while (n < orig->mar ) {
-						if ( !(strcmp(rvRows[stoc->numOmega-1], orig->rname[n])) )
+						if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) )
 							break;
 						n++;
 					}
@@ -542,7 +552,7 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 				return 1;
 			}
 			while (n >= 0 ) {
-				if ( !(strcmp(fields[0], rvCols[n])) && !(strcmp(fields[1], rvRows[n])) )
+				if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
 					break;
 				n--;
 			}
@@ -552,45 +562,49 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 					errMsg("read", "readIndep", "ran out of memory to store row and column names", 0);
 					return 1;
 				}
-				if ( !(rvRows[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				if ( !(rvCols[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
 
-				strcpy(rvCols[stoc->numOmega], fields[0]);
-				strcpy(rvRows[stoc->numOmega], fields[1]);
+				strcpy((*rvCols)[stoc->numOmega], fields[0]);
+				strcpy((*rvRows)[stoc->numOmega], fields[1]);
 				stoc->numVals[stoc->numOmega++] = 0;
-				/* identify row and column coordinates in the problem */
-				if ( !(strcmp(fields[0], "RHS")) )
-					n = -1;
-				else {
-					n = 0;
-					while ( n < orig->mac ){
-						if ( !(strcmp(rvCols[stoc->numOmega-1], orig->cname[n])) )
-							break;
-						n++;
+
+				/* Check to see if the random variable corresponds to error terms in a linear transformation or ARMA model. */
+				if ( strcmp(fields[1], "LAGGED") ) {
+					/* Identify row and column coordinates in the problem */
+					if ( !(strcmp(fields[0], "RHS")) )
+						n = -1;
+					else {
+						n = 0;
+						while ( n < orig->mac ){
+							if ( !(strcmp((*rvCols)[stoc->numOmega-1], orig->cname[n])) )
+								break;
+							n++;
+						}
 					}
-				}
-				if ( n == orig->mac ) {
-					errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
-					return 1;
-				}
-				stoc->col[stoc->numOmega-1] = n;
-				if ( !(strcmp(fields[1], orig->objname)) )
-					n = -1;
-				else {
-					n = 0;
-					while (n < orig->mar ) {
-						if ( !(strcmp(rvRows[stoc->numOmega-1], orig->rname[n])) )
-							break;
-						n++;
+					if ( n == orig->mac ) {
+						errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
+						return 1;
 					}
+					stoc->col[stoc->numOmega-1] = n;
+					if ( !(strcmp(fields[1], orig->objname)) )
+						n = -1;
+					else {
+						n = 0;
+						while (n < orig->mar ) {
+							if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) )
+								break;
+							n++;
+						}
+					}
+					if ( n == orig->mar ) {
+						errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
+						return 1;
+					}
+					stoc->row[stoc->numOmega-1] = n;
 				}
-				if ( n == orig->mar ) {
-					errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
-					return 1;
-				}
-				stoc->row[stoc->numOmega-1] = n;
 			}
 			if ( numFields == 4) {
 				/* note, standard deviation is held in the first vals field */
@@ -628,26 +642,22 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 		return 1;
 	}
 
-	for ( n = 0; n < stoc->numOmega; n++ ) {
-		mem_free(rvCols[n]); mem_free(rvRows[n]);
-	}
-	mem_free(rvCols); mem_free(rvRows);
-
 	/* increase the number of stochastic variables groups */
-	stoc->groupBeg[stoc->numGroups] = 0;
-	stoc->numPerGroup[stoc->numGroups++] = stoc->numOmega;
+	stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
+	stoc->numGroups++;
 
 	return 0;
 }//END readIndep()
 
-int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc) {
-	int status;
+int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols) {
+
+	/* Mark where the group beings */
+	stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "BLOCKS_DISCRETE");
-		status = readBlk(fptr, fields, orig, maxOmegas, maxVals, TRUE, stoc);
-		if ( status ) {
+		if ( readOneBlock(fptr, fields, orig, maxOmegas, maxVals, TRUE, stoc) ) {
 			errMsg("read", "readBlocks", "failed to read independent blocks structure", 0);
 			return 1;
 		}
@@ -656,14 +666,9 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 		errMsg("read", "readBlocks", "no support for multivariate normal distribution type in BLOCKS section", 0);
 		return 1;
 	}
-	else if ( !(strcmp(fields[1], "LINTRAN")) ) {
-		errMsg("read", "readBlocks", "no support for linear translation type in BLOCKS section", 1);
-		return 1;
-	}
-	else if ( !(strcmp(fields[1], "ARMA")) ) {
-		status = readARMA(fptr, fields, orig, stoc, maxOmegas);
-		if ( status ) {
-			errMsg("read", "readBlocks", "failed to read ARMA blocks structure", 0);
+	else if ( !(strcmp(fields[1], "LINTR")) ) {
+		if ( readLinTrans(fptr, fields, orig, &stoc, maxOmegas, rvRows, rvCols) ) {
+			errMsg("read", "readLinTran", "failed to read linear transformation structure.", 0);
 			return 1;
 		}
 	}
@@ -672,10 +677,14 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 		return 1;
 	}
 
+	/* increase the number of stochastic variables groups */
+	stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
+	stoc->numGroups++;
+
 	return 0;
 }//END readBlocks()
 
-int readBlk(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc) {
+int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc) {
 	string 	*rvRows, *rvCols;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV=0, n;
@@ -807,44 +816,77 @@ int readBlk(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int max
 	mem_free(rvRows); mem_free(rvCols);
 
 	return 0;
-}//END readBlk()
+}//END readOneBlock()
 
-int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas) {
-	armaType *arma;
-	char 	strType, currBlock[NAMESIZE] = "\0";
-	int		numFields, numRV = 0, maxP = 10, maxQ = 10, maxEps = 10, maxT = 365, armaR = 0, armaE = 0, armaS = 0, j, n;
-	BOOL	newBlk = FALSE;
+/* The subroutine reads the linear transformation matrix information for stochastic processes of the following form:
+ *
+ * 				y_t = c_t + \sum_{j=1}^m \phi_j*y_{t-j} + \sum_{j=0}^n \theta_j*\epsilon_{t-j}
+ *
+ * where, \epsilon_t follows a normal distribution with mean (\mu, \sigma) known as the error/residual random variable.
+ *
+ * The subroutine assumes that the stoc file begins by first describing the residual random variable. This is stored as
+ * the first group of random variables in our stocType structure.
+ */
+int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, int maxOmegas, string **rvRows, string **rvCols) {
+	statModel *model;
+	char 	strType, currBlock[NAMESIZE] = "\0", currLag[NAMESIZE] = "\0";
+	int		numFields, period, numPeriods = 0, periodBeg[11], maxP = 10, maxQ = 10, maxMatcnt = (*stoc)->numOmega, j, col, row;
+	BOOL	newLag;
 
-	/* set up elements of stocType. Free-up elements not used, and trim down the number of groups to two (one for problem stochastic elements and
-	 * one for the residuals) */
-	strcpy(stoc->type, "ARMA");
-	stoc->sim = FALSE;
-	mem_free(stoc->numVals); stoc->numVals = NULL;
-	mem_free(stoc->vals); stoc->vals = NULL;
-	mem_free(stoc->probs); stoc->probs = NULL;
-	stoc->numPerGroup = (intvec) mem_realloc(stoc->numPerGroup, 2*sizeof(int));
-	stoc->groupBeg = (intvec) mem_realloc(stoc->groupBeg, 2*sizeof(int));
+	/* Update the stocType */
+	strcpy((*stoc)->type, "LINTRAN");
+	(*stoc)->sim = TRUE;
 
-	/* allocate memory to hold information about the ARMA process */
-	if ( !(arma = (armaType *) mem_malloc(sizeof(armaType))) )
-		errMsg("allocation", "readARMA", "armaType", 0);
-	arma->obs = arma->eps = arma->eta = arma->sigma = NULL;
-	arma->AR = arma->MA = NULL; arma->meanEps = arma->varEps = NULL;
-	arma->p = arma->q = 0; arma->T = arma->N = 0;
+	/* Offset for each period. The first entry corresponds to the error/residual terms. */
+	periodBeg[numPeriods++] = 0;
 
+	/* allocate memory to hold information about the linear transformation stochastic process */
+	if ( !(model = (statModel *) mem_malloc(sizeof(statModel))) )
+		errMsg("allocation", "readLinTrans", "statModel", 0);
+	model->eta = model->sigma = NULL;
+	model->AR = model->MA = NULL;
+	model->p = model->q = 0; model->N = 0;
+
+	/* Read from the stoc file line-by-line */
 	while (TRUE) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
 		if ( !(strcmp(fields[0], "BL")) ) {
-			/* new block encountered */
-			strcpy(currBlock, fields[1]);
-			newBlk = TRUE;
+			/* New block of encountered of type 'BL': random variables in a particular time period/stage (i.e., elements of y_t) */
+			strcpy(currBlock, fields[0]);
+			periodBeg[numPeriods++] = (*stoc)->numOmega;
+			model->N = (*stoc)->numOmega - model->N;
+		}
+		else if ( !(strcmp(fields[0], "RV")) || !(strcmp(fields[0], "HV")) || !(strcmp(fields[0], "LV")) )  {
+			/* New block of encountered of type
+			 * 		'RV': following elements will be for matrix \theta_0
+			 * 		'HV': following elements will be for matrix \phi_j
+			 * 		'LV': following elements will be for matrix \theta_j		*/
+			strcpy(currBlock, fields[0]);
+			if ( strcmp(currLag, fields[3]) ) {
+				strcpy(currLag, fields[3]);
+				newLag = TRUE;
+			}
+			else
+				newLag = FALSE;
+
+			/* Find the random variable to which the column of transformation matrix corresponds to. */
+			col = 0;
+			while ( (strcmp((*rvCols)[col], fields[1])) || (strcmp((*rvRows)[col], fields[2])) )
+				col++;
+			period = 0;
+			while ( period < numPeriods ) {
+				if ( col < periodBeg[period] )
+					break;
+				period++;
+			}
+			col -= periodBeg[period-1];
 		}
 		else {
-			if ( !(strcmp(currBlock, "VAR")) ) {
-				/* stochastic elements in the problem */
-				/* column coordinates */
+			/* Block data */
+			if ( !(strcmp(currBlock, "BL")) ) {
+				/* Read the column and row names and identify their coordinates in the original problem. */
 				if ( !(strcmp(fields[0], "RHS")) )
 					j = -1;
 				else {
@@ -855,7 +897,7 @@ int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int m
 						j++;
 					}
 				}
-				stoc->col[stoc->numOmega] = j;
+				(*stoc)->col[(*stoc)->numOmega] = j;
 				if ( !(strcmp(fields[1], orig->objname)) )
 					j = -1;
 				else {
@@ -866,158 +908,95 @@ int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int m
 						j++;
 					}
 				}
-				stoc->row[stoc->numOmega] = j;
-				stoc->numOmega++; stoc->numPerGroup[0]++;
+				(*stoc)->row[(*stoc)->numOmega] = j;
+				if ( !((*rvRows)[(*stoc)->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+					errMsg("allocation", "readIndep", "rvNames[n]", 0);
+				strcpy((*rvRows)[(*stoc)->numOmega], fields[1]);
+				if ( !((*rvCols)[(*stoc)->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+					errMsg("allocation", "readIndep", "rvNames[n]", 0);
+				strcpy((*rvCols)[(*stoc)->numOmega], fields[0]);
+				(*stoc)->vals[0][(*stoc)->numOmega] = str2float(fields[2]);
+				(*stoc)->numOmega++;
 
 				/* make sure there is memory space available for new realization and store it */
-				if (stoc->numOmega == maxOmegas )
+				if ((*stoc)->numOmega == maxOmegas )
 					errMsg("allocation", "readBlock", "reached max limit maxOmegas", 1);
+			}
+			else if ( !(strcmp(currBlock, "HV")) ) {
+				if ( newLag ) {
+					j = model->p++;
+					if ( j == 0 )
+						if ( !(model->AR = (sparseMatrix **) arr_alloc(maxP, sparseMatrix *)) )
+							errMsg("allocation", "readLinTrans", "AR", 0);
+					if ( !(model->AR[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
+						errMsg("allocation", "readLinTrans", "AR[n]", 0);
+					if ( !(model->AR[j]->row = (intvec) arr_alloc(maxMatcnt, int)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] rows", 0);
+					if ( !(model->AR[j]->col = (intvec) arr_alloc(maxMatcnt, int)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] columns", 0);
+					if ( !(model->AR[j]->val = (vector) arr_alloc(maxMatcnt, double)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] coefficients", 0);
+					model->AR[j]->cnt = 0;
+				}
+				row = 0;
+				while ( (strcmp((*rvCols)[row], fields[0])) || (strcmp((*rvRows)[row], fields[1])) )
+					row++;
+				period = 0;
+				while ( period < numPeriods) {
+					if( row < periodBeg[period] )
+						break;
+					period++;
+				}
+				row -= periodBeg[period-1];
+				model->AR[j]->row[model->AR[j]->cnt] = row;
+				model->AR[j]->col[model->AR[j]->cnt] = col;
+				model->AR[j]->val[model->AR[j]->cnt] = str2float(fields[2]);
+				model->AR[j]->cnt++;
+			}
+			else if ( !(strcmp(currBlock, "LV")) || !(strcmp(currBlock, "RV")) ) {
+				if ( newLag ) {
+					j = model->q++;
+					if ( j == 0 ) {
+						if ( !(model->MA = (sparseMatrix **) arr_alloc(maxQ, sparseMatrix *)) )
+							errMsg("allocation", "readLinTrans", "MA", 0);
+					}
+					if ( !(model->MA[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
+						errMsg("allocation", "readLinTrans", "AR[n]", 0);
+					if ( !(model->MA[j]->row = (intvec) arr_alloc(maxMatcnt, int)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] rows", 0);
+					if ( !(model->MA[j]->col = (intvec) arr_alloc(maxMatcnt, int)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] columns", 0);
+					if ( !(model->MA[j]->val = (vector) arr_alloc(maxMatcnt, double)) )
+						errMsg("allocation", "readLinTrans" ,"AR[n] coefficients", 0);
+					model->MA[j]->cnt = 0;
+				}
 
-			}
-			else if ( !(strcmp(currBlock, "PHI")) ) {
-				/* AR coefficients */
-				if ( arma->p == 0 )
-					if ( !(arma->AR = (sparseMatrix **) arr_alloc(maxP, sparseMatrix *)) )
-						errMsg("allocation", "readARMA", "AR coefficients", 0);
-
-				if (newBlk) {
-					j = arma->p++;
-					if ( !(arma->AR[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
-						errMsg("allocation", "readARMA", "AR[n]", 0);
-					if ( !(arma->AR[j]->row = (intvec) arr_alloc(numRV*maxEps, int)) )
-						errMsg("allocation", "readARMA" ,"AR[n] rows", 0);
-					if ( !(arma->AR[j]->col = (intvec) arr_alloc(numRV*maxEps, int)) )
-						errMsg("allocation", "readARMA" ,"AR[n] columns", 0);
-					if ( !(arma->AR[j]->val = (vector) arr_alloc(numRV*maxEps, double)) )
-						errMsg("allocation", "readARMA" ,"AR[n] coefficients", 0);
-					arma->AR[j]->cnt = 0;
-					newBlk = FALSE;
+				row = 0;
+				while ( (strcmp((*rvCols)[row], fields[0])) || (strcmp((*rvRows)[row], fields[1])) )
+					row++;
+				period = 0;
+				while ( period < numPeriods ) {
+					if ( row < periodBeg[period] )
+						break;
+					period++;
 				}
-				arma->AR[j]->col[arma->AR[j]->cnt] = str2int(fields[0]);
-				arma->AR[j]->row[arma->AR[j]->cnt] = str2int(fields[1]);
-				arma->AR[j]->val[arma->AR[j]->cnt] = str2float(fields[2]);
-				arma->AR[j]->cnt++;
-			}
-			else if ( !(strcmp(currBlock, "THETA")) ) {
-				/* MA coefficients */
-				if ( arma->q == 0 )
-					if ( !(arma->MA = (sparseMatrix **) arr_alloc(maxQ, sparseMatrix *)) )
-						errMsg("allocation", "readARMA", "MA coefficients", 0);
-
-				if (newBlk) {
-					j = arma->q++;
-					if ( !(arma->MA[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
-						errMsg("allocation", "readARMA", "MA[n]", 0);
-					if ( !(arma->MA[j]->row = (intvec) arr_alloc(numRV*maxEps, int)) )
-						errMsg("allocation", "readARMA" ,"MA[n] rows", 0);
-					if ( !(arma->MA[j]->col = (intvec) arr_alloc(numRV*maxEps, int)) )
-						errMsg("allocation", "readARMA" ,"MA[n] columns", 0);
-					if ( !(arma->MA[j]->val = (vector) arr_alloc(numRV*maxEps, double)) )
-						errMsg("allocation", "readARMA" ,"MA[n] coefficients", 0);
-					arma->MA[j]->cnt = 0;
-					newBlk = FALSE;
-				}
-				arma->MA[j]->col[arma->MA[j]->cnt] = str2int(fields[0]);
-				arma->MA[j]->row[arma->MA[j]->cnt] = str2int(fields[1]);
-				arma->MA[j]->val[arma->MA[j]->cnt] = str2float(fields[2]);
-				arma->MA[j]->cnt++;
-			}
-			else if ( !(strcmp(currBlock, "EPS")) ) {
-				/* Noise parameters */
-				if ( newBlk ) {
-					if ( !(arma->meanEps = (vector) arr_alloc(maxEps, double)) )
-						errMsg("allocation", "readARMA", "mean of noise process", 0);
-					if ( !(arma->varEps = (vector) arr_alloc(maxEps, double)) )
-						errMsg("allocation", "readARMA", "variance of noise process", 0);
-					stoc->numGroups = 2;
-					stoc->groupBeg[0] = j = 0;
-					newBlk = FALSE;
-				}
-				arma->meanEps[j] = str2float(fields[1]);
-				arma->varEps[j] = str2float(fields[2]);
-				j++; stoc->numPerGroup[1]++;
-			}
-			else if ( !(strcmp(currBlock, "OBS")) ) {
-				/* historical observations */
-				if ( newBlk ) {
-					if ( !(arma->obs = (vector *) arr_alloc(maxT, vector)) )
-						errMsg("allocation", "readARMA", "past observations", 0);
-					arma->N = numFields;
-					newBlk = FALSE;
-				}
-				if ( !(arma->obs[arma->T] = (vector) arr_alloc(numFields, double)) )
-					errMsg("allocation", "readARMA", "obs[j]", 0);
-				for ( n = 0; n < numFields; n++ )
-					arma->obs[arma->T][n] = str2float(fields[n]);
-				arma->T++;
-			}
-			else if ( !(strcmp(currBlock, "NOISE")) ) {
-				/* historical noise observations */
-				if ( newBlk ) {
-					if ( !(arma->eps = (vector *) arr_alloc(maxT, vector)) )
-						errMsg("allocation", "readARMA", "past noise observations", 0);
-					armaR = 0; newBlk = FALSE;
-				}
-				if ( !(arma->eps[armaR] = (vector) arr_alloc(numFields, double)) )
-					errMsg("allocation", "readARMA", "eps[j]", 0);
-				for ( n = 0; n < numFields; n++ )
-					arma->eps[armaR][n] = str2float(fields[n]);
-				armaR++;
-			}
-			else if ( !(strcmp(currBlock, "TREND")) ) {
-				/* time series trend */
-				if ( newBlk ) {
-					if ( !(arma->eta = (vector *) arr_alloc(maxT, vector)) )
-						errMsg("allocation", "readARMA", "time series trend", 0);
-					armaE = 0; newBlk = FALSE;
-				}
-				if ( !(arma->eta[armaE] = (vector) arr_alloc(numFields, double)) )
-					errMsg("allocation", "readARMA", "eta[j]", 0);
-				for ( n = 0; n < numFields; n++ )
-					arma->eta[armaE][n] = str2float(fields[n]);
-				armaE++;
-			}
-			else if ( !(strcmp(currBlock, "SEASONALITY")) ) {
-				/* time series seasonality */
-				if ( newBlk ) {
-					if ( !(arma->sigma = (vector *) arr_alloc(maxT, vector)) )
-						errMsg("allocation", "readARMA", "time series seasonality", 0);
-					armaS = 0; newBlk = FALSE;
-				}
-				if ( !(arma->sigma[armaS] = (vector) arr_alloc(numFields, double)) )
-					errMsg("allocation", "readARMA", "sigma[j]", 0);
-				for ( n = 0; n < numFields; n++ )
-					arma->sigma[armaS][n] = str2float(fields[n]);
-				armaS++;
+				row -= periodBeg[period-1];
+				model->MA[j]->row[model->MA[j]->cnt] = row;
+				model->MA[j]->col[model->MA[j]->cnt] = col;
+				model->MA[j]->val[model->MA[j]->cnt] = str2float(fields[2]);
+				model->MA[j]->cnt++;
 			}
 			else {
-				errMsg("read", "readARMA", "unknown field encountered", 0);
+				errMsg("read", "readLinTrans", "unknown block type encountered", 0);
 				return 1;
 			}
 		}
 	}
 
-	/* check the length of residual, trend and seasonality time series */
-	if ( arma->T != armaR )
-		printf("Warning: length of residual time series does not match with observations (%d).\n", arma->T - armaR);
-	if (arma->T != armaE)
-		printf("Warning: length of trend time series does not match with observations (%d).\n", arma->T - armaE);
-	if ( arma->T != armaS )
-		printf("Warning: length of seasonality time series does not match with observations (%d).\n", arma->T - armaS);
 
-	stoc->arma = arma;
-	/* setup mean to based on historical observation corresponding to first time period */
-	n = -1;
-	for ( j = 0; j < stoc->numOmega; j++ ) {
-		if ( j % stoc->arma->N == 0 )
-			n++;
-		stoc->mean[j] = stoc->arma->obs[n][j] + stoc->arma->eta[n][j];
-		if ( stoc->arma->sigma != NULL )
-			stoc->mean[j] += stoc->arma->sigma[n][j];
-	}
-
+	(*stoc)->mod = model;
 	return 0;
-}//END readARMA()
+}//END readLinTrans()
 
 int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc) {
 	string	*rvRows, *rvCols, *scenName;
@@ -1242,48 +1221,36 @@ void freeStocType(stocType *stoc) {
 		if ( stoc->groupBeg) mem_free(stoc->groupBeg);
 		if ( stoc->numPerGroup) mem_free(stoc->numPerGroup);
 		if ( stoc->type) mem_free(stoc->type);
-		if ( stoc->arma) freeARMAtype(stoc->arma);
+		if ( stoc->mod) freeStatModel(stoc->mod);
 		mem_free(stoc);
 	}
 
 }//END freeStocType()
 
-void freeARMAtype(armaType *arma) {
+void freeStatModel(statModel *model) {
 	int n;
 
-	if ( arma->AR ) {
-		for ( n = 0; n < arma->p; n++ )
-			if (arma->AR[n]) freeSparseMatrix(arma->AR[n]);
-		mem_free(arma->AR);
+	if ( model->AR ) {
+		for ( n = 0; n < model->p; n++ )
+			if (model->AR[n]) freeSparseMatrix(model->AR[n]);
+		mem_free(model->AR);
 	}
-	if ( arma->MA ) {
-		for ( n = 0; n < arma->q; n++ )
-			if (arma->MA[n]) freeSparseMatrix(arma->MA[n]);
-		mem_free(arma->MA);
+	if ( model->MA ) {
+		for ( n = 0; n < model->q; n++ )
+			if (model->MA[n]) freeSparseMatrix(model->MA[n]);
+		mem_free(model->MA);
 	}
-	if ( arma->obs ) {
-		for ( n = 0; n < arma->T; n++ )
-			if ( arma->obs[n]) mem_free(arma->obs[n]);
-		mem_free(arma->obs);
+	if ( model->eta ) {
+		for ( n = 0; n < model->N; n++ )
+			if ( model->eta[n]) mem_free(model->eta[n]);
+		mem_free(model->eta);
 	}
-	if ( arma->eps ) {
-		for ( n = 0; n < arma->T; n++ )
-			if ( arma->eps[n]) mem_free(arma->eps[n]);
-		mem_free(arma->eps);
+	if ( model->sigma ) {
+		for ( n = 0; n < model->N; n++ )
+			if ( model->sigma[n]) mem_free(model->sigma[n]);
+		mem_free(model->sigma);
 	}
-	if ( arma->eta ) {
-		for ( n = 0; n < arma->T; n++ )
-			if ( arma->eta[n]) mem_free(arma->eta[n]);
-		mem_free(arma->eta);
-	}
-	if ( arma->sigma ) {
-		for ( n = 0; n < arma->T; n++ )
-			if ( arma->sigma[n]) mem_free(arma->sigma[n]);
-		mem_free(arma->sigma);
-	}
-	if (arma->meanEps) mem_free(arma->meanEps);
-	if (arma->varEps) mem_free(arma->varEps);
 
-	mem_free(arma);
+	mem_free(model);
 
-}//END freeARMAtype()
+}//END freeStatModel()

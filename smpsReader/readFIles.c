@@ -17,7 +17,7 @@ long int MEM_USED;
 string 	outputDir;
 
 // subroutines used
-void parseCmdLine(int argc, string *argv, string algoName, string probName, string inputDir);
+void parseCmdLine(int argc, string *argv, string probName, string inputDir);
 void setupDir(string algoName, string probName);
 
 int main(int argc, char *argv[]) {
@@ -26,30 +26,36 @@ int main(int argc, char *argv[]) {
 	stocType *stoc = NULL;
 	probType **prob = NULL;
 	vector	meanSol, lb;
-	char probName[NAMESIZE], algoName[NAMESIZE], inputDir[2*BLOCKSIZE];
+	char probName[NAMESIZE], inputDir[2*BLOCKSIZE];
 
 	/* parse command line to obtain input from user regarding problem name and the algorithm for which the problem is being read for. */
-	parseCmdLine(argc, argv, algoName, probName, inputDir);
-
-	/* set up input and output directories for algorithm and problem being solved */
-	sprintf(inputDir, "%s/", inputDir);
-	outputDir = (string) mem_malloc(BLOCKSIZE*sizeof(char));
-	setupDir(algoName, probName);
+	parseCmdLine(argc, argv, probName, inputDir);
 
 	/* open solver environment */
 	openSolver();
+
+	/* setup an output directory */
+	setupDir("testSMPSreader", probName);
 
 	/* read problem information from the SMPS files */
 	if ( readFiles(inputDir, probName, &orig, &tim, &stoc) ) {
 		errMsg("read", "main", "failed to read problem files", 0);
 		goto TERMINATE;
 	}
-	printf("Successfully read '%s' SMPS files for '%s' algorithm.\n", probName, algoName);
+	printf("Successfully read '%s' SMPS files.\n", probName);
 
 #ifdef INPUT_CHECK
 	/* print the summary of problems that have been read */
 	printReadSummary(orig, tim, stoc);
 #endif
+
+
+	/* check observation simulation */
+	long long seed = 3554548844580680;
+	vector observ = NULL;
+	observ = (vector) arr_alloc(stoc->numOmega, double);
+	generateOmega(stoc, observ, &seed);
+	mem_free(observ);
 
 	/* setup mean value problem which will act as reference for all future computations */
 	meanSol = meanProblem(orig, stoc);
@@ -71,7 +77,7 @@ int main(int argc, char *argv[]) {
 		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
 		goto TERMINATE;
 	}
-	printf("\nSuccessfully decomposed the problem '%s' for '%s' algorithm.\n", probName, algoName);
+	printf("\nSuccessfully decomposed the problem '%s'.\n", probName);
 
 #ifdef DECOMPOSE_CHECK
 	printDecomposeSummary(tim, prob);
@@ -91,30 +97,19 @@ int main(int argc, char *argv[]) {
 }//END
 
 /* Parse the command line to obtain the names of the algorithm and the problem */
-void parseCmdLine(int argc, string *argv, string algoName, string probName, string inputDir) {
+void parseCmdLine(int argc, string *argv, string probName, string inputDir) {
 
 	switch (argc) {
-	case 4:
-		strcpy(algoName, argv[1]);
-		strcpy(probName, argv[2]);
-		strcpy(inputDir, argv[3]);
-		break;
 	case 3:
-		strcpy(algoName, argv[1]);
-		strcpy(probName, argv[2]);
-		printf("Please enter the input directory: ");
-		scanf("%s", inputDir);
+		strcpy(probName, argv[1]);
+		strcpy(inputDir, argv[2]);
 		break;
 	case 2:
-		strcpy(algoName, argv[1]);
-		printf("Please enter the name of the problem: ");
-		scanf("%s", probName);
+		strcpy(probName, argv[1]);
 		printf("Please enter the input directory: ");
 		scanf("%s", inputDir);
 		break;
 	default:
-		printf("Please enter the name of the algorithm: ");
-		scanf("%s", algoName);
 		printf("Please enter the name of the problem: ");
 		scanf("%s", probName);
 		printf("Please enter the input directory: ");
@@ -126,6 +121,8 @@ void parseCmdLine(int argc, string *argv, string algoName, string probName, stri
 /* setup an output directory for the problem in the algorithms directory */
 void setupDir(string algoName, string probName) {
 	char buffer[2*BLOCKSIZE];
+
+	outputDir = (string) arr_alloc(2*BLOCKSIZE, char);
 
 	sprintf(outputDir, "../../spOutput/%s/", algoName);
 	sprintf(buffer, "mkdir %s", outputDir);

@@ -54,8 +54,9 @@ void generateOmega(stocType *stoc, vector observ, long long *seed) {
 			//	generateDistrib(observ+offset, n, seed);
 			offset += stoc->numPerGroup[n];
 		}
-		else if ( strstr(stoc->type, "ARIMA") != NULL) {
-			//  Generate ARIMA Data
+		else if ( strstr(stoc->type, "LINTRAN") != NULL) {
+			generateLinTran(stoc, observ+offset, n, seed);
+			n++; 			/* Linear transformation is associated with a block of residual random variables. */
 		}
 		else
 			errMsg("rvgen", "generateOmega", "unknown section type in omegastuff", 0);
@@ -92,6 +93,42 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 	}
 
 }//END generateIndep()
+
+/* Supporting only Wiener process */
+void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed) {
+	vector eps, temp;
+	int n, offset, t;
+	int numPeriods, epsLen, omegaLen;
+
+	numPeriods = (int) stoc->numPerGroup[groupID+1]/stoc->mod->N;	/* Number of periods being simulated */
+	epsLen     = stoc->numPerGroup[groupID];						/* Number of residual random variables */
+	omegaLen   = stoc->mod->N;										/* Number of random variables per period */
+
+	/* residual vector */
+	eps = (vector) arr_alloc(numPeriods*epsLen, double);
+	normal(stoc->mean, stoc->vals[0], numPeriods*epsLen, eps, seed);
+
+	/* constant terms */
+	offset = stoc->groupBeg[groupID+1];
+	for (n = 0; n < stoc->numPerGroup[groupID+1]; n++ )
+		observ[n] = stoc->vals[0][offset+n];
+
+	for ( t = 0; t < numPeriods; t++ ) {
+		if ( t == 0 ) {
+			for (n = 0; n < stoc->mod->MA[0]->cnt; n++)
+				observ[stoc->mod->MA[0]->row[n]] += stoc->mod->MA[0]->val[n] * eps[stoc->mod->MA[0]->col[n]];
+		}
+		else {
+			for (n = 0; n < stoc->mod->MA[0]->cnt; n++)
+				observ[omegaLen*t+stoc->mod->MA[0]->row[n]] += stoc->mod->MA[0]->val[n] * eps[epsLen*t+stoc->mod->MA[0]->col[n]];
+			for (n = 0; n < stoc->mod->AR[0]->cnt; n++)
+				observ[omegaLen*t+stoc->mod->AR[0]->row[n]] += stoc->mod->AR[0]->val[n] * observ[omegaLen*(t-1)+stoc->mod->AR[0]->col[n]];
+		}
+	}
+
+	mem_free(eps);
+	return;
+}//END generateLinTran()
 
 /* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
  * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */

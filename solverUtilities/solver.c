@@ -309,6 +309,7 @@ int loadProblem(LPptr lp, int numcols, int numrows, int objsense, vector objx, v
 int loadProbwNames(LPptr lp, int numcols, int numrows, int objsense, vector objx, vector rhsx, string sense, intvec matbeg, intvec matcnt,
 		intvec matind, vector matval, vector lb, vector ub, vector rngval, string *colname, string *rowname) {
 	int status;
+
 	status = CPXcopylpwnames (env, lp, numcols, numrows, objsense, objx, rhsx, sense, matbeg, matcnt, matind, matval, lb, ub, rngval, colname, rowname);
 	if(status)
 		solverErrmsg(status);

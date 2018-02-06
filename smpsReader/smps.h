@@ -56,20 +56,16 @@ typedef struct {
 	intvec	colStg;				  /* used with explicit time file declaration only */
 }timeType;
 
+// TODO: Update the statistical model structure to streamline */
 typedef struct {
 	int				p;			  /* autoregression order */
 	int				q;			  /* moving-average order */
 	int				N;			  /* dimension of time series */
-	int				T;			  /* length of time series historical data */
 	sparseMatrix	**AR;		  /* autoregression coefficients */
 	sparseMatrix	**MA;		  /* moving-average coefficients */
-	vector			meanEps;	  /* mean of noise process */
-	vector			varEps;		  /* variance of noise process */
 	vector			*eta;		  /* trend time series */
 	vector			*sigma;		  /* seasonality time series */
-	vector			*obs;		  /* historical time series (used for initialization) */
-	vector			*eps;		  /* historical noise series (used for initilization) */
-}armaType;
+}statModel;
 
 typedef struct {
 	string	type;				/* type of stocType being used */
@@ -85,7 +81,7 @@ typedef struct {
 	intvec	numPerGroup;
 	intvec	groupBeg;
 	vector	mean;         		/* mean of each rv */
-	armaType *arma;
+	statModel *mod;
 }stocType;
 
 /* subroutines in smps.c */
@@ -93,22 +89,24 @@ int readFiles(string inputDir, string probName, oneProblem **orig, timeType **ti
 oneProblem *readCore(string inputDir, string probName);
 timeType *readTime(string inputDir, string probName, oneProblem *orig);
 stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim);
-int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
-int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc);
-int readBlk(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
+int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols);
+int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols);
+int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
+int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, int maxOmegas, string **rvRows, string **rvCols);
 int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas);
 int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc);
 
 void freeOneProblem(oneProblem *p);
 void freeTimeType(timeType *tim);
 void freeStocType(stocType *stoc);
-void freeARMAtype(armaType *arma);
+void freeStatModel(statModel *model);
 
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
 void generateOmega(stocType *stoc, vector observ, long long *seed);
 void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed);
+void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed);
 int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed);
 int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, long long *seed);
 float scalit(float lower, float upper, long long *RUN_SEED);

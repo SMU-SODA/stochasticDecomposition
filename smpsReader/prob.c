@@ -336,8 +336,15 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		}
 	}
 
-	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to appropriate parts (right-hand side and objective coefficients) */
-	for ( m = 0; m < stoc->numOmega; m++ ) {
+	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to
+	 * appropriate parts (right-hand side and objective coefficients). If linear transformation is used, then the
+	 * first group of random variables correspond to auxiliary random variables. */
+	int mBegin;
+	if ( strcmp(stoc->type, "LINTRAN") )
+		mBegin = 0;
+	else
+		mBegin = stoc->groupBeg[1];
+	for ( m = mBegin; m < stoc->numOmega; m++ ) {
 		if ( stoc->col[m] == -1 ) {
 			/* randomness in right-hand side */
 			t = 0;
@@ -360,7 +367,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		}
 
 		if ( t == 0 ) {
-			errMsg("setup", "newProb", "encountered randomness is root-stage", 0);
+			errMsg("setup", "newProb", "encountered randomness in root-stage", 0);
 			return NULL;
 		}
 

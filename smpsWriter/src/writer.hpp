@@ -27,6 +27,7 @@
 using namespace std;
 
 #define NAMESIZE 32
+#define BLOCKSIZE 256
 
 #define TOLERANCE 0.00001
 
@@ -37,7 +38,8 @@ public:
 	~SMPSmodel();
 
 	int numStages, numPeriods;
-	vector<string> timCols, timRows, stocRows, stocCols;
+	vector<string> timCols, timRows;
+	vector<vector<string>> stocRows, stocCols;
 	string objName;
 
 	string dir = "../spInput";
