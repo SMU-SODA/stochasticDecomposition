@@ -384,8 +384,6 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 		}
 
 		prob[t]->num->numRV++;
-		prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
-		prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
 		prob[t]->mean[prob[t]->num->numRV] = stoc->mean[m];
 
 		if ( stoc->col[m] == -1 && stoc->row[m] != -1 ) {
@@ -394,6 +392,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				prob[t]->coord->rvbOmRows = (intvec) arr_alloc(stoc->numOmega+1, int);
 				prob[t]->coord->rvOffset[0] = m;
 			}
+			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
+			prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
 			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
 		}
 		else if ( stoc->col[m] != -1 && stoc->row[m] != -1 ) {
@@ -403,6 +403,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				prob[t]->coord->rvCOmRows = (intvec) arr_alloc(stoc->numOmega, int);
 				prob[t]->coord->rvOffset[1] = m;
 			}
+			prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
+			prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
 			prob[t]->num->rvCOmCnt++;
 			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
@@ -413,6 +415,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 				prob[t]->coord->rvdOmCols = (intvec) arr_alloc(stoc->numOmega+1,int);
 				prob[t]->coord->rvOffset[2] = m;
 			}
+			prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
+			prob[t]->coord->allRVRows[prob[t]->num->numRV] = -1;
 			prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
 		}
 	}
