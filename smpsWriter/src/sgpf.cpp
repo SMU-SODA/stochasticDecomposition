@@ -122,8 +122,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 		}
 
 		/* Objective function */
-		sgpf.objName = "netReturn";
-		IloObjective obj = IloMinimize(env, 0.0, "netReturn");
+		IloObjective obj = IloMinimize(env, 0.0);
 		IloExpr netReturn(env);
 		for ( int t = 0; t < sgpf.numPeriods; t++) {
 			for ( int i = 0; i < data.numStd; i++ ) {
@@ -131,7 +130,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 			}
 			netReturn += data.ret[t]*totalVolume[t];
 		}
-		obj.setExpr(netReturn); model.add(obj); netReturn.end();
+		obj.setExpr(netReturn); model.add(obj); netReturn.end(); sgpf.objName = "obj";
 
 		/* Constraints */
 		for ( int t = 0; t < sgpf.numPeriods; t++ ) {
@@ -340,9 +339,8 @@ void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data) {
 	int parse;
 
 	/* Number of periods to be considered and the number of stages. */
-	//	cout << "Enter model parameters (1)/use default values (0) : ";
-	//	cin >> parse;
-	parse = 0;
+	cout << "Enter model parameters (1)/use default values (0) : ";
+	cin >> parse;
 
 	if ( parse ) {
 		cout << "Enter the number of periods in the model : ";
