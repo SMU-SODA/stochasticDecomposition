@@ -58,20 +58,22 @@ typedef struct {
 
 // TODO: Update the statistical model structure to streamline */
 typedef struct {
-	int				p;			  /* autoregression order */
-	int				q;			  /* moving-average order */
-	int				N;			  /* dimension of time series */
-	sparseMatrix	**AR;		  /* autoregression coefficients */
-	sparseMatrix	**MA;		  /* moving-average coefficients */
-	vector			*eta;		  /* trend time series */
-	vector			*sigma;		  /* seasonality time series */
+	int				p;			/* autoregression order */
+	int				q;			/* moving-average order */
+	int				N;			/* dimension of time series */
+	int				M; 			/* dimension of the residual process/noise */
+	vector			muEps;		/* Mean of the residual process/noise */
+	sparseMatrix	*cvEps;		/* Covariance matrix of the residual process/noise */
+	sparseMatrix	**AR;		/* autoregression coefficients */
+	sparseMatrix	**MA;		/* moving-average coefficients */
+	vector			*eta;		/* trend time series */
+	vector			*sigma;		/* seasonality time series */
 }statModel;
 
 typedef struct {
 	string	type;				/* type of stocType being used */
 	BOOL	sim;				/* set to TRUE if an external simulator is used */
 	int		numOmega; 			/* number of stochastic elements stored in structure */
-	int 	numCipher; 			/* number of ints needed to encode an observation */
 	int		numGroups;
 	intvec	row; 				/* row number array in the original problem; -1 indicates objective function */
 	intvec	col; 				/* column number array in the original problem; -1 indicates right-hand side */
@@ -90,9 +92,11 @@ oneProblem *readCore(string inputDir, string probName);
 timeType *readTime(string inputDir, string probName, oneProblem *orig);
 stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim);
 int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols);
+int readIndepDiscrete(FILE *fptr, string *fields, int maxOmegas, int maxVals, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc);
+int readNormal(FILE *fptr, string *fields, int maxOmegas, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc);
 int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols);
 int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc);
-int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, int maxOmegas, string **rvRows, string **rvCols);
+int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas, string **rvRows, string **rvCols);
 int readARMA(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas);
 int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc);
 

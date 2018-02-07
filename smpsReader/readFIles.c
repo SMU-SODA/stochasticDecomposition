@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 	probType **prob = NULL;
-	vector	meanSol, lb;
+	vector	meanSol = NULL, lb = NULL;
 	char probName[NAMESIZE], inputDir[2*BLOCKSIZE];
 
 	/* parse command line to obtain input from user regarding problem name and the algorithm for which the problem is being read for. */
@@ -43,6 +43,8 @@ int main(int argc, char *argv[]) {
 		goto TERMINATE;
 	}
 	printf("Successfully read '%s' SMPS files.\n", probName);
+
+
 
 #ifdef INPUT_CHECK
 	/* print the summary of problems that have been read */
@@ -89,7 +91,7 @@ int main(int argc, char *argv[]) {
 	freeOneProblem(orig);
 	freeStocType(stoc);
 	freeTimeType(tim);
-	mem_free(outputDir); mem_free(meanSol); mem_free(lb);
+	mem_free(outputDir); if ( meanSol) mem_free(meanSol); if (lb) mem_free(lb);
 	/* close solver environment and release all structures */
 	closeSolver();
 

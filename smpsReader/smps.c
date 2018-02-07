@@ -360,25 +360,18 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	/* allocate memory to stocType and initialize elements */
 	if ( !(stoc = (stocType *) mem_malloc(sizeof(stocType))) )
 		errMsg("allocation", "readStoc", "stoc", 0);
+	if ( !(stoc->type = (string) arr_alloc(NAMESIZE, char)) )
+		errMsg("allocation", "readStoc", "stoc->type", 0);
 	if ( !(stoc->col = (intvec) arr_alloc(maxOmegas, int)) )
 		errMsg("allocation", "readStoc", "stoc->col", 0);
 	if ( !(stoc->row = (intvec) arr_alloc(maxOmegas, int)) )
 		errMsg("allocation", "readStoc", "stoc->row", 0);
 	if ( !(stoc->mean = (vector) arr_alloc(maxOmegas, double)) )
 		errMsg("allocation", "readStoc", "stoc->mean", 0);
-	if ( !(stoc->numVals = (intvec) arr_alloc(maxOmegas, int)) )
-		errMsg("allocation", "readStoc", "stoc->numVals", 0);
-	if ( !(stoc->vals = (vector *) arr_alloc(maxOmegas, vector)) )
-		errMsg("allocation", "readStoc", "stoc->vals", 0);
-	if ( !(stoc->probs = (vector *) arr_alloc(maxOmegas, vector)) )
-		errMsg("allocation", "readStoc", "stoc->vals", 0);
-	if ( !(stoc->type = (string) arr_alloc(NAMESIZE, char)) )
-		errMsg("allocation", "readStoc", "stoc->type", 0);
-	if ( !(stoc->groupBeg = (intvec) arr_alloc(maxOmegas, int)) )
+	if ( !(stoc->groupBeg = (intvec) arr_alloc(maxFields, int)) )
 		errMsg("allocation", "readStoc", "stoc->groupBeg", 0);
-	if ( !(stoc->numPerGroup = (intvec) arr_alloc(maxOmegas, int)) )
+	if ( !(stoc->numPerGroup = (intvec) arr_alloc(maxFields, int)) )
 		errMsg("allocation", "readStoc", "stoc->numPerGroup", 0);
-	stoc->numCipher = 0;
 	stoc->numOmega = 0;
 	stoc->numGroups = 0;
 	stoc->sim = FALSE;
@@ -425,7 +418,10 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	}
 
 	/* free allocated memory */
-	for ( n = 0; n < stoc->numOmega; n++ ) {
+	maxOmegas = stoc->numOmega;
+	if ( stoc->mod != NULL )
+		maxOmegas += stoc->mod->M;
+	for ( n = 0; n < maxOmegas; n++ ) {
 		if(rvCols[n]) mem_free(rvCols[n]);
 		if(rvRows[n]) mem_free(rvRows[n]);
 	}
@@ -435,12 +431,18 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	mem_free(fields);
 	fclose(fptr);
 
+	/* Reallocate memory to elements of stocType */
+	stoc->row  = (intvec) mem_realloc(stoc->row, stoc->numOmega*sizeof(int));
+	stoc->col  = (intvec) mem_realloc(stoc->col, stoc->numOmega*sizeof(int));
+	stoc->mean = (vector) mem_realloc(stoc->mean, stoc->numOmega*sizeof(double));
+
+	stoc->numPerGroup = (intvec) mem_realloc(stoc->numPerGroup, stoc->numGroups*sizeof(int));
+	stoc->groupBeg 	  = (intvec) mem_realloc(stoc->groupBeg ,stoc->numGroups*sizeof(int));
+
 	return stoc;
 }//END readStoc()
 
 int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string 	**rvRows, string **rvCols) {
-	char	strType;
-	int		n, numFields;
 
 	/* Mark where the group beings */
 	stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
@@ -452,38 +454,193 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 		errMsg("allocation", "readIndep", "rvNames", 0);
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
-		/* store the type of stochastic process encountered */
-		sprintf(stoc->type, "INDEP_DISCRETE");
+		if ( readIndepDiscrete(fptr, fields, maxOmegas, maxVals, rvRows, rvCols, orig, stoc)) {
+			errMsg("read", "readIndep", "failed to read independent discrete random variables", 0);
+			return 1;
+		}
+	}
+	else if ( strstr(fields[1], "NORMAL") != NULL ) {
+		if( readNormal(fptr, fields, maxOmegas, rvRows, rvCols, orig, stoc) ) {
+			errMsg("read", "readIndep", "failed to read independent normal distribution", 0);
+			return 1;
+		}
+	}
+	else if ( !(strcmp(fields[1], "EXPONENTIAL")) ) {
+		errMsg("read", "readIndeps", "no support for exponential distribution type in INDEP section", 0);
+		return 1;
+	}
+	else if ( !(strcmp(fields[1], "UNIFORM")) ) {
+		errMsg("read", "readIndeps", "no support for uniform distribution type in INDEP section", 1);
+		return 1;
+	}
+	else if ( !(strcmp(fields[1], "GAMMA")) ) {
+		errMsg("read", "readIndeps", "no support for gamma distribution type in INDEP section", 1);
+		return 1;
+	}
+	else if ( !(strcmp(fields[1], "GEOMETRIC")) ) {
+		errMsg("read", "readIndeps", "no support for geometric distribution type in INDEP section", 1);
+		return 1;
+	}
+	else {
+		errMsg("read", "readIndeps", "unknown distribution type in INDEP section", 1);
+		return 1;
+	}
 
-		while (TRUE) {
-			getLine(&fptr, fields, &strType, &numFields);
-			if (strType != 'f')
-				break;										//Encountered ENDATA
-			n = stoc->numOmega - 1;
-			if ( n > maxOmegas ) {
-				errMsg("allocation", "readIndep", "reached maxOmega limit for INDEP format", 0);
+	/* increase the number of stochastic variables groups */
+	stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
+	stoc->numGroups++;
+
+	return 0;
+}//END readIndep()
+
+int readIndepDiscrete(FILE *fptr, string *fields, int maxOmegas, int maxVals, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc) {
+	int numFields, n;
+	char strType;
+
+	/* store the type of stochastic process encountered */
+	sprintf(stoc->type, "INDEP_DISCRETE");
+	stoc->sim = TRUE;
+
+	stoc->numVals = (intvec) arr_alloc(maxOmegas, int);
+	stoc->vals    = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->probs   = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->mod = NULL;
+
+	while (TRUE) {
+		getLine(&fptr, fields, &strType, &numFields);
+		if (strType != 'f')
+			break;										// Encountered ENDATA or a new group of random variables
+		n = stoc->numOmega - 1;
+		if ( n > maxOmegas ) {
+			errMsg("allocation", "readIndep", "reached maxOmega limit for INDEP format", 0);
+			return 1;
+		}
+		while (n >= 0 ) {
+			if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
+				break;
+			n--;
+		}
+		if ( n == -1 ) {
+			/* new random variable encountered */
+			if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+			if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+			if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+				errMsg("allocation", "readIndep","omega.vals[n]", 0);
+			if ( !(stoc->probs[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+				errMsg("allocation", "readIndep", "omega.probs[n]", 0);
+
+			strcpy((*rvCols)[stoc->numOmega], fields[0]);
+			strcpy((*rvRows)[stoc->numOmega], fields[1]);
+			stoc->numVals[stoc->numOmega++] = 0;
+			/* identify row and column coordinates in the problem */
+			if ( !(strcmp(fields[0], "RHS")) )
+				n = -1;
+			else {
+				n = 0;
+				while ( n < orig->mac ){
+					if ( !(strcmp((*rvCols)[stoc->numOmega-1], orig->cname[n])) )
+						break;
+					n++;
+				}
+			}
+			if ( n == orig->mac ) {
+				errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
 				return 1;
 			}
-			while (n >= 0 ) {
-				if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
-					break;
-				n--;
+			stoc->col[stoc->numOmega-1] = n;
+			if ( !(strcmp(fields[1], orig->objname)) )
+				n = -1;
+			else {
+				n = 0;
+				while (n < orig->mar ) {
+					if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) )
+						break;
+					n++;
+				}
 			}
-			if ( n == -1 ) {
-				/* new random variable encountered */
-				if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
-					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
-					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
-					errMsg("allocation", "readIndep","omega.vals[n]", 0);
-				if ( !(stoc->probs[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
-					errMsg("allocation", "readIndep", "omega.probs[n]", 0);
+			if ( n == orig->mar ) {
+				errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
+				return 1;
+			}
+			stoc->row[stoc->numOmega-1] = n;
+		}
+		if ( numFields == 4) {
+			stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
+			stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[3]);
+			stoc->mean[stoc->numOmega-1] += str2float(fields[2])*str2float(fields[3]);
+			stoc->numVals[stoc->numOmega-1]++;
+		}
+		else if ( numFields == 5 ) {
+			stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
+			stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[4]);
+			stoc->mean[stoc->numOmega-1] += str2float(fields[2])*str2float(fields[4]);
+			stoc->numVals[stoc->numOmega-1]++;
+		}
+		else {
+			errMsg("read", "readIndep", "missing field in stoch file", 0);
+			return 1;
+		}
+	}
 
-				strcpy((*rvCols)[stoc->numOmega], fields[0]);
-				strcpy((*rvRows)[stoc->numOmega], fields[1]);
-				stoc->numVals[stoc->numOmega++] = 0;
-				/* identify row and column coordinates in the problem */
+	/* Reallocate memory to fit the exact size */
+	stoc->numVals = (intvec) mem_realloc(stoc->numVals, stoc->numOmega*sizeof(int));
+	for ( n = 0; n < stoc->numOmega; n++ ) {
+		stoc->vals[n]  = (vector) mem_realloc(stoc->vals[n], stoc->numVals[n]*sizeof(double));
+		stoc->probs[n] = (vector) mem_realloc(stoc->probs[n], stoc->numVals[n]*sizeof(double));
+	}
+	stoc->vals  = (vector *) mem_realloc(stoc->vals, stoc->numOmega*sizeof(vector));
+	stoc->probs = (vector *) mem_realloc(stoc->probs, stoc->numOmega*sizeof(vector));
+
+	return 0;
+}//END readIndepDiscrete()
+
+int readNormal(FILE *fptr, string *fields, int maxOmegas, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc) {
+	int n, numFields;
+	char strType;
+
+	/* continuous distribution, use a simulator */
+	stoc->sim = TRUE;
+	sprintf(stoc->type, "INDEP_%s",fields[1]);
+
+	stoc->vals	  = (vector *) arr_alloc(1, vector);
+	stoc->vals[0] = (vector) arr_alloc(maxOmegas, double);
+
+	stoc->probs = NULL; stoc->numVals = NULL; stoc->mod = NULL;
+
+	while (TRUE) {
+		getLine(&fptr, fields, &strType, &numFields);
+		if (strType != 'f')
+			break;
+		n = stoc->numOmega - 1;
+		if ( n > maxOmegas ) {
+			errMsg("allocation", "readIndep", "reached maxOmega limit for INDEP format", 0);
+			return 1;
+		}
+		while (n >= 0 ) {
+			if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
+				break;
+			n--;
+		}
+		if ( n == -1 ) {
+			/* new random variable encountered */
+			if ( stoc->numOmega == maxOmegas ) {
+				errMsg("read", "readIndep", "ran out of memory to store row and column names", 0);
+				return 1;
+			}
+			if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+			if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				errMsg("allocation", "readIndep", "rvNames[n]", 0);
+
+			strcpy((*rvCols)[stoc->numOmega], fields[0]);
+			strcpy((*rvRows)[stoc->numOmega], fields[1]);
+			stoc->numOmega++;
+
+			/* Check to see if the random variable corresponds to error terms in a linear transformation or ARMA model. */
+			if ( strcmp(fields[1], "LAGGED") ) {
+				/* Identify row and column coordinates in the problem */
 				if ( !(strcmp(fields[0], "RHS")) )
 					n = -1;
 				else {
@@ -515,139 +672,29 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 				}
 				stoc->row[stoc->numOmega-1] = n;
 			}
-			if ( numFields == 4) {
-				stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
-				stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[3]);
-				stoc->mean[stoc->numOmega-1] += str2float(fields[2])*str2float(fields[3]);
-				stoc->numVals[stoc->numOmega-1]++;
-			}
-			else if ( numFields == 5 ) {
-				stoc->vals[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[2]);
-				stoc->probs[stoc->numOmega-1][stoc->numVals[stoc->numOmega-1]] = str2float(fields[4]);
-				stoc->mean[stoc->numOmega-1] += str2float(fields[2])*str2float(fields[4]);
-				stoc->numVals[stoc->numOmega-1]++;
-			}
 			else {
-				errMsg("read", "readIndep", "missing field in stoch file", 0);
-				return 1;
+				stoc->row[stoc->numOmega-1] = stoc->col[stoc->numOmega-1] = -1;
 			}
 		}
-	}
-	else if ( strstr(fields[1], "NORMAL") != NULL ) {
-		/* continuous distribution, use a simulator */
-		stoc->sim = TRUE;
-		sprintf(stoc->type, "INDEP_%s",fields[1]);
-
-		if ( !(stoc->vals[0] = (vector) arr_alloc(maxOmegas, double)) )
-			errMsg("allocation", "readIndep","omega.vals[n]", 0);
-		mem_free(stoc->probs); stoc->probs = NULL;
-
-		while (TRUE) {
-			getLine(&fptr, fields, &strType, &numFields);
-			if (strType != 'f')
-				break;
-			n = stoc->numOmega - 1;
-			if ( n > maxOmegas ) {
-				errMsg("allocation", "readIndep", "reached maxOmega limit for INDEP format", 0);
-				return 1;
-			}
-			while (n >= 0 ) {
-				if ( !(strcmp(fields[0], (*rvCols)[n])) && !(strcmp(fields[1], (*rvRows)[n])) )
-					break;
-				n--;
-			}
-			if ( n == -1 ) {
-				/* new random variable encountered */
-				if ( stoc->numOmega == maxOmegas ) {
-					errMsg("read", "readIndep", "ran out of memory to store row and column names", 0);
-					return 1;
-				}
-				if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
-					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
-					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-
-				strcpy((*rvCols)[stoc->numOmega], fields[0]);
-				strcpy((*rvRows)[stoc->numOmega], fields[1]);
-				stoc->numVals[stoc->numOmega++] = 0;
-
-				/* Check to see if the random variable corresponds to error terms in a linear transformation or ARMA model. */
-				if ( strcmp(fields[1], "LAGGED") ) {
-					/* Identify row and column coordinates in the problem */
-					if ( !(strcmp(fields[0], "RHS")) )
-						n = -1;
-					else {
-						n = 0;
-						while ( n < orig->mac ){
-							if ( !(strcmp((*rvCols)[stoc->numOmega-1], orig->cname[n])) )
-								break;
-							n++;
-						}
-					}
-					if ( n == orig->mac ) {
-						errMsg("read", "readIndep", "unknown column name in the stoch file", 0);
-						return 1;
-					}
-					stoc->col[stoc->numOmega-1] = n;
-					if ( !(strcmp(fields[1], orig->objname)) )
-						n = -1;
-					else {
-						n = 0;
-						while (n < orig->mar ) {
-							if ( !(strcmp((*rvRows)[stoc->numOmega-1], orig->rname[n])) )
-								break;
-							n++;
-						}
-					}
-					if ( n == orig->mar ) {
-						errMsg("read", "readIndep", "unknown row name in the stoch file", 0);
-						return 1;
-					}
-					stoc->row[stoc->numOmega-1] = n;
-				}
-			}
-			if ( numFields == 4) {
-				/* note, standard deviation is held in the first vals field */
-				stoc->mean[stoc->numOmega-1] 	= str2float(fields[2]);
-				stoc->vals[0][stoc->numOmega-1] = sqrt(str2float(fields[3]));
-			}
-			else if ( numFields == 5 ) {
-				stoc->mean[stoc->numOmega-1] 	= str2float(fields[2]);
-				stoc->vals[0][stoc->numOmega-1] = sqrt(str2float(fields[4]));
-			}
-			else {
-				errMsg("read", "readIndep", "missing field in stoch file", 0);
-				return 1;
-			}
+		if ( numFields == 4) {
+			/* note, standard deviation is held in the first vals field */
+			stoc->mean[stoc->numOmega-1] 	= str2float(fields[2]);
+			stoc->vals[0][stoc->numOmega-1] = sqrt(str2float(fields[3]));
+		}
+		else if ( numFields == 5 ) {
+			stoc->mean[stoc->numOmega-1] 	= str2float(fields[2]);
+			stoc->vals[0][stoc->numOmega-1] = sqrt(str2float(fields[4]));
+		}
+		else {
+			errMsg("read", "readIndep", "missing field in stoch file", 0);
+			return 1;
 		}
 	}
-	else if ( !(strcmp(fields[1], "EXPONENTIAL")) ) {
-		errMsg("read", "readIndeps", "no support for exponential distribution type in INDEP section", 1);
-		return 1;
-	}
-	else if ( !(strcmp(fields[1], "UNIFORM")) ) {
-		errMsg("read", "readIndeps", "no support for uniform distribution type in INDEP section", 1);
-		return 1;
-	}
-	else if ( !(strcmp(fields[1], "GAMMA")) ) {
-		errMsg("read", "readIndeps", "no support for gamma distribution type in INDEP section", 1);
-		return 1;
-	}
-	else if ( !(strcmp(fields[1], "GEOMETRIC")) ) {
-		errMsg("read", "readIndeps", "no support for geometric distribution type in INDEP section", 1);
-		return 1;
-	}
-	else {
-		errMsg("read", "readIndeps", "unknown distribution type in INDEP section", 1);
-		return 1;
-	}
 
-	/* increase the number of stochastic variables groups */
-	stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
-	stoc->numGroups++;
+	stoc->vals[0] = (vector) mem_realloc(stoc->vals[0], stoc->numOmega*sizeof(double));
 
 	return 0;
-}//END readIndep()
+}//END readNormal()
 
 int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols) {
 
@@ -667,7 +714,7 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 		return 1;
 	}
 	else if ( !(strcmp(fields[1], "LINTR")) ) {
-		if ( readLinTrans(fptr, fields, orig, &stoc, maxOmegas, rvRows, rvCols) ) {
+		if ( readLinTrans(fptr, fields, orig, stoc, maxOmegas, rvRows, rvCols) ) {
 			errMsg("read", "readLinTran", "failed to read linear transformation structure.", 0);
 			return 1;
 		}
@@ -827,25 +874,52 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
  * The subroutine assumes that the stoc file begins by first describing the residual random variable. This is stored as
  * the first group of random variables in our stocType structure.
  */
-int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, int maxOmegas, string **rvRows, string **rvCols) {
+int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas, string **rvRows, string **rvCols) {
 	statModel *model;
 	char 	strType, currBlock[NAMESIZE] = "\0", currLag[NAMESIZE] = "\0";
-	int		numFields, period, numPeriods = 0, periodBeg[11], maxP = 10, maxQ = 10, maxMatcnt = (*stoc)->numOmega, j, col, row;
+	int		numFields, period, numPeriods = 0, periodBeg[11], maxP = 10, maxQ = 10, maxMatcnt = stoc->numOmega, j, col, row, offset;
 	BOOL	newLag;
-
-	/* Update the stocType */
-	strcpy((*stoc)->type, "LINTRAN");
-	(*stoc)->sim = TRUE;
-
-	/* Offset for each period. The first entry corresponds to the error/residual terms. */
-	periodBeg[numPeriods++] = 0;
 
 	/* allocate memory to hold information about the linear transformation stochastic process */
 	if ( !(model = (statModel *) mem_malloc(sizeof(statModel))) )
 		errMsg("allocation", "readLinTrans", "statModel", 0);
-	model->eta = model->sigma = NULL;
+	model->eta = model->sigma = NULL; model->muEps = NULL; model->cvEps = NULL;
 	model->AR = model->MA = NULL;
-	model->p = model->q = 0; model->N = 0;
+	model->p = model->q = 0; model->N = model->M = 0;
+
+	offset = stoc->numOmega;
+	/* In this case, the previous group of random variable is treated as the residual/noise random variables.
+	 * These random variables are moved to the statModel. */
+	if ( strstr(stoc->type, "INDEP_NORMAL") != NULL ) {
+		model->M = stoc->numPerGroup[stoc->numGroups-1];
+
+		/* Setup the mean vector and the covariance matrix of residual process/noise */
+		model->muEps = (vector) arr_alloc(model->M, double);
+		model->cvEps = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix));
+		model->cvEps->col = (intvec) arr_alloc(model->M, int);
+		model->cvEps->row = (intvec) arr_alloc(model->M, int);
+		model->cvEps->val = (vector) arr_alloc(model->M, double);
+
+		for ( j = 0; j < model->M; j++ ) {
+			model->muEps[j] = stoc->mean[j];
+			model->cvEps->col[j] = model->cvEps->row[j] = j; /* Only diagonal elements are non-zero under independence assumption */
+			model->cvEps->val[j] = stoc->vals[0][j];
+		}
+
+		/* Remove the previous group of random variables are the main list in stocType */
+		stoc->numGroups--;
+		stoc->numOmega -= stoc->numPerGroup[stoc->numGroups];
+		stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
+		stoc->vals[0] = (vector) mem_realloc(stoc->vals[0], maxOmegas*sizeof(vector));
+	}
+	else {
+		errMsg("read", "readLinTrans", "currently only independent normal residual processes are supported", 0);
+		return 1;
+	}
+
+	/* Update the stocType */
+	strcpy(stoc->type, "LINTRAN");
+	stoc->sim = TRUE;
 
 	/* Read from the stoc file line-by-line */
 	while (TRUE) {
@@ -855,8 +929,8 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 		if ( !(strcmp(fields[0], "BL")) ) {
 			/* New block of encountered of type 'BL': random variables in a particular time period/stage (i.e., elements of y_t) */
 			strcpy(currBlock, fields[0]);
-			periodBeg[numPeriods++] = (*stoc)->numOmega;
-			model->N = (*stoc)->numOmega - model->N;
+			periodBeg[numPeriods++] = stoc->numOmega;
+			model->N = stoc->numOmega - model->N;
 		}
 		else if ( !(strcmp(fields[0], "RV")) || !(strcmp(fields[0], "HV")) || !(strcmp(fields[0], "LV")) )  {
 			/* New block of encountered of type
@@ -875,13 +949,17 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 			col = 0;
 			while ( (strcmp((*rvCols)[col], fields[1])) || (strcmp((*rvRows)[col], fields[2])) )
 				col++;
-			period = 0;
-			while ( period < numPeriods ) {
-				if ( col < periodBeg[period] )
-					break;
-				period++;
+
+			if ( col >= offset ) { /* Check to make sure that the column is not a noise random variable */
+				col -= model->M;
+				period = 0;
+				while ( period < numPeriods ) {
+					if ( col < periodBeg[period] )
+						break;
+					period++;
+				}
+				col -= periodBeg[period-1];
 			}
-			col -= periodBeg[period-1];
 		}
 		else {
 			/* Block data */
@@ -897,7 +975,7 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 						j++;
 					}
 				}
-				(*stoc)->col[(*stoc)->numOmega] = j;
+				stoc->col[stoc->numOmega] = j;
 				if ( !(strcmp(fields[1], orig->objname)) )
 					j = -1;
 				else {
@@ -908,18 +986,18 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 						j++;
 					}
 				}
-				(*stoc)->row[(*stoc)->numOmega] = j;
-				if ( !((*rvRows)[(*stoc)->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				stoc->row[stoc->numOmega] = j;
+				if ( !((*rvRows)[model->M+stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				strcpy((*rvRows)[(*stoc)->numOmega], fields[1]);
-				if ( !((*rvCols)[(*stoc)->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				strcpy((*rvRows)[model->M+stoc->numOmega], fields[1]);
+				if ( !((*rvCols)[model->M+stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
-				strcpy((*rvCols)[(*stoc)->numOmega], fields[0]);
-				(*stoc)->vals[0][(*stoc)->numOmega] = str2float(fields[2]);
-				(*stoc)->numOmega++;
+				strcpy((*rvCols)[model->M+stoc->numOmega], fields[0]);
+				stoc->vals[0][stoc->numOmega] = str2float(fields[2]);
+				stoc->numOmega++;
 
 				/* make sure there is memory space available for new realization and store it */
-				if ((*stoc)->numOmega == maxOmegas )
+				if (stoc->numOmega == maxOmegas )
 					errMsg("allocation", "readBlock", "reached max limit maxOmegas", 1);
 			}
 			else if ( !(strcmp(currBlock, "HV")) ) {
@@ -941,13 +1019,16 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 				row = 0;
 				while ( (strcmp((*rvCols)[row], fields[0])) || (strcmp((*rvRows)[row], fields[1])) )
 					row++;
-				period = 0;
-				while ( period < numPeriods) {
-					if( row < periodBeg[period] )
-						break;
-					period++;
+				if ( row >= offset) {
+					row -= model->M;
+					period = 0;
+					while ( period < numPeriods) {
+						if( row < periodBeg[period] )
+							break;
+						period++;
+					}
+					row -= periodBeg[period-1];
 				}
-				row -= periodBeg[period-1];
 				model->AR[j]->row[model->AR[j]->cnt] = row;
 				model->AR[j]->col[model->AR[j]->cnt] = col;
 				model->AR[j]->val[model->AR[j]->cnt] = str2float(fields[2]);
@@ -974,13 +1055,18 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 				row = 0;
 				while ( (strcmp((*rvCols)[row], fields[0])) || (strcmp((*rvRows)[row], fields[1])) )
 					row++;
-				period = 0;
-				while ( period < numPeriods ) {
-					if ( row < periodBeg[period] )
-						break;
-					period++;
+
+				if ( row >= offset) {
+					row -= model->M;
+					period = 0;
+					while ( period < numPeriods) {
+						if( row < periodBeg[period] )
+							break;
+						period++;
+					}
+					row -= periodBeg[period-1];
 				}
-				row -= periodBeg[period-1];
+
 				model->MA[j]->row[model->MA[j]->cnt] = row;
 				model->MA[j]->col[model->MA[j]->cnt] = col;
 				model->MA[j]->val[model->MA[j]->cnt] = str2float(fields[2]);
@@ -993,8 +1079,27 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType **stoc, 
 		}
 	}
 
+	/* Reallocate memory to exact values */
+	for ( j = 0; j < model->p; j++ ) {
+		model->AR[j]->col = (intvec) mem_realloc(model->AR[j]->col, model->AR[j]->cnt*sizeof(int));
+		model->AR[j]->row = (intvec) mem_realloc(model->AR[j]->row, model->AR[j]->cnt*sizeof(int));
+		model->AR[j]->val = (vector) mem_realloc(model->AR[j]->val, model->AR[j]->cnt*sizeof(double));
+	}
+	model->AR = (sparseMatrix **) mem_realloc(model->AR, model->p*sizeof(sparseMatrix *));
+	for ( j = 0; j < model->q; j++ ) {
+		model->MA[j]->col = (intvec) mem_realloc(model->MA[j]->col, model->MA[j]->cnt*sizeof(int));
+		model->MA[j]->row = (intvec) mem_realloc(model->MA[j]->row, model->MA[j]->cnt*sizeof(int));
+		model->MA[j]->val = (vector) mem_realloc(model->MA[j]->val, model->MA[j]->cnt*sizeof(double));
+	}
+	model->MA = (sparseMatrix **) mem_realloc(model->MA, model->q*sizeof(sparseMatrix *));
 
-	(*stoc)->mod = model;
+	/* Allocate trend as the mean value when available, else initial values as the mean values */
+	if ( model->eta == NULL ) {
+		for ( j = 0; j < stoc->numOmega; j++ )
+			stoc->mean[j] = stoc->vals[0][j];
+	}
+
+	stoc->mod = model;
 	return 0;
 }//END readLinTrans()
 
@@ -1200,7 +1305,7 @@ void freeStocType(stocType *stoc) {
 		if ( stoc->mean ) mem_free(stoc->mean);
 		if ( stoc->numVals ) mem_free(stoc->numVals);
 		if ( stoc->vals) {
-			if ( !(strcmp(stoc->type, "INDEP_NORMAL")) )
+			if ( !(strcmp(stoc->type, "INDEP_NORMAL")) || !(strcmp(stoc->type, "LINTRAN")))
 				mem_free(stoc->vals[0]);
 			else {
 				for ( n = 0; n < stoc->numOmega; n++ )
@@ -1250,6 +1355,8 @@ void freeStatModel(statModel *model) {
 			if ( model->sigma[n]) mem_free(model->sigma[n]);
 		mem_free(model->sigma);
 	}
+	if ( model->muEps ) mem_free(model->muEps);
+	if ( model->cvEps ) freeSparseMatrix(model->cvEps);
 
 	mem_free(model);
 

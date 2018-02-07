@@ -96,24 +96,24 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 
 /* Supporting only Wiener process */
 void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed) {
-	vector eps, temp;
+	vector eps;
 	int n, offset, t;
 	int numPeriods, epsLen, omegaLen;
 
-	numPeriods = (int) stoc->numPerGroup[groupID+1]/stoc->mod->N;	/* Number of periods being simulated */
-	epsLen     = stoc->numPerGroup[groupID];						/* Number of residual random variables */
-	omegaLen   = stoc->mod->N;										/* Number of random variables per period */
+	numPeriods = (int) stoc->numPerGroup[groupID]/stoc->mod->N;	/* Number of periods being simulated */
+	epsLen     = stoc->mod->M;									/* Number of residual random variables */
+	omegaLen   = stoc->mod->N;									/* Number of random variables per period */
 
 	/* residual vector */
 	eps = (vector) arr_alloc(numPeriods*epsLen, double);
-	normal(stoc->mean, stoc->vals[0], numPeriods*epsLen, eps, seed);
 
 	/* constant terms */
-	offset = stoc->groupBeg[groupID+1];
-	for (n = 0; n < stoc->numPerGroup[groupID+1]; n++ )
+	offset = stoc->groupBeg[groupID];
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++ )
 		observ[n] = stoc->vals[0][offset+n];
 
 	for ( t = 0; t < numPeriods; t++ ) {
+		normal(stoc->mod->muEps, stoc->mod->cvEps->val, epsLen, eps+epsLen*t, seed);
 		if ( t == 0 ) {
 			for (n = 0; n < stoc->mod->MA[0]->cnt; n++)
 				observ[stoc->mod->MA[0]->row[n]] += stoc->mod->MA[0]->val[n] * eps[stoc->mod->MA[0]->col[n]];

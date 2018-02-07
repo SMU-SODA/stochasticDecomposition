@@ -337,14 +337,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 	}
 
 	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to
-	 * appropriate parts (right-hand side and objective coefficients). If linear transformation is used, then the
-	 * first group of random variables correspond to auxiliary random variables. */
-	int mBegin;
-	if ( strcmp(stoc->type, "LINTRAN") )
-		mBegin = 0;
-	else
-		mBegin = stoc->groupBeg[1];
-	for ( m = mBegin; m < stoc->numOmega; m++ ) {
+	 * appropriate parts (right-hand side and objective coefficients). */
+	for ( m = 0; m < stoc->numOmega; m++ ) {
 		if ( stoc->col[m] == -1 ) {
 			/* randomness in right-hand side */
 			t = 0;
@@ -481,7 +475,7 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, d
 vector meanProblem(oneProblem *orig, stocType *stoc) {
 	vector	xk;
 	double	obj = 0.0;
-	int 	n, begin = 0, status;
+	int 	n, status;
 
 	/* setup problem in the solver */
 	orig->lp = setupProblem(orig->name, orig->type, orig->mac, orig->mar, orig->objsen, orig->objx, orig->rhsx, orig->senx, orig->matbeg, orig->matcnt,
@@ -491,12 +485,8 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 		return NULL;
 	}
 
-	/* When using stochastic processes as linear transformation, then the first group is for residual random variables */
-	if ( !strcmp(stoc->type, "LINTRAN") )
-		begin += stoc->numPerGroup[0];
-
 	/* change the coefficients and right-hand side to mean values */
-	for (n = begin; n < stoc->numOmega; n++ ) {
+	for (n = 0; n < stoc->numOmega; n++ ) {
 		status = changeCoef(orig->lp, stoc->row[n], stoc->col[n], stoc->mean[n]);
 		if ( status ) {
 			errMsg("setup", "meanProblem", "failed to change the coefficients with mean values", 0);
