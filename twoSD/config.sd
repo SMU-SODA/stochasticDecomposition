@@ -126,4 +126,4 @@ EPSILON 0.001
 SCAN_LEN 256
 
 // 1 for multiple replications, 0 for single replication
-MULTIPLE_REP 1
+MULTIPLE_REP 0
