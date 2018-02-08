@@ -34,7 +34,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data);
 int createSGPFtim(SMPSmodel sgpf);
 int createSGPFstoc (SMPSmodel sgpf, SGPFdata data);
 
-int createSGPFInstance() {
+int createSGPFInstance(string inputDir, string outputDir) {
 	SMPSmodel sgpf;
 	SGPFdata data;
 	char srcFile[NAMESIZE], destnFile[NAMESIZE];
@@ -56,7 +56,7 @@ int createSGPFInstance() {
 	sprintf(destnFile, "sgpf%dy%d.cor", sgpf.numPeriods, sgpf.numStages);
 	rename(srcFile, destnFile);
 
-	sprintf(destnFile, "mkdir %s/sgpf%dy%d/", sgpf.dir.c_str(), sgpf.numPeriods, sgpf.numStages);
+	sprintf(destnFile, "mkdir %s/sgpf%dy%d/", outputDir.c_str(), sgpf.numPeriods, sgpf.numStages);
 	system(destnFile);
 
 	sprintf(srcFile, "mv sgpf%dy%d.* %s", sgpf.numPeriods, sgpf.numStages, destnFile);
