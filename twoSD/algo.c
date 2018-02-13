@@ -14,6 +14,8 @@
 extern string outputDir;
 extern configType config;
 
+void printBasisStatistics(cellType *cell);
+
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
 	vector	 meanSol = NULL;
 	probType **prob = NULL;
@@ -42,14 +44,14 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 		if ( rep != 0 )
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
-				errMsg("algorithm", "benders", "failed to solve the cells using MASP algorithm", 0);
+				errMsg("algorithm", "algo", "failed clean the problem cell", 0);
 				goto TERMINATE;
 			}
 
 		clock_t tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if ( solveCell(stoc, prob, cell) ) {
-			errMsg("algorithm", "algo", "failed to solve the cells using MASP algorithm", 0);
+			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
 		cell->time.repTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
@@ -102,8 +104,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\nIteration-%d :: \n", cell->k);
 #else
-		if ( (cell->k -1) % 100 == 0)
+		if ( (cell->k -1) % 100 == 0) {
 			printf("\nIteration-%4d: ", cell->k);
+		}
 #endif
 
 		/******* 1. Optimality tests *******/
@@ -148,7 +151,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		}
 
 		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
-		cell->time.argmaxAccumTime += cell->time.argmaxIter;
+		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
 	}//END while loop
@@ -177,3 +180,6 @@ void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL 
 	fprintf(soln, "Total time in argmax procedure         : %f\n", cell->time.argmaxAccumTime);
 	fprintf(soln, "Total time in verifying optimality     : %f\n", cell->time.optTestAccumTime);
 }//END WriteStat
+
+
+

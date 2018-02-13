@@ -56,7 +56,9 @@ typedef struct {
 	intvec	colStg;				  /* used with explicit time file declaration only */
 }timeType;
 
-// TODO: Update the statistical model structure to streamline */
+/* The statistical model structure is designed to hold information about processes which can be described as linear transformation of the past
+ * values/observations, and past and current residual/error terms. A classical example of this type of model is the ARMA(p,q) model. The
+ * description of the elements of this structure are written using ARMA as reference */
 typedef struct {
 	int				p;			/* autoregression order */
 	int				q;			/* moving-average order */
@@ -67,7 +69,7 @@ typedef struct {
 	sparseMatrix	**AR;		/* autoregression coefficients */
 	sparseMatrix	**MA;		/* moving-average coefficients */
 	vector			*eta;		/* trend time series */
-	vector			*sigma;		/* seasonality time series */
+	vector			*sigma;		/* seasonal time series */
 }statModel;
 
 typedef struct {
