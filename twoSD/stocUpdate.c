@@ -110,27 +110,6 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	}
 	return basis->cnt++;
 
-	//	if ( retainBasis && B->phiLength == 0 ) {
-	//		/* Add the basis to the structure */
-	//		basis->vals[basis->cnt] = B;
-	//
-	//		/* Establish feasibility of basis with respect to current observations */
-	//		if ( !(basis->obsFeasible[basis->cnt] = (BOOL*) arr_alloc(deltaRowLength, BOOL)) )
-	//			errMsg("allocation", "stochasticUpdates", "basis->obsFeasibility[n]", 0);
-	//		for ( cnt = 0; cnt < omega->cnt; cnt++ ) {
-	//			dOmega.val = prob->coord->rvOffset[2]+omega->vals[cnt];
-	//			basis->obsFeasible[basis->cnt][cnt] = checkBasisFeasibility(B, dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
-	//		}
-	//		return basis->cnt++;
-	//	}
-	//	else {
-	//		cnt = B->sigmaIdx[0];
-	//		basis->vals[cnt]->weight++;
-	//		freeOneBasis(B);
-	//		(*newBasisFlag) = FALSE;
-	//		return cnt;
-	//	}
-
 }//End stochasticUpdates()
 
 /*This function loops through all the dual vectors found so far and returns the index of the one which satisfies the expression:
@@ -146,7 +125,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	int 	cnt, maxCnt, c, basisUp, basisLow, sigmaIdx, lambdaIdx;
 
 	if (pi_eval == TRUE)
-		numSamples -= (numSamples / 10 + 1);
+		numSamples -= (0.1*numSamples + 1);
 
 	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
 	if ( !isNew ) {
@@ -160,7 +139,6 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 
 	/* Run through the list of basis to choose the one which provides the best lower bound */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-		/* I. Compute argument using deterministic component of the dual solution */
 		if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
 			if ( basis->obsFeasible[cnt][obs] ) {
 				arg = 0.0;

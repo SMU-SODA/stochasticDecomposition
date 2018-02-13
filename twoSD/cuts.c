@@ -85,8 +85,8 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
 	vector 	piCbarX, beta;
-	double  argmaxAll, argmaxNew, argmax, alpha = 0.0, argmax_dif_sum = 0.0, argmax_all_sum = 0.0, variance = 1.0, multiplier;
-	int	 	istarAll, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	double  argmaxOld, argmaxNew, argmax, alpha = 0.0, variance = 1.0, multiplier;
+	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	BOOL    pi_eval_flag = FALSE;
 
 	/* allocate memory to hold a new cut */
@@ -109,20 +109,14 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
 		if (pi_eval_flag == TRUE) {
-			istarAll = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, pi_eval_flag, &argmaxAll, FALSE);
+			istarOld = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
+					obs, numSamples, pi_eval_flag, &argmaxOld, FALSE);
 			istarNew = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
 					obs, numSamples, TRUE, &argmaxNew, TRUE);
 
-			if (argmaxNew > argmaxAll) {
-				argmax = argmaxNew; istar  = istarNew;
-			}
-			else {
-				argmax = argmaxAll; istar = istarAll;
-			}
-
-			argmax_dif_sum += max(argmaxAll - lb, 0) * omega->weights[obs];
-			argmax_all_sum += max(argmax - lb, 0) * omega->weights[obs];
+			argmax 	  = max(max(argmaxOld, argmaxNew)-lb, 0);
+			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
+			argmaxOld = max(argmaxOld - lb, 0);
 		}
 		else {
 			/* identify the maximal Pi for each observation */
@@ -166,7 +160,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	}
 
 	if (pi_eval_flag == TRUE) {
-		pi_ratio[numSamples % config.SCAN_LEN] = argmax_dif_sum / argmax_all_sum;
+		pi_ratio[numSamples % config.SCAN_LEN] = argmaxOld / argmax;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			variance = calcVariance(pi_ratio, NULL, NULL, 0);
 

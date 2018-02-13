@@ -14,6 +14,8 @@
 extern string outputDir;
 extern configType config;
 
+void printBasisStatistics(cellType *cell);
+
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
 	vector	 meanSol = NULL;
 	probType **prob = NULL;
@@ -102,8 +104,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\nIteration-%d :: \n", cell->k);
 #else
-		if ( (cell->k -1) % 100 == 0)
+		if ( (cell->k -1) % 100 == 0) {
 			printf("\nIteration-%4d: ", cell->k);
+		}
 #endif
 
 		/******* 1. Optimality tests *******/
@@ -177,3 +180,6 @@ void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL 
 	fprintf(soln, "Total time in argmax procedure         : %f\n", cell->time.argmaxAccumTime);
 	fprintf(soln, "Total time in verifying optimality     : %f\n", cell->time.optTestAccumTime);
 }//END WriteStat
+
+
+
