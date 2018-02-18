@@ -56,7 +56,8 @@ typedef struct {
 	intvec	colStg;				  /* used with explicit time file declaration only */
 }timeType;
 
-// TODO: Update the statistical model structure to streamline */
+/* The statistical model structure which captures stochastic processes which can be represented as a linear transformation
+ * of previous observations and residual/errors. */
 typedef struct {
 	int				p;			/* autoregression order */
 	int				q;			/* moving-average order */

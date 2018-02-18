@@ -42,7 +42,10 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	else if ( cell->fcutsPool->cnt > 0 && (*newOmegaFlag) ) {
 		/* Subproblem is feasible, however new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
 		 * to see if new feasibility cuts need to be added. */
-
+		if ( formFeasCut(prob[1], cell) ) {
+			errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+			return -1;
+		}
 	}
 
 	/* (b) create an affine lower bound */
