@@ -12,14 +12,14 @@
 #include "writer.hpp"
 
 int main (int argc, char *argv[]) {
-	string probName;
+	string probName, inputDir, outputDir;
 
 	/* Request for problem name */
-	parseCmdLine(argc, argv, &probName);
+	parseCmdLine(argc, argv, &inputDir, &probName, &outputDir);
 
 	/* Invoke the appropriate subroutine based on problem name. */
 	if ( probName == "sgpf") {
-		if ( createSGPFInstance() )
+		if ( createSGPFInstance(inputDir, outputDir) )
 			perror("Failed to create the instance.\n");
 	}
 	else {
@@ -29,15 +29,34 @@ int main (int argc, char *argv[]) {
 	return 0;
 }//END main()
 
-void parseCmdLine(int argc, char *argv[], string *probName) {
+void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, string *outputDir) {
 
 	switch (argc) {
-	case 2:
-		*probName = argv[1];
+	case 4:
+		*inputDir  = argv[1];
+		*probName = argv[2];
+		*outputDir = argv[3];
 		break;
-	case 1:
+	case 3:
+		*inputDir  = argv[1];
+		*probName = argv[2];
+		cout << "Enter an output directory to write SMPS files: ";
+		cin >> *outputDir;
+		break;
+	case 2:
+		*inputDir = argv[1];
 		cout << "Enter problem name : ";
 		cin >> *probName;
+		cout << "Enter an output directory to write SMPS files: ";
+		cin >> *outputDir;
+		break;
+	case 1:
+		cout << "Enter input directory for data files : ";
+		cin >> *probName;
+		cout << "Enter problem name : ";
+		cin >> *probName;
+		cout << "Enter an output directory to write SMPS files: ";
+		cin >> *outputDir;
 		break;
 	default:
 		break;

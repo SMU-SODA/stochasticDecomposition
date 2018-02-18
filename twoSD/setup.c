@@ -14,7 +14,7 @@
 extern configType config;
 
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol) {
-	vector	lb;
+	vector	lb = NULL;
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -28,14 +28,14 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	lb = calcLowerBound(orig, tim, stoc);
 	if ( lb == NULL )  {
 		errMsg("setup", "setupAlgo", "failed to compute lower bounds on stage problem", 0);
-		return 1;
+		mem_free(lb); return 1;
 	}
 
 	/* decompose the problem into master and subproblem */
 	(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
 	if ( (*prob) == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
-		return 1;
+		mem_free(lb); return 1;
 	}
 
 #ifdef DECOMPOSE_CHECK
@@ -63,7 +63,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 
 /* This function is used to create cells used in the algorithm */
 cellType *newCell(stocType *stoc, probType **prob, vector xk) {
-	cellType    *cell;
+	cellType    *cell = NULL;
 	int			length;
 
 	/* allocate memory to all cells used in the algorithm. The first cell belongs to the master problem, while the rest correspond to each of the
@@ -123,7 +123,6 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->cuts 	  = newCuts(cell->maxCuts);
-	cell->fcuts   = NULL;
 
 	/* solution parts of the cell */
 	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
@@ -131,12 +130,16 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newCell", "cell->piM", 0);
 
-	/* stochastic elements */
-	length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
+	/* stochastic elements: we need more room to store basis information when the cost coefficients are random. */
+	if ( prob[1]->num->rvdOmCnt > 0 )
+		length = prob[1]->num->rvdOmCnt*config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
+	else
+		length = config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
+	cell->basis  = newBasisType(config.MAX_ITER, prob[1]->num->cols, prob[1]->num->rows, WORDLENGTH);
 	cell->lambda = newLambda(length, 0, prob[1]->num->rvRowCnt);
 	cell->sigma  = newSigma(length, prob[1]->num->cntCcols, 0);
 	cell->delta  = newDelta(length);
-	cell->omega  = newOmega(config.MAX_ITER);
+	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
 
 	cell->optFlag 			= FALSE;
 	cell->dualStableFlag 	= FALSE;
@@ -225,6 +228,7 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	cell->fUpdt[0] = cell->fUpdt[1] = 0;
 
 	/* stochastic components */
+	if (cell->basis) freeBasisType(cell->basis, TRUE);
 	if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, TRUE);
 	if (cell->lambda) freeLambdaType(cell->lambda, TRUE);
 	if (cell->sigma) freeSigmaType(cell->sigma, TRUE);
@@ -268,6 +272,7 @@ void freeCellType(cellType *cell) {
 		if (cell->omega) freeOmegaType(cell->omega, FALSE);
 		if (cell->lambda) freeLambdaType(cell->lambda, FALSE);
 		if (cell->sigma) freeSigmaType(cell->sigma, FALSE);
+		if (cell->basis) freeBasisType(cell->basis, FALSE);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
 		mem_free(cell);
 	}

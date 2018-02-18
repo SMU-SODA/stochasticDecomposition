@@ -45,8 +45,8 @@ public:
 	string dir = "../spInput";
 };
 
-void parseCmdLine(int argc, char *argv[], string *probName);
+void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, string *outputDir);
 
-int createSGPFInstance();
+int createSGPFInstance(string inputDir, string outputDir);
 
 #endif /* WRITER_HPP_ */
