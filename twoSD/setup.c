@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol) {
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, vector *meanSol) {
 	vector	lb = NULL;
 	int 	t;
 
@@ -56,8 +56,10 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		return 1;
 	}
 
-	mem_free(lb);
+	if ( config.NUM_REPS > 1 )
+		(*batch)  = newBatchSummary((*prob)[0], config.NUM_REPS);
 
+	mem_free(lb);
 	return 0;
 }//END setupAlgo()
 

@@ -23,6 +23,7 @@
 
 #undef STOCH_CHECK
 #undef ALGO_CHECK
+#undef BATCH_CHECK
 
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
@@ -55,7 +56,7 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
-	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (1), else (0) */
+	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
 }configType;
 
 typedef struct {
@@ -68,6 +69,7 @@ typedef struct {
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
 	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
 	int 	rowNum;					/* row number for master problem in solver */
+	string	name;
 }oneCut;
 
 typedef struct {
@@ -139,6 +141,19 @@ typedef struct {
 	runTime		time;				/* Run time structure */
 }cellType;
 
+typedef struct {
+	oneProblem	*sp;				/* compromise problem */
+	int 		cnt;				/* number of replications */
+	intvec 		ck;					/* number of iterations for each replication */
+	vector		objLB;				/* replication lower bound */
+	vector		objUB;				/* replication upper bound, if batch solution is evaluated */
+	double		objComp;			/* optimal value of compromise problem */
+	double		quadScalar;			/* average proximal terms */
+	vector		*incumbX;			/* batch incumbent solution */
+	vector		compromiseX;		/* compromise solution */
+	vector		avgX;				/* average solution across batches */
+}batchSummary;
+
 /* twoSD.c */
 void parseCmdLine(int argc, char *argv[], string probName, string inputDir);
 int readConfig();
@@ -150,7 +165,7 @@ void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL 
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, vector *meanSol);
 cellType *newCell(stocType *stoc, probType **prob, vector xk);
 int cleanCellType(cellType *cell, probType *prob, vector xk);
 void freeCellType(cellType *cell);
@@ -163,7 +178,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, vector xk);
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
+int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk, int offset);
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
@@ -197,8 +212,15 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(intvec cdf, intvec observ, int numSamples);
 
+/* compromise.c */
+int buildCompromise(probType *prob, cellType *cell, batchSummary *batch);
+int solveCompromise(probType *prob, batchSummary *batch);
+int addBatchEquality (probType *prob, batchSummary *batch);
+batchSummary *newBatchSummary(probType *prob, int numBatch);
+void freeBatchType(batchSummary *batch);
+
 /* evaluate.c */
-int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, vector Xvect);
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */

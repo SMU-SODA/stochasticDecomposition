@@ -66,8 +66,8 @@ int changeBDS(LPptr lp, int cnt, intvec indices, string lu, vector bd);
 int changeCol(LPptr lp, int column, vector coef, int start, int stop);
 int changeCtype(LPptr lp, int cnt, intvec indices, string ctype);
 int changeProbType(LPptr lp, int type);
-int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval);
-int addCol(LPptr lp, int nzcnt, double objx, int cmatbeg, intvec cmatind, vector cmatval, double bdu, double bdl, string *colname);
+int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval, string rowname);
+int addCol(LPptr lp, int nzcnt, double objx, int cmatbeg, intvec cmatind, vector cmatval, double bdu, double bdl, string colname);
 int removeRow(LPptr lp, int begin, int end);
 
 int createProblem(char *probname, LPptr *lp);

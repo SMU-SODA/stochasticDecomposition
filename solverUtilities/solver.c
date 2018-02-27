@@ -17,13 +17,13 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-        changeLPSolverType(ALG_PRIMAL);
-        setIntParam(PARAM_PREIND, OFF);
+		changeLPSolverType(ALG_PRIMAL);
+		setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
 		setIntParam(PARAM_PREIND, ON);
 		break;
 	case PROB_QP:
-        changeQPSolverType(ALG_CONCURRENT);
+		changeQPSolverType(ALG_CONCURRENT);
 		(*status) = CPXbaropt(env, lp);
 		break;
 	case PROB_MILP:
@@ -36,7 +36,7 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 		break;
 	}
 
-RESOLVE:
+	RESOLVE:
 	(*status) = CPXgetstat(env, lp);
 	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
 		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
@@ -50,12 +50,12 @@ RESOLVE:
 				goto solveagain;
 			else
 				goto skip;
-        } else if ( (type == PROB_QP) && (*status) == 2 ) {
-            changeLPSolverType(ALG_PRIMAL);
-            (*status) = CPXlpopt(env, lp);
-            goto RESOLVE;
-        }
-        else {
+		} else if ( (type == PROB_QP) && (*status) == 2 ) {
+			changeLPSolverType(ALG_PRIMAL);
+			(*status) = CPXlpopt(env, lp);
+			goto RESOLVE;
+		}
+		else {
 			solverErrmsg((*status));
 			writeProblem(lp, "error.lp");
 			return (*status);
@@ -646,49 +646,55 @@ int changeProbType(LPptr lp, int type) {
 	return status;
 }//END changeProbType()
 
-int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval) {
-	static int cumul_num = 0;
-	string	*rowname;
+int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval, string rowname) {
+	string *rNames;
 	char	sense[1] = {'G'};
 	double	rhs[1];
 	int		status, rmatbeg[1];
 
-	rowname = arr_alloc(2, string);
-	rowname[0] = arr_alloc(NAMESIZE, char);
-	strcpy(rowname[0], "Cut    ");
-	rowname[0][3] = '0' + cumul_num / 10000 % 10;
-	rowname[0][4] = '0' + cumul_num / 1000 % 10;
-	rowname[0][5] = '0' + cumul_num / 100 % 10;
-	rowname[0][6] = '0' + cumul_num / 10 % 10;
-	rowname[0][7] = '0' + cumul_num / 1 % 10;
-	cumul_num++;
+	/* Row name */
+	rNames = (string *) arr_alloc(1, string);
+	rNames[0] = (string) arr_alloc(NAMESIZE, char);
+	strcpy(rNames[0],rowname);
 
+	/* Row parameters */
 	rhs[0] = inputRHS;
 	sense[0] = inputSense;
 	rmatbeg[0] = matbeg;
 
-	status = CPXaddrows (env, lp, 0, 1, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval, NULL, rowname);
+	/* Add row to the solver */
+	status = CPXaddrows (env, lp, 0, 1, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval, NULL, rNames);
 	if ( status )
 		solverErrmsg(status);
 
-	mem_free(rowname[0]);
-	mem_free(rowname);
+	mem_free(rNames[0]); mem_free(rNames);
 
 	return status;
 }//END addRow()
 
-int addCol(LPptr lp, int nzcnt, double objx, int matbeg, intvec cmatind, vector cmatval, double bdu, double bdl, string *colname){
+int addCol(LPptr lp, int nzcnt, double objx, int matbeg, intvec cmatind, vector cmatval, double bdu,
+		double bdl, string colname){
+	string	*cNames;
 	int 	status, cmatbeg[1];
-	double obj[1], lb[1], ub[1];
+	double 	obj[1], lb[1], ub[1];
 
+	/* Column name */
+	cNames = (string *) arr_alloc(1, string);
+	cNames[0] = (string) arr_alloc(NAMESIZE, char);
+	strcpy(cNames[0], colname);
+
+	/* Column parameters */
 	cmatbeg[0] = matbeg;
 	obj[0] = objx;
 	ub[0] = bdu;
 	lb[0] = bdl;
 
-	status = CPXaddcols(env, lp, 1, nzcnt, obj, cmatbeg, cmatind, cmatval, lb, ub, NULL);
+	/* Add column to the solver */
+	status = CPXaddcols(env, lp, 1, nzcnt, obj, cmatbeg, cmatind, cmatval, lb, ub, cNames);
 	if ( status )
 		solverErrmsg(status);
+
+	mem_free(cNames[0]); mem_free(cNames);
 
 	return status;
 }//END addCol()

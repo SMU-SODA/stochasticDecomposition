@@ -238,6 +238,8 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 
 	cut->alpha = 0.0;
 
+	cut->name = (string) arr_alloc(NAMESIZE, char);
+
 	return cut;
 }//END newCut
 
@@ -566,6 +568,8 @@ void freeOneCut(oneCut *cut) {
 			mem_free(cut->iStar);
 		if (cut->beta)
 			mem_free(cut->beta);
+		if (cut->name)
+			mem_free(cut->name);
 		mem_free(cut);
 	}
 }//END freeOneCut()

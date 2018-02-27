@@ -14,16 +14,15 @@
 extern string outputDir;
 extern configType config;
 
-void printBasisStatistics(cellType *cell);
-
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
 	vector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
+	batchSummary *batch = NULL;
 	FILE 	*soln;
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &meanSol) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
 
 	printf("Starting two-stage stochastic decomposition.\n");
@@ -31,6 +30,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	printDecomposeSummary(soln, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
+	config.NUM_REPS = 3;
 	for ( int rep = 0; rep < config.NUM_REPS; rep++ ) {
 		fprintf(soln, "\n====================================================================================================================================\n");
 		fprintf(soln, "Replication-%d\n", rep+1);
@@ -41,12 +41,13 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 		config.RUN_SEED[0] = config.RUN_SEED[rep+1];
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
-		if ( rep != 0 )
+		if ( rep != 0 ) {
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
 				errMsg("algorithm", "algo", "failed clean the problem cell", 0);
 				goto TERMINATE;
 			}
+		}
 
 		clock_t tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
@@ -63,12 +64,34 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 		}
 		else {
 			writeOptimizationSummary(soln, prob, cell, FALSE);
-			writeOptimizationSummary(stdout, prob, cell, TRUE);
+			writeOptimizationSummary(stdout, prob, cell, FALSE);
 		}
 
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
-			evaluate(soln, stoc, prob, cell, cell->incumbX);
+			evaluate(soln, stoc, prob, cell->subprob, cell->incumbX);
+
+		/* Save the batch details and build the compromise problem. */
+		if ( config.MULTIPLE_REP ) {
+			buildCompromise(prob[0], cell, batch);
+		}
+	}
+
+	if ( config.MULTIPLE_REP ) {
+		/* Solve the compromise problem. */
+		if ( solveCompromise(prob[0], batch)) {
+			errMsg("algorithm", "algo", "failed to solve the compromise problem", 0);
+			goto TERMINATE;
+		}
+
+		fprintf(soln, "\n====================================================================================================================================\n");
+		fprintf(soln, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		/* Evaluate the compromise solution */
+		evaluate(soln, stoc, prob, cell->subprob, batch->compromiseX);
+
+		fprintf(soln, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		/* Evaluate the average solution */
+		evaluate(soln, stoc, prob, cell->subprob, batch->avgX);
 	}
 
 	fclose(soln);
@@ -76,14 +99,16 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 	/* free up memory before leaving */
 	if (meanSol) mem_free(meanSol);
+	freeBatchType(batch);
 	freeCellType(cell);
 	freeProbType(prob, 2);
 	return 0;
 
 	TERMINATE:
 	if(meanSol) mem_free(meanSol);
-	if(cell) freeCellType(cell);
-	if(prob) freeProbType(prob, 2);
+	freeBatchType(batch);
+	freeCellType(cell);
+	freeProbType(prob, 2);
 	return 1;
 }//END algo()
 

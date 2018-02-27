@@ -88,18 +88,24 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 int addCut2Master(oneProblem *master, oneCut *cut, vector vectX, int lenX) {
 	intvec 	indices;
 	int 	cnt;
+	static int cummCutNum = 0;
 
-	if (!(indices = arr_alloc(lenX + 1, int)))
+	/* Set up indices */
+	if (!(indices = (intvec) arr_alloc(lenX + 1, int)))
 		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta",0);
 	for (cnt = 1; cnt <= lenX; cnt++)
 		indices[cnt] = cnt - 1;
 	indices[0] = lenX;
 
+	/* Cut right-hand side */
 	if ( config.MASTER_TYPE == PROB_QP )
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
 
+	/* Set up the cut name */
+	sprintf(cut->name, "cut_%04d", cummCutNum++);
+
 	/* add the cut to the cell cuts structure as well as on the solver */
-	if ( addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+	if ( addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return 1;
 	}
@@ -114,25 +120,23 @@ int addCut2Master(oneProblem *master, oneCut *cut, vector vectX, int lenX) {
 }//END addCuts2Master()
 
 int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar) {
-	int status;
 
-	status = changeQPproximal(cell->master->lp, prob->num->cols, quadScalar);
-	if ( status ) {
+	if ( changeQPproximal(cell->master->lp, prob->num->cols, quadScalar) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
 		return 1;
 	}
-	status = changeQPrhs(prob, cell, incumbX);
-	if ( status ) {
+
+	if ( changeQPrhs(prob, cell, incumbX) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
 		return 1;
 	}
-	status = changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX);
-	if ( status ) {
+
+	if ( changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX, 0) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}
 
-	return status;
+	return 0;
 }//END constructQP()
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
@@ -258,7 +262,7 @@ int changeQPrhs(probType *prob, cellType *cell, vector xk) {
 
 /* This function changes the (lower) bounds of the variables, while changing from x to d. The lower bounds of d varibles are -xbar
  * (incumbent solution). */
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
+int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk, int offset) {
 	int 	status = 0, cnt;
 	vector	lbounds, ubounds;
 	intvec	lindices, uindices;
@@ -281,7 +285,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 	/* Change the Upper Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		ubounds[cnt] = bdu[cnt] - xk[cnt + 1];
-		uindices[cnt] = cnt;
+		uindices[cnt] = cnt+offset;
 		ulu[cnt] = 'U';
 	}
 
@@ -294,7 +298,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 	/* Change the Lower Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		lbounds[cnt] = bdl[cnt] - xk[cnt + 1];
-		lindices[cnt] = cnt;
+		lindices[cnt] = cnt+offset;
 		llu[cnt] = 'L';
 	}
 

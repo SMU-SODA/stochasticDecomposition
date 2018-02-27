@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
+int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, vector Xvect) {
 	vector 	observ, rhs, cost, costTemp;
 	intvec   objxIdx;
 	double 	obj, mean, variance, stdev, temp;
@@ -53,20 +53,20 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
+		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
 			return 1;
 		}
 
 		/* Change cost coefficients with random observations */
 		if ( prob[1]->num->rvdOmCnt > 0 ) {
-			if ( chgObjxwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
+			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
 				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
 				return 1;
 			}
 		}
 
-		if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
+		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
 				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
@@ -79,7 +79,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		}
 
 		/* use subproblem objective and compute evaluation statistics */
-		obj = getObjective(cell->subprob->lp, PROB_LP);
+		obj = getObjective(subprob->lp, PROB_LP);
 
 		if ( cnt == 0 )
 			mean = obj;
@@ -98,16 +98,15 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 			fflush(stdout);
 		}
 		if (!(cnt % 10000))
-			printf("\nObs:%d mean:%lf   error: %lf \n 0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
+			printf("\nObs:%d mean:%lf   error: %lf \n0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
 	}//END while loop
-	mean += vXvSparse(Xvect, prob[0]->dBar);;
+	mean += vXvSparse(Xvect, prob[0]->dBar);
 
 	writeEvaluationSummary(soln, mean, stdev, cnt);
 	writeEvaluationSummary(stdout, mean, stdev, cnt);
 
 	mem_free(observ); mem_free(rhs);  mem_free(objxIdx); mem_free(cost);
 	return 0;
-
 }//END evaluate()
 
 
