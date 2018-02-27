@@ -59,23 +59,25 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 
 #ifdef STOCH_CHECK
 	double obj;
-	obj = getObjective(subprob->lp, PROB_LP);
+	obj = getObjective(subproblem->lp, PROB_LP);
 	printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 
-	tic = clock();
-	/* (d) update the stochastic elements in the problem */
-	status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
-			omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag);
-	(*newOmegaFlag) = FALSE;
-	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
+	if ( newBasisFlag!= NULL ) {
+		tic = clock();
+		/* (d) update the stochastic elements in the problem */
+		status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
+				omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag);
+		(*newOmegaFlag) = FALSE;
+		(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #ifdef STOCH_CHECK
-	obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->colsC, prob->num->cntCcols);
-	obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
-			omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
-	printf("Objective function estimate    = %lf\n", obj);
+		obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->CCols, prob->num->cntCcols);
+		obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
+				omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+		printf("Objective function estimate    = %lf\n", obj);
 #endif
+	}
 
 	return 0;
 }// END solveSubprob()

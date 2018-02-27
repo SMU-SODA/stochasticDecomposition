@@ -144,9 +144,17 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
 
 	cell->optFlag 			= FALSE;
-	cell->dualStableFlag 	= FALSE;
-	if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
-		errMsg("allocation", "newCell", "cell->pi_ratio", 0);
+
+	/* Dual stability test is disabled DUAL_STABILITY is false. */
+	if ( !config.DUAL_STABILITY ) {
+		cell->dualStableFlag = TRUE;
+		cell->pi_ratio = NULL;
+	}
+	else {
+		cell->dualStableFlag 	= FALSE;
+		if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
+			errMsg("allocation", "newCell", "cell->pi_ratio", 0);
+	}
 
 	cell->spFeasFlag = TRUE;
 	cell->fcuts		= newCuts(cell->maxCuts);

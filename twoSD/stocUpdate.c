@@ -125,7 +125,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	int 	cnt, maxCnt, c, basisUp, basisLow, sigmaIdx, lambdaIdx;
 
 	if (pi_eval == TRUE)
-		numSamples -= (0.1*numSamples + 1);
+		numSamples -= (int) (0.1*numSamples + 1);
 
 	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
 	if ( !isNew ) {

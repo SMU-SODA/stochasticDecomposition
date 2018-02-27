@@ -88,7 +88,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
 	vector 	piCbarX, beta;
-	double  argmaxOld, argmaxNew, argmax, alpha = 0.0, variance = 1.0, multiplier;
+	double  argmaxOld, argmaxNew, cummOld, cummAll, argmax, alpha = 0.0, variance = 1.0, multiplier;
 	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	BOOL    pi_eval_flag = FALSE;
 
@@ -105,7 +105,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		errMsg("Allocation", "SDCut", "beta", 0);
 
 	/* Calculate pi_eval_flag to determine the way of computing argmax */
-	if (numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
+	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
 		pi_eval_flag = TRUE;
 
 	/* Test for omega issues */
@@ -117,9 +117,11 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			istarNew = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
 					obs, numSamples, TRUE, &argmaxNew, TRUE);
 
-			argmax 	  = max(max(argmaxOld, argmaxNew)-lb, 0);
+			argmax = max(argmaxOld, argmaxNew);
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
-			argmaxOld = max(argmaxOld - lb, 0);
+
+			cummOld += max(argmaxOld-lb, 0)*omega->weights[obs];
+			cummAll += max(argmax-lb, 0)*omega->weights[obs];
 		}
 		else {
 			/* identify the maximal Pi for each observation */
@@ -163,7 +165,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	}
 
 	if (pi_eval_flag == TRUE) {
-		pi_ratio[numSamples % config.SCAN_LEN] = argmaxOld / argmax;
+		pi_ratio[numSamples % config.SCAN_LEN] = cummOld / cummAll;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			variance = calcVariance(pi_ratio, NULL, NULL, 0);
 

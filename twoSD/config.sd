@@ -52,7 +52,7 @@ RUN_SEED    1395182510837913
 RUN_SEED    3735836402047426
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 1
+EVAL_FLAG 0
 
 // Solution tolerance for deciding the usage of mean solution.
 EVAL_MIN_ITER 250
@@ -105,8 +105,11 @@ R2 0.95
 // For updating the scaling factor.
 R3 2
 
+// Switch for dual stability test 
+DUAL_STABILITY	0
+
 // Number of iterations before checking new pis impact
-PI_EVAL_START 1
+PI_EVAL_START 0
 
 // Number of iterations between evaluation of the impact of new dual vertex
 PI_CYCLE 1
@@ -126,4 +129,4 @@ EPSILON 0.001
 SCAN_LEN 256
 
 // Number of replications
-MULTIPLE_REP 1
+MULTIPLE_REP 0

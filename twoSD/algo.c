@@ -30,7 +30,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	printDecomposeSummary(soln, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
-	config.NUM_REPS = 3;
 	for ( int rep = 0; rep < config.NUM_REPS; rep++ ) {
 		fprintf(soln, "\n====================================================================================================================================\n");
 		fprintf(soln, "Replication-%d\n", rep+1);

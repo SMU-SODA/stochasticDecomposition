@@ -26,9 +26,8 @@ BOOL optimal(probType **prob, cellType *cell) {
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag ) {
 		/* perform the pre-test */
 		if ( preTest(cell) ) {
-			if (fullTest(prob, cell)) {
+			if ((cell->optFlag = fullTest(prob, cell)) == TRUE) {
 				/* full test satisfied */
-				cell->optFlag = TRUE;
 				printf (">"); fflush(stdout);
 				return TRUE;
 			}
@@ -77,6 +76,10 @@ BOOL fullTest(probType **prob, cellType *cell) {
 	clock_t tic = clock();
 	/* (a) choose good cuts */
 	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
+	if ( gCuts->cnt == 0 ) {
+		freeCutsType(gCuts, FALSE);
+		return FALSE;
+	}
 
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(cdf = (intvec) arr_alloc(cell->omega->cnt+1, int)) )
