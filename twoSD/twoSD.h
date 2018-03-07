@@ -21,7 +21,6 @@
 #define TRIVIAL 0
 #define NONTRIVIAL 1
 
-#undef STOCH_CHECK
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 

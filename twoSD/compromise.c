@@ -316,9 +316,11 @@ batchSummary *newBatchSummary(probType *prob, int numBatch) {
 	batch->incumbX = (vector *) arr_alloc(numBatch, vector);
 	batch->cnt = 0;
 	batch->quadScalar = config.MIN_QUAD_SCALAR;
+	batch->avgX = batch->compromiseX = NULL;
 
 	/* Setup the elements of the batch problem */
 	batch->sp = (oneProblem *) mem_malloc(sizeof(oneProblem));
+	batch->sp->lp = NULL;
 	batch->sp->type 	= PROB_QP;
 	batch->sp->objsen 	= prob->sp->objsen;
 

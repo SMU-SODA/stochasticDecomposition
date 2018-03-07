@@ -9,10 +9,10 @@
  *
  */
 
-#include "twoSD.h"
+#include "stoc.h"
 
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag) {
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag, BOOL subFeasFlag) {
 	oneBasis *B;
 	sparseVector dOmega;
 	int 	cnt, lambdaIdx;
@@ -30,33 +30,48 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 			basis->obsFeasible[cnt][omegaIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
 	}
 
-	if ( (B = newBasis(lp, prob->num->cols, prob->num->rows, currentIter)) == NULL ) {
+	if ( (B = newBasis(lp, prob->num->cols, prob->num->rows, currentIter, subFeasFlag)) == NULL ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to create a new basis type structure", 0);
 		return -1;
 	}
 
 	/* check to see if the new basis was encountered before */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-		if ( equalLongIntvec(B->cCode, basis->vals[cnt]->cCode, basis->cCodeLen) && equalLongIntvec(B->rCode, basis->vals[cnt]->rCode, basis->rCodeLen) ) {
-			/* The basis is the same as one encountered before */
-			freeOneBasis(B);
-			basis->vals[cnt]->weight++;
-			(*newBasisFlag) = FALSE;
+		if ( B->feasFlag ) {
+			if ( equalLongIntvec(B->cCode, basis->vals[cnt]->cCode, basis->cCodeLen) && equalLongIntvec(B->rCode,
+					basis->vals[cnt]->rCode, basis->rCodeLen) ) {
+				/* The basis is the same as one encountered before */
+				freeOneBasis(B);
+				basis->vals[cnt]->weight++;
+				(*newBasisFlag) = FALSE;
 #if defined (STOCH_CHECK)
-			printf("An old basis encountered :: %d\n", cnt);
+				printf("An old basis encountered :: %d\n", cnt);
 #endif
-			return cnt;
+				return cnt;
+			}
 		}
 	}
 
-	/* New basis encountered, fill the remainder of basis elements. */
-	if ( prob->num->rvdOmCnt > 0 )
-		calcBasis(lp, prob->num, prob->coord, prob->dBar, B, basis->basisDim);
+	if ( B->feasFlag ) {
+		/* New basis encountered, fill the remainder of basis elements. */
+		if ( prob->num->rvdOmCnt > 0 )
+			calcBasis(lp, prob->num, prob->coord, prob->dBar, B, basis->basisDim);
 
-	/* Decompose the dual solution into deterministic and stochastic components. */
-	if ( decomposeDualSolution(lp, B, omega->vals[omegaIdx]+prob->coord->rvOffset[2], prob->num->rows) ) {
-		errMsg("algorithm", "stochasticUpdates", "failed to decompose the dual solution", 0);
-		return -1;
+		/* Decompose the dual solution into deterministic and stochastic components. */
+		if ( decomposeDualSolution(lp, B, omega->vals[omegaIdx]+prob->coord->rvOffset[2], prob->num->rows) ) {
+			errMsg("algorithm", "stochasticUpdates", "failed to decompose the dual solution", 0);
+			return -1;
+		}
+	}
+	else {
+		if ( !(B->piDet = (vector) arr_alloc(prob->num->rows+1, double)) )
+			errMsg("allocation", "decomposeDualSolution", "piS", 0);
+
+		/* Record the dual and reduced cost on bounds. */
+		if ( getDual(lp, B->piDet, prob->num->rows) ) {
+			errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
+			return 1;
+		}
 	}
 
 	/* Elements of deterministic component of dual solution corresponding to rows with random elements in them */
@@ -86,7 +101,7 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	if ( !retainBasis ) {
 		/* All the sigmas computed were encountered before */
 		for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-			if ( B->phiLength == basis->vals[cnt]->phiLength ) {
+			if ( B->phiLength == basis->vals[cnt]->phiLength && basis->obsFeasible[cnt][omegaIdx] ) {
 				if ( equalIntvec(B->sigmaIdx-1, basis->vals[cnt]->sigmaIdx-1, B->phiLength+1) ) {
 					/* The basis was encountered before */
 					freeOneBasis(B);
@@ -101,13 +116,18 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	/* Add the basis to the structure */
 	basis->vals[basis->cnt] = B;
 
-	/* Establish feasibility of basis with respect to current observations */
-	if ( !(basis->obsFeasible[basis->cnt] = (BOOL*) arr_alloc(deltaRowLength, BOOL)) )
-		errMsg("allocation", "stochasticUpdates", "basis->obsFeasibility[n]", 0);
-	for ( cnt = 0; cnt < omega->cnt; cnt++ ) {
-		dOmega.val = prob->coord->rvOffset[2]+omega->vals[cnt];
-		basis->obsFeasible[basis->cnt][cnt] = checkBasisFeasibility(B, dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
+	if ( B->feasFlag ) {
+		/* Establish feasibility of basis with respect to current observations */
+		if ( !(basis->obsFeasible[basis->cnt] = (BOOL*) arr_alloc(deltaRowLength, BOOL)) )
+			errMsg("allocation", "stochasticUpdates", "basis->obsFeasibility[n]", 0);
+		for ( cnt = 0; cnt < omega->cnt; cnt++ ) {
+			dOmega.val = prob->coord->rvOffset[2]+omega->vals[cnt];
+			basis->obsFeasible[basis->cnt][cnt] = checkBasisFeasibility(B, dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
+		}
 	}
+	else
+		basis->obsFeasible[basis->cnt] = NULL;
+
 	return basis->cnt++;
 
 }//End stochasticUpdates()
@@ -139,7 +159,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 
 	/* Run through the list of basis to choose the one which provides the best lower bound */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
-		if ( basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
+		if ( basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
 			if ( basis->obsFeasible[cnt][obs] ) {
 				arg = 0.0;
 				for ( c = 0; c <= basis->vals[cnt]->phiLength; c++ ) {

@@ -56,6 +56,7 @@ typedef struct {
 	BOOL	isIncumb;			/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 	int 	rowNum;				/* row number for master problem in solver */
+	string	name;
 }oneCut;
 
 typedef struct {
@@ -97,10 +98,6 @@ typedef struct {
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	BOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
 	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
-	int         iCutUpdt;			/* iteration number when incumbent cut is updated */
-	double      gamma;				/* improvement in objective function value */
-	double      normDk_1;			/* (\Delta x^{k-1})^2 */
-	double      normDk;				/* (\Delta x^k)^2 */
 	vector		piM;
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
@@ -139,7 +136,7 @@ void freeCellType(cellType *cell);
 int solveMaster(numType *num, sparseVector *dBar, cellType *cell);
 int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, int lenX);
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
-int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
+int replaceIncumbent(probType *prob, cellType *cell);
 int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, vector xk);
@@ -165,7 +162,7 @@ int computeMU(LPptr lp, int numCols, double *mubBar);
 oneProblem *newSubproblem(oneProblem *subprob);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X);
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
-int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector observ);
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ);
 omegaType *newOmega(stocType *stoc);
 void freeOmegaType(omegaType *omega, BOOL partial);
 

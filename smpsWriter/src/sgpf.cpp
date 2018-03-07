@@ -56,9 +56,10 @@ int createSGPFInstance(string inputDir, string outputDir) {
 	sprintf(destnFile, "sgpf%dy%d.cor", sgpf.numPeriods, sgpf.numStages);
 	rename(srcFile, destnFile);
 
-	sprintf(destnFile, "mkdir %s/sgpf%dy%d/", outputDir.c_str(), sgpf.numPeriods, sgpf.numStages);
+	sprintf(destnFile, "mkdir %ssgpf%dy%d/", outputDir.c_str(), sgpf.numPeriods, sgpf.numStages);
 	system(destnFile);
 
+	sprintf(destnFile, "%ssgpf%dy%d/", outputDir.c_str(), sgpf.numPeriods, sgpf.numStages);
 	sprintf(srcFile, "mv sgpf%dy%d.* %s", sgpf.numPeriods, sgpf.numStages, destnFile);
 	system(srcFile);
 

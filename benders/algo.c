@@ -19,7 +19,7 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	cellType *cell = NULL;
 	vector 	 meanSol;
 	int 	 rep, m, n;
-	FILE 	*sFile, *iFile;
+	FILE 	*sFile, *iFile = NULL;
 	clock_t	tic;
 
 	/* complete necessary initialization for the algorithm */
@@ -28,7 +28,8 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 	printf("Starting Benders decomposition.\n");
 	sFile = openFile(outputDir, "results.dat", "w");
-	iFile = openFile(outputDir, "incumb.dat", "w");
+	if ( config.MASTER_TYPE == PROB_QP )
+		iFile = openFile(outputDir, "incumb.dat", "w");
 	printDecomposeSummary(sFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
@@ -52,7 +53,7 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 		/* Update omega structure */
 		if ( config.SAA ) {
-			setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->vals, &cell->omega->probs, &cell->omega->cnt);
+			setupSAA(stoc, &config.RUN_SEED[0], &cell->omega->vals, &cell->omega->probs, &cell->omega->cnt, config.TOLERANCE);
 			for ( m = 0; m < cell->omega->cnt; m++ )
 				for ( n = 1; n <= stoc->numOmega; n++ )
 					cell->omega->vals[m][n] -= stoc->mean[n-1];
@@ -109,7 +110,6 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		printf("\nIteration-%d :: Incumbent estimate = %lf; Candidate estimate = %lf.\n", cell->k, cell->incumbEst, cell->candidEst);
 #else
 		if ( (cell->k-1) % 100 == 0) {
-			printf("\nIncumbent estimate = %lf; Candidate estimate = %lf.", cell->incumbEst, cell->candidEst); fflush(stdout);
 			printf("\nIteration-%4d: ", cell->k);
 		}
 #endif
@@ -159,7 +159,7 @@ BOOL optimal(cellType *cell) {
 		/* The candidate must be within some small percentage of incumbent cut */
 		/* rare situation for cell->candid_est < 0 and cell->incumb_est > 0 */
 		/* Note: cell->candidEst and cell->incumbEst could be 0 */
-		if (cell->candidEst >= 0){
+		if (cell->candidEst >= 0) {
 			cell->optFlag = (cell->candidEst >= (1 - config.EPSILON) * cell->incumbEst);
 		}
 		else

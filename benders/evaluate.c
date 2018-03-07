@@ -17,7 +17,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 	vector 	observ, rhs, costTemp, cost;
 	intvec	objxIdx;
 	double 	obj, mean, variance, stdev, temp;
-	int		cnt, offset, m, status;
+	int		cnt, m, status;
 
 	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "evaluateOpt", "observ", 0);
@@ -32,14 +32,13 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		errMsg("Allocation", "evaluate", "rhs",0);
 
 	/* cost coefficients */
-	offset = prob[1]->num->rvbOmCnt + prob[1]->num->rvCOmCnt;
 	if ( !(cost = (vector) arr_alloc(prob[1]->num->cols+1, double)) )
 		errMsg("allocation", "evaluate", "cost", 0);
 	if ( !(objxIdx = (intvec) arr_alloc(prob[1]->num->cols+1, int)) )
 		errMsg("allocation", "evaluate", "objxIdx", 0);
 	costTemp = expandVector(prob[1]->dBar->val, prob[1]->dBar->col, prob[1]->dBar->cnt, prob[1]->num->cols);
 	for (m = 1; m <= prob[1]->num->rvdOmCnt; m++ ) {
-		objxIdx[m] = prob[1]->coord->rvCols[m] - 1;
+		objxIdx[m] = prob[1]->coord->rvdOmCols[m] - 1;
 		cost[m] = costTemp[objxIdx[m]+1];
 	}
 	mem_free(costTemp);
@@ -49,7 +48,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.EVAL_SEED[0]);
+		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0]);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m] -= stoc->mean[m];
@@ -62,7 +61,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 
 		/* Change cost coefficients with random observations */
 		if ( prob[1]->num->rvdOmCnt > 0 ) {
-			if ( chgObjxwObserv(cell->subprob->lp, cost, objxIdx, prob[1]->num->rvdOmCnt, observ+offset-1) ) {
+			if ( chgObjxwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
 				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
 				return 1;
 			}

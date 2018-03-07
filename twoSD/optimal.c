@@ -70,7 +70,7 @@ BOOL preTest(cellType *cell) {
 BOOL fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	intvec  cdf, observ;
-	double  est, ht, LB=0.0;
+	double  est, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
 	clock_t tic = clock();
@@ -105,9 +105,13 @@ BOOL fullTest(probType **prob, cellType *cell) {
 				est = ht;
 		}
 
-		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach, we don't include the incumb_x * c in estimate */
-		if (config.MASTER_TYPE == 1)
+		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach,
+		 * we don't include the incumb_x * c in estimate */
+		if (config.MASTER_TYPE == PROB_LP) {
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
+			// TODO:
+			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
+		}
 		else
 			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
 

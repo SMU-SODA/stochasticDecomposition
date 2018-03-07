@@ -12,6 +12,7 @@
 #include "benders.h"
 
 extern configType config;
+extern string outputDir;
 
 int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector obsVals, BOOL *spFeasFlag, double *subprobTime, vector piS, double *mubBar) {
 	vector 	rhs, cost;
@@ -79,6 +80,30 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 		errMsg("algorithm", "stochasticUpdates", "failed to get the dual", 0);
 		return 1;
 	}
+
+#if 1
+	FILE *basisFile;
+	intvec cstat, rstat;
+	cstat = (intvec) arr_alloc( prob->num->cols+1, int);
+	rstat = (intvec) arr_alloc( prob->num->rows+1, int);
+
+	/* Obtain the status of columns and rows in the basis. */
+	if ( getBasis(subproblem->lp, cstat, rstat) ) {
+		errMsg("algorithm", "newBasis", "failed to get the basis column and row status", 0);
+		return 1;
+	}
+
+	basisFile = openFile(outputDir, "cstat.txt", "a");
+	printIntvec(cstat, prob->num->cols, basisFile);
+	fclose(basisFile);
+
+	basisFile = openFile(outputDir, "rstat.txt", "a");
+	printIntvec(cstat, prob->num->rows, basisFile);
+	fclose(basisFile);
+
+	mem_free(cstat); mem_free(rstat);
+#endif
+
 
 	if ( computeMU(subproblem->lp, prob->num->cols, mubBar) ) {
 		errMsg("algorithm", "stochasticUpdates", "failed to compute mubBar for subproblem", 0);
@@ -247,17 +272,17 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
 }//END chgRHSwRand()
 
-int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector observ) {
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ) {
 	vector vals;
 	int n;
 
-	if ( !(vals = (vector) arr_alloc(rvdOmCnt + 1, double)) )
+	if ( !(vals = (vector) arr_alloc(num->rvdOmCnt+1, double)) )
 		errMsg("allocation", "chgObjwObserv", "vals", 0);
 
-	for ( n = 1; n <= rvdOmCnt; n++ )
-		vals[n] = cost[n] + observ[n];
+	for ( n = 1; n <= num->rvdOmCnt; n++ )
+		vals[n] = cost[n] + observ[coord->rvOffset[2]+n];
 
-	if ( changeObjx(lp, rvdOmCnt, indices+1, vals+1) ) {
+	if ( changeObjx(lp, num->rvdOmCnt, indices+1, vals+1) ) {
 		errMsg("solver", "chgObjswObserv", "failed to change the cost coefficients in the solver",0);
 		return 1;
 	}
@@ -265,7 +290,6 @@ int chgObjxwObserv(LPptr lp, vector cost, intvec indices, int rvdOmCnt, vector o
 	mem_free(vals);
 	return 0;
 }//END chgObjwObserv()
-
 
 /* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a vector to hold an array of
  * observation and the probability associated with it. */

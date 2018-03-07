@@ -199,8 +199,9 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	cell->k = 0;
 	cell->LPcnt = 0;
 	cell->optFlag 		 = FALSE;
-	cell->dualStableFlag = FALSE;
 	cell->spFeasFlag 	 = TRUE;
+	if ( config.DUAL_STABILITY )
+		cell->dualStableFlag 	= FALSE;
 
 	copyVector(xk, cell->candidX, prob->num->cols, TRUE);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);

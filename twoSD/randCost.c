@@ -11,6 +11,8 @@
 
 #include "twoSD.h"
 
+extern string outputDir;
+
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim) {
 	vector	basicCost, costVector, tempPsiRow;
 	intvec 	basisHead, phiHead;
@@ -27,6 +29,14 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative
 	 * value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
+
+#if 0
+	// TODO
+	FILE *basisFile;
+	basisFile = openFile(outputDir, "basis.tst", "a");
+	printIntvec(basisHead, basisDim, NULL);
+	fclose(basisFile);
+#endif
 
 	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
 	for ( i = 1; i <= num->rvdOmCnt; i++ ) {		/* Loop through all the columns with random cost coefficients to see if any of them are basic */
@@ -119,7 +129,7 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 
 }//END calcBasis()
 
-oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
+oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter, BOOL subFeasFlag) {
 	oneBasis *B;
 	intvec 	cstat, rstat;
 
@@ -131,6 +141,7 @@ oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
 	B->weight 	 = 1;
 	B->phiLength = 0;
 	B->phi 		 = NULL; B->omegaIdx = NULL; B->gBar = NULL; B->piDet = NULL; B->psi = NULL;
+	B->feasFlag = subFeasFlag;
 
 	/* Allocate memory. */
 	if ( !(cstat = (intvec) arr_alloc( numCols+1, int)))
@@ -144,14 +155,32 @@ oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter) {
 		return NULL;
 	}
 
+#if 1
+	FILE *basisFile;
+
+	basisFile = openFile(outputDir, "cstat.txt", "a");
+	printIntvec(cstat, numCols, basisFile);
+	fclose(basisFile);
+
+	basisFile = openFile(outputDir, "rstat.txt", "a");
+	printIntvec(cstat, numRows, basisFile);
+	fclose(basisFile);
+
+#endif
+
 	if ( computeMU(lp, cstat,  numCols, &B->mubBar) ) {
 		errMsg("algorithm", "newBasis", "failed to compute mubBar for subproblem", 0);
 		return NULL;
 	}
 
-	/* encode the row and column status */
-	B->cCode = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
-	B->rCode = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
+	if ( subFeasFlag ) {
+		/* encode the row and column status */
+		B->cCode = encodeIntvec(cstat, numCols, WORDLENGTH, 3);
+		B->rCode = encodeIntvec(rstat, numRows, WORDLENGTH, 3);
+	}
+	else {
+		B->cCode = B->rCode = NULL;
+	}
 
 	mem_free(cstat); mem_free(rstat);
 	return B;

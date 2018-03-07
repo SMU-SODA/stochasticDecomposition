@@ -45,9 +45,10 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, v
 
 	/* change the right hand side with the solution */
 	chgRHSwSoln(prob[1]->bBar, prob[1]->Cbar, rhs, Xvect);
+
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.EVAL_SEED[0]);
+		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0]);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
@@ -86,8 +87,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, v
 		else {
 			temp = mean;
 			mean = mean + (obj - mean) / (double) (cnt + 1);
-			variance  = (1 - 1 / (double) cnt) * variance
-					+ (cnt + 1) * (mean - temp) * (mean - temp);
+			variance  = (1 - 1 / (double) cnt) * variance + (cnt + 1) * (mean - temp) * (mean - temp);
 			stdev = sqrt(variance/ (double) cnt);
 		}
 		cnt++;

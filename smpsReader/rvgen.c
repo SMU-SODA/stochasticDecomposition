@@ -30,7 +30,7 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 	return 0;
 }//END generateOmegaIdx()
 
-void generateOmega(stocType *stoc, vector observ, long long *seed) {
+void generateOmega(stocType *stoc, vector observ, double minVal, long long *seed) {
 	int n, offset = 0;
 
 	for ( n = 0; n < stoc->numGroups; n++ ) {
@@ -55,7 +55,7 @@ void generateOmega(stocType *stoc, vector observ, long long *seed) {
 			offset += stoc->numPerGroup[n];
 		}
 		else if ( strstr(stoc->type, "LINTRAN") != NULL) {
-			generateLinTran(stoc, observ+offset, n, seed);
+			generateLinTran(stoc, observ+offset, n, minVal, seed);
 			n++; 			/* Linear transformation is associated with a block of residual random variables. */
 		}
 		else
@@ -95,7 +95,7 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 }//END generateIndep()
 
 /* Supporting only Wiener process */
-void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed) {
+void generateLinTran(stocType *stoc, vector observ, int groupID, double minVal, long long *seed) {
 	vector eps;
 	int n, offset, t;
 	int numPeriods, epsLen, omegaLen;
@@ -125,6 +125,9 @@ void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed
 				observ[omegaLen*t+stoc->mod->AR[0]->row[n]] += stoc->mod->AR[0]->val[n] * observ[omegaLen*(t-1)+stoc->mod->AR[0]->col[n]];
 		}
 	}
+
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++ )
+		observ[n] = max(observ[n], 0.01);
 
 	mem_free(eps);
 	return;
@@ -254,7 +257,7 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples) {
+int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples, double TOLERANCE) {
 	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
@@ -285,6 +288,14 @@ int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *pr
 		for (obs = 0; obs < (*numSamples); obs++ ) {
 			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
 			normal(stoc->mean, stoc->vals[0], stoc->numOmega, (*simObservVals)[obs]+1, seed);
+			(*probs)[obs] = 1.0/(double) (*numSamples);
+		}
+	}
+	else if ( !strcmp(stoc->type, "LINTRAN") ) {
+		for (obs = 0; obs < (*numSamples); obs++ ) {
+			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			generateLinTran(stoc, (*simObservVals)[obs]+1, 0, TOLERANCE, seed);
+			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else {

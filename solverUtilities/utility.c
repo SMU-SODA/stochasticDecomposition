@@ -450,12 +450,12 @@ void printIntvec(intvec vec, int len, FILE *fptr){
 
 	if (fptr == NULL) {
 		for ( n = 1; n <= len; n++ )
-			printf("%d ", vec[n]);
+			printf("%d, ", vec[n]);
 		printf("\n");
 	}
 	else {
 		for ( n = 1; n <= len; n++ )
-			fprintf(fptr, "%d ", vec[n]);
+			fprintf(fptr, "%d, ", vec[n]);
 		fprintf(fptr, "\n");
 	}
 

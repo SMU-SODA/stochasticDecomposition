@@ -8,7 +8,7 @@ MIN_ITER   1
 MAX_ITER   5000
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
-MASTER_TYPE 5
+MASTER_TYPE 0
 
 // For multicut version set to one, else single cut implementation 
 MULTICUT	0
@@ -17,10 +17,10 @@ MULTICUT	0
 CUT_MULT  1
 
 // The Minimum value of the cell->quad_scalar.
-MIN_QUAD_SCALAR 0.001
+MIN_QUAD_SCALAR 0.000001
 
 // OPTIMALITY GAP
-EPSILON 0.001
+EPSILON 0.01
 
 // Run seeds
 RUN_SEED    8879657642464524
@@ -55,13 +55,13 @@ RUN_SEED    1395182510837913
 RUN_SEED    3735836402047426
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 0
+EVAL_FLAG 1
 
 // Solution tolerance for deciding the usage of mean solution.
 EVAL_MIN_ITER 250
 
 // Obj. eval. is accurate to within this much, w/95% confidence
-EVAL_ERROR 0.001
+EVAL_ERROR 0.01
 
 // Random number seed for resampling omegas during evaluation
 EVAL_SEED	4650175399072632
@@ -99,7 +99,7 @@ EVAL_SEED	4742397086462006
 MAX_QUAD_SCALAR 10000.0
 
 // Amount of improvement which must be observed in order to update incumbent X.
-R1 100
+R1 0.2
 
 // For updating the scaling factor.
 R2 0.95
@@ -115,4 +115,4 @@ MULTIPLE_REP 0
 SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 691
+MAX_OBS 128

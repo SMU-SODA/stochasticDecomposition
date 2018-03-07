@@ -233,8 +233,13 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 
-	if (!(cut->iStar = arr_alloc(numIstar, int)))		/* when used in aggregate cut mode (MULTI_CUT = 0), this holds the index of agent cuts */
-		errMsg("allocation", "new_cut", "iStar", 0);
+	if ( numIstar > 0 ) {
+		if (!(cut->iStar = arr_alloc(numIstar, int)))
+			errMsg("allocation", "new_cut", "iStar", 0);
+	}
+	else
+		cut->iStar = NULL;
+
 	if (!(cut->beta = arr_alloc(numX + 1, double)))
 		errMsg("allocation", "new_cut", "beta", 0);
 
@@ -453,50 +458,56 @@ int formFeasCut(probType *prob, cellType *cell) {
  * Cuts from a new dual extreme ray(new pi) and all omegas generated so far are added to the feasible_cuts_pool structure afterwards. */
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 	oneCut	*cut;
-	int		idx, obs, c, initCutsCnt, lastCutsCnt;
+	int		idx, obs, c, initCutsCnt, sigmaIdx, lambdaIdx;
 
 	initCutsCnt = cell->fcutsPool->cnt;
+
+	/* Update computations with respect to the newly discovered observations and all the elements of the stochastic structures. */
 	for ( obs = cell->fUpdt[1]; obs < cell->omega->cnt; obs++ )
 		for ( idx = 0; idx < cell->fUpdt[0]; idx++ ) {
-			if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
-				errMsg("allocation", "add2CutPool", "cut", 0);
-			if ( !(cut->beta = (vector) arr_alloc(num->prevCols+1, double)) )
-				errMsg("allocation", "updtFeasCutPool", "beta", 0);
-			cut->iStar = NULL; cut->numSamples = cell->k; cut->omegaCnt = cell->omega->cnt; cut->isIncumb = FALSE;
+			if ( !cell->basis->vals[idx]->feasFlag ) {
+				cut = newCut(num->prevCols, 0, 1);
 
-			/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
+				sigmaIdx = cell->basis->vals[idx]->sigmaIdx[0];
+				lambdaIdx = cell->sigma->lambdaIdx[sigmaIdx];
 
-			for (c = 1; c <= num->cntCcols; c++)
-				cut->beta[coord->CCols[c]] += cell->sigma->vals[idx].piC[c];
-			for (c = 1; c <= num->rvCOmCnt; c++)
-				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
+				/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+				cut->alpha = cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib;
 
-			lastCutsCnt = addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+				for (c = 1; c <= num->cntCcols; c++)
+					cut->beta[coord->CCols[c]] += cell->sigma->vals[sigmaIdx].piC[c];
+				for (c = 1; c <= num->rvCOmCnt; c++)
+					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
+
+				addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+			}
 		}
 	cell->fUpdt[1] = cell->omega->cnt;
 
+	/* TODO: Update computations with respect to the newly discovered stochastic structures and all the observations discovered until
+	 * now. */
 	for ( obs = 0; obs < cell->omega->cnt; obs++ )
-		for ( idx = cell->fUpdt[0]; idx < cell->sigma->cnt; idx++ ) {
-			if ( !(cut = (oneCut *) mem_malloc (sizeof(oneCut))))
-				errMsg("allocation", "add2CutPool", "cut", 0);
-			if ( !(cut->beta = (vector) arr_alloc(num->prevCols+1, double)) )
-				errMsg("allocation", "updtFeasCutPool", "beta", 0);
-			cut->iStar = NULL; cut->numSamples = cell->k; cut->omegaCnt = cell->omega->cnt; cut->isIncumb = FALSE;
+		for ( idx = cell->fUpdt[0]; idx < cell->basis->cnt; idx++ ) {
+			if ( !cell->basis->vals[idx]->feasFlag ) {
+				cut = newCut(num->prevCols, 0, 1);
 
-			/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
-			cut->alpha = cell->sigma->vals[idx].pib + cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].pib;
+				sigmaIdx = cell->basis->vals[idx]->sigmaIdx[0];
+				lambdaIdx = cell->sigma->lambdaIdx[sigmaIdx];
 
-			for (c = 1; c <= num->cntCcols; c++)
-				cut->beta[coord->CCols[c]] += cell->sigma->vals[idx].piC[c];
-			for (c = 1; c <= num->rvCOmCnt; c++)
-				cut->beta[coord->rvCols[c]] += cell->delta->vals[cell->sigma->lambdaIdx[idx]][obs].piC[c];
+				/* Average using these Pi's to calculate the cut itself (update alpha and beta) */
+				cut->alpha = cell->sigma->vals[sigmaIdx].pib + cell->delta->vals[lambdaIdx][obs].pib;
 
-			lastCutsCnt = addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+				for (c = 1; c <= num->cntCcols; c++)
+					cut->beta[coord->CCols[c]] += cell->sigma->vals[sigmaIdx].piC[c];
+				for (c = 1; c <= num->rvCOmCnt; c++)
+					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
+
+				addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+			}
 		}
-	cell->fUpdt[0] = cell->sigma->cnt;
+	cell->fUpdt[0] = cell->basis->cnt;
 
-	return (lastCutsCnt - initCutsCnt);
+	return (cell->fcutsPool->cnt - initCutsCnt);
 }//END updtFeasCutPool()
 
 /* The function identifies cuts from the feasibility cut pool which are voilated by the candidate solution, and mark them to be
@@ -598,17 +609,17 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut) 
 
 	if ( feasCut ) {
 		/* If we are adding a feasibility cut, make sure there are no duplicates */
-		for (cnt = 0; cnt < cell->fcuts->cnt; cnt++) {
-			if (DBL_ABS(cut->alpha - cell->fcuts->vals[cnt]->alpha) < config.TOLERANCE) {
-				if (equalVector(cut->beta, cell->fcuts->vals[cnt]->beta, lenX, config.TOLERANCE)) {
+		for (cnt = 0; cnt < cell->fcutsPool->cnt; cnt++) {
+			if (DBL_ABS(cut->alpha - cell->fcutsPool->vals[cnt]->alpha) < config.TOLERANCE) {
+				if (equalVector(cut->beta, cell->fcutsPool->vals[cnt]->beta, lenX, config.TOLERANCE)) {
 					/* return 0 to indicate that no cut was added to the pool */
 					freeOneCut(cut);
 					return 0;
 				}
 			}
 		}
-		cell->fcuts->vals[cell->fcuts->cnt] = cut;
-		return cell->fcuts->cnt++;
+		cell->fcutsPool->vals[cell->fcutsPool->cnt] = cut;
+		return cell->fcutsPool->cnt++;
 	}
 	else {
 		if (cell->cuts->cnt >= cell->maxCuts) {

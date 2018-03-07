@@ -42,7 +42,6 @@ int solveMaster(numType *num, sparseVector *dBar, cellType *cell) {
 		return 1;
 	}
 
-
 	if ( cell->master->type == PROB_QP ) {
 		/* Get the dual solution too */
 		if ( getDual(cell->master->lp, cell->piM, cell->master->mar) ) {
@@ -50,22 +49,7 @@ int solveMaster(numType *num, sparseVector *dBar, cellType *cell) {
 			return 1;
 		}
 
-		d2 = 0.0;
-		/* add the incumbent back to change from \Delta X to X */
-		for (i = 1; i <= num->cols; i++)
-			d2 += cell->candidX[i] * cell->candidX[i];
 		addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
-
-		/* update d_norm_k in soln_type. */
-		if (cell->k == 1)
-			cell->normDk_1 = d2;
-		cell->normDk = d2;
-
-		/* Obtain the candidate estimate */
-		cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->candidX, num->cols);
-
-		/* Calculate gamma for next improvement check on incumbent x. */
-		cell->gamma =  cell->candidEst - cell->incumbEst;
 	}
 	else
 		cell->candidEst = getObjective(cell->master->lp, PROB_LP);
@@ -77,6 +61,7 @@ int solveMaster(numType *num, sparseVector *dBar, cellType *cell) {
 int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, int lenX) {
 	intvec 	indices;
 	int 	cnt;
+	static int cummCutNum = 0;
 
 	/* If it is optimality cut being added, check to see if there is room for the candidate cut, else drop a cut */
 	if (cuts->cnt == cell->maxCuts) {
@@ -100,8 +85,11 @@ int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, int lenX) {
 	cuts->vals[cuts->cnt] = cut;
 	cut->rowNum = cell->master->mar++;
 
+	/* Set up the cut name */
+	sprintf(cut->name, "cut_%04d", cummCutNum++);
+
 	/* Add the row in the solver */
-	if ( addRow(cell->master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+	if ( addRow(cell->master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return -1;
 	}
@@ -112,19 +100,18 @@ int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, int lenX) {
 
 
 int checkImprovement(probType *prob, cellType *cell, int candidCut) {
-	double  candidEst;
 
 	/* Calculate height at new candidate x with newest cut included */
-	candidEst = vXvSparse(cell->candidX, prob->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob->num->cols);
+	cell->candidEst = vXvSparse(cell->candidX, prob->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob->num->cols);
 
 #if defined(ALGO_CHECK)
-	printf("Candidate estimate = %lf, Incumbent estimate = %lf\n", candidEst, cell->incumbEst);
+	printf("Candidate estimate = %lf, Incumbent estimate = %lf\n", cell->candidEst, cell->incumbEst);
 #endif
 
 	/* If we see considerable improvement, then change the incumbent */
-	if ((candidEst - cell->incumbEst) <= (config.R1 * cell->gamma)) {
+	if ( cell->candidEst <= cell->incumbEst ) {
 		/* when we find an improvement, then we need to replace the incumbent x with candidate x */
-		if ( replaceIncumbent(prob, cell, candidEst) ) {
+		if ( replaceIncumbent(prob, cell) ) {
 			errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
 			return 1;
 		}
@@ -136,11 +123,11 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	return 0;
 }//END checkImprovement()
 
-int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
+int replaceIncumbent(probType *prob, cellType *cell) {
 
 	/* replace the incumbent solution with the candidate solution */
 	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
-	cell->incumbEst = candidEst;
+	cell->incumbEst = cell->candidEst;
 
 	/* update the right-hand side and the bounds with new incumbent solution */
 	if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
@@ -149,15 +136,10 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	}
 
 	/* update the candidate cut as the new incumbent cut */
-	cell->iCutUpdt = cell->k;
 	cell->incumbChg = TRUE;
 
-	/* keep the two norm of solution*/
-	cell->normDk_1 = cell->normDk;
 	/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
 	cell->infeasIncumb = FALSE;
-	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
-	cell->gamma = 0.0;
 
 	return 0;
 }//END replaceIncumbent()

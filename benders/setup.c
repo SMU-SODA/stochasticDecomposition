@@ -67,9 +67,10 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	if (!(cell = (cellType *) mem_malloc(sizeof(cellType))) )
 		errMsg("Memory allocation", "new_cell", "failed to allocate memory to cell",0);
 	cell->master = cell->subprob = NULL;
-	cell->candidX = cell->incumbX = NULL;
 	cell->cuts = cell->fCuts = NULL;
 	cell->omega = NULL; cell->piM = NULL;
+
+	cell->candidX = cell->incumbX = NULL;
 
 	/* setup the master problem */
 	cell->master = newMaster(prob[0]->sp, prob[0]->lb);
@@ -88,10 +89,6 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->candidX 	= duplicVector(xk, prob[0]->num->cols);
 	cell->candidEst	= prob[0]->lb + vXvSparse(cell->candidX, prob[0]->dBar);
 
-	cell->gamma 	= 0.0;
-	cell->normDk_1 	= 0.0;
-	cell->normDk 	= 0.0;
-
 	/* stochastic elements */
 	cell->omega  = newOmega(stoc);
 
@@ -107,7 +104,6 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
-		cell->iCutUpdt  = 0;
 		cell->incumbChg = TRUE;
 
 		cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
@@ -120,7 +116,6 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->incumbEst = 0.0;
 		cell->quadScalar= 0.0;
 		cell->iCutIdx   = -1;
-		cell->iCutUpdt  = -1;
 		cell->incumbChg = FALSE;
 
 		cell->maxCuts = config.MAX_ITER;
@@ -169,12 +164,8 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;
-		cell->iCutUpdt  = 0;
 		cell->incumbChg = TRUE;
 	}
-	cell->gamma 	= 0.0;
-	cell->normDk_1 	= 0.0;
-	cell->normDk 	= 0.0;
 
 	/* oneProblem structures and solver elements */
 	for ( cnt = prob->num->rows+cell->cuts->cnt+cell->fCuts->cnt-1; cnt >= prob->num->rows; cnt-- )

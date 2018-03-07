@@ -85,10 +85,13 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 		fprintf(soln, "\n====================================================================================================================================\n");
 		fprintf(soln, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(stdout, "\n====================================================================================================================================\n");
+		fprintf(stdout, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
 		/* Evaluate the compromise solution */
 		evaluate(soln, stoc, prob, cell->subprob, batch->compromiseX);
 
 		fprintf(soln, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		/* Evaluate the average solution */
 		evaluate(soln, stoc, prob, cell->subprob, batch->avgX);
 	}
@@ -139,7 +142,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
 		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.RUN_SEED[0]);
+		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0]);
 
 		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 		for ( m = 0; m < stoc->numOmega; m++ )
@@ -151,14 +154,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ( (candidCut = formSDCut(prob, cell, cell->candidX, omegaIdx, &newOmegaFlag, prob[0]->lb)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			return 1;
+			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
 			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, omegaIdx, &newOmegaFlag, prob[0]->lb) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				return 1;
+				goto TERMINATE;
 			}
 			cell->iCutUpdt = cell->k;
 		}
@@ -171,7 +174,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb) ) {
 			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-			return 1;
+			goto TERMINATE;
 		}
 
 		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
@@ -182,6 +185,10 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	mem_free(observ);
 	return 0;
+
+	TERMINATE:
+	mem_free(observ);
+	return 1;
 }//END solveCell()
 
 void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL header) {

@@ -35,19 +35,19 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	}
 
 #if defined(ALGO_CHECK)
-	writeProblem(cell->subprob->lp, "subproblem.lp");
+	writeProblem(subproblem->lp, "subproblem.lp");
 #endif
 
 	/* (c) Solve the subproblem to obtain the optimal dual solution. */
 	tic = clock();
-	changeLPSolverType(ALG_AUTOMATIC);
 	setIntParam(PARAM_PREIND, OFF);
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			/* Set the subproblem feasibility flag to false and proceed to complete stochastic updates. These updates are
 			 * used to generate the feasibility cuts later. */
 			printf("Subproblem is infeasible for current first-stage decision and observation.\n");
-			(*subFeasFlag) -= FALSE;
+			writeProblem(subproblem->lp, "infeasibleSP.lp");
+			(*subFeasFlag) = FALSE;
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
@@ -67,7 +67,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 		tic = clock();
 		/* (d) update the stochastic elements in the problem */
 		status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
-				omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag);
+				omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag, (*subFeasFlag));
 		(*newOmegaFlag) = FALSE;
 		(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 

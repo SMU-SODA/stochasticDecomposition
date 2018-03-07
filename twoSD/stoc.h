@@ -81,6 +81,7 @@ typedef struct {
 	double			mubBar;
 	vector			gBar;
 	sparseMatrix	*psi;		/* The simplex tableau matrix corresponding to the basis. */
+	BOOL			feasFlag;
 }oneBasis;
 
 /* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
@@ -107,7 +108,7 @@ oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag);
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag, BOOL subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, vector observ,
 		int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, BOOL newOmegaFlag, int elemIdx);
@@ -128,7 +129,7 @@ void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial)
 /* randCost.c */
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim);
 int decomposeDualSolution(LPptr spLP, oneBasis *B, vector omegaVals, int numRows);
-oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter);
+oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter, BOOL subFeasFlag);
 BOOL checkBasisFeasibility(oneBasis *B, sparseVector dOmega, string senx, int numCols, int numRows, double TOLERANCE);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
 void freeOneBasis(oneBasis *B);

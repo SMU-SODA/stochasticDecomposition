@@ -33,15 +33,20 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 #ifdef ALGO_CHECK
-	writeProblem(cell->master->lp, "masterCell.lp");
+	writeProblem(cell->master->lp, "cellMaster.lp");
 #endif
 
 	/* solve the master problem */
 	clock_t tic = clock();
-	changeQPSolverType(ALG_CONCURRENT);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
-		writeProblem(cell->master->lp, "error.lp");
-		errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		if ( status == STAT_INFEASIBLE ) {
+			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
+			writeProblem(cell->master->lp, "infeasibleM.lp");
+		}
+		else {
+			writeProblem(cell->master->lp, "errorM.lp");
+			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		}
 		return 1;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;

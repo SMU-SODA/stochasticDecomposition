@@ -17,7 +17,7 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-		changeLPSolverType(ALG_PRIMAL);
+		changeLPSolverType(ALG_DUAL);
 		setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
 		setIntParam(PARAM_PREIND, ON);
@@ -646,7 +646,8 @@ int changeProbType(LPptr lp, int type) {
 	return status;
 }//END changeProbType()
 
-int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval, string rowname) {
+int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, intvec rmatind, vector rmatval,
+		string rowname) {
 	string *rNames;
 	char	sense[1] = {'G'};
 	double	rhs[1];

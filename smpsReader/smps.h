@@ -109,15 +109,15 @@ void freeStatModel(statModel *model);
 
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
-void generateOmega(stocType *stoc, vector observ, long long *seed);
+void generateOmega(stocType *stoc, vector observ, double minVal, long long *seed);
 void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed);
-void generateLinTran(stocType *stoc, vector observ, int groupID, long long *seed);
+void generateLinTran(stocType *stoc, vector observ, int groupID, double minVal, long long *seed);
 int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed);
 int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, long long *seed);
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
-int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples);
+int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples, double TOLERANCE);
 
 #endif /* SMPS_H_ */

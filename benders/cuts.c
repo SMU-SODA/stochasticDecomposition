@@ -102,9 +102,8 @@ double maxCutHeight(cutsType *cuts, vector xk, int betaLen) {
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
 		ht = cutHeight(cuts->vals[cnt], xk, betaLen);
-		if (Sm < ht) {
+		if (Sm < ht)
 			Sm = ht;
-		}
 	}
 
 	return Sm;
@@ -204,11 +203,10 @@ oneCut *newCut(int numX, int currentIter) {
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 	cut->ck = currentIter;
-
 	if (!(cut->beta = arr_alloc(numX + 1, double)))
 		errMsg("allocation", "new_cut", "beta", 0);
-
 	cut->alpha = 0.0;
+	cut->name = (string) arr_alloc(NAMESIZE, char);
 
 	return cut;
 }//END newCut
@@ -231,8 +229,8 @@ cutsType *newCuts(int maxCuts) {
 void freeOneCut(oneCut *cut) {
 
 	if (cut) {
-		if (cut->beta)
-			mem_free(cut->beta);
+		if (cut->beta) mem_free(cut->beta);
+		if (cut->name) mem_free(cut->name);
 		mem_free(cut);
 	}
 }
