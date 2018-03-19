@@ -81,7 +81,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 		return 1;
 	}
 
-#if 1
+#if 0
 	FILE *basisFile;
 	intvec cstat, rstat;
 	cstat = (intvec) arr_alloc( prob->num->cols+1, int);

@@ -16,8 +16,7 @@ extern configType config;
 /* In this his function the master problem is solved after the newest cut is added to master problem, the incumbent cut is updated if necessary.
  * Here the coefficients on all the cuts are updated, and finally master problem is solved. */
 int solveMaster(numType *num, sparseVector *dBar, cellType *cell) {
-	double 	d2;
-	int 	status, i;
+	int 	status;
 	clock_t	tic;
 
 #if defined(ALGO_CHECK)
@@ -50,6 +49,7 @@ int solveMaster(numType *num, sparseVector *dBar, cellType *cell) {
 		}
 
 		addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
+		cell->candidEst = vXvSparse(cell->candidX, dBar) + getPrimalPoint(cell->master->lp, num->cols);
 	}
 	else
 		cell->candidEst = getObjective(cell->master->lp, PROB_LP);
