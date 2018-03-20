@@ -7,7 +7,8 @@
 #ifndef MTSD_SOLVER_H_
 #define MTSD_SOLVER_H_
 
-#include "cplex.h"
+#include <cpxconst.h>
+#include <utils.h>
 
 #define		ENVptr			CPXENVptr
 #define 	LPptr			CPXLPptr
@@ -49,6 +50,8 @@
 #define		MIP_OPTIMAL_TOL	CPXMIP_OPTIMAL_TOL
 #define		MIP_INFEASIBLE	CPXMIP_INFEASIBLE
 #define     MIP_OPTIMAL_TOL CPXMIP_OPTIMAL_TOL
+
+#define 	THREADS			CPXPARAM_Threads
 
 int solveProblem(LPptr lp, string pname, int type, int *status);
 int getProbType(LPptr lp);

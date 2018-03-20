@@ -55,7 +55,7 @@ RUN_SEED    1395182510837913
 RUN_SEED    3735836402047426
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 1
+EVAL_FLAG 0
 
 // Solution tolerance for deciding the usage of mean solution.
 EVAL_MIN_ITER 250
@@ -108,7 +108,7 @@ R2 0.95
 R3 2
 
 // 1 for multiple replications, 0 for single replication
-MULTIPLE_REP 1
+MULTIPLE_REP 0
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
 // Set to (1) if sample average approximation is to be constructed

@@ -105,7 +105,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	cell->candidEst = vXvSparse(cell->candidX, prob->dBar) + cutHeight(cell->cuts->vals[candidCut], cell->candidX, prob->num->cols);
 
 #if defined(ALGO_CHECK)
-	printf("Candidate estimate = %lf, Incumbent estimate = %lf\n", cell->candidEst, cell->incumbEst);
+	printf("Incumbent estimate = %lf; Candidate estimate = %lf\n", cell->incumbEst, cell->candidEst);
 #endif
 
 	/* If we see considerable improvement, then change the incumbent */

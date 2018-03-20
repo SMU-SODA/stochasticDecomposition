@@ -48,16 +48,16 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 			cut = newCut(prob->num->prevCols, cell->k);
 
 		/* Compute the cut coefficients */
-		bOmega.val = cell->omega->vals[obs];
-		COmega.val = cell->omega->vals[obs] + prob->num->rvbOmCnt;
+		bOmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[0];
+		COmega.val = cell->omega->vals[obs] + prob->coord->rvOffset[1];
 
 		alpha = vXvSparse(piS, prob->bBar) + mubBar + vXvSparse(piS, &bOmega);
 
 		beta = vxMSparse(piS, prob->Cbar, prob->num->prevCols);
 		temp = vxMSparse(piS, &COmega, prob->num->prevCols);
-		piCBar = reduceVector(temp, prob->coord->rvCols, prob->num->rvCOmCnt);
+		piCBar = reduceVector(temp, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
 		for (c = 1; c <= prob->num->rvCOmCnt; c++)
-			beta[prob->coord->rvCols[c]] += temp[c];
+			beta[prob->coord->rvCOmCols[c]] += temp[c];
 		mem_free(temp); mem_free(piCBar);
 
 #if defined(STOCH_CHECK)

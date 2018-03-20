@@ -156,7 +156,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 BOOL optimal(cellType *cell) {
 
 	if ( cell->k > config.MIN_ITER ) {
-		return cell->optFlag = ((cell->incumbEst - cell->candidEst) < config.EPSILON);
+		return cell->optFlag = (cell->incumbEst == cell->candidEst);
 	}
 
 	return FALSE;
