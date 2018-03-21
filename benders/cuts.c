@@ -38,9 +38,22 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 		cell->LPcnt++;
 		cell->time->subprobIter += (double) (clock() - tic)/CLOCKS_PER_SEC;
 
-		if ( !cell->spFeasFlag ) {
-			printf("Encountered infeasibility, need to add feasibility cut.\n");
-			goto TERMINATE;
+		if ( ! cell->spFeasFlag ) {
+			printf("Subproblem is infeasible, adding feasibility cut to the master.\n");
+
+			cut->alpha = vXvSparse(piS, prob->bBar) + mubBar + vXvSparse(piS, &bOmega);
+
+			beta = vxMSparse(piS, prob->Cbar, prob->num->prevCols);
+			temp = vxMSparse(piS, &COmega, prob->num->prevCols);
+			piCBar = reduceVector(temp, prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+			for (c = 1; c <= prob->num->rvCOmCnt; c++)
+				beta[prob->coord->rvCOmCols[c]] += temp[c];
+
+			for (c = 1; c <= prob->num->prevCols; c++)
+				cut->beta[c] = beta[c];
+
+			mem_free(beta);
+			break;
 		}
 
 		/* allocate memory to hold a new cut */

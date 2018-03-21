@@ -156,12 +156,12 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 				}
 				else {
 					if ( t != 0) {
-						expr = volume[t][i] - volume[t-1][i];
+						expr = volume[t][i] - volume[t-1][i+1];
 						IloConstraint c(expr == 0); c.setName(elemName); model.add(c);
 					}
 					else {
 						expr = volume[t][i];
-						IloConstraint c(expr == data.initVol[i]); c.setName(elemName); model.add(c);
+						IloConstraint c(expr == data.initVol[i+1]); c.setName(elemName); model.add(c);
 					}
 				}
 
