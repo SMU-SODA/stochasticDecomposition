@@ -41,6 +41,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	/* (c) Solve the subproblem to obtain the optimal dual solution. */
 	tic = clock();
 	setIntParam(PARAM_PREIND, OFF);
+	changeLPSolverType(ALG_PRIMAL);
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			/* Set the subproblem feasibility flag to false and proceed to complete stochastic updates. These updates are

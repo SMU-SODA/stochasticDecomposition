@@ -32,6 +32,9 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 		return -1;
 	}
 
+	/* increment the number of subproblems solved during algorithm */
+	cell->LPcnt++;
+
 	if ( ! cell->spFeasFlag ) {
 		/* Subproblem is infeasible, resolve infeasibility */
 		if ( resolveInfeasibility(prob, cell, newOmegaFlag, omegaIdx) ) {

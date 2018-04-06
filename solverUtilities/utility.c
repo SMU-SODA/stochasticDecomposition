@@ -424,12 +424,12 @@ void printVector(vector vec, int len, FILE *fptr){
 
 	if ( fptr == NULL ) {
 		for ( n = 1; n <= len; n++ )
-			printf("%4.6lf ", vec[n]);
+			printf("%4.6lf, ", vec[n]);
 		printf("\n");
 	}
 	else {
 		for ( n = 1; n <= len; n++ )
-			fprintf(fptr, "%4.6lf\t", vec[n]);
+			fprintf(fptr, "%4.6lf, ", vec[n]);
 		fprintf(fptr, "\n");
 	}
 

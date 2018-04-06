@@ -10,33 +10,23 @@
  */
 
 #include "twoSD.h"
+#include "stoc.h"
 
 extern string outputDir;
 
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim) {
-	vector	basicCost, costVector, tempPsiRow;
+	vector	basicCost, costVector, tempPsiRow, basisVal;
 	intvec 	basisHead, phiHead;
 	int		i, j;
 
 	/* Allocate memory for the basis header. */
-	if ( !(basisHead = (intvec) arr_alloc(basisDim+1, int)) )
-		errMsg("allocation", "calcBasis", "basisHead", 0);
-	if ( !(phiHead = (intvec) arr_alloc(num->rvdOmCnt+1, int)) )
-		errMsg("allocation", "calcBasis", "basisHead", 0);
-	if ( !(B->gBar = (vector) arr_alloc(num->cols+1, double)) )
-		errMsg("allocation", "newBasis", "B->gBar", 0);
+	basisHead = (intvec) arr_alloc(basisDim+1, int);
+	phiHead = (intvec) arr_alloc(num->rvdOmCnt+1, int);
+	B->gBar = (vector) arr_alloc(num->cols+1, double);
 
 	/* Compute the phi matrix associated with the current basis. We begin by first identifying the basis header. A negative
 	 * value in basis header indicates a slack row. */
 	getBasisHead(lp, basisHead+1, NULL);
-
-#if 0
-	// TODO
-	FILE *basisFile;
-	basisFile = openFile(outputDir, "basis.tst", "a");
-	printIntvec(basisHead, basisDim, NULL);
-	fclose(basisFile);
-#endif
 
 	/* Compute the phi matrix header and extract the basis (of the dual) inverse matrix rows corresponding to the header. */
 	for ( i = 1; i <= num->rvdOmCnt; i++ ) {		/* Loop through all the columns with random cost coefficients to see if any of them are basic */
@@ -112,15 +102,16 @@ void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, one
 	printf("Deterministic component of reduced cost  = ");
 	printSparseVector(B->gBar+1, basisHead, num->rows);
 #endif
+
 #if defined(BASIS_CHECK)
-	extern string outputDir;
 	FILE *bFile; vector temp;
 	bFile = openFile(outputDir, "basis.txt", "w");
-	temp = (vector) arr_alloc(numRows+1, double);
-	printIntvec(basisHead, numRows, bFile);
-	for ( i = 0; i < numRows; i++ ) {
+	temp = (vector) arr_alloc(num->rows+1, double);
+	printIntvec(basisHead, num->rows, bFile);
+	printVector(basicCost, num->rows, bFile);
+	for ( i = 0; i < num->rows; i++ ) {
 		getBasisInvRow(lp, i, temp+1);
-		printVector(temp, numRows, bFile);
+		printVector(temp, num->rows, bFile);
 	}
 	mem_free(temp); fclose(bFile);
 #endif
@@ -155,7 +146,7 @@ oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter, BOOL sub
 		return NULL;
 	}
 
-#if 1
+#if defined(BASIS_CHECK)
 	FILE *basisFile;
 
 	basisFile = openFile(outputDir, "cstat.txt", "a");
@@ -231,7 +222,8 @@ BOOL checkBasisFeasibility(oneBasis *B, sparseVector dOmega, string senx, int nu
 #if defined(BASIS_CHECK)
 		printf("Re-constructed dual solution: \n");
 		printVector(B->piDet, numRows, NULL);
-		printVector(theta, numRows, NULL);
+		if ( B->phiLength > 0 )
+			printVector(theta, numRows, NULL);
 #endif
 
 		mem_free(theta);

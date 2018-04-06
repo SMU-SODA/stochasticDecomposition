@@ -17,13 +17,11 @@ int solveProblem(LPptr lp, string pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-		changeLPSolverType(ALG_DUAL);
 		setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
 		setIntParam(PARAM_PREIND, ON);
 		break;
 	case PROB_QP:
-		changeQPSolverType(ALG_CONCURRENT);
 		(*status) = CPXqpopt(env, lp);
 		break;
 	case PROB_MILP:

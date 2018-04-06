@@ -38,6 +38,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 
 	/* solve the master problem */
 	clock_t tic = clock();
+	changeQPSolverType(ALG_CONCURRENT);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
@@ -50,9 +51,6 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 		return 1;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
-
-	/* increment the number of problems solved during algorithm */
-	cell->LPcnt++;
 
 	/* Get the most recent optimal solution to master program */
 	if ( getPrimal(cell->master->lp, cell->candidX, num->cols) ) {

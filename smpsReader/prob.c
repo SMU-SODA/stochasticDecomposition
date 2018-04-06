@@ -511,6 +511,7 @@ vector meanProblem(oneProblem *orig, stocType *stoc) {
 	}
 
 	/* solve the mean value problem */
+	changeLPSolverType(ALG_AUTOMATIC);
 	status = solveProblem(orig->lp, orig->name, PROB_QP, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
@@ -537,7 +538,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 	vector		duals, vals, beta, lb;
 	intvec		indices;
 	double		alpha;
-	int 		status, stat1, t, col, row, m, n;
+	int 		stat1, t, col, row, m, n;
 	LPptr		lpClone;
 	BOOL		zeroLB;
 
@@ -567,8 +568,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 		errMsg("allocation", "getLowerBound", "beta", 0);
 
 	/* obtain dual solutions from the mean value solve */
-	status = getDual(orig->lp, duals, orig->mar);
-	if ( status ) {
+	if ( getDual(orig->lp, duals, orig->mar) ) {
 		errMsg("setup", "getLowerBound", "failed to obtain dual for the mean value problem", 0);
 		return NULL;
 	}
@@ -639,8 +639,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 			}
 
 			/* Change the objective in solver to prepare for lower bound calculation */
-			status = changeObjx(lpClone, orig->mac, indices, vals);
-			if ( status ) {
+			if ( changeObjx(lpClone, orig->mac, indices, vals) ) {
 				errMsg("setup", "calcLowerBound", "failed to change objective coefficients in solver while computing lower bound", 0);
 				return NULL;
 			}
@@ -648,9 +647,10 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 #ifdef SETUP_CHECK
 			writeProblem(lpClone, "lowerBoundCalc.lp");
 #endif
+
 			/* solve the problem */
-			status = solveProblem(lpClone, "lowerBoundCalc", PROB_LP, &stat1);
-			if ( status ) {
+			changeLPSolverType(ALG_AUTOMATIC);
+			if (solveProblem(lpClone, "lowerBoundCalc", PROB_LP, &stat1) ) {
 				errMsg("setup", "calcLowerBound", "failed to solve problem computing lower bound", 0);
 				return NULL;
 			}
@@ -659,8 +659,7 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 			lb[t-1] = min(0, getObjective(lpClone, PROB_LP) + alpha);
 
 			/* release the problem */
-			status = freeProblem(lpClone);
-			if ( status ) {
+			if ( freeProblem(lpClone) ) {
 				errMsg("setup", "calcLowerBound", "failed to free problem", 0);
 				return NULL;
 			}
@@ -681,17 +680,11 @@ vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 
 	/* change the problem type back to its original form */
 	if ( orig->type == PROB_MILP ) {
-		status = changeProbType(orig->lp, PROB_MILP);
-		if ( status ) {
+		if ( changeProbType(orig->lp, PROB_MILP) ) {
 			errMsg("solver", "calcLowerBound", "failed to relax the mean value problem", 0);
 			return NULL;
 		}
 	}
-
-#if 0
-	for ( t = 1; t < tim->numStages; t++ )
-		lb[t] = lb[0];
-#endif
 
 	return lb;
 }//END calcLowerBound()
