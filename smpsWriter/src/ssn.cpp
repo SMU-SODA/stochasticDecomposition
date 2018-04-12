@@ -159,9 +159,22 @@ SSNdata::SSNdata(string &inputDir) {
 			if ( line[0] != '#' ) {
 				istringstream iss(line);
 				vector<string> tokens{istream_iterator<string>{iss}, istream_iterator<string>{}};
-				capacities.push_back((int) tokens[0]);
-				for ( int i = 1; i < tokens.size(); i++ ) {
+				vector<int> currentRoutes;
 
+				if ( section == 1 ) {
+					capacities.push_back(atoi(tokens[0].c_str()));
+					for ( int i = 1; i < (int) tokens.size(); i++ ) {
+						currentRoutes.push_back(atoi(tokens[i].c_str()));
+					}
+					routesOnLinks.push_back(currentRoutes);
+					j++;
+				}
+				else if ( section == 2 )  {
+					demand.push_back(atof(tokens[0].c_str()));
+					for ( int i = 1; i < (int) tokens.size(); i++ ) {
+						currentRoutes.push_back(atoi(tokens[i].c_str()));
+					}
+					routes4SDpair.push_back(currentRoutes);
 				}
 			}
 			else {
