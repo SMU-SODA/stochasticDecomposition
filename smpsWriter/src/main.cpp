@@ -22,6 +22,10 @@ int main (int argc, char *argv[]) {
 		if ( createSGPFInstance(inputDir, outputDir) )
 			perror("Failed to create the instance.\n");
 	}
+	else if (probName == "ssn" ) {
+		if ( createSSNInstance(inputDir, outputDir) )
+			perror("Failed to create the SSN instance.\n");
+	}
 	else {
 		perror("No subroutine to support this problem.\n");
 	}

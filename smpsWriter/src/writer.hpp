@@ -14,12 +14,14 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <cmath>
 #include <random>
 #include <iomanip>
 #include <algorithm>
 #include <string>
+#include <iterator>
 #include <sys/stat.h>
 
 #include <ilcplex/ilocplex.h>
@@ -48,5 +50,6 @@ public:
 void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, string *outputDir);
 
 int createSGPFInstance(string inputDir, string outputDir);
+int createSSNInstance(string inputDir, string outputDir);
 
 #endif /* WRITER_HPP_ */
