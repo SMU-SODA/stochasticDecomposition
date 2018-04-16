@@ -63,7 +63,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 			return 1;
 		}
 	}
-	(*subprobTime) = ((double) (clock() - tic))/CLOCKS_PER_SEC;
+	(*subprobTime) += ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 #if defined(ALGO_CHECK)
 	writeProblem(subproblem->lp, "cellSubprob.lp");

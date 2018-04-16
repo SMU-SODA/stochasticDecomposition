@@ -109,7 +109,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		 * we don't include the incumb_x * c in estimate */
 		if (config.MASTER_TYPE == PROB_LP) {
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
-			// TODO:
+			// TODO: solve a temporary master problem
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
 		else

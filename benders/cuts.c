@@ -29,14 +29,12 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 
 	/* Only a fraction (at least one) of subproblems are solved in any iteration. */
 	for ( obs = 0; obs < cell->omega->cnt; obs++ ) {
-		tic = clock();
 		/* Construct the subproblem with a given observation and master solution, solve the subproblem, and obtain dual information. */
 		if ( solveSubprob(prob, cell->subprob, Xvect, cell->omega->vals[obs], &cell->spFeasFlag, &cell->time->subprobIter, piS, &mubBar) ) {
 			errMsg("algorithm", "solveAgents", "failed to solve the subproblem", 0);
 			goto TERMINATE;;
 		}
 		cell->LPcnt++;
-		cell->time->subprobIter += (double) (clock() - tic)/CLOCKS_PER_SEC;
 
 		if ( ! cell->spFeasFlag ) {
 			printf("Subproblem is infeasible, adding feasibility cut to the master.\n");

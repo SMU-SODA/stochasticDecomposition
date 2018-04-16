@@ -56,7 +56,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 		}
 	}
 	setIntParam(PARAM_PREIND, ON);
-	(*subprobTime) = ((double) (clock() - tic))/CLOCKS_PER_SEC;
+	(*subprobTime) += ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
 #ifdef STOCH_CHECK
 	double obj;

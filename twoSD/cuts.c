@@ -43,7 +43,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 		}
 	}
 	else if ( cell->fcutsPool->cnt > 0 && (*newOmegaFlag) ) {
-		/* TODO: Subproblem is feasible, however new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+		/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
 		 * to see if new feasibility cuts need to be added. */
 		if ( formFeasCut(prob[1], cell) ) {
 			errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
@@ -75,11 +75,11 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( addCut2Pool(cell, cut, prob[0]->num->cols, lb, FALSE) < 0) {
+	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, FALSE)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
-	if ( (cutIdx = addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols)) < 0 ) {
+	if ( addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols) ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
 		return -1;
 	}
