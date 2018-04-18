@@ -12,14 +12,16 @@
 #ifndef WRITER_HPP_
 #define WRITER_HPP_
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <list>
+#include <numeric>
+#include <random>
 #include <vector>
 #include <cmath>
-#include <random>
 #include <iomanip>
-#include <algorithm>
 #include <string>
 #include <iterator>
 #include <sys/stat.h>
