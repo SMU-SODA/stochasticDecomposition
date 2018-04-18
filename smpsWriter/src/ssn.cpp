@@ -215,7 +215,7 @@ int createSSNtim(SMPSmodel ssn, SSNdata data) {
 
 	sprintf(fName, "ssn_rc%d.tim", data.numGroups);
 	tFile.open(fName);
-	tFile << "TIME   ssn_rc" << endl;
+	sprintf(line, "TIME   ssn_rc%d\n", data.numGroups); tFile << line;
 
 	tFile << "PERIODS" << endl;
 	for (int t = 0; t < ssn.numStages; t++ ) {
@@ -233,7 +233,7 @@ int createSSNstoc (SMPSmodel ssn, SSNdata data) {
 
 	sprintf(fName, "ssn_rc%d.sto", data.numGroups); sFile.open(fName);
 
-	sprintf(line, "%-14sssn_rc\n", "STOCH"); sFile << line;
+	sprintf(line, "%-14sssn_rc%d\n", "STOCH", data.numGroups); sFile << line;
 	sFile << "INDEP          DISCRETE" << endl;
 
 	/* Error terms */

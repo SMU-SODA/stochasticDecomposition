@@ -1,4 +1,4 @@
-TIME   ssn_rc
+TIME   ssn_rc3
 PERIODS
              capAdd[0]            budget	Stage00
             flow[0][0]         demand[0]	Stage01
