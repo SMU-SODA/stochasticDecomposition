@@ -376,17 +376,24 @@ void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data) {
 	default_random_engine generator{static_cast<long unsigned int>(3554548844580680)};
 	normal_distribution <double> distribution(0.0,1.0);
 
+	/* Take care of the boundary conditions. Remove the first 200 (ad-hoc choice) observations. */
+	double dataInit = 0;
+	{
+		int t = 0;
+		while ( t < 200 ) {
+			dataInit += distribution(generator);
+			t++;
+		}
+	}
+
 	/* Returns */
 	for ( int t = 0; t < sgpf.numPeriods; t++ ) {
-		double number;
-		do {
-			number = distribution(generator);
+		if ( t == 0 ) {
+			data.ret[t] = dataInit + distribution(generator);
+ 		}
+		else {
+			data.ret[t] = data.ret[t-1] + distribution(generator);
 		}
-		while ( t == 0 && ((data.ret[t] = number) < TOLERANCE) );
-
-		if ( t > 0 )
-			while ( (data.ret[t] = data.ret[t-1] + number) < TOLERANCE )
-				number = distribution(generator);
 	}
 
 	/* Borrowing rate */

@@ -179,9 +179,7 @@ void writeStatistic(FILE *soln, FILE *incumb, probType **prob, cellType *cell) {
 	fprintf(soln, "Total time in verifying optimality : %f\n", cell->time->optTestAccumTime);
 
 	if ( incumb != NULL ) {
-		fprintf(incumb, "New replication\n");
-		for ( int n = 1; n <= prob[0]->num->cols; n++ )
-		fprintf(incumb, "%s\t%lf\n", prob[0]->sp->cname[n-1], cell->incumbX[n]);
+		printVector(cell->incumbX, prob[0]->num->cols, incumb);
 	}
 
 }//END WriteStat
