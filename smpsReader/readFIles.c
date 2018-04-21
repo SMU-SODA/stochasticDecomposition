@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 	long long seed = 3554548844580680;
 	vector observ = NULL;
 	observ = (vector) arr_alloc(stoc->numOmega, double);
-	generateOmega(stoc, observ, &seed);
+	generateOmega(stoc, observ, 0, &seed);
 	mem_free(observ);
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 	printf("\nSuccessfully decomposed the problem '%s'.\n", probName);
 
 #ifdef DECOMPOSE_CHECK
-	printDecomposeSummary(tim, prob);
+	printDecomposeSummary(stdout, orig->name, tim, prob);
 #endif
 
 	TERMINATE:
