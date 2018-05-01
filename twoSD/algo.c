@@ -19,20 +19,21 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	batchSummary *batch = NULL;
-	FILE 	*soln;
+	FILE 	*sFile = NULL, *iFile = NULL;
 
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
 
 	printf("Starting two-stage stochastic decomposition.\n");
-	soln = openFile(outputDir, "results.dat", "w");
-	printDecomposeSummary(soln, probName, tim, prob);
+	sFile = openFile(outputDir, "results.dat", "w");
+	iFile = openFile(outputDir, "incumb.dat", "w");
+	printDecomposeSummary(sFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
 	for ( int rep = 0; rep < config.NUM_REPS; rep++ ) {
-		fprintf(soln, "\n====================================================================================================================================\n");
-		fprintf(soln, "Replication-%d\n", rep+1);
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "Replication-%d\n", rep+1);
 		fprintf(stdout, "\n====================================================================================================================================\n");
 		fprintf(stdout, "Replication-%d\n", rep+1);
 
@@ -58,17 +59,17 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 		/* Write solution statistics for optimization process */
 		if (rep == 0 ) {
-			writeOptimizationSummary(soln, prob, cell, TRUE);
-			writeOptimizationSummary(stdout, prob, cell, TRUE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, TRUE);
+			writeOptimizationSummary(stdout, NULL, prob, cell, TRUE);
 		}
 		else {
-			writeOptimizationSummary(soln, prob, cell, FALSE);
-			writeOptimizationSummary(stdout, prob, cell, FALSE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, FALSE);
+			writeOptimizationSummary(stdout, NULL, prob, cell, FALSE);
 		}
 
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
-			evaluate(soln, stoc, prob, cell->subprob, cell->incumbX);
+			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
 
 		/* Save the batch details and build the compromise problem. */
 		if ( config.MULTIPLE_REP ) {
@@ -83,20 +84,20 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 			goto TERMINATE;
 		}
 
-		fprintf(soln, "\n====================================================================================================================================\n");
-		fprintf(soln, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
-		fprintf(stdout, "\n====================================================================================================================================\n");
-		fprintf(stdout, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
 		/* Evaluate the compromise solution */
-		evaluate(soln, stoc, prob, cell->subprob, batch->compromiseX);
+		evaluate(sFile, stoc, prob, cell->subprob, batch->compromiseX);
 
-		fprintf(soln, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		fprintf(sFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		/* Evaluate the average solution */
-		evaluate(soln, stoc, prob, cell->subprob, batch->avgX);
+		evaluate(sFile, stoc, prob, cell->subprob, batch->avgX);
 	}
 
-	fclose(soln);
+	fclose(sFile); fclose(iFile);
 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */
@@ -191,7 +192,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	return 1;
 }//END solveCell()
 
-void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL header) {
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, BOOL header) {
 
 	if ( header ) {
 		fprintf(soln, "\n--------------------------------------- Problem Information ----------------------------------------\n\n");
@@ -210,6 +211,11 @@ void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL 
 	fprintf(soln, "Total time to solve subproblems        : %f\n", cell->time.subprobAccumTime);
 	fprintf(soln, "Total time in argmax procedure         : %f\n", cell->time.argmaxAccumTime);
 	fprintf(soln, "Total time in verifying optimality     : %f\n", cell->time.optTestAccumTime);
+
+	if ( incumb != NULL ) {
+		printVector(cell->incumbX, prob[0]->num->cols, incumb);
+	}
+
 }//END WriteStat
 
 

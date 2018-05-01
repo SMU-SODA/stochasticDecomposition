@@ -161,7 +161,7 @@ int readConfig();
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
-void writeOptimizationSummary(FILE *soln, probType **prob, cellType *cell, BOOL header);
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, BOOL header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
