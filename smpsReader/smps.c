@@ -335,7 +335,7 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 
 stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim) {
 	stocType *stoc;
-	string 	*rvRows, *rvCols, *fields;
+	string 	*rvRows = NULL, *rvCols = NULL, *fields = NULL;
 	char	probpath[2*BLOCKSIZE], line[BLOCKSIZE], fieldType;
 	FILE	*fptr;
 	int		maxOmegas = 1000, maxVals = 4000, n, numFields, maxFields = 10;
@@ -421,14 +421,23 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	maxOmegas = stoc->numOmega;
 	if ( stoc->mod != NULL )
 		maxOmegas += stoc->mod->M;
-	for ( n = 0; n < maxOmegas; n++ ) {
-		if(rvCols[n]) mem_free(rvCols[n]);
-		if(rvRows[n]) mem_free(rvRows[n]);
+	if ( rvCols ) {
+		for ( n = 0; n < maxOmegas; n++ ) {
+			if(rvCols[n]) mem_free(rvCols[n]);
+		}
+		mem_free(rvCols);
 	}
-	mem_free(rvCols); mem_free(rvRows);
-	for (n = 0; n < maxFields; n++ )
-		if (fields[n]) mem_free(fields[n]);
-	mem_free(fields);
+	if ( rvRows ) {
+		for ( n = 0; n < maxOmegas; n++ ) {
+			if(rvRows[n]) mem_free(rvRows[n]);
+		}
+		mem_free(rvRows);
+	}
+	if ( fields ) {
+		for (n = 0; n < maxFields; n++ )
+			if (fields[n]) mem_free(fields[n]);
+		mem_free(fields);
+	}
 	fclose(fptr);
 
 	/* Reallocate memory to elements of stocType */
@@ -718,15 +727,15 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 			errMsg("read", "readLinTran", "failed to read linear transformation structure.", 0);
 			return 1;
 		}
+
+		/* increase the number of stochastic variables groups */
+		stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
+		stoc->numGroups++;
 	}
 	else {
 		errMsg("read", "readBlocks", "unknown distribution type in BLOCKS section", 1);
 		return 1;
 	}
-
-	/* increase the number of stochastic variables groups */
-	stoc->numPerGroup[stoc->numGroups] = stoc->numOmega - stoc->groupBeg[stoc->numGroups];
-	stoc->numGroups++;
 
 	return 0;
 }//END readBlocks()
@@ -739,16 +748,21 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 
 	/* allocate memory to hold the names of random variable */
 	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
-		errMsg("allocation", "readIndep", "rvNames", 0);
+		errMsg("allocation", "readOneBlock", "rvNames", 0);
 	if ( !(rvCols = (string *) arr_alloc(maxOmegas, string)) )
-		errMsg("allocation", "readIndep", "rvNames", 0);
+		errMsg("allocation", "readOneBlock", "rvNames", 0);
 
 	for ( n = 0; n < maxOmegas; n++) {
 		if ( !(rvCols[n] = (string) arr_alloc(NAMESIZE, char)) )
-			errMsg("allocation", "readBlk", "rvCols", 0);
+			errMsg("allocation", "readOneBlock", "rvCols", 0);
 		if ( !(rvRows[n] = (string) arr_alloc(NAMESIZE, char)) )
-			errMsg("allocation", "readBlk", "rvRows", 0);
+			errMsg("allocation", "readOneBlock", "rvRows", 0);
 	}
+
+	stoc->numVals = (intvec) arr_alloc(maxOmegas, int);
+	stoc->vals    = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->probs   = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->mod = NULL;
 
 	while (TRUE) {
 		getLine(&fptr, fields, &strType, &numFields);
@@ -763,14 +777,14 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 				stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
 				stoc->numPerGroup[stoc->numGroups] = numRV = 0;
 				if ( !(stoc->probs[stoc->numGroups] = (vector) arr_alloc(maxVals, double)) )
-					errMsg("allocation", "readBlk", "stoc->prob[n]", 0);
+					errMsg("allocation", "readOneBlock", "stoc->prob[n]", 0);
 				stoc->probs[stoc->numGroups][stoc->numVals[stoc->numGroups]++] = str2float(fields[3]);
 				stoc->numGroups++;
 			}
 			else {
 				newBlk = FALSE;
 				if ( stoc->numVals[stoc->numGroups-1] == maxVals )
-					errMsg("allocation", "readBlock", "exceeded memory limit on maxVals", 1);
+					errMsg("allocation", "readOneBlock", "exceeded memory limit on maxVals", 1);
 				stoc->probs[stoc->numGroups-1][stoc->numVals[stoc->numGroups-1]++] = str2float(fields[3]);
 			}
 		}
@@ -810,10 +824,10 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 
 				/* make sure there is memory space available for new realization and store it */
 				if (stoc->numOmega == maxOmegas )
-					errMsg("allocation", "readBlock", "reached max limit maxOmegas", 1);
+					errMsg("allocation", "readOneBlock", "reached max limit maxOmegas", 1);
 
 				if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
-					errMsg("allocation", "readBlock","omega.vals[n]", 0);
+					errMsg("allocation", "readOneBlock","omega.vals[n]", 0);
 
 				if (origRV == 1) {
 					stoc->vals[stoc->numOmega][stoc->numVals[stoc->numGroups-1]-1] = str2float(fields[2]);
@@ -821,7 +835,7 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 					stoc->numOmega++;
 				}
 				else {
-					errMsg("read", "readBlk", "reading auxiliary variables not supported", 0);
+					errMsg("read", "readOneBlock", "reading auxiliary variables not supported", 0);
 					return 1;
 				}
 				/* increment the number of random variables in the group */
@@ -839,7 +853,7 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 					n++;
 				}
 				if ( n == numRV )
-					errMsg("read", "readBlock", "unknown block random variable name", 1);
+					errMsg("read", "readOneBlock", "unknown block random variable name", 1);
 
 				n += stoc->groupBeg[stoc->numGroups-1];
 				if ( origRV == 1 ) {
@@ -849,7 +863,7 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 				}
 				else {
 					/* the second field has values */
-					errMsg("read", "readBlk", "reading auxiliary variables not supported", 0);
+					errMsg("read", "readOneBlock", "reading auxiliary variables not supported", 0);
 					return 1;
 				}
 			}
@@ -876,9 +890,13 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
  */
 int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas, string **rvRows, string **rvCols) {
 	statModel *model;
+	intvec 	periodBeg;
 	char 	strType, currBlock[NAMESIZE] = "\0", currLag[NAMESIZE] = "\0";
-	int		numFields, period, numPeriods = 0, periodBeg[11], maxP = 10, maxQ = 10, maxMatcnt = stoc->numOmega, j, col, row, offset;
+	int		numFields, period, numPeriods = 0, maxP = 10, maxQ = 10,
+			maxMatcnt = stoc->numOmega, j, col, row, offset, maxPeriods = 50;
 	BOOL	newLag;
+
+	periodBeg = (intvec) arr_alloc(maxPeriods, int);
 
 	/* allocate memory to hold information about the linear transformation stochastic process */
 	if ( !(model = (statModel *) mem_malloc(sizeof(statModel))) )
@@ -930,6 +948,10 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 			/* New block of encountered of type 'BL': random variables in a particular time period/stage (i.e., elements of y_t) */
 			strcpy(currBlock, fields[0]);
 			periodBeg[numPeriods++] = stoc->numOmega;
+			if ( numPeriods == maxPeriods ) {
+				maxPeriods *= 2;
+				periodBeg = (intvec) mem_realloc(periodBeg, maxPeriods*sizeof(int));
+			}
 			model->N = stoc->numOmega - model->N;
 		}
 		else if ( !(strcmp(fields[0], "RV")) || !(strcmp(fields[0], "HV")) || !(strcmp(fields[0], "LV")) )  {
@@ -1100,6 +1122,7 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 	}
 
 	stoc->mod = model;
+	mem_free(periodBeg);
 	return 0;
 }//END readLinTrans()
 

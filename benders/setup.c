@@ -32,10 +32,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	}
 
 #ifdef DECOMPOSE_CHECK
-	FILE *decompose;
-	extern outputDir;
-	openFile(outputDir, "decompose.txt", "w");
-	printDecomposeSummary(tim, (*prob));
+	printDecomposeSummary(stdout, orig->name, tim, (*prob));
 #endif
 
 	/* ensure that we have a linear programs at all stages */

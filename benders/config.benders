@@ -108,11 +108,11 @@ R2 0.95
 R3 2
 
 // 1 for multiple replications, 0 for single replication
-MULTIPLE_REP 1
+MULTIPLE_REP 0
 
 // ******************************* The following parameters are useful only for Benders algorithm ******************************* 
 // Set to (1) if sample average approximation is to be constructed
 SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 250
+MAX_OBS 100
