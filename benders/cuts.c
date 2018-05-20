@@ -13,6 +13,10 @@
 
 extern configType config;
 
+#if defined(SAVE_DUALS)
+extern dualsType *duals;
+#endif
+
 int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 	oneCut 	*cut;
 	vector 	piS, beta, temp, piCBar;
@@ -53,6 +57,20 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 			mem_free(beta);
 			break;
 		}
+
+#if defined(SAVE_DUALS)
+		c = 0;
+		while ( c < duals->cnt ) {
+			if ( equalVector(duals->vals[c], piS, prob->num->rows, config.TOLERANCE) )
+				break;
+			c++;
+		}
+		if ( c == duals->cnt ) {
+			duals->vals[duals->cnt] = duplicVector(piS, prob->num->rows);
+			duals->iter[duals->cnt] = cell->k;
+			duals->obs[duals->cnt++] = obs;
+		}
+#endif
 
 		/* allocate memory to hold a new cut */
 		if ( config.MULTICUT || obs == 0)

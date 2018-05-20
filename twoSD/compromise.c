@@ -65,20 +65,22 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	batch->sp->cstorsz = cnt; batch->sp->mac = idx;
 
 	/* Copy/append problems's row names */
-	cnt = batch->sp->rstorsz;
-	rOffset1 = batch->sp->mar; rOffset2 = idx = (batch->cnt-1)*prob->num->rows;
-	batch->sp->rname[idx] = batch->sp->rstore + cnt;
-	for (q = prob->sp->rname[0]; q < prob->sp->rname[0] + prob->sp->rstorsz; q++) {
-		if ( *q == '\0' ) {
-			for ( i = 0; i < strlen(tempName); i++ )
-				batch->sp->rstore[cnt++] = tempName[i];
-			if ( idx < (batch->sp->marsz-1) )
-				batch->sp->rname[idx+1] = batch->sp->rstore + cnt + 1;
-			idx++;
+	if ( batch->sp->rstorsz > 0 ) {
+		cnt = batch->sp->rstorsz;
+		rOffset1 = batch->sp->mar; rOffset2 = idx = (batch->cnt-1)*prob->num->rows;
+		batch->sp->rname[idx] = batch->sp->rstore + cnt;
+		for (q = prob->sp->rname[0]; q < prob->sp->rname[0] + prob->sp->rstorsz; q++) {
+			if ( *q == '\0' ) {
+				for ( i = 0; i < strlen(tempName); i++ )
+					batch->sp->rstore[cnt++] = tempName[i];
+				if ( idx < (batch->sp->marsz-1) )
+					batch->sp->rname[idx+1] = batch->sp->rstore + cnt + 1;
+				idx++;
+			}
+			batch->sp->rstore[cnt++] = *q;
 		}
-		batch->sp->rstore[cnt++] = *q;
+		batch->sp->rstorsz = cnt; batch->sp->mar += (idx - rOffset2);
 	}
-	batch->sp->rstorsz = cnt; batch->sp->mar += (idx - rOffset2);
 
 	/* Copy the all column information from the original master problem */
 	cnt = batch->sp->numnz;

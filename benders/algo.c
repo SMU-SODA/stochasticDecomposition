@@ -14,6 +14,10 @@
 extern string outputDir;
 extern configType config;
 
+#if defined(SAVE_DUALS)
+dualsType *duals = NULL;
+#endif
+
 int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
@@ -100,6 +104,16 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	int 	candidCut;
 	clock_t	tic;
 
+#if defined(SAVE_DUALS)
+	if ( duals == NULL ) {
+		duals = (dualsType *) mem_malloc(sizeof(dualsType));
+		duals->iter = (intvec) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
+		duals->obs = (intvec) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
+		duals->vals = (vector *) arr_alloc(config.MAX_ITER*cell->omega->cnt, vector);
+		duals->cnt = 0;
+	}
+#endif
+
 	/* Main loop of the algorithm */
 	while (cell->k < config.MAX_ITER) {
 		tic = clock();
@@ -180,6 +194,10 @@ void writeStatistic(FILE *soln, FILE *incumb, probType **prob, cellType *cell) {
 
 	if ( incumb != NULL ) {
 		printVector(cell->incumbX, prob[0]->num->cols, incumb);
+	}
+
+	if ( duals != NULL ) {
+		printf("\nNumber of duals discovered = %d", duals->cnt);
 	}
 
 }//END WriteStat

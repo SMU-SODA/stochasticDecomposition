@@ -19,6 +19,7 @@
 
 #undef ALGO_CHECK
 #undef STOCH_CHECK
+#define SAVE_DUALS
 
 typedef struct{
 	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
@@ -114,6 +115,15 @@ typedef struct {
 
 	runTime		*time;				/* Run time structure */
 }cellType;
+
+#if defined(SAVE_DUALS)
+typedef struct {
+	int 	cnt;
+	vector 	*vals;
+	intvec	iter;
+	intvec  obs;
+}dualsType;
+#endif
 
 int parseCmdLine(int argc, char *argv[], string probName, string inputDir);
 void createOutputDir(string outputDir, string algoName, string probName);
