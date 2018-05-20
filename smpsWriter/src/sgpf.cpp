@@ -96,6 +96,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 					sgpf.timCols.push_back(elemName);
 				if ( t != 0 ) {
 					sgpf.stocCols[t-1].push_back(elemName);
+					sgpf.stocRows[t-1].push_back("obj");
 					data.initRet.push_back(data.retBorrow[0][i]);
 				}
 
@@ -115,6 +116,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 			totalVol[t].setName(elemName); model.add(totalVol[t]);
 			if ( t != 0 ) {
 				sgpf.stocCols[t-1].push_back(elemName);
+				sgpf.stocRows[t-1].push_back("obj");
 				data.initRet.push_back(data.ret[0]);
 			}
 		}
@@ -207,6 +209,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 				IloConstraint c(expr == initTotalVol); c.setName(elemName); model.add(c);
 
 				sgpf.stocRows[t-1].push_back(elemName);
+				sgpf.stocCols[t-1].push_back("RHS");
 			}
 
 			/* 4. Adequacy inequality */
@@ -328,13 +331,18 @@ int createSGPFstoc (SMPSmodel sgpf, SGPFdata data) {
 	sFile << "INDEP          NORMAL" << endl;
 
 	/* Error terms */
+	int idx = 0;
 	for (int c = 0; c < (int) sgpf.stocRows[0].size() ; c++ ) {
-		sprintf(line, "    U%02d%14s%14.1f%14.1f\n", (int) sgpf.stocCols[0].size() + c+1, "LAGGED", 0.0, 0.02*vals);
-		sFile << line;
+		if ( sgpf.stocCols[0][c] == "RHS" ) {
+			sprintf(line, "    U%02d%14s%14.1f%14.1f\n", idx++, "LAGGED", 0.0, 0.02*vals);
+			sFile << line;
+		}
 	}
-	for (int c = 0; c < (int) sgpf.stocCols[0].size() ; c++ ) {
-		sprintf(line, "    U%02d%14s%14.1f%14.1f\n", (int) sgpf.stocRows[0].size() + c+1, "LAGGED", 0.0, 1.0);
-		sFile << line;
+	for (int c = 0; c < (int) sgpf.stocRows[0].size() ; c++ ) {
+		if ( sgpf.stocRows[0][c] == "obj" ) {
+			sprintf(line, "    U%02d%14s%14.1f%14.1f\n", idx++, "LAGGED", 0.0, 1.0);
+			sFile << line;
+		}
 	}
 
 	/* Establish the linear relationship between random variables of the stochastic process. */
@@ -349,35 +357,51 @@ int createSGPFstoc (SMPSmodel sgpf, SGPFdata data) {
 			vals += data.initVol[i];
 		}
 		for (int c = 0; c < (int) sgpf.stocRows[t-1].size(); c++ ) {
-			sprintf(line, "    %14s%14s%14f\n", "RHS", sgpf.stocRows[t-1][c].c_str(), 0.001*vals); sFile << line;
+			if ( sgpf.stocCols[t-1][c] == "RHS" ) {
+				sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.stocRows[t-1][c].c_str(), 0.001*vals);
+				sFile << line;
+			}
 		}
-		for (int c = 0; c < (int) sgpf.stocCols[t-1].size(); c++ ) {
-			if ( t == 1 )
-				sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.objName.c_str(), data.initRet[c]);
-			else
-				sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.objName.c_str(), 0.0);
-			sFile << line;
+		for (int c = 0; c < (int) sgpf.stocRows[t-1].size(); c++ ) {
+			if ( sgpf.stocRows[t-1][c] == "obj" ) {
+				if ( t == 1 )
+					sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.stocRows[t-1][c].c_str(),
+							data.initRet[c]);
+				else
+					sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.stocRows[t-1][c].c_str(),
+							0.0);
+				sFile << line;
+			}
 		}
 	}
 
+	idx = 0;
 	/* Linear transformation matrix */
 	for (int c = 0; c < (int) sgpf.stocRows[0].size(); c++ ) {
-		sprintf(line, " RV U%02d%11s%14s\n", (int) sgpf.stocCols[0].size() + c+1, "LAGGED", "LAG00"); sFile << line;
-		sprintf(line, "    %14s%14s%14f\n", "RHS", sgpf.stocRows[0][c].c_str(), 1.0); sFile << line;
+		if ( sgpf.stocCols[0][c] == "RHS" ) {
+			sprintf(line, " RV U%02d%11s%14s\n", idx, "LAGGED", "LAG00"); sFile << line;
+			sprintf(line, "    %14s%14s%14f\n", "RHS", sgpf.stocRows[0][c].c_str(), 1.0); sFile << line;
+		}
 	}
 	for (int c = 0; c < (int) sgpf.stocCols[0].size(); c++ ) {
-		sprintf(line, " RV U%02d%11s%14s\n", c+1, "LAGGED", "LAG00"); sFile << line;
-		sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[0][c].c_str(), sgpf.objName.c_str(), 1.0); sFile << line;
+		if ( sgpf.stocRows[0][c] == sgpf.objName ) {
+			sprintf(line, " RV U%02d%11s%14s\n", idx, "LAGGED", "LAG00"); sFile << line;
+			sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[0][c].c_str(), sgpf.objName.c_str(), 1.0); sFile << line;
+		}
 	}
 
 	for ( int t = 2 ; t < 3; t++ ) {
 		for (int c = 0; c < (int) sgpf.stocRows[0].size(); c++ ) {
-			sprintf(line, " HV %14s%14s%14s\n", "RHS", sgpf.stocRows[t-2][c].c_str(), "LAG01"); sFile << line;
-			sprintf(line, "    %14s%14s%14f\n", "RHS", sgpf.stocRows[t-1][c].c_str(), 1.0); sFile << line;
+			if ( sgpf.stocCols[t-2][c] == "RHS" ) {
+				sprintf(line, " HV %14s%14s%14s\n", "RHS", sgpf.stocRows[t-2][c].c_str(), "LAG01"); sFile << line;
+				sprintf(line, "    %14s%14s%14f\n", "RHS", sgpf.stocRows[t-1][c].c_str(), 1.0); sFile << line;
+			}
 		}
 		for (int c = 0; c < (int) sgpf.stocCols[0].size(); c++ ) {
-			sprintf(line, " HV %14s%14s%14s\n", sgpf.stocCols[t-2][c].c_str(), sgpf.objName.c_str(), "LAG01"); sFile << line;
-			sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.objName.c_str(), 1.0); sFile << line;
+			if ( sgpf.stocRows[t-2][c] == sgpf.objName ) {
+				sprintf(line, " HV %14s%14s%14s\n", sgpf.stocCols[t-2][c].c_str(), sgpf.objName.c_str(), "LAG01"); sFile << line;
+				sprintf(line, "    %14s%14s%14f\n", sgpf.stocCols[t-1][c].c_str(), sgpf.objName.c_str(), 1.0); sFile << line;
+			}
 		}
 	}
 
@@ -442,7 +466,7 @@ void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data) {
 	for ( int t = 0; t < sgpf.numPeriods; t++ ) {
 		if ( t == 0 ) {
 			data.ret[t] = dataInit + distribution(generator);
- 		}
+		}
 		else {
 			data.ret[t] = data.ret[t-1] + distribution(generator);
 		}
