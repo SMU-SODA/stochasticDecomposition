@@ -308,7 +308,7 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 		errMsg("Memory allocation", "new_master", "Faile to allocate memory to mcell->sp", 0);
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Allocating memory to master -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	master->type 	= config.MASTER_TYPE;                  	/* type of problem: LP, QP, MIP or MIQP */
+	master->type 	= config.MASTER_TYPE;               /* type of problem: LP, QP, MIP or MIQP */
 	master->objsen 	= orig->objsen;                 	/* sense of the objective: 1 for minimization and -1 for maximization */
 	master->mar 	= orig->mar;                       	/* number of rows */
 	master->numInt 	= orig->numInt;                 	/* number of integer variables in the problem  */
@@ -318,7 +318,7 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	master->rstorsz = orig->rstorsz;               		/* memory size for storing row names */
 	master->mac 	= orig->mac+1;           			/* number of columns + etas */
 	master->macsz 	= orig->macsz + 1;       			/* extended column size */
-	master->cstorsz 	= orig->cstorsz + NAMESIZE;    	/* memory size for storing column names */
+	master->cstorsz = orig->cstorsz + NAMESIZE;    		/* memory size for storing column names */
 
 	/* Allocate memory to the information whose type is string */
 	if (!(master->name = (string) arr_alloc(NAMESIZE, char)))
@@ -329,14 +329,19 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->ctype",0);
 	if (!(master->objname = (string) arr_alloc(NAMESIZE,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objname",0);
-	if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
-	if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
 	if (!(master->cname = (string*) arr_alloc(master->macsz,string)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cname",0);
 	if (!(master->cstore = (string) arr_alloc(master->cstorsz, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cstore",0);
+	if ( master->mar > 0 ) {
+		if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
+		if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
+	}
+	else {
+		master->rname = NULL; master->rstore = NULL;
+	}
 
 	/* Allocate memory to the information whose type is vector */
 	if (!(master->objx = (vector) arr_alloc(master->macsz, double)))
@@ -361,18 +366,18 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	strcpy(master->name, orig->name);           /* Copy problem name */
 	strcpy(master->objname, orig->objname);     /* Copy objective name */
 
-	/* Copy problem's column and row names */
+	/* Copy problem's column and row names, and calculate the pointers for master/copy row and column names. */
 	i = 0;
 	for (q = orig->cname[0]; q < orig->cname[0] + orig->cstorsz; q++)
 		master->cstore[i++] = *q;
-
-	i = 0;
-	for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
-		master->rstore[i++] = *q;
-
-	/* Calculate difference in pointers for master/copy row and column names */
 	colOffset = master->cstore - orig->cname[0];
-	rowOffset = master->rstore - orig->rname[0];
+
+	if ( master->mar > 0 ) {
+		i = 0;
+		for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
+			master->rstore[i++] = *q;
+		rowOffset = master->rstore - orig->rname[0];
+	}
 
 	/* Copy the all column information from the original master problem */
 	cnt = 0;

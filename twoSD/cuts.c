@@ -171,6 +171,8 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		pi_ratio[numSamples % config.SCAN_LEN] = cummOld / cummAll;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			variance = calcVariance(pi_ratio, NULL, NULL, 0);
+		else
+			variance = 1.0;
 
 		if (DBL_ABS(variance) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
 			*dualStableFlag = FALSE;

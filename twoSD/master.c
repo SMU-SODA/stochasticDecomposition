@@ -350,14 +350,19 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->ctype",0);
 	if (!(master->objname = (string) arr_alloc(NAMESIZE,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objname",0);
-	if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
-	if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
 	if (!(master->cname = (string*) arr_alloc(master->macsz,string)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cname",0);
 	if (!(master->cstore = (string) arr_alloc(master->cstorsz, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cstore",0);
+	if ( master->mar > 0 ) {
+		if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
+		if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
+	}
+	else {
+		master->rname = NULL; master->rstore = NULL;
+	}
 
 	/* Allocate memory to the information whose type is vector */
 	if (!(master->objx = (vector) arr_alloc(master->macsz, double)))
@@ -382,18 +387,18 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	strcpy(master->name, orig->name);           /* Copy problem name */
 	strcpy(master->objname, orig->objname);     /* Copy objective name */
 
-	/* Copy problem's column and row names */
+	/* Copy problem's column and row names. Calculate difference in pointers for master/copy row and column names. */
 	i = 0;
 	for (q = orig->cname[0]; q < orig->cname[0] + orig->cstorsz; q++)
 		master->cstore[i++] = *q;
-
-	i = 0;
-	for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
-		master->rstore[i++] = *q;
-
-	/* Calculate difference in pointers for master/copy row and column names */
 	colOffset = master->cstore - orig->cname[0];
-	rowOffset = master->rstore - orig->rname[0];
+
+	if ( master->mar > 0 ) {
+		i = 0;
+		for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
+			master->rstore[i++] = *q;
+		rowOffset = master->rstore - orig->rname[0];
+	}
 
 	/* Copy the all column information from the original master problem */
 	cnt = 0;
