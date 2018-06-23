@@ -215,15 +215,18 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 					if ( idx == 0 )
 						multiplier = 1.0;
 					else
-						multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
+						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
 					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					gCuts->vals[cnt]->alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
+					gCuts->vals[cnt]->alpha += omega->weights[observ[obs]] * multiplier *
+							(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
 
 					for (c = 1; c <= num->cntCcols; c++)
-						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[observ[obs]] *
+						multiplier * sigma->vals[sigmaIdx].piC[c];
 					for (c = 1; c <= num->rvCOmCnt; c++)
-						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[observ[obs]] *
+						multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
 				}
 				count++;
 			}
