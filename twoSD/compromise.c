@@ -17,10 +17,12 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	vector	coef, qsepvec;
 	intvec	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
-	char 	*q, tempName[NAMESIZE];
+	char 	*q, tempName[NAMESIZE], batchNameSuffix[NAMESIZE];
 
-	batch->ck[batch->cnt] 			= cell->k;
-	batch->objLB[batch->cnt] 		= cell->incumbEst;
+	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
+
+	batch->ck[batch->cnt] 	 = cell->k;
+	batch->objLB[batch->cnt] = cell->incumbEst;
 
 	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols);
 	batch->cnt++;
@@ -30,6 +32,8 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	batch->sp->matsz	+= prob->sp->matsz;
 	batch->sp->marsz 	+= prob->sp->marsz;
 	batch->sp->macsz	+= prob->sp->macsz+1;
+	batch->sp->cstorsz  += prob->sp->cstorsz + strlen(batchNameSuffix) * batch->sp->macsz;
+	batch->sp->rstorsz  += prob->sp->rstorsz + strlen(batchNameSuffix) * batch->sp->marsz;
 
 	batch->sp->rhsx 	= (vector) mem_realloc(batch->sp->rhsx, batch->sp->marsz*sizeof(double));
 	batch->sp->senx		= (string) mem_realloc(batch->sp->senx, batch->sp->marsz*sizeof(char));
@@ -48,14 +52,13 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	batch->sp->matcnt 	= (intvec) mem_realloc(batch->sp->matcnt, batch->sp->macsz*sizeof(int));
 	batch->sp->matind 	= (intvec) mem_realloc(batch->sp->matind, batch->sp->matsz*sizeof(int));
 
-	sprintf(tempName, "_B%02d", batch->cnt);
 	/* Copy/append problem's column names */
 	cnt = batch->sp->cstorsz; cOffset = idx = batch->sp->mac;
 	batch->sp->cname[idx] = batch->sp->cstore + cnt;
 	for (q = prob->sp->cname[0]; q < prob->sp->cname[0] + prob->sp->cstorsz; q++) {
 		if ( *q == '\0' ) {
-			for ( i = 0; i < strlen(tempName); i++ )
-				batch->sp->cstore[cnt++] = tempName[i];
+			for ( i = 0; i < strlen(batchNameSuffix); i++ )
+				batch->sp->cstore[cnt++] = batchNameSuffix[i];
 			if ( idx < (batch->sp->macsz-1) )
 				batch->sp->cname[idx+1] = batch->sp->cstore + cnt + 1;
 			idx++;
@@ -71,8 +74,8 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 		batch->sp->rname[idx] = batch->sp->rstore + cnt;
 		for (q = prob->sp->rname[0]; q < prob->sp->rname[0] + prob->sp->rstorsz; q++) {
 			if ( *q == '\0' ) {
-				for ( i = 0; i < strlen(tempName); i++ )
-					batch->sp->rstore[cnt++] = tempName[i];
+				for ( i = 0; i < strlen(batchNameSuffix); i++ )
+					batch->sp->rstore[cnt++] = batchNameSuffix[i];
 				if ( idx < (batch->sp->marsz-1) )
 					batch->sp->rname[idx+1] = batch->sp->rstore + cnt + 1;
 				idx++;
@@ -109,7 +112,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 
 	/* Initialize information for the extra column in the new master. */
 	idx = batch->sp->mac++;
-	sprintf(tempName, "eta_B%02d", batch->cnt);
+	sprintf(tempName, "eta%s", batchNameSuffix);
 	strcpy(batch->sp->cstore+batch->sp->cstorsz, tempName);
 	batch->sp->cname[idx] 	= batch->sp->cstore + batch->sp->cstorsz;
 	batch->sp->objx[idx] 	= 1.0;
@@ -134,7 +137,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	else {
 		/* Add new rows to the problem */
 		for  ( i = 0; i < prob->num->rows; i++ ) {
-			sprintf(tempName, "%s_B%02d", prob->sp->rname[i], batch->cnt);
+			sprintf(tempName, "%s%s", prob->sp->rname[i], batchNameSuffix);
 			if ( addRow(batch->sp->lp, 0, batch->sp->rhsx[i+rOffset2], batch->sp->senx[i+rOffset2],
 					0, NULL, NULL, tempName) ) {
 				errMsg("solver", "buildCompromise", "failed to add new row to problem in solver", 0);
@@ -184,7 +187,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	/* Optimality minorants */
 	batch->sp->mar += cell->cuts->cnt;
 	for ( cnt = 0; cnt < cell->cuts->cnt; cnt++ ) {
-		sprintf(tempName, "%s_B%02d", cell->cuts->vals[cnt]->name, batch->cnt);
+		sprintf(tempName, "%s%s", cell->cuts->vals[cnt]->name, batchNameSuffix);
 		cell->cuts->vals[cnt]->beta[0] = (double) (batch->ck[batch->cnt-1]) / (double) cell->cuts->vals[cnt]->numSamples;
 		if ( addRow(batch->sp->lp, prob->num->cols+1, cell->cuts->vals[cnt]->alphaIncumb, GE, 0, indices,
 				cell->cuts->vals[cnt]->beta, tempName) ) {
@@ -196,7 +199,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	/* Feasibility cuts, if any */
 	batch->sp->mar += cell->fcuts->cnt;
 	for ( cnt = 0; cnt < cell->fcuts->cnt; cnt++ ) {
-		sprintf(tempName, "%s_B%02d", cell->fcuts->vals[cnt]->name, batch->cnt);
+		sprintf(tempName, "%s%s", cell->fcuts->vals[cnt]->name, batchNameSuffix);
 		if ( addRow(batch->sp->lp, prob->num->cols+1, cell->fcuts->vals[cnt]->alphaIncumb, GE, 0, indices,
 				cell->fcuts->vals[cnt]->beta, tempName) ) {
 			errMsg("solver", "buildCompromise", "failed to add new feasibility cut row to problem in solver", 0);

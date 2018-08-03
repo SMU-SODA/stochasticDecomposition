@@ -91,7 +91,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		BOOL *dualStableFlag, vector pi_ratio, double lb) {
 	oneCut *cut;
 	vector 	piCbarX, beta;
-	double  argmaxOld, argmaxNew, cummOld, cummAll, argmax, alpha = 0.0, variance = 1.0, multiplier;
+	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
 	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	BOOL    pi_eval_flag = FALSE;
 
@@ -174,7 +174,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		else
 			variance = 1.0;
 
-		if (DBL_ABS(variance) >= .000002 || (pi_ratio[numSamples % config.SCAN_LEN]) < 0.95)
+		if (DBL_ABS(variance) >= .000002 || pi_ratio[numSamples % config.SCAN_LEN] < 0.95 )
 			*dualStableFlag = FALSE;
 		else
 			*dualStableFlag = TRUE;

@@ -243,15 +243,34 @@ float randUniform(long long *SEED) {
 
 	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
 	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
-	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16)
-									+ (hi_bits >> 15);
+	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
+
 	return ((*SEED) < 0 ? ((*SEED) += 0x7FFFFFFFL) : (*SEED)) * 4.656612875E-10;
 }//END randUniform()
 
+float randUniform_new(long long *SEED) {
+	static int lo_bits, hi_bits;
+
+	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
+	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
+	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
+
+	srand((unsigned) (*SEED));
+	return (rand()/RAND_MAX+1);
+}
+
 int randInteger(long long *SEED, int iMax) {
+	static int lo_bits, hi_bits;
+	int val;
 
-	return (int) (randUniform(SEED)*iMax);
+	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
+	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
+	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
 
+	srand((unsigned) (*SEED));
+	val = rand() % iMax;
+
+	return val;
 }//END randInteger()
 
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
