@@ -125,8 +125,8 @@ PRE_EPSILON 0.01
 
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
-EPSILON 0.0001
-SCAN_LEN 512
+EPSILON 0.01
+SCAN_LEN 128
 
 // Number of replications
-MULTIPLE_REP 1
+MULTIPLE_REP 0

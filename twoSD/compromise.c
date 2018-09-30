@@ -85,7 +85,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 		batch->sp->rstorsz = cnt; batch->sp->mar += (idx - rOffset2);
 	}
 
-	/* Copy the all column information from the original master problem */
+	/* Copy all column information from the batch master problem */
 	cnt = batch->sp->numnz;
 	for (i = 0; i < prob->sp->mac; i++) {
 		batch->sp->objx[cOffset+i] 	 = prob->sp->objx[i];		/* Copy objective function coefficients */
@@ -104,7 +104,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 	batch->sp->numnz = cnt;
 
-	/* Copy all information concerning rows of master */
+	/* Copy all information concerning rows of batch master problem */
 	for (i = 0; i < prob->sp->mar; i++) {
 		batch->sp->rhsx[rOffset2+i]  = prob->sp->rhsx[i];		/* Copy the right hand side value */
 		batch->sp->senx[rOffset2+i]  = prob->sp->senx[i];		/* Copy the constraint sense */
@@ -126,9 +126,9 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	 * existent batch problem. */
 	if ( batch->cnt == 1 ) {
 		/* Load the copy into CPLEX */
-		batch->sp->lp = setupProblem(batch->sp->name, batch->sp->type, batch->sp->mac, batch->sp->mar, batch->sp->objsen, batch->sp->objx,
-				batch->sp->rhsx, batch->sp->senx, batch->sp->matbeg, batch->sp->matcnt,batch->sp->matind, batch->sp->matval, batch->sp->bdl,
-				batch->sp->bdu, NULL, batch->sp->cname, batch->sp->rname, batch->sp->ctype);
+		batch->sp->lp = setupProblem(batch->sp->name, batch->sp->type, batch->sp->mac, batch->sp->mar, batch->sp->objsen,
+				batch->sp->objx, batch->sp->rhsx, batch->sp->senx, batch->sp->matbeg, batch->sp->matcnt,batch->sp->matind,
+				batch->sp->matval, batch->sp->bdl, batch->sp->bdu, NULL, batch->sp->cname, batch->sp->rname, batch->sp->ctype);
 		if ( batch->sp->lp == NULL ) {
 			errMsg("Batch problem setup", "buildCompromise", "failed to setup master problem in the solver",0);
 			return 1;
@@ -167,7 +167,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	coef = (vector) arr_alloc(prob->num->rows+1, double);
 	for (i = 0; i < prob->num->rows; i++) {
 		coef[i+1]  = prob->sp->rhsx[i];
-		indices[i] = i+rOffset1;
+		indices[i] = i+rOffset1;\
 	}
 
 	/* b - A * xbar */

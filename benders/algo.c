@@ -102,7 +102,7 @@ int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
 
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	int 	candidCut;
-	clock_t	tic;
+	clock_t	tic, mainTic;
 
 #if defined(SAVE_DUALS)
 	if ( duals == NULL ) {
@@ -114,6 +114,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	}
 #endif
 
+	mainTic = clock();
 	/* Main loop of the algorithm */
 	while (cell->k < config.MAX_ITER) {
 		tic = clock();
@@ -162,6 +163,9 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time->masterAccumTime += cell->time->masterIter; cell->time->subprobAccumTime += cell->time->subprobIter;
 		cell->time->masterIter = cell->time->subprobIter = cell->time->optTestIter = 0.0;
 		cell->time->iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time->iterAccumTime += cell->time->iterTime;
+
+		if ( cell->k % 10 == 0 )
+			printf("Time = %lf", ((double) (clock() - mainTic))/CLOCKS_PER_SEC);
 	}
 
 	return 0;

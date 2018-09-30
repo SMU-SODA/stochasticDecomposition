@@ -20,7 +20,7 @@ CUT_MULT  1
 MIN_QUAD_SCALAR 0.0001
 
 // OPTIMALITY GAP
-EPSILON 0.0001
+EPSILON 0.001
 
 // Run seeds
 RUN_SEED    8879657642464524
@@ -55,7 +55,7 @@ RUN_SEED    1395182510837913
 RUN_SEED    3735836402047426
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 1
+EVAL_FLAG 0
 
 // Solution tolerance for deciding the usage of mean solution.
 EVAL_MIN_ITER 250
@@ -115,4 +115,4 @@ MULTIPLE_REP 1
 SAA 1
 
 // Number of observations to be used to set the sample average approximation
-MAX_OBS 50
+MAX_OBS 100
