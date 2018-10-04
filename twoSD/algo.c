@@ -11,11 +11,11 @@
 
 #include "twoSD.h"
 
-extern string outputDir;
+extern cString outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
-	vector	 meanSol = NULL;
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
+	dVector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	batchSummary *batch = NULL;
@@ -59,12 +59,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 		/* Write solution statistics for optimization process */
 		if (rep == 0 ) {
-			writeOptimizationSummary(sFile, iFile, prob, cell, TRUE);
-			writeOptimizationSummary(stdout, NULL, prob, cell, TRUE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, true);
+			writeOptimizationSummary(stdout, NULL, prob, cell, true);
 		}
 		else {
-			writeOptimizationSummary(sFile, iFile, prob, cell, FALSE);
-			writeOptimizationSummary(stdout, NULL, prob, cell, FALSE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, false);
+			writeOptimizationSummary(stdout, NULL, prob, cell, false);
 		}
 
 		/* evaluate the optimal solution*/
@@ -116,17 +116,17 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 }//END algo()
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
-	vector 	observ;
+	dVector 	observ;
 	int		m, omegaIdx, candidCut;
-	BOOL 	newOmegaFlag;
+	bool 	newOmegaFlag;
 	clock_t	tic;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
+	if ( !(observ = (dVector) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "solveCell", "observ", 0);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
-	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
+	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
 		cell->k++;
 		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -192,7 +192,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	return 1;
 }//END solveCell()
 
-void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, BOOL header) {
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header) {
 
 	if ( header ) {
 		fprintf(soln, "\n--------------------------------------- Problem Information ----------------------------------------\n\n");

@@ -13,7 +13,7 @@
 #include <twoSD.h>
 
 long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
-string   	outputDir;		/* output directory */
+cString   	outputDir;		/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
 int main (int argc, char *argv[]) {
@@ -63,9 +63,9 @@ int main (int argc, char *argv[]) {
 	return 0;
 }//END main()
 
-void parseCmdLine(int argc, char *argv[], string probName, string inputDir) {
+void parseCmdLine(int argc, char *argv[], cString probName, cString inputDir) {
 
-	outputDir = (string) arr_alloc(BLOCKSIZE, char);
+	outputDir = (cString) arr_alloc(BLOCKSIZE, char);
 
 	/* request for problem name to be solved, the path is assumed to be provided in the configuration file */
 	if ( argc < 2 ) {

@@ -13,8 +13,8 @@
 
 extern configType config;
 
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol) {
-	vector	lb = NULL;
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, dVector *meanSol) {
+	dVector	lb = NULL;
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -57,7 +57,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 }//END setupAlgo()
 
 /* This function is used to create cells used in the algorithm */
-cellType *newCell(stocType *stoc, probType **prob, vector xk) {
+cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cellType    *cell;
 
 	/* Allocate memory to all cells used in the algorithm. */
@@ -89,11 +89,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	/* stochastic elements */
 	cell->omega  = newOmega(stoc);
 
-	cell->optFlag 			= FALSE;
+	cell->optFlag = false;
 
-	cell->spFeasFlag = TRUE;
+	cell->spFeasFlag = true;
 	cell->feasCnt 		= 0;
-	cell->infeasIncumb 	= FALSE;
+	cell->infeasIncumb 	= false;
 
 	/* incumbent solution and estimates */
 	if (config.MASTER_TYPE == PROB_QP) {
@@ -101,11 +101,11 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
-		cell->incumbChg = TRUE;
+		cell->incumbChg = true;
 
 		cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 
-		if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
+		if ( !(cell->piM = (dVector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 			errMsg("allocation", "newMaster", "cell->piM", 0);
 	}
 	else {
@@ -113,7 +113,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->incumbEst = 0.0;
 		cell->quadScalar= 0.0;
 		cell->iCutIdx   = -1;
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 
 		cell->maxCuts = config.MAX_ITER;
 	}
@@ -132,7 +132,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 			return NULL;
 		}
 
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 #if defined(ALGO_CHECK)
 		if ( writeProblem(cell->master->lp, "newQPMaster.lp") ) {
 			errMsg("write problem", "new_master", "failed to write master problem to file",0);
@@ -144,24 +144,24 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	return cell;
 }//END newCell()
 
-int cleanCellType(cellType *cell, probType *prob, vector xk) {
+int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	int cnt;
 
 	/* constants and arrays */
 	cell->k = 0;
 	cell->LPcnt = 0;
-	cell->optFlag 		 = FALSE;
-	cell->spFeasFlag 	 = TRUE;
+	cell->optFlag 		 = false;
+	cell->spFeasFlag 	 = true;
 
-	copyVector(xk, cell->candidX, prob->num->cols, TRUE);
+	copyVector(xk, cell->candidX, prob->num->cols, true);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
 	if (config.MASTER_TYPE == PROB_QP) {
-		copyVector(xk, cell->incumbX, prob->num->cols, TRUE);
+		copyVector(xk, cell->incumbX, prob->num->cols, true);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;
-		cell->incumbChg = TRUE;
+		cell->incumbChg = true;
 	}
 
 	/* oneProblem structures and solver elements */
@@ -177,15 +177,15 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	}
 
 	/* cuts */
-	if (cell->cuts) freeCutsType(cell->cuts, TRUE);
-	if (cell->fCuts) freeCutsType(cell->fCuts, TRUE);
+	if (cell->cuts) freeCutsType(cell->cuts, true);
+	if (cell->fCuts) freeCutsType(cell->fCuts, true);
 	cell->feasCnt 		= 0;
-	cell->infeasIncumb 	= FALSE;
+	cell->infeasIncumb 	= false;
 
 	/* stochastic components */
 	if ( config.SAA == 1 ) {
 		cnt = cell->omega->cnt;
-		if (cell->omega) freeOmegaType(cell->omega, TRUE);
+		if (cell->omega) freeOmegaType(cell->omega, true);
 		cell->omega->cnt = cnt;
 	}
 
@@ -199,7 +199,7 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 			return 1;
 		}
 
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 
 #if defined(ALGO_CHECK)
 		if ( writeProblem(cell->master->lp, "cleanedQPMaster.lp") ) {
@@ -218,9 +218,9 @@ void freeCellType(cellType *cell) {
 		if (cell->master) freeOneProblem(cell->master);
 		if (cell->candidX) mem_free(cell->candidX);
 		if (cell->incumbX) mem_free(cell->incumbX);
-		if (cell->cuts) freeCutsType(cell->cuts, FALSE);
-		if (cell->fCuts) freeCutsType(cell->fCuts, FALSE);
-		if (cell->omega) freeOmegaType(cell->omega, FALSE);
+		if (cell->cuts) freeCutsType(cell->cuts, false);
+		if (cell->fCuts) freeCutsType(cell->fCuts, false);
+		if (cell->omega) freeOmegaType(cell->omega, false);
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->time) mem_free(cell->time);
 		mem_free(cell);

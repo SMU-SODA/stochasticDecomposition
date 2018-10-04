@@ -17,16 +17,16 @@ extern configType config;
 extern dualsType *duals;
 #endif
 
-int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
+int formOptCut(probType *prob, cellType *cell, dVector Xvect, bool isIncumb) {
 	oneCut 	*cut;
-	vector 	piS, beta, temp, piCBar;
+	dVector 	piS, beta, temp, piCBar;
 	sparseMatrix COmega;
 	sparseVector bOmega;
 	double	mubBar, alpha;
 	int    	cutIdx, obs, c;
 	clock_t	tic;
 
-	if ( !(piS = (vector) arr_alloc(prob->num->rows+1, double)) )
+	if ( !(piS = (dVector) arr_alloc(prob->num->rows+1, double)) )
 		errMsg("allocation", "stochasticUpdates", "piS", 0);
 	bOmega.cnt = prob->num->rvbOmCnt; bOmega.col = prob->coord->rvbOmRows;
 	COmega.cnt = prob->num->rvCOmCnt; COmega.col = prob->coord->rvCOmCols; COmega.row = prob->coord->rvCOmRows;
@@ -125,7 +125,7 @@ int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb) {
 }//END formCut()
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, vector xk, int betaLen) {
+double maxCutHeight(cutsType *cuts, dVector xk, int betaLen) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
@@ -139,7 +139,7 @@ double maxCutHeight(cutsType *cuts, vector xk, int betaLen) {
 }//END maxCutHeight
 
 /* This function calculates and returns the height of a given cut at a given X. */
-double cutHeight(oneCut *cut, vector xk, int betaLen) {
+double cutHeight(oneCut *cut, dVector xk, int betaLen) {
 	double height;
 
 	/* A cut is calculated as alpha - beta x X */
@@ -149,7 +149,7 @@ double cutHeight(oneCut *cut, vector xk, int betaLen) {
 }//END cutHeight()
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(oneProblem *master, cutsType *cuts, vector vectX, vector piM, int betaLen, int *iCutIdx) {
+int reduceCuts(oneProblem *master, cutsType *cuts, dVector vectX, dVector piM, int betaLen, int *iCutIdx) {
 	double 	height, minHeight;
 	int 	oldestCut, idx;
 
@@ -228,14 +228,14 @@ oneCut *newCut(int numX, int currentIter) {
 	oneCut *cut;
 
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
-	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
+	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 	cut->ck = currentIter;
 	if (!(cut->beta = arr_alloc(numX + 1, double)))
 		errMsg("allocation", "new_cut", "beta", 0);
 	cut->alpha = 0.0;
-	cut->name = (string) arr_alloc(NAMESIZE, char);
+	cut->name = (cString) arr_alloc(NAMESIZE, char);
 
 	return cut;
 }//END newCut
@@ -264,7 +264,7 @@ void freeOneCut(oneCut *cut) {
 	}
 }
 
-void freeCutsType(cutsType *cuts, BOOL partial) {
+void freeCutsType(cutsType *cuts, bool partial) {
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++)

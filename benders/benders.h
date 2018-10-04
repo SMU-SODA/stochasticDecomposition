@@ -53,11 +53,11 @@ typedef struct{
 typedef struct {
 	int		ck;					/* Iteration when the cut was generated */
 	double  alpha;              /* scalar value for the right-hand side */
-	vector  beta;               /* coefficients of the master problems's primal variables */
-	BOOL	isIncumb;			/* indicates if the cut is an incumbent cut */
+	dVector  beta;               /* coefficients of the master problems's primal variables */
+	bool	isIncumb;			/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;		/* right-hand side when using QP master, this is useful for quick updates */
 	int 	rowNum;				/* row number for master problem in solver */
-	string	name;
+	cString	name;
 }oneCut;
 
 typedef struct {
@@ -80,8 +80,8 @@ typedef struct {
 typedef struct {
 	int		numRV;					/* Number of random variables */
 	int 	cnt;					/* Number of observations */
-	vector	probs;					/* Probability of observation */
-	vector	*vals;					/* Observation values */
+	dVector	probs;					/* Probability of observation */
+	dVector	*vals;					/* Observation values */
 } omegaType;
 
 typedef struct {
@@ -91,15 +91,15 @@ typedef struct {
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
 
-	vector      candidX;            /* primal solution of the master problem */
+	dVector      candidX;            /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
 
-	vector      incumbX;			/* incumbent master solution */
+	dVector      incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
-	BOOL        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
+	bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
 	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
-	vector		piM;
+	dVector		piM;
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
@@ -107,11 +107,11 @@ typedef struct {
 
 	omegaType 	*omega;				/* all realizations observed during the algorithm */
 
-    BOOL        optFlag;
-    BOOL		optMode;
-    BOOL		spFeasFlag;			/* Indicates whether the subproblem is feasible */
+    bool        optFlag;
+    bool		optMode;
+    bool		spFeasFlag;			/* Indicates whether the subproblem is feasible */
     int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
-	BOOL		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
+	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasbible */
 
 	runTime		*time;				/* Run time structure */
 }cellType;
@@ -119,27 +119,27 @@ typedef struct {
 #if defined(SAVE_DUALS)
 typedef struct {
 	int 	cnt;
-	vector 	*vals;
-	intvec	iter;
-	intvec  obs;
+	dVector 	*vals;
+	iVector	iter;
+	iVector  obs;
 }dualsType;
 #endif
 
-int parseCmdLine(int argc, char *argv[], string probName, string inputDir);
-void createOutputDir(string outputDir, string algoName, string probName);
+int parseCmdLine(int argc, char *argv[], cString probName, cString inputDir);
+void createOutputDir(cString outputDir, cString algoName, cString probName);
 int readConfig();
 void freeConfig();
 
 /* algo.c */
-int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName);
+int algo (oneProblem *orig, timeType *tim, stocType *stoc, cString probName);
 int solveBendersCell(stocType *stoc, probType **prob, cellType *cell);
-BOOL optimal(cellType *cell);
+bool optimal(cellType *cell);
 void writeStatistic(FILE *soln, FILE *incumb, probType **prob, cellType *cell);
 
 /* setup.c */
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, vector *meanSol);
-cellType *newCell(stocType *stoc, probType **prob, vector xk);
-int cleanCellType(cellType *cell, probType *prob, vector xk);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, dVector *meanSol);
+cellType *newCell(stocType *stoc, probType **prob, dVector xk);
+int cleanCellType(cellType *cell, probType *prob, dVector xk);
 void freeCellType(cellType *cell);
 
 /* masters.c */
@@ -147,36 +147,36 @@ int solveMaster(numType *num, sparseVector *dBar, cellType *cell);
 int addCut2Master(cellType *cell, cutsType *cuts, oneCut *cut, int lenX);
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
 int replaceIncumbent(probType *prob, cellType *cell);
-int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar);
+int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
-int changeQPrhs(probType *prob, cellType *cell, vector xk);
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk);
+int changeQPrhs(probType *prob, cellType *cell, dVector xk);
+int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk);
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formOptCut(probType *prob, cellType *cell, vector Xvect, BOOL isIncumb);
-double maxCutHeight(cutsType *cuts, vector xk, int betaLen);
-double cutHeight(oneCut *cut, vector xk, int betaLen);
-int reduceCuts(oneProblem *master, cutsType *cuts, vector vectX, vector piM, int betaLen, int *iCutIdx);
+int formOptCut(probType *prob, cellType *cell, dVector Xvect, bool isIncumb);
+double maxCutHeight(cutsType *cuts, dVector xk, int betaLen);
+double cutHeight(oneCut *cut, dVector xk, int betaLen);
+int reduceCuts(oneProblem *master, cutsType *cuts, dVector vectX, dVector piM, int betaLen, int *iCutIdx);
 int dropCut(oneProblem *master, cutsType *cuts, int cutIdx, int *iCutIdx);
 oneCut *newCut(int numX, int currentIter);
 cutsType *newCuts(int maxCuts);
 void freeOneCut(oneCut *cut);
-void freeCutsType(cutsType *cuts, BOOL partial);
+void freeCutsType(cutsType *cuts, bool partial);
 
 /* subprob.c */
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector obsVals, BOOL *spFeasFlag, double *subprobTime, vector piS, double *mubBar);
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
-vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector obs);
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, bool *spFeasFlag, double *subprobTime, dVector piS, double *mubBar);
+dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector obs);
+dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector obs);
 int computeMU(LPptr lp, int numCols, double *mubBar);
 oneProblem *newSubproblem(oneProblem *subprob);
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X);
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
-int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ);
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, dVector rhs, dVector X);
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, dVector observ, dVector spRHS, dVector X);
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, dVector cost, iVector indices, dVector observ);
 omegaType *newOmega(stocType *stoc);
-void freeOmegaType(omegaType *omega, BOOL partial);
+void freeOmegaType(omegaType *omega, bool partial);
 
 /* evaluate.c */
-int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect);
+int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, dVector Xvect);
 
 #endif /* BENDERS_H_ */

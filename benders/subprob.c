@@ -12,15 +12,14 @@
 #include "benders.h"
 
 extern configType config;
-extern string outputDir;
 
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector obsVals, BOOL *spFeasFlag, double *subprobTime, vector piS, double *mubBar) {
-	vector 	rhs, cost;
-	intvec	indices;
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, dVector obsVals, bool *spFeasFlag, double *subprobTime, dVector piS, double *mubBar) {
+	dVector 	rhs, cost;
+	iVector	indices;
 	int  	status, n;
 	clock_t	tic;
 
-	if ( !(indices = (intvec) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
+	if ( !(indices = (iVector) arr_alloc(max(prob->num->rows, prob->num->cols), int)) )
 		errMsg("allocation", "solve_subporb", "indices", 0);
 	for ( n = 0; n < max(prob->num->rows,prob->num->cols); n++ )
 		indices[n] = n;
@@ -56,7 +55,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			printf("Subproblem is infeasible: need to create feasibility cut.\n");
-			(*spFeasFlag) = FALSE;
+			(*spFeasFlag) = false;
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
@@ -83,9 +82,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 
 #if 0
 	FILE *basisFile;
-	intvec cstat, rstat;
-	cstat = (intvec) arr_alloc( prob->num->cols+1, int);
-	rstat = (intvec) arr_alloc( prob->num->rows+1, int);
+	iVector cstat, rstat;
+	cstat = (iVector) arr_alloc( prob->num->cols+1, int);
+	rstat = (iVector) arr_alloc( prob->num->rows+1, int);
 
 	/* Obtain the status of columns and rows in the basis. */
 	if ( getBasis(subproblem->lp, cstat, rstat) ) {
@@ -116,19 +115,19 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, vector ob
 	return 0;
 }// END solveSubprob()
 
-/* This function computes the right hand side of the subproblem, based on a given X vector and a given observation of omega.
+/* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
  * It is defined as:
  * 			rhs = R(omega) - T(omega) x X
  * and is calculated as:
  * 			rhs = (Rbar - Tbar x X) + (Romega - Tomega x X)
  *
  * where the "bar" denotes the fixed or mean value, and the "omega" denotes a random variation from this mean. The function allocates an array
- * for the vector, which must be freed by the customer.  Also, the zeroth position of this rhs vector is reserved, and the actual values begin at rhs[1].
+ * for the dVector, which must be freed by the customer.  Also, the zeroth position of this rhs dVector is reserved, and the actual values begin at rhs[1].
  * R is b, and T is C
  \***********************************************************************/
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector observ) {
+dVector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector observ) {
 	int cnt;
-	vector rhs;
+	dVector rhs;
 	sparseVector bomega;
 	sparseMatrix Comega;
 
@@ -147,8 +146,8 @@ vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatr
 	return rhs;
 }//END computeRHS()
 
-vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vector observ) {
-	vector cost;
+dVector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, dVector observ) {
+	dVector cost;
 	sparseVector cOmega;
 	int	cnt;
 
@@ -162,17 +161,17 @@ vector computeCostCoeff(numType *num, coordType *coord, sparseVector *dBar, vect
 
 /* This function compute the reduced cost of every second stage variables. They will be used to calculate the \mu x b and then added to the \pi x b. */
 int computeMU(LPptr lp, int numCols, double *mubBar) {
-	vector	dj, u;
-	intvec	cstat;
+	dVector	dj, u;
+	iVector	cstat;
 	int		n;
 
 	(*mubBar) = 0.0;
 
-	if ( !(dj = (vector) arr_alloc(numCols+1, double)))
+	if ( !(dj = (dVector) arr_alloc(numCols+1, double)))
 		errMsg("allocation", "computeMu", "dual slacks", 0);
-	if ( !(u = (vector) arr_alloc(numCols+1, double)))
+	if ( !(u = (dVector) arr_alloc(numCols+1, double)))
 		errMsg("allocation", "computeMu", "TDA solutions", 0);
-	if ( !(cstat = (intvec) arr_alloc( numCols+1, int)))
+	if ( !(cstat = (iVector) arr_alloc( numCols+1, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
 
 	if ( getPrimal(lp, u, numCols) ) {
@@ -220,7 +219,7 @@ oneProblem *newSubproblem(oneProblem *subprob) {
 	return subprob;
 }//END new_subprob
 
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, dVector rhs, dVector X) {
 	int cnt;
 
 	/* copy the original right-hand side */
@@ -232,19 +231,19 @@ void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
 
 }//END chgRHSwMean()
 
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X) {
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, dVector observ, dVector spRHS, dVector X) {
 	sparseVector bomega;
 	sparseMatrix Comega;
-	vector 	rhs;
-	intvec	indices;
+	dVector 	rhs;
+	iVector	indices;
 	int		cnt, stat1;
 
 	bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows; bomega.val = coord->rvOffset[0]+observ;
 	Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols; Comega.row = coord->rvCOmRows; Comega.val = coord->rvOffset[2] + observ;
 
-	if ( !(indices = (intvec) arr_alloc(num->rows, int)) )
+	if ( !(indices = (iVector) arr_alloc(num->rows, int)) )
 		errMsg("allocation", "chgRHSwRand", "indices", 0);
-	if ( !(rhs = (vector) arr_alloc(num->rows+1, double)) )
+	if ( !(rhs = (dVector) arr_alloc(num->rows+1, double)) )
 		errMsg("allocation", "chgRHSwRand", "rhs", 0);
 
 	/* copy right-hand side modified with mean information */
@@ -272,11 +271,11 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
 }//END chgRHSwRand()
 
-int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ) {
-	vector vals;
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, dVector cost, iVector indices, dVector observ) {
+	dVector vals;
 	int n;
 
-	if ( !(vals = (vector) arr_alloc(num->rvdOmCnt+1, double)) )
+	if ( !(vals = (dVector) arr_alloc(num->rvdOmCnt+1, double)) )
 		errMsg("allocation", "chgObjwObserv", "vals", 0);
 
 	for ( n = 1; n <= num->rvdOmCnt; n++ )
@@ -291,7 +290,7 @@ int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec
 	return 0;
 }//END chgObjwObserv()
 
-/* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a vector to hold an array of
+/* This function allocates memory for an omega structure.  It allocates the memory to structure elements: a dVector to hold an array of
  * observation and the probability associated with it. */
 omegaType *newOmega(stocType *stoc) {
 	omegaType *omega;
@@ -299,9 +298,9 @@ omegaType *newOmega(stocType *stoc) {
 
 	if ( !(omega = (omegaType *) mem_malloc(sizeof(omegaType))) )
 		errMsg("allocation","newOmega", "omega", 0);
-	if ( !(omega->probs = (vector) arr_alloc(100, double)) )
+	if ( !(omega->probs = (dVector) arr_alloc(100, double)) )
 		errMsg("allocation", "newOmega", "omega->probs", 0);
-	if ( !(omega->vals = (vector *) arr_alloc(100, vector)) )
+	if ( !(omega->vals = (dVector *) arr_alloc(100, dVector)) )
 		errMsg("allocation", "newOmega", "omega->vals", 0);
 	omega->cnt = 0; omega->numRV = stoc->numOmega;
 
@@ -312,11 +311,11 @@ omegaType *newOmega(stocType *stoc) {
 
 	if ( strstr(stoc->type, "BLOCKS") != NULL ) {
 		if ( (omega->cnt = stoc->numVals[0]) <= config.MAX_OBS) {
-			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
-			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
+			omega->vals = (dVector *) mem_realloc(omega->vals, omega->cnt*sizeof(dVector));
+			omega->probs = (dVector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
 				omega->probs[cnt]= stoc->probs[0][cnt];
-				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
+				if ( !(omega->vals[cnt] = (dVector) arr_alloc(omega->numRV+1, double)) )
 					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
 				for (i = 0; i < omega->numRV; i++)
 					omega->vals[cnt][i+1]=stoc->vals[i][cnt]-stoc->mean[i];
@@ -341,10 +340,10 @@ omegaType *newOmega(stocType *stoc) {
 		}
 
 		if ( !config.SAA ){
-			omega->vals = (vector *) mem_realloc(omega->vals, omega->cnt*sizeof(vector));
-			omega->probs = (vector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
+			omega->vals = (dVector *) mem_realloc(omega->vals, omega->cnt*sizeof(dVector));
+			omega->probs = (dVector) mem_realloc(omega->probs, omega->cnt*sizeof(double));
 			for ( cnt = 0; cnt < omega->cnt; cnt++) {
-				if ( !(omega->vals[cnt] = (vector) arr_alloc(omega->numRV+1, double)) )
+				if ( !(omega->vals[cnt] = (dVector) arr_alloc(omega->numRV+1, double)) )
 					errMsg("allocation", "updateOmega", "omega->vals[cnt]", 0);
 				omega->probs[cnt] = 1; base = omega->cnt;
 				for ( i = 0; i < omega->numRV; i++ ) {
@@ -364,7 +363,7 @@ omegaType *newOmega(stocType *stoc) {
 	return omega;
 }//END newOmega()
 
-void freeOmegaType(omegaType *omega, BOOL partial) {
+void freeOmegaType(omegaType *omega, bool partial) {
 	int n;
 
 	if ( omega->vals ) {

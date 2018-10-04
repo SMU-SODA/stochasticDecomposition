@@ -5,14 +5,11 @@
  *      Author: gjharsha
  */
 
-#include <math.h>
+#include <utils.h>
 #include <smps.h>
 #include <solver.h>
-#include <stdio.h>
-#include <string.h>
-#include <utils.h>
 
-int readFiles(string inputDir, string probName, oneProblem **orig, timeType **tim, stocType **stoc) {
+int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 
 	/* read problem core file */
 	(*orig) = readCore(inputDir, probName);
@@ -43,7 +40,7 @@ int readFiles(string inputDir, string probName, oneProblem **orig, timeType **ti
 	return 0;
 }//END readFiles()
 
-oneProblem *readCore(string inputDir, string probName) {
+oneProblem *readCore(cString inputDir, cString probName) {
 	LPptr 			lp = NULL;
 	char 			probpath[BLOCKSIZE], line[BLOCKSIZE], field1[NAMESIZE], field2[NAMESIZE];
 	oneProblem      *orig;
@@ -93,7 +90,7 @@ oneProblem *readCore(string inputDir, string probName) {
 	/* Allocate memory to the elements of problem and assign default values*/
 	orig = (oneProblem *) mem_malloc(sizeof(oneProblem));
 	orig->lp = lp;
-	orig->name = (string) mem_calloc(NAMESIZE, sizeof(char));
+	orig->name = (cString) mem_calloc(NAMESIZE, sizeof(char));
 
 	/* obtain type of problem read */
 	orig->type = getProbType(lp);
@@ -121,16 +118,16 @@ oneProblem *readCore(string inputDir, string probName) {
 	nzcnt = getNumnz(lp);
 
 	/* continue allocating memory to the elements of problem and assign default values*/
-	orig->objx = (vector) mem_calloc(orig->mac, sizeof(double));
-	orig->rhsx = (vector) mem_calloc(orig->mar, sizeof(double));
-	orig->senx = (string) mem_malloc(orig->mar*sizeof(char));
-	orig->matbeg = (intvec) mem_malloc(orig->mac*sizeof(int));
-	orig->matcnt = (intvec) mem_malloc(orig->mac*sizeof(int));
-	orig->matind = (intvec) mem_malloc(nzcnt*sizeof(int));
-	orig->matval = (vector) mem_malloc(nzcnt*sizeof(double));
-	orig->bdl = (vector) mem_malloc(orig->mac*sizeof(double));
-	orig->bdu = (vector) mem_malloc(orig->mac*sizeof(double));
-	orig->ctype = (string) mem_malloc(orig->mac*sizeof(char));
+	orig->objx = (dVector) mem_calloc(orig->mac, sizeof(double));
+	orig->rhsx = (dVector) mem_calloc(orig->mar, sizeof(double));
+	orig->senx = (cString) mem_malloc(orig->mar*sizeof(char));
+	orig->matbeg = (iVector) mem_malloc(orig->mac*sizeof(int));
+	orig->matcnt = (iVector) mem_malloc(orig->mac*sizeof(int));
+	orig->matind = (iVector) mem_malloc(nzcnt*sizeof(int));
+	orig->matval = (dVector) mem_malloc(nzcnt*sizeof(double));
+	orig->bdl = (dVector) mem_malloc(orig->mac*sizeof(double));
+	orig->bdu = (dVector) mem_malloc(orig->mac*sizeof(double));
+	orig->ctype = (cString) mem_malloc(orig->mac*sizeof(char));
 
 	/* (6) objective function coefficients */
 	if ( (getObjx(lp, 0, orig->mac, orig->objx)) )
@@ -171,18 +168,18 @@ oneProblem *readCore(string inputDir, string probName) {
 	}
 
 	/* Allocate memory to hold the names of problem elements */
-	orig->objname = (string) mem_calloc(NAMESIZE, sizeof(char));
+	orig->objname = (cString) mem_calloc(NAMESIZE, sizeof(char));
 	orig->cstorsz = -getCstoreSize(lp, 0, orig->mac);
 	if ( orig->cstorsz <= 0 )
 		errMsg("solver", "readCore", "Could not determine amount of space for column names", 1);
-	orig->cname = (string *) mem_malloc(orig->mac*sizeof(char *));
-	orig->cstore = (string) mem_malloc(orig->cstorsz);
+	orig->cname = (cString *) mem_malloc(orig->mac*sizeof(char *));
+	orig->cstore = (cString) mem_malloc(orig->cstorsz);
 
 	orig->rstorsz = -getRstoreSize(lp, 0, orig->mar);
 	if ( orig->rstorsz < 0 )
 		errMsg("solver", "readCore", "Could not determine amount of space for row names", 1);
-	orig->rname = (string *) mem_malloc(orig->mar*sizeof(char *));
-	orig->rstore = (string) mem_malloc(orig->rstorsz);
+	orig->rname = (cString *) mem_malloc(orig->mar*sizeof(char *));
+	orig->rstore = (cString) mem_malloc(orig->rstorsz);
 
 	/* (12) objective name */
 	if ( (getObjName(lp, orig->objname)) )
@@ -205,7 +202,7 @@ oneProblem *readCore(string inputDir, string probName) {
 
 }//END readCore()
 
-timeType *readTime(string inputDir, string probName, oneProblem *orig) {
+timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {
 	timeType	*tim;
 	char		probpath[2*BLOCKSIZE], line[BLOCKSIZE], field1[NAMESIZE], field2[NAMESIZE];
 	int			defaultStages = 20, n, m;
@@ -224,7 +221,7 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 	/* allocate memory and initialize */
 	if (!(tim = (timeType *) mem_malloc(sizeof(timeType))))
 		errMsg("allocation", "readTime", "timeType",0);
-	if(!(tim->stgNames = (string *) mem_malloc(defaultStages*sizeof(string))))
+	if(!(tim->stgNames = (cString *) mem_malloc(defaultStages*sizeof(cString))))
 		errMsg("allocation", "readTime", "stgNames in timeType", 0);
 	tim->numStages = 0; n = 0;
 	tim->numCols = 0; tim->numRows = 0;
@@ -262,13 +259,13 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 	}
 
 	if ( tim->type == 0 ){
-		if( !(tim->row = (intvec) arr_alloc(defaultStages, int)) )
+		if( !(tim->row = (iVector) arr_alloc(defaultStages, int)) )
 			errMsg("allocation", "readTime", "rowNames in timeType", 0);
-		if( !(tim->col = (intvec) arr_alloc(defaultStages, int)) )
+		if( !(tim->col = (iVector) arr_alloc(defaultStages, int)) )
 			errMsg("allocation", "readTime", "colNames in timeType", 0);
 		while ( fgets(line, sizeof line, fptr )!= NULL ) {
 			if (line[0] != '*' && strncmp(line,"ENDATA",6)) /* If it is not a comment line and end of data in the file proceed to read the contents */ {
-				if ( !(tim->stgNames[n] =  (string) mem_malloc(NAMESIZE*sizeof(char))))
+				if ( !(tim->stgNames[n] =  (cString) mem_malloc(NAMESIZE*sizeof(char))))
 					errMsg("allocation", "readTime", "individual stage names", 0);
 				sscanf(line, "%s %s %s", field1, field2, tim->stgNames[n]);
 				/* find the column and row coordinates in original problem */
@@ -318,24 +315,24 @@ timeType *readTime(string inputDir, string probName, oneProblem *orig) {
 	}
 
 	/* reallocate memory elements of time structure */
-	tim->stgNames = (string *) mem_realloc(tim->stgNames, tim->numStages*sizeof(string));
+	tim->stgNames = (cString *) mem_realloc(tim->stgNames, tim->numStages*sizeof(cString));
 	if (tim->type == 0) {
-		tim->col = (intvec) mem_realloc(tim->col, tim->numStages*sizeof(int));
-		tim->row = (intvec) mem_realloc(tim->row, tim->numStages*sizeof(int));
+		tim->col = (iVector) mem_realloc(tim->col, tim->numStages*sizeof(int));
+		tim->row = (iVector) mem_realloc(tim->row, tim->numStages*sizeof(int));
 	}
 	else {
-		tim->col = (intvec) mem_realloc(tim->col, tim->numStages*sizeof(int));
-		tim->row = (intvec) mem_realloc(tim->row, tim->numStages*sizeof(int));
-		tim->colStg = (intvec) mem_realloc(tim->colStg, tim->numCols*sizeof(int));
-		tim->rowStg = (intvec) mem_realloc(tim->rowStg, tim->numRows*sizeof(int));
+		tim->col = (iVector) mem_realloc(tim->col, tim->numStages*sizeof(int));
+		tim->row = (iVector) mem_realloc(tim->row, tim->numStages*sizeof(int));
+		tim->colStg = (iVector) mem_realloc(tim->colStg, tim->numCols*sizeof(int));
+		tim->rowStg = (iVector) mem_realloc(tim->rowStg, tim->numRows*sizeof(int));
 	}
 	fclose(fptr);
 	return tim;
 }//END readTime()
 
-stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType *tim) {
+stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeType *tim) {
 	stocType *stoc;
-	string 	*rvRows = NULL, *rvCols = NULL, *fields = NULL;
+	cString 	*rvRows = NULL, *rvCols = NULL, *fields = NULL;
 	char	probpath[2*BLOCKSIZE], line[BLOCKSIZE], fieldType;
 	FILE	*fptr;
 	int		maxOmegas = 1000, maxVals = 4000, n, numFields, maxFields = 10;
@@ -351,30 +348,30 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	}
 
 	/* allocate memory to field locations */
-	if (!(fields = (string *) arr_alloc(maxFields, string)) )
+	if (!(fields = (cString *) arr_alloc(maxFields, cString)) )
 		errMsg("allocation", "readStoc", "field locations", 0);
 	for (n = 0; n < maxFields; n++ )
-		if ( !(fields[n] = (string) arr_alloc(NAMESIZE, char)) )
+		if ( !(fields[n] = (cString) arr_alloc(NAMESIZE, char)) )
 			errMsg("allocation", "readStoc", "individual field location", 0);
 
 	/* allocate memory to stocType and initialize elements */
 	if ( !(stoc = (stocType *) mem_malloc(sizeof(stocType))) )
 		errMsg("allocation", "readStoc", "stoc", 0);
-	if ( !(stoc->type = (string) arr_alloc(NAMESIZE, char)) )
+	if ( !(stoc->type = (cString) arr_alloc(NAMESIZE, char)) )
 		errMsg("allocation", "readStoc", "stoc->type", 0);
-	if ( !(stoc->col = (intvec) arr_alloc(maxOmegas, int)) )
+	if ( !(stoc->col = (iVector) arr_alloc(maxOmegas, int)) )
 		errMsg("allocation", "readStoc", "stoc->col", 0);
-	if ( !(stoc->row = (intvec) arr_alloc(maxOmegas, int)) )
+	if ( !(stoc->row = (iVector) arr_alloc(maxOmegas, int)) )
 		errMsg("allocation", "readStoc", "stoc->row", 0);
-	if ( !(stoc->mean = (vector) arr_alloc(maxOmegas, double)) )
+	if ( !(stoc->mean = (dVector) arr_alloc(maxOmegas, double)) )
 		errMsg("allocation", "readStoc", "stoc->mean", 0);
-	if ( !(stoc->groupBeg = (intvec) arr_alloc(maxFields, int)) )
+	if ( !(stoc->groupBeg = (iVector) arr_alloc(maxFields, int)) )
 		errMsg("allocation", "readStoc", "stoc->groupBeg", 0);
-	if ( !(stoc->numPerGroup = (intvec) arr_alloc(maxFields, int)) )
+	if ( !(stoc->numPerGroup = (iVector) arr_alloc(maxFields, int)) )
 		errMsg("allocation", "readStoc", "stoc->numPerGroup", 0);
 	stoc->numOmega = 0;
 	stoc->numGroups = 0;
-	stoc->sim = FALSE;
+	stoc->sim = false;
 	stoc->mod = NULL;
 
 	/* STOCH section: read problem name and compare with that read earlier */
@@ -441,25 +438,25 @@ stocType *readStoc(string inputDir, string probName, oneProblem *orig, timeType 
 	fclose(fptr);
 
 	/* Reallocate memory to elements of stocType */
-	stoc->row  = (intvec) mem_realloc(stoc->row, stoc->numOmega*sizeof(int));
-	stoc->col  = (intvec) mem_realloc(stoc->col, stoc->numOmega*sizeof(int));
-	stoc->mean = (vector) mem_realloc(stoc->mean, stoc->numOmega*sizeof(double));
+	stoc->row  = (iVector) mem_realloc(stoc->row, stoc->numOmega*sizeof(int));
+	stoc->col  = (iVector) mem_realloc(stoc->col, stoc->numOmega*sizeof(int));
+	stoc->mean = (dVector) mem_realloc(stoc->mean, stoc->numOmega*sizeof(double));
 
-	stoc->numPerGroup = (intvec) mem_realloc(stoc->numPerGroup, stoc->numGroups*sizeof(int));
-	stoc->groupBeg 	  = (intvec) mem_realloc(stoc->groupBeg ,stoc->numGroups*sizeof(int));
+	stoc->numPerGroup = (iVector) mem_realloc(stoc->numPerGroup, stoc->numGroups*sizeof(int));
+	stoc->groupBeg 	  = (iVector) mem_realloc(stoc->groupBeg ,stoc->numGroups*sizeof(int));
 
 	return stoc;
 }//END readStoc()
 
-int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string 	**rvRows, string **rvCols) {
+int readIndep(FILE *fptr, cString *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, cString 	**rvRows, cString **rvCols) {
 
 	/* Mark where the group beings */
 	stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
 
 	/* allocate memory to hold the names of random variable */
-	if ( !((*rvRows) = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !((*rvRows) = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
-	if ( !((*rvCols) = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !((*rvCols) = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readIndep", "rvNames", 0);
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
@@ -502,20 +499,20 @@ int readIndep(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int m
 	return 0;
 }//END readIndep()
 
-int readIndepDiscrete(FILE *fptr, string *fields, int maxOmegas, int maxVals, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc) {
+int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, cString **rvRows, cString **rvCols, oneProblem *orig, stocType *stoc) {
 	int numFields, n;
 	char strType;
 
 	/* store the type of stochastic process encountered */
 	sprintf(stoc->type, "INDEP_DISCRETE");
-	stoc->sim = TRUE;
+	stoc->sim = true;
 
-	stoc->numVals = (intvec) arr_alloc(maxOmegas, int);
-	stoc->vals    = (vector *) arr_alloc(maxOmegas, vector);
-	stoc->probs   = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->numVals = (iVector) arr_alloc(maxOmegas, int);
+	stoc->vals    = (dVector *) arr_alloc(maxOmegas, dVector);
+	stoc->probs   = (dVector *) arr_alloc(maxOmegas, dVector);
 	stoc->mod = NULL;
 
-	while (TRUE) {
+	while (true) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;										// Encountered ENDATA or a new group of random variables
@@ -531,13 +528,13 @@ int readIndepDiscrete(FILE *fptr, string *fields, int maxOmegas, int maxVals, st
 		}
 		if ( n == -1 ) {
 			/* new random variable encountered */
-			if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+			if ( !((*rvRows)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
-			if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+			if ( !((*rvCols)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
-			if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+			if ( !(stoc->vals[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 				errMsg("allocation", "readIndep","omega.vals[n]", 0);
-			if ( !(stoc->probs[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+			if ( !(stoc->probs[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 				errMsg("allocation", "readIndep", "omega.probs[n]", 0);
 
 			strcpy((*rvCols)[stoc->numOmega], fields[0]);
@@ -594,31 +591,31 @@ int readIndepDiscrete(FILE *fptr, string *fields, int maxOmegas, int maxVals, st
 	}
 
 	/* Reallocate memory to fit the exact size */
-	stoc->numVals = (intvec) mem_realloc(stoc->numVals, stoc->numOmega*sizeof(int));
+	stoc->numVals = (iVector) mem_realloc(stoc->numVals, stoc->numOmega*sizeof(int));
 	for ( n = 0; n < stoc->numOmega; n++ ) {
-		stoc->vals[n]  = (vector) mem_realloc(stoc->vals[n], stoc->numVals[n]*sizeof(double));
-		stoc->probs[n] = (vector) mem_realloc(stoc->probs[n], stoc->numVals[n]*sizeof(double));
+		stoc->vals[n]  = (dVector) mem_realloc(stoc->vals[n], stoc->numVals[n]*sizeof(double));
+		stoc->probs[n] = (dVector) mem_realloc(stoc->probs[n], stoc->numVals[n]*sizeof(double));
 	}
-	stoc->vals  = (vector *) mem_realloc(stoc->vals, stoc->numOmega*sizeof(vector));
-	stoc->probs = (vector *) mem_realloc(stoc->probs, stoc->numOmega*sizeof(vector));
+	stoc->vals  = (dVector *) mem_realloc(stoc->vals, stoc->numOmega*sizeof(dVector));
+	stoc->probs = (dVector *) mem_realloc(stoc->probs, stoc->numOmega*sizeof(dVector));
 
 	return 0;
 }//END readIndepDiscrete()
 
-int readNormal(FILE *fptr, string *fields, int maxOmegas, string **rvRows, string **rvCols, oneProblem *orig, stocType *stoc) {
+int readNormal(FILE *fptr, cString *fields, int maxOmegas, cString **rvRows, cString **rvCols, oneProblem *orig, stocType *stoc) {
 	int n, numFields;
 	char strType;
 
 	/* continuous distribution, use a simulator */
-	stoc->sim = TRUE;
+	stoc->sim = true;
 	sprintf(stoc->type, "INDEP_%s",fields[1]);
 
-	stoc->vals	  = (vector *) arr_alloc(1, vector);
-	stoc->vals[0] = (vector) arr_alloc(maxOmegas, double);
+	stoc->vals	  = (dVector *) arr_alloc(1, dVector);
+	stoc->vals[0] = (dVector) arr_alloc(maxOmegas, double);
 
 	stoc->probs = NULL; stoc->numVals = NULL; stoc->mod = NULL;
 
-	while (TRUE) {
+	while (true) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
@@ -638,9 +635,9 @@ int readNormal(FILE *fptr, string *fields, int maxOmegas, string **rvRows, strin
 				errMsg("read", "readIndep", "ran out of memory to store row and column names", 0);
 				return 1;
 			}
-			if ( !((*rvRows)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+			if ( !((*rvRows)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
-			if ( !((*rvCols)[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+			if ( !((*rvCols)[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 				errMsg("allocation", "readIndep", "rvNames[n]", 0);
 
 			strcpy((*rvCols)[stoc->numOmega], fields[0]);
@@ -700,12 +697,12 @@ int readNormal(FILE *fptr, string *fields, int maxOmegas, string **rvRows, strin
 		}
 	}
 
-	stoc->vals[0] = (vector) mem_realloc(stoc->vals[0], stoc->numOmega*sizeof(double));
+	stoc->vals[0] = (dVector) mem_realloc(stoc->vals[0], stoc->numOmega*sizeof(double));
 
 	return 0;
 }//END readNormal()
 
-int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, string **rvRows, string **rvCols) {
+int readBlocks(FILE *fptr, cString *fields, oneProblem *orig, int maxOmegas, int maxVals, stocType *stoc, cString **rvRows, cString **rvCols) {
 
 	/* Mark where the group beings */
 	stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
@@ -713,7 +710,7 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "BLOCKS_DISCRETE");
-		if ( readOneBlock(fptr, fields, orig, maxOmegas, maxVals, TRUE, stoc) ) {
+		if ( readOneBlock(fptr, fields, orig, maxOmegas, maxVals, true, stoc) ) {
 			errMsg("read", "readBlocks", "failed to read independent blocks structure", 0);
 			return 1;
 		}
@@ -740,31 +737,31 @@ int readBlocks(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int 
 	return 0;
 }//END readBlocks()
 
-int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, int maxVals, BOOL origRV, stocType *stoc) {
-	string 	*rvRows, *rvCols;
+int readOneBlock(FILE *fptr, cString *fields, oneProblem *orig, int maxOmegas, int maxVals, bool origRV, stocType *stoc) {
+	cString 	*rvRows, *rvCols;
 	char 	strType, currBlock[NAMESIZE] = "\0";
 	int		numFields, numRV=0, n;
-	BOOL	newBlk;
+	bool	newBlk;
 
 	/* allocate memory to hold the names of random variable */
-	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !(rvRows = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readOneBlock", "rvNames", 0);
-	if ( !(rvCols = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !(rvCols = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readOneBlock", "rvNames", 0);
 
 	for ( n = 0; n < maxOmegas; n++) {
-		if ( !(rvCols[n] = (string) arr_alloc(NAMESIZE, char)) )
+		if ( !(rvCols[n] = (cString) arr_alloc(NAMESIZE, char)) )
 			errMsg("allocation", "readOneBlock", "rvCols", 0);
-		if ( !(rvRows[n] = (string) arr_alloc(NAMESIZE, char)) )
+		if ( !(rvRows[n] = (cString) arr_alloc(NAMESIZE, char)) )
 			errMsg("allocation", "readOneBlock", "rvRows", 0);
 	}
 
-	stoc->numVals = (intvec) arr_alloc(maxOmegas, int);
-	stoc->vals    = (vector *) arr_alloc(maxOmegas, vector);
-	stoc->probs   = (vector *) arr_alloc(maxOmegas, vector);
+	stoc->numVals = (iVector) arr_alloc(maxOmegas, int);
+	stoc->vals    = (dVector *) arr_alloc(maxOmegas, dVector);
+	stoc->probs   = (dVector *) arr_alloc(maxOmegas, dVector);
 	stoc->mod = NULL;
 
-	while (TRUE) {
+	while (true) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
@@ -772,17 +769,17 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 			/* new realization of the block */
 			if ( strcmp(currBlock, fields[1]) ) {
 				/* first encounter with the block, prepare to record names of random variables */
-				newBlk = TRUE;
+				newBlk = true;
 				strcpy(currBlock, fields[1]);
 				stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
 				stoc->numPerGroup[stoc->numGroups] = numRV = 0;
-				if ( !(stoc->probs[stoc->numGroups] = (vector) arr_alloc(maxVals, double)) )
+				if ( !(stoc->probs[stoc->numGroups] = (dVector) arr_alloc(maxVals, double)) )
 					errMsg("allocation", "readOneBlock", "stoc->prob[n]", 0);
 				stoc->probs[stoc->numGroups][stoc->numVals[stoc->numGroups]++] = str2float(fields[3]);
 				stoc->numGroups++;
 			}
 			else {
-				newBlk = FALSE;
+				newBlk = false;
 				if ( stoc->numVals[stoc->numGroups-1] == maxVals )
 					errMsg("allocation", "readOneBlock", "exceeded memory limit on maxVals", 1);
 				stoc->probs[stoc->numGroups-1][stoc->numVals[stoc->numGroups-1]++] = str2float(fields[3]);
@@ -826,7 +823,7 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 				if (stoc->numOmega == maxOmegas )
 					errMsg("allocation", "readOneBlock", "reached max limit maxOmegas", 1);
 
-				if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+				if ( !(stoc->vals[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 					errMsg("allocation", "readOneBlock","omega.vals[n]", 0);
 
 				if (origRV == 1) {
@@ -846,9 +843,9 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
 				/* locate the random variable in the list and record realization */
 				n = 0;
 				while (n < numRV) {
-					if ( origRV == 	FALSE && !(strcmp(rvCols[n], fields[0])) )
+					if ( origRV == 	false && !(strcmp(rvCols[n], fields[0])) )
 						break;
-					else if ( origRV == TRUE && !(strcmp(rvCols[n], fields[0])) && !(strcmp(rvRows[n], fields[1])) )
+					else if ( origRV == true && !(strcmp(rvCols[n], fields[0])) && !(strcmp(rvRows[n], fields[1])) )
 						break;
 					n++;
 				}
@@ -888,15 +885,15 @@ int readOneBlock(FILE *fptr, string *fields, oneProblem *orig, int maxOmegas, in
  * The subroutine assumes that the stoc file begins by first describing the residual random variable. This is stored as
  * the first group of random variables in our stocType structure.
  */
-int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, int maxOmegas, string **rvRows, string **rvCols) {
+int readLinTrans(FILE *fptr, cString *fields, oneProblem *orig, stocType *stoc, int maxOmegas, cString **rvRows, cString **rvCols) {
 	statModel *model;
-	intvec 	periodBeg;
+	iVector 	periodBeg;
 	char 	strType, currBlock[NAMESIZE] = "\0", currLag[NAMESIZE] = "\0";
 	int		numFields, period, numPeriods = 0, maxP = 10, maxQ = 10,
 			maxMatcnt = stoc->numOmega, j, col, row, offset, maxPeriods = 50;
-	BOOL	newLag;
+	bool	newLag;
 
-	periodBeg = (intvec) arr_alloc(maxPeriods, int);
+	periodBeg = (iVector) arr_alloc(maxPeriods, int);
 
 	/* allocate memory to hold information about the linear transformation stochastic process */
 	if ( !(model = (statModel *) mem_malloc(sizeof(statModel))) )
@@ -911,12 +908,12 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 	if ( strstr(stoc->type, "INDEP_NORMAL") != NULL ) {
 		model->M = stoc->numPerGroup[stoc->numGroups-1];
 
-		/* Setup the mean vector and the covariance matrix of residual process/noise */
-		model->muEps = (vector) arr_alloc(model->M, double);
+		/* Setup the mean dVector and the covariance matrix of residual process/noise */
+		model->muEps = (dVector) arr_alloc(model->M, double);
 		model->cvEps = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix));
-		model->cvEps->col = (intvec) arr_alloc(model->M, int);
-		model->cvEps->row = (intvec) arr_alloc(model->M, int);
-		model->cvEps->val = (vector) arr_alloc(model->M, double);
+		model->cvEps->col = (iVector) arr_alloc(model->M, int);
+		model->cvEps->row = (iVector) arr_alloc(model->M, int);
+		model->cvEps->val = (dVector) arr_alloc(model->M, double);
 
 		for ( j = 0; j < model->M; j++ ) {
 			model->muEps[j] = stoc->mean[j];
@@ -928,7 +925,7 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 		stoc->numGroups--;
 		stoc->numOmega -= stoc->numPerGroup[stoc->numGroups];
 		stoc->groupBeg[stoc->numGroups] = stoc->numOmega;
-		stoc->vals[0] = (vector) mem_realloc(stoc->vals[0], maxOmegas*sizeof(vector));
+		stoc->vals[0] = (dVector) mem_realloc(stoc->vals[0], maxOmegas*sizeof(dVector));
 	}
 	else {
 		errMsg("read", "readLinTrans", "currently only independent normal residual processes are supported", 0);
@@ -937,10 +934,10 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 
 	/* Update the stocType */
 	strcpy(stoc->type, "LINTRAN");
-	stoc->sim = TRUE;
+	stoc->sim = true;
 
 	/* Read from the stoc file line-by-line */
-	while (TRUE) {
+	while (true) {
 		getLine(&fptr, fields, &strType, &numFields);
 		if (strType != 'f')
 			break;
@@ -950,7 +947,7 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 			periodBeg[numPeriods++] = stoc->numOmega;
 			if ( numPeriods == maxPeriods ) {
 				maxPeriods *= 2;
-				periodBeg = (intvec) mem_realloc(periodBeg, maxPeriods*sizeof(int));
+				periodBeg = (iVector) mem_realloc(periodBeg, maxPeriods*sizeof(int));
 			}
 			model->N = stoc->numOmega - model->N;
 		}
@@ -962,10 +959,10 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 			strcpy(currBlock, fields[0]);
 			if ( strcmp(currLag, fields[3]) ) {
 				strcpy(currLag, fields[3]);
-				newLag = TRUE;
+				newLag = true;
 			}
 			else
-				newLag = FALSE;
+				newLag = false;
 
 			/* Find the random variable to which the column of transformation matrix corresponds to. */
 			col = 0;
@@ -1009,10 +1006,10 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 					}
 				}
 				stoc->row[stoc->numOmega] = j;
-				if ( !((*rvRows)[model->M+stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvRows)[model->M+stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
 				strcpy((*rvRows)[model->M+stoc->numOmega], fields[1]);
-				if ( !((*rvCols)[model->M+stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+				if ( !((*rvCols)[model->M+stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 					errMsg("allocation", "readIndep", "rvNames[n]", 0);
 				strcpy((*rvCols)[model->M+stoc->numOmega], fields[0]);
 				stoc->vals[0][stoc->numOmega] = str2float(fields[2]);
@@ -1030,11 +1027,11 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 							errMsg("allocation", "readLinTrans", "AR", 0);
 					if ( !(model->AR[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
 						errMsg("allocation", "readLinTrans", "AR[n]", 0);
-					if ( !(model->AR[j]->row = (intvec) arr_alloc(maxMatcnt, int)) )
+					if ( !(model->AR[j]->row = (iVector) arr_alloc(maxMatcnt, int)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] rows", 0);
-					if ( !(model->AR[j]->col = (intvec) arr_alloc(maxMatcnt, int)) )
+					if ( !(model->AR[j]->col = (iVector) arr_alloc(maxMatcnt, int)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] columns", 0);
-					if ( !(model->AR[j]->val = (vector) arr_alloc(maxMatcnt, double)) )
+					if ( !(model->AR[j]->val = (dVector) arr_alloc(maxMatcnt, double)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] coefficients", 0);
 					model->AR[j]->cnt = 0;
 				}
@@ -1065,11 +1062,11 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 					}
 					if ( !(model->MA[j] = (sparseMatrix *) mem_malloc(sizeof(sparseMatrix))) )
 						errMsg("allocation", "readLinTrans", "AR[n]", 0);
-					if ( !(model->MA[j]->row = (intvec) arr_alloc(maxMatcnt, int)) )
+					if ( !(model->MA[j]->row = (iVector) arr_alloc(maxMatcnt, int)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] rows", 0);
-					if ( !(model->MA[j]->col = (intvec) arr_alloc(maxMatcnt, int)) )
+					if ( !(model->MA[j]->col = (iVector) arr_alloc(maxMatcnt, int)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] columns", 0);
-					if ( !(model->MA[j]->val = (vector) arr_alloc(maxMatcnt, double)) )
+					if ( !(model->MA[j]->val = (dVector) arr_alloc(maxMatcnt, double)) )
 						errMsg("allocation", "readLinTrans" ,"AR[n] coefficients", 0);
 					model->MA[j]->cnt = 0;
 				}
@@ -1103,15 +1100,15 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 
 	/* Reallocate memory to exact values */
 	for ( j = 0; j < model->p; j++ ) {
-		model->AR[j]->col = (intvec) mem_realloc(model->AR[j]->col, model->AR[j]->cnt*sizeof(int));
-		model->AR[j]->row = (intvec) mem_realloc(model->AR[j]->row, model->AR[j]->cnt*sizeof(int));
-		model->AR[j]->val = (vector) mem_realloc(model->AR[j]->val, model->AR[j]->cnt*sizeof(double));
+		model->AR[j]->col = (iVector) mem_realloc(model->AR[j]->col, model->AR[j]->cnt*sizeof(int));
+		model->AR[j]->row = (iVector) mem_realloc(model->AR[j]->row, model->AR[j]->cnt*sizeof(int));
+		model->AR[j]->val = (dVector) mem_realloc(model->AR[j]->val, model->AR[j]->cnt*sizeof(double));
 	}
 	model->AR = (sparseMatrix **) mem_realloc(model->AR, model->p*sizeof(sparseMatrix *));
 	for ( j = 0; j < model->q; j++ ) {
-		model->MA[j]->col = (intvec) mem_realloc(model->MA[j]->col, model->MA[j]->cnt*sizeof(int));
-		model->MA[j]->row = (intvec) mem_realloc(model->MA[j]->row, model->MA[j]->cnt*sizeof(int));
-		model->MA[j]->val = (vector) mem_realloc(model->MA[j]->val, model->MA[j]->cnt*sizeof(double));
+		model->MA[j]->col = (iVector) mem_realloc(model->MA[j]->col, model->MA[j]->cnt*sizeof(int));
+		model->MA[j]->row = (iVector) mem_realloc(model->MA[j]->row, model->MA[j]->cnt*sizeof(int));
+		model->MA[j]->val = (dVector) mem_realloc(model->MA[j]->val, model->MA[j]->cnt*sizeof(double));
 	}
 	model->MA = (sparseMatrix **) mem_realloc(model->MA, model->q*sizeof(sparseMatrix *));
 
@@ -1126,25 +1123,25 @@ int readLinTrans(FILE *fptr, string *fields, oneProblem *orig, stocType *stoc, i
 	return 0;
 }//END readLinTrans()
 
-int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc) {
-	string	*rvRows, *rvCols, *scenName;
+int readScenarios(FILE *fptr, cString *fields, oneProblem *orig, timeType *tim, int maxOmegas, int maxVals, stocType *stoc) {
+	cString	*rvRows, *rvCols, *scenName;
 	char 	strType;
 	int  	n, r, c, numFields, maxScenarios = 100, numScen = 0, parentIdx;
 
 	/* allocate memory to hold the names of random variable */
-	if ( !(rvRows = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !(rvRows = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readScenarios", "rvNames", 0);
-	if ( !(rvCols = (string *) arr_alloc(maxOmegas, string)) )
+	if ( !(rvCols = (cString *) arr_alloc(maxOmegas, cString)) )
 		errMsg("allocation", "readScenarios", "rvNames", 0);
-	if ( !(scenName = (string *) arr_alloc(maxScenarios, string)) )
+	if ( !(scenName = (cString *) arr_alloc(maxScenarios, cString)) )
 		errMsg("allocation", "readScenarios", "scenNames", 0);
-	if ( !(stoc->probs[0] = (vector) arr_alloc(maxScenarios, double)) )
+	if ( !(stoc->probs[0] = (dVector) arr_alloc(maxScenarios, double)) )
 		errMsg("allocation", "readScenarios", "scenario probability", 0);
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
 		sprintf(stoc->type, "SCENARIOS_DISCRETE");
-		while (TRUE) {
+		while (true) {
 			NEXT_LINE: getLine(&fptr, fields, &strType, &numFields);
 			if (strType != 'f')
 				break; 										//Encountered ENDATA
@@ -1152,14 +1149,14 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, i
 				/* New scenario encountered */
 				if (!(strcmp(fields[2], "ROOT")) ) {
 					/* The current scenario is the root scenario. Need to copy the names of random variable rows and columns. */
-					if ( !(scenName[numScen] = (string) arr_alloc(NAMESIZE, char)) )
+					if ( !(scenName[numScen] = (cString) arr_alloc(NAMESIZE, char)) )
 						errMsg("allocation", "readScenarios", "scenNames[n]", 0);
 					strcpy(scenName[numScen], fields[1]);
 					parentIdx = -1;
 				}
 				else {
 					/* a non-root scenario encountered */
-					if ( !(scenName[numScen] = (string) arr_alloc(NAMESIZE, char)) )
+					if ( !(scenName[numScen] = (cString) arr_alloc(NAMESIZE, char)) )
 						errMsg("allocation", "readScenarios", "scenNames[n]", 0);
 					strcpy(scenName[numScen], fields[1]);
 					parentIdx = 0;
@@ -1220,11 +1217,11 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, i
 						/* variable belongs to the first stage, hence ignore */
 						goto NEXT_LINE;
 
-					if ( !(rvRows[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+					if ( !(rvRows[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 						errMsg("allocation", "readIndep", "rvNames[n]", 0);
-					if ( !(rvCols[stoc->numOmega] = (string) arr_alloc(NAMESIZE, char)) )
+					if ( !(rvCols[stoc->numOmega] = (cString) arr_alloc(NAMESIZE, char)) )
 						errMsg("allocation", "readIndep", "rvNames[n]", 0);
-					if ( !(stoc->vals[stoc->numOmega] = (vector) arr_alloc(maxVals, double)) )
+					if ( !(stoc->vals[stoc->numOmega] = (dVector) arr_alloc(maxVals, double)) )
 						errMsg("allocation", "readIndep","omega.vals[n]", 0);
 
 					strcpy(rvCols[stoc->numOmega], fields[0]);
@@ -1262,15 +1259,15 @@ int readScenarios(FILE *fptr, string *fields, oneProblem *orig, timeType *tim, i
 	}
 
 	/* reallocate memory to elements of stocType based on the exact sizes */
-	stoc->col 		= (intvec) mem_realloc(stoc->col, stoc->numOmega*sizeof(int));
-	stoc->row 		= (intvec) mem_realloc(stoc->row, stoc->numOmega*sizeof(int));
-	stoc->mean      = (vector) mem_realloc(stoc->mean, stoc->numOmega*sizeof(double));
-	stoc->numVals	= (intvec) mem_realloc(stoc->numVals, stoc->numOmega*sizeof(int));
+	stoc->col 		= (iVector) mem_realloc(stoc->col, stoc->numOmega*sizeof(int));
+	stoc->row 		= (iVector) mem_realloc(stoc->row, stoc->numOmega*sizeof(int));
+	stoc->mean      = (dVector) mem_realloc(stoc->mean, stoc->numOmega*sizeof(double));
+	stoc->numVals	= (iVector) mem_realloc(stoc->numVals, stoc->numOmega*sizeof(int));
 	for ( n = 0; n < stoc->numOmega; n++ )
-		stoc->vals[n] = (vector) mem_realloc(stoc->vals[n], numScen*sizeof(double));
-	stoc->vals 		= (vector *) mem_realloc(stoc->vals, stoc->numOmega*sizeof(vector));
-	stoc->probs[0] 	= (vector) mem_realloc(stoc->probs[0], numScen*sizeof(double));
-	stoc->probs 	= (vector *) mem_realloc(stoc->probs, 1*sizeof(vector));
+		stoc->vals[n] = (dVector) mem_realloc(stoc->vals[n], numScen*sizeof(double));
+	stoc->vals 		= (dVector *) mem_realloc(stoc->vals, stoc->numOmega*sizeof(dVector));
+	stoc->probs[0] 	= (dVector) mem_realloc(stoc->probs[0], numScen*sizeof(double));
+	stoc->probs 	= (dVector *) mem_realloc(stoc->probs, 1*sizeof(dVector));
 	mem_free(stoc->groupBeg); stoc->groupBeg = NULL;
 	mem_free(stoc->numPerGroup); stoc->numPerGroup = NULL;
 

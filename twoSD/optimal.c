@@ -20,16 +20,16 @@ extern configType config;
  * 		2. If dual solution set is stable, the pre-test checks for "convergence" of objective function estimate.
  * 		3. Full test is based on boot-strapping, and checks the gap between primal (upper) and dual (lower) values.
  * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test is successful. */
-BOOL optimal(probType **prob, cellType *cell) {
+bool optimal(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag ) {
 		/* perform the pre-test */
 		if ( preTest(cell) ) {
-			if ((cell->optFlag = fullTest(prob, cell)) == TRUE) {
+			if ((cell->optFlag = fullTest(prob, cell)) == true) {
 				/* full test satisfied */
 				printf (">"); fflush(stdout);
-				return TRUE;
+				return true;
 			}
 			else {
 				printf(">"); fflush(stdout);
@@ -38,13 +38,13 @@ BOOL optimal(probType **prob, cellType *cell) {
 		}
 	}
 
-	return FALSE;
+	return false;
 }//optimal()
 
 
 /* Because checking optimality is an arduous task, we first do a pre-check to determine if the full test is worthwhile. This function
  * determines whether the height at the candidate is close enough to the height at the incumbent to warrant an optimality test. */
-BOOL preTest(cellType *cell) {
+bool preTest(cellType *cell) {
 
 	/* The candidate must be within some small percentage of incumbent cut */
 	/* rare situation for cell->candid_est < 0 and cell->incumb_est > 0 */
@@ -67,9 +67,9 @@ BOOL preTest(cellType *cell) {
  * Single-cut version first selects "good" cuts in the master prob. Then by using the information of these "good" cuts to find the
  * corresponding cuts in each agent. After reforming these agent cuts, aggregated these reformed cuts as one single cut and add it to the
  * master problem */
-BOOL fullTest(probType **prob, cellType *cell) {
+bool fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
-	intvec  cdf, observ;
+	iVector  cdf, observ;
 	double  est, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
@@ -77,14 +77,14 @@ BOOL fullTest(probType **prob, cellType *cell) {
 	/* (a) choose good cuts */
 	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
 	if ( gCuts->cnt == 0 ) {
-		freeCutsType(gCuts, FALSE);
-		return FALSE;
+		freeCutsType(gCuts, false);
+		return false;
 	}
 
 	/* (b) calculate empirical distribution of omegas */
-	if ( !(cdf = (intvec) arr_alloc(cell->omega->cnt+1, int)) )
+	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt+1, int)) )
 		errMsg("allocation", "fullTest", "failed to allocate memory to cdf",0);
-	if ( !(observ = (intvec) arr_alloc(cell->k, int)))
+	if ( !(observ = (iVector) arr_alloc(cell->k, int)))
 		errMsg("allocation", "fullTest", "resampled observations", 0);
 
 	empiricalDistribution(cell->omega, cdf);
@@ -126,15 +126,15 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		/* (h) check No. of fails. skip out of the loop if there's no hope of meeting the condition */
 		if ( rep + 1 - numPass >= (1 - config.PERCENT_PASS) * config.BOOTSTRAP_REP) {
 			/* The bootstrap test has failed */
-			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, FALSE);
-			return FALSE;
+			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, false);
+			return false;
 		}
 	}//END replication loop
 	cell->time.optTestIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	mem_free(cdf); mem_free(observ);
-	freeCutsType(gCuts, FALSE);
-	return TRUE;
+	freeCutsType(gCuts, false);
+	return true;
 
 }//END full_test()
 
@@ -142,7 +142,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
  * are likely to provide good approximations of the recourse function at incumbent solution, when they are reformed with new observations.
  * The function returns a new cut structure which contains room for cuts to be reformed. Only the _istar_ and _cut_obs_ fields of
  * each cut have been initialized. */
-cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
+cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX) {
 	cutsType *gCuts;
 	int cnt;
 
@@ -162,7 +162,7 @@ cutsType *chooseCuts(cutsType *cuts, vector pi, int lenX) {
 
 /* This function forms an empirical distribution on the observations stored in omega, and calculates an integer cdf to represent the distribution.
  * An observation which has been seen n times will have n times the probability of being chosen as an observation seen only once. */
-void empiricalDistribution(omegaType *omega, intvec cdf) {
+void empiricalDistribution(omegaType *omega, iVector cdf) {
 	int cnt;
 
 	/* Calculate an integer cdf distribution for observations */
@@ -175,7 +175,7 @@ void empiricalDistribution(omegaType *omega, intvec cdf) {
 /* This function randomly selects a new set of observations from the old set of observations stored in omega.  Entries in omega which have been observed
  * multiple times have a proportionally higher chance of being selected for the new set.  The function fills an array, assumed to be of a size equal to the
  * number of iterations, with the new set of observations. */
-void resampleOmega(intvec cdf, intvec observ, int numSamples) {
+void resampleOmega(iVector cdf, iVector observ, int numSamples) {
 	int cnt, obs;
 	int sample;
 
@@ -246,16 +246,16 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 /* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c in the case of
  regularized approach. */
-double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, int currIter, double quadScalar, cutsType *cuts) {
-	double *bk; 			/* vector: b - A*incumb_x. */
-	double *lambda; 		/* vector: the dual of the primal constraints. */
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts) {
+	double *bk; 			/* dVector: b - A*incumb_x. */
+	double *lambda; 		/* dVector: the dual of the primal constraints. */
 	double bk_lambda; 		/* scalar: bk*lambda. */
 	sparseMatrix *A_Trans; 	/* sparse_matrix: the transpose of A(we call it Dbar in our code)*/
-	double *A_Trans_lambda; /* vector: - A_Trans * lambda. */
+	double *A_Trans_lambda; /* dVector: - A_Trans * lambda. */
 	double theta; 			/* the dual of the reformed cut constraints. */
 	double Vk_theta; 		/* Scalar: Vk*theta. */
-	double *Bk_theta; 		/* vector: Bk_Transpose * theta, where Bk_Transpose is the matrix of cut coefficients. */
-	double *q_vec; 			/* vector: c + Bk_theta - A_Trans_lambda. */
+	double *Bk_theta; 		/* dVector: Bk_Transpose * theta, where Bk_Transpose is the matrix of cut coefficients. */
+	double *q_vec; 			/* dVector: c + Bk_theta - A_Trans_lambda. */
 	double q_term; 			/* scalar: q_vec * q_vec. */
 	double Lm; 				/* The calculated lower bound of the optimal value. */
 	int cnt, i;
@@ -324,7 +324,7 @@ double calcBootstrpLB(probType *prob, vector incumbX, vector piM, vector djM, in
 			Bk_theta[i] += theta * cuts->vals[cnt]->beta[i];
 	}
 
-	/* 4. Calculate the quadratic vector q_vec = Bk_theta[i] - A_Trans_lambda[i].*/
+	/* 4. Calculate the quadratic dVector q_vec = Bk_theta[i] - A_Trans_lambda[i].*/
 	for (i = 1; i <= prob->num->cols; i++)
 		q_vec[i] = prob->dBar->val[i] - Bk_theta[i] - A_Trans_lambda[i];
 

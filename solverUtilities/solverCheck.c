@@ -11,7 +11,7 @@
 #include "solver.h"
 
 long int MEM_USED;
-string outputDir;
+cString outputDir;
 
 int main() {
 

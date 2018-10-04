@@ -30,7 +30,7 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 	return 0;
 }//END generateOmegaIdx()
 
-void generateOmega(stocType *stoc, vector observ, double minVal, long long *seed) {
+void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed) {
 	int n, offset = 0;
 
 	for ( n = 0; n < stoc->numGroups; n++ ) {
@@ -64,7 +64,7 @@ void generateOmega(stocType *stoc, vector observ, double minVal, long long *seed
 
 }//END generateOmega()
 
-void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed) {
+void generateBlocks(stocType *stoc, dVector observ, int groupID, long long *seed) {
 	int 	n, m;
 	double 	val, cumm;
 
@@ -80,7 +80,7 @@ void generateBlocks(stocType *stoc, vector observ, int groupID, long long *seed)
 
 }//END generateBlocks()
 
-void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) {
+void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed) {
 	double 	val, cumm;
 	int		n, m;
 
@@ -95,8 +95,8 @@ void generateIndep(stocType *stoc, vector observ, int groupID, long long *seed) 
 }//END generateIndep()
 
 /* Supporting only Wiener process */
-void generateLinTran(stocType *stoc, vector observ, int groupID, double minVal, long long *seed) {
-	vector eps;
+void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal, long long *seed) {
+	dVector eps;
 	int n, offset, t;
 	int numPeriods, epsLen, omegaLen;
 
@@ -104,8 +104,8 @@ void generateLinTran(stocType *stoc, vector observ, int groupID, double minVal, 
 	epsLen     = stoc->mod->M;									/* Number of residual random variables */
 	omegaLen   = stoc->mod->N;									/* Number of random variables per period */
 
-	/* residual vector */
-	eps = (vector) arr_alloc(numPeriods*epsLen, double);
+	/* residual dVector */
+	eps = (dVector) arr_alloc(numPeriods*epsLen, double);
 
 	/* constant terms */
 	offset = stoc->groupBeg[groupID];
@@ -135,7 +135,7 @@ void generateLinTran(stocType *stoc, vector observ, int groupID, double minVal, 
 
 /* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
  * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */
-int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed) {
+int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *seed) {
 	int i;
 	float zero, one, half, split1, split2, const1, const2, a0, a1, a2, a3, b1;
 	float b2, b3, c0, c1, c2, c3, d1, d2, e0, e1, e2, e3, f1, f2, p, q, r;
@@ -217,7 +217,7 @@ int normal(vector mu, vector stdev, int numOmega, vector observ, long long *seed
 	return (1);
 }//normal()
 
-int weibull(double scaleParam, double shapeParam, int numOmega, vector observ, long long *seed) {
+int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, long long *seed) {
 	int 	n;
 	double 	u;
 
@@ -276,7 +276,7 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *probs, int *numSamples, double TOLERANCE) {
+int setupSAA(stocType *stoc, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE) {
 	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
@@ -286,33 +286,33 @@ int setupSAA(stocType *stoc, long long *seed, vector **simObservVals, vector *pr
 	}
 	printf("Generating SAA with %d samples.\n", (*numSamples));
 
-	(*simObservVals) = (vector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(vector));
-	(*probs) = (vector) mem_realloc((*probs), (*numSamples)*sizeof(double));
+	(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
+	(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
 
 	if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
 			generateBlocks(stoc, (*simObservVals)[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
 			generateIndep(stoc, (*simObservVals)[obs]+1, 0, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
 			normal(stoc->mean, stoc->vals[0], stoc->numOmega, (*simObservVals)[obs]+1, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}
 	}
 	else if ( !strcmp(stoc->type, "LINTRAN") ) {
 		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (vector) arr_alloc(stoc->numOmega+1, double);
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
 			generateLinTran(stoc, (*simObservVals)[obs]+1, 0, TOLERANCE, seed);
 			(*probs)[obs] = 1.0/(double) (*numSamples);
 		}

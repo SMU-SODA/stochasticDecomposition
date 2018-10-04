@@ -14,18 +14,18 @@
 
 // global variables
 long int MEM_USED;
-string 	outputDir;
+cString 	outputDir;
 
 // subroutines used
-void parseCmdLine(int argc, string *argv, string probName, string inputDir);
-void setupDir(string algoName, string probName);
+void parseCmdLine(int argc, cString *argv, cString probName, cString inputDir);
+void setupDir(cString algoName, cString probName);
 
 int main(int argc, char *argv[]) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 	probType **prob = NULL;
-	vector	meanSol = NULL, lb = NULL;
+	dVector	meanSol = NULL, lb = NULL;
 	char probName[NAMESIZE], inputDir[2*BLOCKSIZE];
 
 	/* parse command line to obtain input from user regarding problem name and the algorithm for which the problem is being read for. */
@@ -54,8 +54,8 @@ int main(int argc, char *argv[]) {
 
 	/* check observation simulation */
 	long long seed = 3554548844580680;
-	vector observ = NULL;
-	observ = (vector) arr_alloc(stoc->numOmega, double);
+	dVector observ = NULL;
+	observ = (dVector) arr_alloc(stoc->numOmega, double);
 	generateOmega(stoc, observ, 0, &seed);
 	mem_free(observ);
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 }//END
 
 /* Parse the command line to obtain the names of the algorithm and the problem */
-void parseCmdLine(int argc, string *argv, string probName, string inputDir) {
+void parseCmdLine(int argc, cString *argv, cString probName, cString inputDir) {
 
 	switch (argc) {
 	case 3:
@@ -121,10 +121,10 @@ void parseCmdLine(int argc, string *argv, string probName, string inputDir) {
 }//END parseCmdLine
 
 /* setup an output directory for the problem in the algorithms directory */
-void setupDir(string algoName, string probName) {
+void setupDir(cString algoName, cString probName) {
 	char buffer[2*BLOCKSIZE];
 
-	outputDir = (string) arr_alloc(2*BLOCKSIZE, char);
+	outputDir = (cString) arr_alloc(2*BLOCKSIZE, char);
 
 	sprintf(outputDir, "../../spOutput/%s/", algoName);
 	sprintf(buffer, "mkdir %s", outputDir);

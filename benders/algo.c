@@ -11,17 +11,17 @@
 
 #include "benders.h"
 
-extern string outputDir;
+extern cString outputDir;
 extern configType config;
 
 #if defined(SAVE_DUALS)
 dualsType *duals = NULL;
 #endif
 
-int algo (oneProblem *orig, timeType *tim, stocType *stoc, string probName) {
+int algo (oneProblem *orig, timeType *tim, stocType *stoc, cString probName) {
 	probType **prob = NULL;
 	cellType *cell = NULL;
-	vector 	 meanSol;
+	dVector 	 meanSol;
 	int 	 rep, m, n;
 	FILE 	*sFile, *iFile = NULL;
 	clock_t	tic;
@@ -107,9 +107,9 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 #if defined(SAVE_DUALS)
 	if ( duals == NULL ) {
 		duals = (dualsType *) mem_malloc(sizeof(dualsType));
-		duals->iter = (intvec) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
-		duals->obs = (intvec) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
-		duals->vals = (vector *) arr_alloc(config.MAX_ITER*cell->omega->cnt, vector);
+		duals->iter = (iVector) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
+		duals->obs = (iVector) arr_alloc(config.MAX_ITER*cell->omega->cnt, int);
+		duals->vals = (dVector *) arr_alloc(config.MAX_ITER*cell->omega->cnt, dVector);
 		duals->cnt = 0;
 	}
 #endif
@@ -134,7 +134,7 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 				break;
 
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formOptCut(prob[1], cell, cell->candidX, FALSE)) < 0 ) {
+		if ( (candidCut = formOptCut(prob[1], cell, cell->candidX, false)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
@@ -171,13 +171,13 @@ int solveBendersCell(stocType *stoc, probType **prob, cellType *cell) {
 	return 0;
 }//END solveCell()
 
-BOOL optimal(cellType *cell) {
+bool optimal(cellType *cell) {
 
 	if ( cell->k > config.MIN_ITER ) {
 		return cell->optFlag = ((cell->incumbEst - cell->candidEst) < config.EPSILON);
 	}
 
-	return FALSE;
+	return false;
 }//END optimal()
 
 void writeStatistic(FILE *soln, FILE *incumb, probType **prob, cellType *cell) {

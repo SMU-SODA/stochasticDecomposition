@@ -9,7 +9,7 @@
 
 extern long MEM_USED;
 
-FILE *openFile(string outputDir, string fname, char *mode) {
+FILE *openFile(cString outputDir, cString fname, char *mode) {
 	FILE *fptr;
 	char buffer[2*BLOCKSIZE];
 
@@ -25,7 +25,7 @@ FILE *openFile(string outputDir, string fname, char *mode) {
 	return fptr;
 }//END openFile()
 
-void createOutputDir(string outputDir, string algoName, string probName) {
+void createOutputDir(cString outputDir, cString algoName, cString probName) {
 	struct stat st;
 	char buffer[2*BLOCKSIZE];
 
@@ -48,16 +48,16 @@ void createOutputDir(string outputDir, string algoName, string probName) {
 
 }//END createOutputDir()
 
-void errMsg(string type, string place, string item, int quit){
+void errMsg(cString type, cString place, cString item, int quit){
 	fprintf(stderr, "\nError :: Type - %s;  Function - %s(); Item - %s\n", type, place, item);
 	if (quit)
 		exit(1);
 }//err_msg()
 
 /* The function getLine() reads an input line, checks its length, and determines the appropriate parsing function to call. In the case of a line consisting of only a single carriage return, the function
- * continues to read in lines until a string of non_zero length or an EOF is encountered. Upon return of fields from the parsing functions, each field will be sent to remove_spaces for the removal of all
+ * continues to read in lines until a cString of non_zero length or an EOF is encountered. Upon return of fields from the parsing functions, each field will be sent to remove_spaces for the removal of all
  * blank spaces.  The getLine function then returns control to the calling function. */
-int getLine(FILE **input, string *fields, char *type, int *numFields) {
+int getLine(FILE **input, cString *fields, char *type, int *numFields) {
 	char 	input_str[BLOCKSIZE], *strptr, *token;
 	long	len = 0, n, stat;
 
@@ -71,15 +71,15 @@ int getLine(FILE **input, string *fields, char *type, int *numFields) {
 		len = strlen(input_str);
 	}
 
-	/*  identify type of input string (title or field)  */
+	/*  identify type of input cString (title or field)  */
 	if (input_str[0] >= '0' && input_str[0] <= 'Z') {
-		/* input string is title string, marked by type = 't' */
+		/* input cString is title cString, marked by type = 't' */
 		sscanf(input_str, "%s %s", fields[0], fields[1]);
 		type[0] = 't';
 		n = 2;
 	}
 	else {
-		/* input string is field string, marked by type = 'f' */
+		/* input cString is field cString, marked by type = 'f' */
 		token = strtok(input_str, " \t");
 		n = 0;
 		while( token != NULL ) {
@@ -100,7 +100,7 @@ int getLine(FILE **input, string *fields, char *type, int *numFields) {
 	return 0;
 }//END getLine()
 
-/* The function removeSpace() removes additional spaces from a	string. This function will be used after an input string has been broken into its appropriate fields according to column values. */
+/* The function removeSpace() removes additional spaces from a	cString. This function will be used after an input cString has been broken into its appropriate fields according to column values. */
 int removeSpaces (char *field) {
 	char *p, *q, len = 0;;
 
@@ -119,34 +119,34 @@ int removeSpaces (char *field) {
 	return len;
 }//END removeSpaces
 
-void trPrint(string routine, int type){
+void trPrint(cString routine, int type){
 	if ( type == 1 )
 		printf("Entering :: %s()\n", routine);
 	else
 		printf("Exiting  :: %s()\n", routine);
 }//END trPrint()
 
-void *log_alloc(char *string, void *return_ptr, int size) {
+void *log_alloc(char *cString, void *return_ptr, int size) {
 	MEM_USED += size;
 	return return_ptr;
 }//END log_alloc()
 
 
-void *log_realloc(char *string, void *free_ptr, void *alloc_ptr, int size) {
+void *log_realloc(char *cString, void *free_ptr, void *alloc_ptr, int size) {
 	MEM_USED += size;
 	return alloc_ptr;
 }//END log_realloc()
 
 
-double str2float(char *string){
+double str2float(char *cString){
 	double val;
-	sscanf(string, "%lf", &val);
+	sscanf(cString, "%lf", &val);
 	return val;
 }//END str_to_float()
 
-int str2int(char *string) {
+int str2int(char *cString) {
 	int val;
-	sscanf(string, "%d", &val);
+	sscanf(cString, "%d", &val);
 	return val;
 }//END str2int()
 
@@ -162,7 +162,7 @@ int getNumBits(int num) {
 }//END getNumBits()
 
 
-double oneNorm(vector a, int len) {
+double oneNorm(dVector a, int len) {
 	int		cnt;
 	double	sum;
 
@@ -173,7 +173,7 @@ double oneNorm(vector a, int len) {
 	return sum;
 }//END oneNorm()
 
-double twoNorm(vector a, vector b, int len) {
+double twoNorm(dVector a, dVector b, int len) {
 	int 	cnt;
 	double	norm = 0.0;
 
@@ -186,7 +186,7 @@ double twoNorm(vector a, vector b, int len) {
 	return norm;
 }//END twoNorm()
 
-void calcMeanVariance(vector x, int lenX, double *mean, double *variance) {
+void calcMeanVariance(dVector x, int lenX, double *mean, double *variance) {
     double 	temp;
     int 	cnt;
 
@@ -200,7 +200,7 @@ void calcMeanVariance(vector x, int lenX, double *mean, double *variance) {
 
 }//END calcVariance()
 
-double vXv(vector a, vector b, intvec idxCol, int len) {
+double vXv(dVector a, dVector b, iVector idxCol, int len) {
 	double ans = 0.0;
 	int n;
 
@@ -214,7 +214,7 @@ double vXv(vector a, vector b, intvec idxCol, int len) {
 	return ans;
 }//END vXv()
 
-double vXvSparse(vector v, sparseVector *vSparse){
+double vXvSparse(dVector v, sparseVector *vSparse){
 	int		cnt;
 	double 	ans;
 
@@ -225,7 +225,7 @@ double vXvSparse(vector v, sparseVector *vSparse){
 	return ans;
 }//END vXvSparse()
 
-vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans){
+dVector MSparsexvAdd(sparseMatrix *M, dVector v, dVector ans){
 	int	cnt;
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -234,7 +234,7 @@ vector MSparsexvAdd(sparseMatrix *M, vector v, vector ans){
 	return ans;
 }//END MSparsexv()
 
-vector MSparsexvSub(sparseMatrix *M, vector v, vector ans){
+dVector MSparsexvSub(sparseMatrix *M, dVector v, dVector ans){
 	int	cnt;
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -243,11 +243,11 @@ vector MSparsexvSub(sparseMatrix *M, vector v, vector ans){
 	return ans;
 }//END MSparsexvSub()
 
-vector vxMSparse(vector v, sparseMatrix *M, int len) {
+dVector vxMSparse(dVector v, sparseMatrix *M, int len) {
 	int		cnt;
-	vector	ans;
+	dVector	ans;
 
-	if(!(ans = (vector) arr_alloc(len+1, double)))
+	if(!(ans = (dVector) arr_alloc(len+1, double)))
 		errMsg("allocation", "vxMSparse", "ans", 1);
 
 	for (cnt = 1; cnt <= M->cnt; cnt++)
@@ -257,7 +257,7 @@ vector vxMSparse(vector v, sparseMatrix *M, int len) {
 	return ans;
 }//END PIxT()
 
-void vPlusv(vector a, vector b, double mult, int len){
+void vPlusv(dVector a, dVector b, double mult, int len){
 	int 	cnt;
 
 	for ( cnt = 1; cnt <= len; cnt++ )
@@ -270,11 +270,11 @@ double smooth(double new, double old, double factor) {
 	return factor*new + (1-factor)*old;
 }//END smooth();
 
-vector reduceVector(vector f_vect, intvec row, int num_elem){
+dVector reduceVector(dVector f_vect, iVector row, int num_elem){
 	int		cnt;
 	double 	*s_vect;
 
-	if(!(s_vect = (vector) arr_alloc(num_elem+1, double)))
+	if(!(s_vect = (dVector) arr_alloc(num_elem+1, double)))
 		errMsg("allocation", "reduceVector", "s_vect", 1);
 
 	for (cnt = 1; cnt <= num_elem; cnt++)
@@ -284,12 +284,12 @@ vector reduceVector(vector f_vect, intvec row, int num_elem){
 	return s_vect;
 }//END reduceVector()
 
-vector expandVector(vector red, intvec col, int redElems, int expElems){
+dVector expandVector(dVector red, iVector col, int redElems, int expElems){
 	int 	n;
-	vector 	exp;
+	dVector 	exp;
 
-	if (!(exp = (vector) arr_alloc(expElems+1, double)) )
-		errMsg("allocation", "expandVector", "expanded vector", 0);
+	if (!(exp = (dVector) arr_alloc(expElems+1, double)) )
+		errMsg("allocation", "expandVector", "expanded dVector", 0);
 
 	for (n = 1; n <= redElems; n++ )
 		exp[col[n]] = red[n];
@@ -298,66 +298,66 @@ vector expandVector(vector red, intvec col, int redElems, int expElems){
 	return exp;
 }//END expandVector
 
-BOOL equalVector(vector a, vector b, int len, double tolerance) {
+bool equalVector(dVector a, dVector b, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( DBL_ABS(a[cnt] - b[cnt]) > tolerance )
-			return FALSE;
+			return false;
     
-	return TRUE;
+	return true;
 }//END equalVector()
 
-BOOL equalIntvec(intvec a, intvec b, int len) {
+bool equalIntvec(iVector a, iVector b, int len) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( a[cnt] != b[cnt] )
-			return FALSE;
+			return false;
 
-	return TRUE;
+	return true;
 }//END equalIntvec()
 
-BOOL equalLongIntvec(unsigned long *a, unsigned long *b, int len) {
+bool equalLongIntvec(unsigned long *a, unsigned long *b, int len) {
 	int		cnt;
 
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( a[cnt] != b[cnt] )
-			return FALSE;
+			return false;
 
-	return TRUE;
+	return true;
 }//END equalLongIntvec()
 
-BOOL isZeroVector(vector a, int len, double tolerance) {
+bool isZeroVector(dVector a, int len, double tolerance) {
 	int		cnt;
 
 	for (cnt = 0; cnt < len; cnt++) {
 		if ( DBL_ABS(a[cnt]) >= tolerance )
-			return FALSE;
+			return false;
 //		else
 //			a[cnt] = 0.0;
 	}
 
-	return TRUE;
+	return true;
 }//END isZeroVector()
 
-/*This function will check if a vector is integer with a predefined gap */
-BOOL isInteger(vector x, int length, int startIdx, int endIdx, double tolerance){
+/*This function will check if a dVector is integer with a predefined gap */
+bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance){
 	int i;
 
 	for (i = startIdx+1; i < endIdx; i++)
 		if (fabs(x[i] - round(x[i])) > tolerance)
-			return FALSE;
+			return false;
 
-	return TRUE;
+	return true;
 }//END isInteger()
 
 
-vector duplicVector(vector a, int len) {
+dVector duplicVector(dVector a, int len) {
 	int		i;
-	vector	b;
+	dVector	b;
 
-	if ((b = (vector) arr_alloc(len+1, double))) {
+	if ((b = (dVector) arr_alloc(len+1, double))) {
 		for (i = 1; i <= len; i++)
 			b[i] = a[i];
 		b[0] = oneNorm(b+1, len);
@@ -368,11 +368,11 @@ vector duplicVector(vector a, int len) {
 	return b;
 }//END duplicArray()
 
-intvec duplicIntvec(intvec a, int len) {
+iVector duplicIntvec(iVector a, int len) {
 	int		i;
-	intvec	b;
+	iVector	b;
 
-	if ((b = (intvec) arr_alloc(len+1, int))) {
+	if ((b = (iVector) arr_alloc(len+1, int))) {
 		for (i = 1; i <= len; i++)
 			b[i] = a[i];
 	}
@@ -382,7 +382,7 @@ intvec duplicIntvec(intvec a, int len) {
 	return b;
 }//END duplicArray()
 
-void copyVector(vector a, vector b, int len, BOOL isOneNorm){
+void copyVector(dVector a, dVector b, int len, bool isOneNorm){
 	int n;
 
 	if (isOneNorm)
@@ -396,7 +396,7 @@ void copyVector(vector a, vector b, int len, BOOL isOneNorm){
 
 }//END copyVector()
 
-void copyIntvec (intvec a, intvec b, int len) {
+void copyIntvec (iVector a, iVector b, int len) {
 	int n;
 
 	for ( n = 0; n < len; n++ )
@@ -404,7 +404,7 @@ void copyIntvec (intvec a, intvec b, int len) {
 
 }//END copyVector()
 
-void addVectors(vector a, vector b, intvec indices, int len) {
+void addVectors(dVector a, dVector b, iVector indices, int len) {
 	int n;
 
 	if ( indices == NULL ) {
@@ -419,7 +419,7 @@ void addVectors(vector a, vector b, intvec indices, int len) {
 
 }//END copy_arr()
 
-void printVector(vector vec, int len, FILE *fptr){
+void printVector(dVector vec, int len, FILE *fptr){
 	int n;
 
 	if ( fptr == NULL ) {
@@ -435,7 +435,7 @@ void printVector(vector vec, int len, FILE *fptr){
 
 }//END printVector()
 
-void printVectorWName(vector vec, string *vecName, int len, FILE *fptr){
+void printVectorWName(dVector vec, cString *vecName, int len, FILE *fptr){
 	int n;
 
 	for ( n = 1; n <= len; n++ ) {
@@ -445,7 +445,7 @@ void printVectorWName(vector vec, string *vecName, int len, FILE *fptr){
 
 }//END printVectorWName()
 
-void printIntvec(intvec vec, int len, FILE *fptr){
+void printIntvec(iVector vec, int len, FILE *fptr){
 	int n;
 
 	if (fptr == NULL) {
@@ -461,7 +461,7 @@ void printIntvec(intvec vec, int len, FILE *fptr){
 
 }//END printIntvec()
 
-void printSparseVector(vector vec, intvec indices, int len) {
+void printSparseVector(dVector vec, iVector indices, int len) {
 	int n;
 
 	for ( n = 1; n <= len; n++ )
@@ -470,9 +470,9 @@ void printSparseVector(vector vec, intvec indices, int len) {
 
 }//END printSparseVector()
 
-void printSparseMatrix(sparseMatrix *V, char *string) {
+void printSparseMatrix(sparseMatrix *V, char *cString) {
 	int 	cnt;
-	printf("%s (%d) ::\n\t\n", string, V->cnt);
+	printf("%s (%d) ::\n\t\n", cString, V->cnt);
 	for (cnt = 1; cnt <= V->cnt; cnt++){
 		printf("(%d, %d, %.2f)\t\n", V->row[cnt], V->col[cnt], V->val[cnt]);
 		if ( cnt % 5 == 0 )
@@ -487,8 +487,8 @@ void printLine() {
 
 }//END printLine
 
-intvec findElems(intvec allElem, int totalElem, int *numUniq){
-	intvec	elemUniq;
+iVector findElems(iVector allElem, int totalElem, int *numUniq){
+	iVector	elemUniq;
 	int		n, m, len;
 
 	if(!(elemUniq = arr_alloc(totalElem+1, int)))
@@ -510,7 +510,7 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq){
 	}
 
 	/* Shrink the array down to the number of distinct elements found */
-	elemUniq = (intvec) mem_realloc(elemUniq, (len+1)*sizeof(int));
+	elemUniq = (iVector) mem_realloc(elemUniq, (len+1)*sizeof(int));
 
 	elemUniq[0] = 0;
 	*numUniq = len;
@@ -518,8 +518,8 @@ intvec findElems(intvec allElem, int totalElem, int *numUniq){
 	return elemUniq;
 }//END findElems()
 
-/* The function encodes an integer vector _stream_ of given length _len_ into an unsigned long vector _codeWord_. The _maxValue indicates the maximum value of decoded integer.*/
-unsigned long *encodeIntvec(intvec stream, int len, int wordLength, int maxValue) {
+/* The function encodes an integer dVector _stream_ of given length _len_ into an unsigned long dVector _codeWord_. The _maxValue indicates the maximum value of decoded integer.*/
+unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValue) {
 	unsigned long *codeWord, temp;
 	int j, group, shift, codeLength, numBits;
 
@@ -540,14 +540,14 @@ unsigned long *encodeIntvec(intvec stream, int len, int wordLength, int maxValue
 }//END encodeIntvec()
 
 /* Decode the column and return the total number of 1's */
-intvec decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue) {
-	intvec 	stream;
+iVector decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxValue) {
+	iVector 	stream;
 	int 	j, group, shift, numBits, mask = 0;
 
     numBits = (int) ceil(log2(maxValue));
     for ( j = 0; j < numBits; j++ )
     	mask = (mask << 1) + 1;
-    stream = (intvec) arr_alloc(len+1, int);
+    stream = (iVector) arr_alloc(len+1, int);
 
     /* Let's decode phi_col */
     for (j = 1; j <= len; j++) {
@@ -560,13 +560,13 @@ intvec decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxVal
     return stream;
 }//END decodeIntvec()
 
-/* This subroutine extracts elements which are common to the two input integer vectors _a_ and _b_ */
-intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
-	intvec inter;
+/* This subroutine extracts elements which are common to the two input integer dVectors _a_ and _b_ */
+iVector iVectorIntersect(iVector a, iVector b, int lenA, int lenB) {
+	iVector inter;
 	int	cnt, n;
 
-	if ( !(inter = (intvec) arr_alloc(max(lenA, lenB)+1, int)) )
-		errMsg("allocation", "intvecIntersect", "inter", 0);
+	if ( !(inter = (iVector) arr_alloc(max(lenA, lenB)+1, int)) )
+		errMsg("allocation", "iVectorIntersect", "inter", 0);
 
 	cnt = 1;
 	for ( n = 1; n <= lenA; n++ )
@@ -575,10 +575,10 @@ intvec intvecIntersect(intvec a, intvec b, int lenA, int lenB) {
 
 	return inter;
 
-}//END intvecIntersect()
+}//END iVectorIntersect()
 
-/* This subroutine checks to see if a integer scalar is an element of integer vector. If so, the subroutine will return the index. If not, a value of -1 is returned. */
-int isElementIntvec(intvec vec, int lenVec, int elem) {
+/* This subroutine checks to see if a integer scalar is an element of integer dVector. If so, the subroutine will return the index. If not, a value of -1 is returned. */
+int isElementIntvec(iVector vec, int lenVec, int elem) {
 	int n = 1;
 
 	while ( n <= lenVec ) {
@@ -594,7 +594,7 @@ int isElementIntvec(intvec vec, int lenVec, int elem) {
 
 }//END isElementIntvec()
 
-void subVectors(vector a, vector b, intvec indices, int len){
+void subVectors(dVector a, dVector b, iVector indices, int len){
 	int n;
 
 	if ( indices == NULL ) {

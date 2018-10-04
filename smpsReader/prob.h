@@ -23,7 +23,7 @@ typedef struct {
 	int		numRV;			/* total number of random variables */
 	int 	rvRowCnt;		/* number of rows effected by randomness */
 	int 	rvColCnt;		/* number of columns effected by randomness */
-    int 	rvaOmCnt;		/* number of RVs in dynamics noise vector a */
+    int 	rvaOmCnt;		/* number of RVs in dynamics noise dVector a */
 	int 	rvbOmCnt;		/* number of RVs in right-hand side */
     int 	rvcOmCnt;		/* number of RVs in state-cost coefficients */
     int 	rvdOmCnt;		/* number of RVs in stage-cost coefficients */
@@ -35,17 +35,17 @@ typedef struct {
 
 /* structure to hold coordinate information at each stage */
 typedef struct {
-	intvec	allRVRows;		/* list of all random variable rows */
-	intvec	allRVCols;		/* list of all random variable columns */
-	intvec	CCols;			/* list of columns in transfer matrix with at least non-zero element in them */
-	intvec	CRows;			/* list of rows in transfer matrix with at least non-zero element in them */
-	intvec	rvCols;			/* list of all columns in transfer matrix with at least one random element */
-	intvec	rvRows;			/* list of all rows with at least one random variable */
-	intvec	rvbOmRows;		/* list of all right-hand sides with random variables */
-	intvec	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
-	intvec	rvCOmCols;		/* list of all columns with coefficients with random variables */
-	intvec	rvCOmRows;		/* list of all rows with coefficients with random variables */
-	intvec	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
+	iVector	allRVRows;		/* list of all random variable rows */
+	iVector	allRVCols;		/* list of all random variable columns */
+	iVector	CCols;			/* list of columns in transfer matrix with at least non-zero element in them */
+	iVector	CRows;			/* list of rows in transfer matrix with at least non-zero element in them */
+	iVector	rvCols;			/* list of all columns in transfer matrix with at least one random element */
+	iVector	rvRows;			/* list of all rows with at least one random variable */
+	iVector	rvbOmRows;		/* list of all right-hand sides with random variables */
+	iVector	rvdOmCols;		/* list of all columns with cost coefficients with random variables */
+	iVector	rvCOmCols;		/* list of all columns with coefficients with random variables */
+	iVector	rvCOmRows;		/* list of all rows with coefficients with random variables */
+	iVector	rvOffset;		/* Index where the random variable begin - right-hand side, transfer matrix, and cost coefficients. */
 }coordType;
 
 /* structure for the problem type:
@@ -54,11 +54,11 @@ typedef struct {
  * where, x_{t+} = a_{t+} + A_{t+}x_t + B_{t+}u_t.
  */
 typedef struct{
-	string			name;			/* name of the problem */
+	cString			name;			/* name of the problem */
 	oneProblem		*sp;			/* structure with complete problem information */
 	numType			*num;			/* structure which holds the problem dimensions */
 	coordType		*coord;			/* structure which holds the necessary coordinates of the problem */
-	sparseVector	*aBar;			/* dynamics vector a_{t+} */
+	sparseVector	*aBar;			/* dynamics dVector a_{t+} */
 	sparseVector	*bBar;			/* right-hand side b_t */
 	sparseVector	*cBar;			/* state cost coefficients c_t */
 	sparseVector	*dBar;			/* objective function coefficients d_t */
@@ -66,17 +66,17 @@ typedef struct{
 	sparseMatrix	*Bbar;			/* dynamics decision matrix B_{t+} */
 	sparseMatrix	*Cbar;			/* transfer matrix C_t */
 	sparseMatrix	*Dbar;			/* recourse matrix D_t */
-	vector			mean;			/* Vector of mean values of random variables. */
-	int				omBeg;			/* Beginning of omega vector */
+	dVector			mean;			/* Vector of mean values of random variables. */
+	int				omBeg;			/* Beginning of omega dVector */
 	double			lb;				/* lower bounds on cost-to-go function */
 }probType;
 
 /* subroutines in prob.c */
-probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, vector lb, double TOLERANCE);
-vector meanProblem(oneProblem *orig, stocType *stoc);
-vector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
+probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, dVector lb, double TOLERANCE);
+dVector meanProblem(oneProblem *orig, stocType *stoc);
+dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc);
 void freeProbType(probType **prob, int T);
 void freeCoordType (coordType *coord);
-void printDecomposeSummary(FILE *fptr, string probName, timeType *tim, probType **prob);
+void printDecomposeSummary(FILE *fptr, cString probName, timeType *tim, probType **prob);
 
 #endif /* PROB_H_ */

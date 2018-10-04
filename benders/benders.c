@@ -11,7 +11,7 @@
 
 #include "benders.h"
 
-string outputDir;
+cString outputDir;
 configType config;
 long MEM_USED;
 
@@ -56,9 +56,9 @@ int main (int argc, char *argv[]) {
 	return 0;
 }//END main()
 
-int parseCmdLine(int argc, char *argv[], string probName, string inputDir) {
+int parseCmdLine(int argc, char *argv[], cString probName, cString inputDir) {
 
-	outputDir = (string) arr_alloc(BLOCKSIZE, char);
+	outputDir = (cString) arr_alloc(BLOCKSIZE, char);
 
 	/* request for problem name to be solved, the path is assumed to be provided in the configuration file */
 	if ( argc < 2 ) {
