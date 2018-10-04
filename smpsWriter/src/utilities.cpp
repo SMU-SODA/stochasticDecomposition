@@ -1,0 +1,334 @@
+#include "utils.hpp"
+
+void disp_vector (vector<int> &x)
+{
+    for (unsigned int i=0; i<x.size(); i++)
+		cout << fixed << setprecision(0) << x[i] << " ";
+	cout << endl;
+}
+
+void disp_vector (vector<double> &x)
+{
+    if (x.size() == 0)  {
+        cout << "Empty\n";
+        return;
+    }
+	
+    for (unsigned int i=0; i<x.size(); i++)
+		cout << fixed << setprecision(2) << x[i] << " ";
+	cout << endl;
+}
+
+void disp_vector (vector<bool> &x)
+{
+    if (x.size() == 0)  {
+        cout << "Empty\n";
+        return;
+    }
+
+	for (unsigned int i=0; i<x.size(); i++)
+		cout << x[i] << " ";
+	cout << endl;
+}
+
+void disp_matrix (vector< vector<double> > &x)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		for (unsigned int j=0; j<x[0].size(); j++)
+			cout << fixed << setprecision(3) << setw(6) << x[i][j] << " ";
+		cout << endl;
+	}
+	cout << endl;
+}
+
+void disp_matrix (vector< vector<bool> > &x)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		for (unsigned int j=0; j<x[0].size(); j++)
+			cout << fixed << setw(1) << x[i][j] << ", ";
+		cout << endl;
+	}
+	cout << endl;
+}
+
+void disp_matrix (vector< vector<int> > &x)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		for (unsigned int j=0; j<x[0].size(); j++)
+			cout << fixed << setprecision(0) << setw(3) << x[i][j] << ", ";
+		cout << endl;
+	}
+	cout << endl;
+}
+
+void print_matrix (vector < vector<double> > &x, ofstream &output)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		for (unsigned int j=0; j<x[0].size(); j++)
+			output << fixed << setprecision(20) << setw(23) << x[i][j] << "\t";
+		output << endl;
+	}
+}
+
+void print_matrix (vector < vector<bool> > &x, ofstream &output)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		for (unsigned int j=0; j<x[0].size(); j++)
+			output << fixed << setprecision(0) << setw(3) << x[i][j] << ",";
+		output << endl;
+	}
+}
+
+void print_vector (vector <int> &x, ofstream &output)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+		output << x[i] << " ";
+	output << endl;
+}
+
+void print_vector (vector <bool> &x, ofstream &output)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+		output << x[i] << " ";
+	output << endl;
+}
+
+void print_vector (vector <double> &x, ofstream &output)
+{
+	for (unsigned int i=0; i<x.size(); i++)
+		output << x[i] << " ";
+	output << endl;
+}
+
+void resize_matrix(vector< vector<bool> > &mat, int rows, int cols)
+{
+	mat.resize(rows);
+	for (unsigned int j=0; j<mat.size(); j++)
+		mat[j].resize(cols);
+}
+
+void resize_matrix(vector< vector<int> > &mat, int rows, int cols)
+{
+	mat.resize(rows);
+	for (unsigned int j=0; j<mat.size(); j++)
+		mat[j].resize(cols);
+}
+
+void resize_matrix(vector< vector<double> > &mat, int rows, int cols)
+{
+	mat.resize(rows);
+	for (unsigned int j=0; j<mat.size(); j++)
+		mat[j].resize(cols);
+}
+
+vector< vector<int> > create_int_matrix(int rows, int cols)
+{
+	vector< vector<int> > new_matrix (rows, vector<int> (cols) );
+	return new_matrix;
+}
+
+vector< vector< vector<int> > > create_int_quad(int size1, int size2, int size3)
+{
+	vector< vector< vector<int> > > new_matrix (size1, vector< vector<int> > (size2, vector<int> (size3)));
+	return new_matrix;
+}
+
+vector< vector<double> > create_dec_matrix(int rows, int cols)
+{
+	vector< vector<double> > new_matrix (rows, vector<double> (cols) );
+	return new_matrix;
+}
+
+vector< vector< vector<bool> > > create_boolean_quad (int size1, int size2, int size3)
+{
+	vector< vector< vector<bool> > > new_matrix (size1, vector< vector<bool> > (size2, vector<bool> (size3)));
+	return new_matrix;
+}
+
+vector< vector< vector<bool> > > create_boolean_quad (int size1, int size2, int size3, bool default_val)
+{
+	vector< vector< vector<bool> > > new_matrix (size1, vector< vector<bool> > (size2, vector<bool> (size3, default_val)));
+	return new_matrix;
+}
+
+struct int_pair {
+	int value;
+	int index;
+};
+
+struct double_pair {
+	double value;
+	int index;
+};
+
+bool compare_int_ascend (int_pair i, int_pair j) { return i.value < j.value; };
+bool compare_double_ascend (double_pair i, double_pair j) { return i.value < j.value; };
+bool compare_int_descend (int_pair i, int_pair j) { return i.value > j.value; };
+bool compare_double_descend (double_pair i, double_pair j) { return i.value > j.value; };
+
+vector<int> sort_this (vector<int> &x, bool ascend)
+{
+	//returns the indices of jobs after sorting (indexing starts with 0)
+	vector<int_pair> myVec (x.size());
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		myVec[i].value = x[i];
+		myVec[i].index = i;
+	}
+	
+	if (ascend)
+		sort(myVec.begin(), myVec.end(), compare_int_ascend);
+	else
+		sort(myVec.begin(), myVec.end(), compare_int_descend);
+	
+	vector<int> indices (x.size());
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		x[i] = myVec[i].value;
+		indices[i] = myVec[i].index;
+	}
+	
+	return indices;
+}
+
+vector<int> sort_this (vector<double> &x, bool ascend)
+{
+	//returns the indices of jobs after sorting (indexing starts with 0)
+	vector<double_pair> myVec (x.size());
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		myVec[i].value = x[i];
+		myVec[i].index = i;
+	}
+	
+	if (ascend)
+		sort(myVec.begin(), myVec.end(), compare_double_ascend);
+	else
+		sort(myVec.begin(), myVec.end(), compare_double_descend);
+	
+	vector<int> indices (x.size());
+	for (unsigned int i=0; i<x.size(); i++)
+	{
+		x[i] = myVec[i].value;
+		indices[i] = myVec[i].index;
+	}
+	
+	return indices;
+}
+
+void move_cursor (ifstream &file, char character) {
+	char x;
+	while (!file.eof())	{
+		file.get(x);
+		if(x == character)	break;
+	}
+}
+bool open_file (ifstream &fptr, string filename) {
+    
+    fptr.open( filename.c_str() );
+    if (fptr.fail()) {
+        cout << "Error opening file: " << filename << endl;
+        return false;
+    }
+    return true;
+}
+
+
+istream& safeGetline(istream& is, string& t)
+{
+    t.clear();
+    
+    // The characters in the stream are read one-by-one using a std::streambuf.
+    // That is faster than reading them one-by-one using the std::istream.
+    // Code that uses streambuf this way must be guarded by a sentry object.
+    // The sentry object performs various tasks,
+    // such as thread synchronization and updating the stream state.
+    
+    std::istream::sentry se(is, true);
+    std::streambuf* sb = is.rdbuf();
+    
+    for(;;) {
+        int c = sb->sbumpc();
+        switch (c) {
+            case '\n':
+                return is;
+            case '\r':
+                if(sb->sgetc() == '\n')
+                    sb->sbumpc();
+                return is;
+            case std::streambuf::traits_type::eof():
+                // Also handle the case when the last line has no line ending
+                if(t.empty())
+                    is.setstate(std::ios::eofbit);
+                return is;
+            default:
+                t += (char)c;
+        }
+    }
+}
+
+/* The subroutines lists all the sub-directories of a directory */
+int getDirs (string dir, vector<string> &subdirs) {
+    DIR *dp;
+    struct dirent *dirp;
+    
+    if((dp  = opendir(dir.c_str())) == NULL) {
+        cout << "Error opening directory : " << dir << endl;
+        return 1;
+    }
+    
+    while ((dirp = readdir(dp)) != NULL) {
+        if ( dirp->d_type == DT_DIR && strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
+            subdirs.push_back(string(dirp->d_name));
+    }
+    
+    closedir(dp);
+    return 0;
+}//END getDirs()
+
+/* The subroutines lists all the files in a directory */
+int getFiles (string dir, vector<string> &files) {
+    DIR *dp;
+    struct dirent *dirp;
+    
+    if((dp  = opendir(dir.c_str())) == NULL) {
+        cout << "Error opening directory : " << dir << endl;
+        return 1;
+    }
+    
+    while ((dirp = readdir(dp)) != NULL) {
+        if ( dirp->d_type != DT_DIR && dirp->d_name[0] != '.')
+            files.push_back(string(dirp->d_name));
+    }
+    
+    closedir(dp);
+    
+    return 0;
+}//genFiles()
+
+/* The subroutines lists all the contents of a directory */
+int getContents (string dir, vector<string> &contents) {
+    DIR *dp;
+    struct dirent *dirp;
+    
+    if((dp  = opendir(dir.c_str())) == NULL) {
+        cout << "Error opening directory : " << dir << endl;
+        return 1;
+    }
+    
+    while ((dirp = readdir(dp)) != NULL) {
+        if ( strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
+            contents.push_back(string(dirp->d_name));
+    }
+    
+    closedir(dp);
+    return 0;
+}//END getDirs()
+
+
+

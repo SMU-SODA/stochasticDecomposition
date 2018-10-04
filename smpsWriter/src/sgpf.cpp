@@ -479,10 +479,10 @@ void defineSGPFdata(SMPSmodel &sgpf, SGPFdata &data) {
 			do {
 				number = distribution(generator);
 			}
-			while ( t == 0 && ((data.retBorrow[t][n] = number) < TOLERANCE) );
+			while ( t == 0 && ((data.retBorrow[t][n] = number) < CPP_TOL) );
 
 			if ( t != 0 )
-				while ( (data.retBorrow[t][n] = data.retBorrow[t-1][n] + number) < TOLERANCE )
+				while ( (data.retBorrow[t][n] = data.retBorrow[t-1][n] + number) < CPP_TOL )
 					number = distribution(generator);
 		}
 	}

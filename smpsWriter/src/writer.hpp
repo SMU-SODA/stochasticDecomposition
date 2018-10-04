@@ -28,23 +28,29 @@
 
 #include <ilcplex/ilocplex.h>
 
-using namespace std;
-
+#define CPP_TOL	0.00001
 #define NAMESIZE 32
 #define BLOCKSIZE 256
 
-#define TOLERANCE 0.00001
+using namespace std;
 
 class SMPSmodel {
 
 public:
 	SMPSmodel();
+	SMPSmodel(int t);
 	~SMPSmodel();
 
 	int numStages, numPeriods;
-	vector<string> timCols, timRows;
+	vector<string> timeCols, timeRows;
 	vector<vector<string>> stocRows, stocCols;
 	string objName;
+
+	string name;
+
+	IloModel model;
+	IloCplex cplex;
+	IloEnv	 env;
 
 	string dir = "../spInput";
 };

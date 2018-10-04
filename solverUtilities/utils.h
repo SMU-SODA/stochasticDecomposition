@@ -78,7 +78,7 @@ dVector MSparsexvAdd(sparseMatrix *M, dVector v, dVector ans);
 dVector MSparsexvSub(sparseMatrix *M, dVector v, dVector ans);
 dVector vxMSparse(dVector v, sparseMatrix *M, int len);
 void vPlusv(dVector a, dVector b, double mult, int len);
-double smooth(double new, double old, double factor);
+double smooth(double newVal, double oldVal, double factor);
 
 dVector reduceVector(double *f_vect, int *row, int num_elem);
 dVector expandVector(dVector red, iVector col, int redElems, int expElems);

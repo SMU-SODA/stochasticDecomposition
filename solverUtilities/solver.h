@@ -7,7 +7,7 @@
 #ifndef MTSD_SOLVER_H_
 #define MTSD_SOLVER_H_
 
-#include <cpxconst.h>
+#include <./ilcplex/cpxconst.h>
 #include <utils.h>
 
 #define		ENVptr			CPXENVptr
