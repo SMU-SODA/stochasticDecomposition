@@ -1,0 +1,5 @@
+TIME          fleet2
+PERIODS       LP
+    ST830     VT0                      PER01
+    ET83T830  NC1T830                  PER02
+ENDATA

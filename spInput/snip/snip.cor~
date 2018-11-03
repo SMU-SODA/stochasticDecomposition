@@ -1,0 +1,3728 @@
+NAME           
+ROWS
+ N  EMaxFlow
+ L  Resource
+ L  FC(1)   
+ L  FC(2)   
+ L  FC(3)   
+ L  FC(4)   
+ L  FC(5)   
+ L  FC(6)   
+ L  FC(7)   
+ L  FC(8)   
+ L  FC(9)   
+ L  FC(10)  
+ L  FC(11)  
+ L  FC(12)  
+ L  FC(13)  
+ L  FC(14)  
+ L  FC(15)  
+ L  FC(16)  
+ L  FC(17)  
+ L  FC(18)  
+ L  FC(19)  
+ L  FC(20)  
+ L  FC(21)  
+ L  FC(22)  
+ L  FC(23)  
+ L  FC(24)  
+ L  FC(25)  
+ L  FC(26)  
+ L  FC(27)  
+ L  FC(28)  
+ L  FC(29)  
+ L  FC(30)  
+ L  FC(31)  
+ L  FC(32)  
+ L  FC(33)  
+ L  FC(34)  
+ L  FC(35)  
+ L  FC(36)  
+ L  FC(37)  
+ L  FC(38)  
+ L  FC(39)  
+ L  FC(40)  
+ L  FC(41)  
+ L  FC(42)  
+ L  FC(43)  
+ L  FC(44)  
+ L  FC(45)  
+ L  FC(46)  
+ L  FC(47)  
+ L  FC(48)  
+ L  FC(49)  
+ L  FC(50)  
+ L  FC(51)  
+ L  FC(52)  
+ L  FC(53)  
+ L  FC(54)  
+ L  FC(55)  
+ L  FC(56)  
+ L  FC(57)  
+ L  FC(58)  
+ L  FC(59)  
+ L  FC(60)  
+ L  FC(61)  
+ L  FC(62)  
+ L  FC(63)  
+ L  FC(64)  
+ L  FC(65)  
+ L  FC(66)  
+ L  FC(67)  
+ L  FC(68)  
+ L  FC(69)  
+ L  FC(70)  
+ L  FC(71)  
+ L  FC(72)  
+ L  FC(73)  
+ L  FC(74)  
+ L  FC(75)  
+ L  FC(76)  
+ L  FC(77)  
+ L  FC(78)  
+ L  FC(79)  
+ L  FC(80)  
+ L  FC(81)  
+ L  FC(82)  
+ L  FC(83)  
+ L  FC(84)  
+ L  FC(85)  
+ L  FC(86)  
+ L  FC(87)  
+ L  FC(88)  
+ L  FC(89)  
+ L  FC(90)  
+ L  FC(91)  
+ L  FC(92)  
+ L  FC(93)  
+ L  FC(94)  
+ L  FC(95)  
+ L  FC(96)  
+ L  FC(97)  
+ L  FC(98)  
+ L  FC(99)  
+ L  FC(100) 
+ L  FC(101) 
+ L  FC(102) 
+ L  FC(103) 
+ L  FC(104) 
+ L  FC(105) 
+ L  FC(106) 
+ L  FC(107) 
+ L  FC(108) 
+ L  FC(109) 
+ L  FC(110) 
+ L  FC(111) 
+ L  FC(112) 
+ L  FC(113) 
+ L  FC(114) 
+ L  FC(115) 
+ L  FC(116) 
+ L  FC(117) 
+ L  FC(118) 
+ L  FC(119) 
+ L  FC(120) 
+ L  FC(121) 
+ L  FC(122) 
+ L  FC(123) 
+ L  FC(124) 
+ L  FC(125) 
+ L  FC(126) 
+ L  FC(127) 
+ L  FC(128) 
+ L  FC(129) 
+ L  FC(130) 
+ L  FC(131) 
+ L  FC(132) 
+ L  FC(133) 
+ L  FC(134) 
+ L  FC(135) 
+ L  FC(136) 
+ L  FC(137) 
+ L  FC(138) 
+ L  FC(139) 
+ L  FC(140) 
+ L  FC(141) 
+ L  FC(142) 
+ L  FC(143) 
+ L  FC(144) 
+ L  FC(145) 
+ L  FC(146) 
+ L  FC(147) 
+ L  FC(148) 
+ L  FC(149) 
+ L  FC(150) 
+ L  FC(151) 
+ L  FC(152) 
+ L  FC(153) 
+ L  FC(154) 
+ L  FC(155) 
+ L  FC(156) 
+ L  FC(157) 
+ L  FC(158) 
+ L  FC(159) 
+ L  FC(160) 
+ L  FC(161) 
+ L  FC(162) 
+ L  FC(163) 
+ L  FC(164) 
+ L  FC(165) 
+ L  FC(166) 
+ L  FC(167) 
+ L  FC(168) 
+ L  FC(169) 
+ L  FC(170) 
+ L  FC(171) 
+ L  FC(172) 
+ L  FC(173) 
+ L  FC(174) 
+ L  FC(175) 
+ L  FC(176) 
+ L  FC(177) 
+ L  FC(178) 
+ L  FC(179) 
+ L  FC(180) 
+ L  FC(181) 
+ L  FC(182) 
+ L  FC(183) 
+ L  FC(184) 
+ L  FC(185) 
+ L  FC(186) 
+ L  FC(187) 
+ L  FC(188) 
+ L  FC(189) 
+ L  FC(190) 
+ L  FC(191) 
+ L  FC(192) 
+ L  FC(193) 
+ L  FC(194) 
+ L  FC(195) 
+ L  FC(196) 
+ L  FC(197) 
+ L  FC(198) 
+ L  FC(199) 
+ L  FC(200) 
+ L  FB(1)   
+ L  FB(2)   
+ L  FB(3)   
+ L  FB(4)   
+ L  FB(5)   
+ L  FB(6)   
+ L  FB(7)   
+ L  FB(8)   
+ L  FB(9)   
+ L  FB(10)  
+ L  FB(11)  
+ L  FB(12)  
+ L  FB(13)  
+ L  FB(14)  
+ L  FB(15)  
+ L  FB(16)  
+ L  FB(17)  
+ L  FB(18)  
+ L  FB(19)  
+ L  FB(20)  
+ L  FB(21)  
+ L  FB(22)  
+ L  FB(23)  
+ L  FB(24)  
+ L  FB(25)  
+ L  FB(26)  
+ L  FB(27)  
+ L  FB(28)  
+ L  FB(29)  
+ L  FB(30)  
+ L  FB(31)  
+ L  FB(32)  
+ L  FB(33)  
+ L  FB(34)  
+ L  FB(35)  
+ L  FB(36)  
+ L  FB(37)  
+ L  FB(38)  
+ L  FB(39)  
+ L  FB(40)  
+ L  FB(41)  
+ L  FB(42)  
+ L  FB(43)  
+ L  FB(44)  
+ L  FB(45)  
+ L  FB(46)  
+ L  FB(47)  
+ L  FB(48)  
+ L  FB(49)  
+ L  FB(50)  
+ L  FB(51)  
+ L  FB(52)  
+ L  FB(53)  
+ L  FB(54)  
+ L  FB(55)  
+ L  FB(56)  
+ L  FB(57)  
+ L  FB(58)  
+ L  FB(59)  
+ L  FB(60)  
+ L  FB(61)  
+ L  FB(62)  
+ L  FB(63)  
+ L  FB(64)  
+ L  FB(65)  
+ L  FB(66)  
+ L  FB(67)  
+ L  FB(68)  
+ L  FB(69)  
+ L  FB(70)  
+ L  FB(71)  
+ L  FB(72)  
+ L  FB(73)  
+ L  FB(74)  
+ L  FB(75)  
+ L  FB(76)  
+ L  FB(77)  
+ L  FB(78)  
+ L  FB(79)  
+ L  FB(80)  
+ L  FB(81)  
+ L  FB(82)  
+ L  FB(83)  
+ L  FB(84)  
+ L  FB(85)  
+ L  FB(86)  
+ L  FB(87)  
+ L  FB(88)  
+ L  FB(89)  
+ L  FB(90)  
+ L  FB(91)  
+ L  FB(92)  
+ L  FB(93)  
+ L  FB(94)  
+ L  FB(95)  
+ L  FB(96)  
+ L  FB(97)  
+ L  FB(98)  
+ L  FB(99)  
+ L  FB(100) 
+ L  FB(101) 
+ L  FB(102) 
+ E  stDual  
+ L  Lg1(1)  
+ L  Lg1(2)  
+ L  Lg1(3)  
+ L  Lg1(4)  
+ L  Lg1(5)  
+ L  Lg1(6)  
+ L  Lg1(7)  
+ L  Lg1(8)  
+ L  Lg1(9)  
+ L  Lg1(10) 
+ L  Lg1(11) 
+ L  Lg1(12) 
+ L  Lg1(13) 
+ L  Lg1(14) 
+ L  Lg1(15) 
+ L  Lg1(16) 
+ L  Lg1(17) 
+ L  Lg1(18) 
+ L  Lg1(19) 
+ L  Lg1(20) 
+ L  Lg1(21) 
+ L  Lg1(22) 
+ L  Lg1(23) 
+ L  Lg1(24) 
+ L  Lg1(25) 
+ L  Lg1(26) 
+ L  Lg1(27) 
+ L  Lg1(28) 
+ L  Lg1(29) 
+ L  Lg1(30) 
+ L  Lg1(31) 
+ L  Lg1(32) 
+ L  Lg1(33) 
+ L  Lg1(34) 
+ L  Lg1(35) 
+ L  Lg1(36) 
+ L  Lg1(37) 
+ L  Lg1(38) 
+ L  Lg1(39) 
+ L  Lg1(40) 
+ L  Lg1(41) 
+ L  Lg1(42) 
+ L  Lg1(43) 
+ L  Lg1(44) 
+ L  Lg1(45) 
+ L  Lg1(46) 
+ L  Lg1(47) 
+ L  Lg1(48) 
+ L  Lg1(49) 
+ L  Lg1(50) 
+ L  Lg1(51) 
+ L  Lg1(52) 
+ L  Lg1(53) 
+ L  Lg1(54) 
+ L  Lg1(55) 
+ L  Lg1(56) 
+ L  Lg1(57) 
+ L  Lg1(58) 
+ L  Lg1(59) 
+ L  Lg1(60) 
+ L  Lg1(61) 
+ L  Lg1(62) 
+ L  Lg1(63) 
+ L  Lg1(64) 
+ L  Lg1(65) 
+ L  Lg1(66) 
+ L  Lg1(67) 
+ L  Lg1(68) 
+ L  Lg1(69) 
+ L  Lg1(70) 
+ L  Lg1(71) 
+ L  Lg1(72) 
+ L  Lg1(73) 
+ L  Lg1(74) 
+ L  Lg1(75) 
+ L  Lg1(76) 
+ L  Lg1(77) 
+ L  Lg1(78) 
+ L  Lg1(79) 
+ L  Lg1(80) 
+ L  Lg1(81) 
+ L  Lg1(82) 
+ L  Lg1(83) 
+ L  Lg1(84) 
+ L  Lg1(85) 
+ L  Lg1(86) 
+ L  Lg1(87) 
+ L  Lg1(88) 
+ L  Lg1(89) 
+ L  Lg1(90) 
+ L  Lg1(91) 
+ L  Lg1(92) 
+ L  Lg1(93) 
+ L  Lg1(94) 
+ L  Lg1(95) 
+ L  Lg1(96) 
+ L  Lg1(97) 
+ L  Lg1(98) 
+ L  Lg1(99) 
+ L  Lg1(100)
+ L  Lg1(101)
+ L  Lg1(102)
+ L  Lg1(103)
+ L  Lg1(104)
+ L  Lg1(105)
+ L  Lg1(106)
+ L  Lg1(107)
+ L  Lg1(108)
+ L  Lg1(109)
+ L  Lg1(110)
+ L  Lg1(111)
+ L  Lg1(112)
+ L  Lg1(113)
+ L  Lg1(114)
+ L  Lg1(115)
+ L  Lg1(116)
+ L  Lg1(117)
+ L  Lg1(118)
+ L  Lg1(119)
+ L  Lg1(120)
+ L  Lg1(121)
+ L  Lg1(122)
+ L  Lg1(123)
+ L  Lg1(124)
+ L  Lg1(125)
+ L  Lg1(126)
+ L  Lg1(127)
+ L  Lg1(128)
+ L  Lg1(129)
+ L  Lg1(130)
+ L  Lg1(131)
+ L  Lg1(132)
+ L  Lg1(133)
+ L  Lg1(134)
+ L  Lg1(135)
+ L  Lg1(136)
+ L  Lg1(137)
+ L  Lg1(138)
+ L  Lg1(139)
+ L  Lg1(140)
+ L  Lg1(141)
+ L  Lg1(142)
+ L  Lg1(143)
+ L  Lg1(144)
+ L  Lg1(145)
+ L  Lg1(146)
+ L  Lg1(147)
+ L  Lg1(148)
+ L  Lg1(149)
+ L  Lg1(150)
+ L  Lg1(151)
+ L  Lg1(152)
+ L  Lg1(153)
+ L  Lg1(154)
+ L  Lg1(155)
+ L  Lg1(156)
+ L  Lg1(157)
+ L  Lg1(158)
+ L  Lg1(159)
+ L  Lg1(160)
+ L  Lg1(161)
+ L  Lg1(162)
+ L  Lg1(163)
+ L  Lg1(164)
+ L  Lg1(165)
+ L  Lg1(166)
+ L  Lg1(167)
+ L  Lg1(168)
+ L  Lg1(169)
+ L  Lg1(170)
+ L  Lg1(171)
+ L  Lg1(172)
+ L  Lg1(173)
+ L  Lg1(174)
+ L  Lg1(175)
+ L  Lg1(176)
+ L  Lg1(177)
+ L  Lg1(178)
+ L  Lg1(179)
+ L  Lg1(180)
+ L  Lg1(181)
+ L  Lg1(182)
+ L  Lg1(183)
+ L  Lg1(184)
+ L  Lg1(185)
+ L  Lg1(186)
+ L  Lg1(187)
+ L  Lg1(188)
+ L  Lg1(189)
+ L  Lg1(190)
+ L  Lg1(191)
+ L  Lg1(192)
+ L  Lg1(193)
+ L  Lg1(194)
+ L  Lg1(195)
+ L  Lg1(196)
+ L  Lg1(197)
+ L  Lg1(198)
+ L  Lg1(199)
+ L  Lg1(200)
+ L  Lg2(1)  
+ L  Lg2(2)  
+ L  Lg2(3)  
+ L  Lg2(4)  
+ L  Lg2(5)  
+ L  Lg2(6)  
+ L  Lg2(7)  
+ L  Lg2(8)  
+ L  Lg2(9)  
+ L  Lg2(10) 
+ L  Lg2(11) 
+ L  Lg2(12) 
+ L  Lg2(13) 
+ L  Lg2(14) 
+ L  Lg2(15) 
+ L  Lg2(16) 
+ L  Lg2(17) 
+ L  Lg2(18) 
+ L  Lg2(19) 
+ L  Lg2(20) 
+ L  Lg2(21) 
+ L  Lg2(22) 
+ L  Lg2(23) 
+ L  Lg2(24) 
+ L  Lg2(25) 
+ L  Lg2(26) 
+ L  Lg2(27) 
+ L  Lg2(28) 
+ L  Lg2(29) 
+ L  Lg2(30) 
+ L  Lg2(31) 
+ L  Lg2(32) 
+ L  Lg2(33) 
+ L  Lg2(34) 
+ L  Lg2(35) 
+ L  Lg2(36) 
+ L  Lg2(37) 
+ L  Lg2(38) 
+ L  Lg2(39) 
+ L  Lg2(40) 
+ L  Lg2(41) 
+ L  Lg2(42) 
+ L  Lg2(43) 
+ L  Lg2(44) 
+ L  Lg2(45) 
+ L  Lg2(46) 
+ L  Lg2(47) 
+ L  Lg2(48) 
+ L  Lg2(49) 
+ L  Lg2(50) 
+ L  Lg2(51) 
+ L  Lg2(52) 
+ L  Lg2(53) 
+ L  Lg2(54) 
+ L  Lg2(55) 
+ L  Lg2(56) 
+ L  Lg2(57) 
+ L  Lg2(58) 
+ L  Lg2(59) 
+ L  Lg2(60) 
+ L  Lg2(61) 
+ L  Lg2(62) 
+ L  Lg2(63) 
+ L  Lg2(64) 
+ L  Lg2(65) 
+ L  Lg2(66) 
+ L  Lg2(67) 
+ L  Lg2(68) 
+ L  Lg2(69) 
+ L  Lg2(70) 
+ L  Lg2(71) 
+ L  Lg2(72) 
+ L  Lg2(73) 
+ L  Lg2(74) 
+ L  Lg2(75) 
+ L  Lg2(76) 
+ L  Lg2(77) 
+ L  Lg2(78) 
+ L  Lg2(79) 
+ L  Lg2(80) 
+ L  Lg2(81) 
+ L  Lg2(82) 
+ L  Lg2(83) 
+ L  Lg2(84) 
+ L  Lg2(85) 
+ L  Lg2(86) 
+ L  Lg2(87) 
+ L  Lg2(88) 
+ L  Lg2(89) 
+ L  Lg2(90) 
+ L  Lg2(91) 
+ L  Lg2(92) 
+ L  Lg2(93) 
+ L  Lg2(94) 
+ L  Lg2(95) 
+ L  Lg2(96) 
+ L  Lg2(97) 
+ L  Lg2(98) 
+ L  Lg2(99) 
+ L  Lg2(100)
+ L  Lg2(101)
+ L  Lg2(102)
+ L  Lg2(103)
+ L  Lg2(104)
+ L  Lg2(105)
+ L  Lg2(106)
+ L  Lg2(107)
+ L  Lg2(108)
+ L  Lg2(109)
+ L  Lg2(110)
+ L  Lg2(111)
+ L  Lg2(112)
+ L  Lg2(113)
+ L  Lg2(114)
+ L  Lg2(115)
+ L  Lg2(116)
+ L  Lg2(117)
+ L  Lg2(118)
+ L  Lg2(119)
+ L  Lg2(120)
+ L  Lg2(121)
+ L  Lg2(122)
+ L  Lg2(123)
+ L  Lg2(124)
+ L  Lg2(125)
+ L  Lg2(126)
+ L  Lg2(127)
+ L  Lg2(128)
+ L  Lg2(129)
+ L  Lg2(130)
+ L  Lg2(131)
+ L  Lg2(132)
+ L  Lg2(133)
+ L  Lg2(134)
+ L  Lg2(135)
+ L  Lg2(136)
+ L  Lg2(137)
+ L  Lg2(138)
+ L  Lg2(139)
+ L  Lg2(140)
+ L  Lg2(141)
+ L  Lg2(142)
+ L  Lg2(143)
+ L  Lg2(144)
+ L  Lg2(145)
+ L  Lg2(146)
+ L  Lg2(147)
+ L  Lg2(148)
+ L  Lg2(149)
+ L  Lg2(150)
+ L  Lg2(151)
+ L  Lg2(152)
+ L  Lg2(153)
+ L  Lg2(154)
+ L  Lg2(155)
+ L  Lg2(156)
+ L  Lg2(157)
+ L  Lg2(158)
+ L  Lg2(159)
+ L  Lg2(160)
+ L  Lg2(161)
+ L  Lg2(162)
+ L  Lg2(163)
+ L  Lg2(164)
+ L  Lg2(165)
+ L  Lg2(166)
+ L  Lg2(167)
+ L  Lg2(168)
+ L  Lg2(169)
+ L  Lg2(170)
+ L  Lg2(171)
+ L  Lg2(172)
+ L  Lg2(173)
+ L  Lg2(174)
+ L  Lg2(175)
+ L  Lg2(176)
+ L  Lg2(177)
+ L  Lg2(178)
+ L  Lg2(179)
+ L  Lg2(180)
+ L  Lg2(181)
+ L  Lg2(182)
+ L  Lg2(183)
+ L  Lg2(184)
+ L  Lg2(185)
+ L  Lg2(186)
+ L  Lg2(187)
+ L  Lg2(188)
+ L  Lg2(189)
+ L  Lg2(190)
+ L  Lg2(191)
+ L  Lg2(192)
+ L  Lg2(193)
+ L  Lg2(194)
+ L  Lg2(195)
+ L  Lg2(196)
+ L  Lg2(197)
+ L  Lg2(198)
+ L  Lg2(199)
+ L  Lg2(200)
+ L  Lg3(1)  
+ L  Lg3(2)  
+ L  Lg3(3)  
+ L  Lg3(4)  
+ L  Lg3(5)  
+ L  Lg3(6)  
+ L  Lg3(7)  
+ L  Lg3(8)  
+ L  Lg3(9)  
+ L  Lg3(10) 
+ L  Lg3(11) 
+ L  Lg3(12) 
+ L  Lg3(13) 
+ L  Lg3(14) 
+ L  Lg3(15) 
+ L  Lg3(16) 
+ L  Lg3(17) 
+ L  Lg3(18) 
+ L  Lg3(19) 
+ L  Lg3(20) 
+ L  Lg3(21) 
+ L  Lg3(22) 
+ L  Lg3(23) 
+ L  Lg3(24) 
+ L  Lg3(25) 
+ L  Lg3(26) 
+ L  Lg3(27) 
+ L  Lg3(28) 
+ L  Lg3(29) 
+ L  Lg3(30) 
+ L  Lg3(31) 
+ L  Lg3(32) 
+ L  Lg3(33) 
+ L  Lg3(34) 
+ L  Lg3(35) 
+ L  Lg3(36) 
+ L  Lg3(37) 
+ L  Lg3(38) 
+ L  Lg3(39) 
+ L  Lg3(40) 
+ L  Lg3(41) 
+ L  Lg3(42) 
+ L  Lg3(43) 
+ L  Lg3(44) 
+ L  Lg3(45) 
+ L  Lg3(46) 
+ L  Lg3(47) 
+ L  Lg3(48) 
+ L  Lg3(49) 
+ L  Lg3(50) 
+ L  Lg3(51) 
+ L  Lg3(52) 
+ L  Lg3(53) 
+ L  Lg3(54) 
+ L  Lg3(55) 
+ L  Lg3(56) 
+ L  Lg3(57) 
+ L  Lg3(58) 
+ L  Lg3(59) 
+ L  Lg3(60) 
+ L  Lg3(61) 
+ L  Lg3(62) 
+ L  Lg3(63) 
+ L  Lg3(64) 
+ L  Lg3(65) 
+ L  Lg3(66) 
+ L  Lg3(67) 
+ L  Lg3(68) 
+ L  Lg3(69) 
+ L  Lg3(70) 
+ L  Lg3(71) 
+ L  Lg3(72) 
+ L  Lg3(73) 
+ L  Lg3(74) 
+ L  Lg3(75) 
+ L  Lg3(76) 
+ L  Lg3(77) 
+ L  Lg3(78) 
+ L  Lg3(79) 
+ L  Lg3(80) 
+ L  Lg3(81) 
+ L  Lg3(82) 
+ L  Lg3(83) 
+ L  Lg3(84) 
+ L  Lg3(85) 
+ L  Lg3(86) 
+ L  Lg3(87) 
+ L  Lg3(88) 
+ L  Lg3(89) 
+ L  Lg3(90) 
+ L  Lg3(91) 
+ L  Lg3(92) 
+ L  Lg3(93) 
+ L  Lg3(94) 
+ L  Lg3(95) 
+ L  Lg3(96) 
+ L  Lg3(97) 
+ L  Lg3(98) 
+ L  Lg3(99) 
+ L  Lg3(100)
+ L  Lg3(101)
+ L  Lg3(102)
+ L  Lg3(103)
+ L  Lg3(104)
+ L  Lg3(105)
+ L  Lg3(106)
+ L  Lg3(107)
+ L  Lg3(108)
+ L  Lg3(109)
+ L  Lg3(110)
+ L  Lg3(111)
+ L  Lg3(112)
+ L  Lg3(113)
+ L  Lg3(114)
+ L  Lg3(115)
+ L  Lg3(116)
+ L  Lg3(117)
+ L  Lg3(118)
+ L  Lg3(119)
+ L  Lg3(120)
+ L  Lg3(121)
+ L  Lg3(122)
+ L  Lg3(123)
+ L  Lg3(124)
+ L  Lg3(125)
+ L  Lg3(126)
+ L  Lg3(127)
+ L  Lg3(128)
+ L  Lg3(129)
+ L  Lg3(130)
+ L  Lg3(131)
+ L  Lg3(132)
+ L  Lg3(133)
+ L  Lg3(134)
+ L  Lg3(135)
+ L  Lg3(136)
+ L  Lg3(137)
+ L  Lg3(138)
+ L  Lg3(139)
+ L  Lg3(140)
+ L  Lg3(141)
+ L  Lg3(142)
+ L  Lg3(143)
+ L  Lg3(144)
+ L  Lg3(145)
+ L  Lg3(146)
+ L  Lg3(147)
+ L  Lg3(148)
+ L  Lg3(149)
+ L  Lg3(150)
+ L  Lg3(151)
+ L  Lg3(152)
+ L  Lg3(153)
+ L  Lg3(154)
+ L  Lg3(155)
+ L  Lg3(156)
+ L  Lg3(157)
+ L  Lg3(158)
+ L  Lg3(159)
+ L  Lg3(160)
+ L  Lg3(161)
+ L  Lg3(162)
+ L  Lg3(163)
+ L  Lg3(164)
+ L  Lg3(165)
+ L  Lg3(166)
+ L  Lg3(167)
+ L  Lg3(168)
+ L  Lg3(169)
+ L  Lg3(170)
+ L  Lg3(171)
+ L  Lg3(172)
+ L  Lg3(173)
+ L  Lg3(174)
+ L  Lg3(175)
+ L  Lg3(176)
+ L  Lg3(177)
+ L  Lg3(178)
+ L  Lg3(179)
+ L  Lg3(180)
+ L  Lg3(181)
+ L  Lg3(182)
+ L  Lg3(183)
+ L  Lg3(184)
+ L  Lg3(185)
+ L  Lg3(186)
+ L  Lg3(187)
+ L  Lg3(188)
+ L  Lg3(189)
+ L  Lg3(190)
+ L  Lg3(191)
+ L  Lg3(192)
+ L  Lg3(193)
+ L  Lg3(194)
+ L  Lg3(195)
+ L  Lg3(196)
+ L  Lg3(197)
+ L  Lg3(198)
+ L  Lg3(199)
+ L  Lg3(200)
+ G  DC1(1)  
+ G  DC1(2)  
+ G  DC1(3)  
+ G  DC1(4)  
+ G  DC1(5)  
+ G  DC1(6)  
+ G  DC1(7)  
+ G  DC1(8)  
+ G  DC1(9)  
+ G  DC1(10) 
+ G  DC1(11) 
+ G  DC1(12) 
+ G  DC1(13) 
+ G  DC1(14) 
+ G  DC1(15) 
+ G  DC1(16) 
+ G  DC1(17) 
+ G  DC1(18) 
+ G  DC1(19) 
+ G  DC1(20) 
+ G  DC1(21) 
+ G  DC1(22) 
+ G  DC1(23) 
+ G  DC1(24) 
+ G  DC1(25) 
+ G  DC1(26) 
+ G  DC1(27) 
+ G  DC1(28) 
+ G  DC1(29) 
+ G  DC1(30) 
+ G  DC1(31) 
+ G  DC1(32) 
+ G  DC1(33) 
+ G  DC1(34) 
+ G  DC1(35) 
+ G  DC1(36) 
+ G  DC1(37) 
+ G  DC1(38) 
+ G  DC1(39) 
+ G  DC1(40) 
+ G  DC1(41) 
+ G  DC1(42) 
+ G  DC1(43) 
+ G  DC1(44) 
+ G  DC1(45) 
+ G  DC1(46) 
+ G  DC1(47) 
+ G  DC1(48) 
+ G  DC1(49) 
+ G  DC1(50) 
+ G  DC1(51) 
+ G  DC1(52) 
+ G  DC1(53) 
+ G  DC1(54) 
+ G  DC1(55) 
+ G  DC1(56) 
+ G  DC1(57) 
+ G  DC1(58) 
+ G  DC1(59) 
+ G  DC1(60) 
+ G  DC1(61) 
+ G  DC1(62) 
+ G  DC1(63) 
+ G  DC1(64) 
+ G  DC1(65) 
+ G  DC1(66) 
+ G  DC1(67) 
+ G  DC1(68) 
+ G  DC1(69) 
+ G  DC1(70) 
+ G  DC1(71) 
+ G  DC1(72) 
+ G  DC1(73) 
+ G  DC1(74) 
+ G  DC1(75) 
+ G  DC1(76) 
+ G  DC1(77) 
+ G  DC1(78) 
+ G  DC1(79) 
+ G  DC1(80) 
+ G  DC1(81) 
+ G  DC1(82) 
+ G  DC1(83) 
+ G  DC1(84) 
+ G  DC1(85) 
+ G  DC1(86) 
+ G  DC1(87) 
+ G  DC1(88) 
+ G  DC1(89) 
+ G  DC1(90) 
+ G  DC1(91) 
+ G  DC1(92) 
+ G  DC1(93) 
+ G  DC1(94) 
+ G  DC1(95) 
+ G  DC1(96) 
+ G  DC1(97) 
+ G  DC1(98) 
+ G  DC1(99) 
+ G  DC1(100)
+ G  DC1(101)
+ G  DC1(102)
+ G  DC1(103)
+ G  DC1(104)
+ G  DC1(105)
+ G  DC1(106)
+ G  DC1(107)
+ G  DC1(108)
+ G  DC1(109)
+ G  DC1(110)
+ G  DC1(111)
+ G  DC1(112)
+ G  DC1(113)
+ G  DC1(114)
+ G  DC1(115)
+ G  DC1(116)
+ G  DC1(117)
+ G  DC1(118)
+ G  DC1(119)
+ G  DC1(120)
+ G  DC1(121)
+ G  DC1(122)
+ G  DC1(123)
+ G  DC1(124)
+ G  DC1(125)
+ G  DC1(126)
+ G  DC1(127)
+ G  DC1(128)
+ G  DC1(129)
+ G  DC1(130)
+ G  DC1(131)
+ G  DC1(132)
+ G  DC1(133)
+ G  DC1(134)
+ G  DC1(135)
+ G  DC1(136)
+ G  DC1(137)
+ G  DC1(138)
+ G  DC1(139)
+ G  DC1(140)
+ G  DC1(141)
+ G  DC1(142)
+ G  DC1(143)
+ G  DC1(144)
+ G  DC1(145)
+ G  DC1(146)
+ G  DC1(147)
+ G  DC1(148)
+ G  DC1(149)
+ G  DC1(150)
+ G  DC1(151)
+ G  DC1(152)
+ G  DC1(153)
+ G  DC1(154)
+ G  DC1(155)
+ G  DC1(156)
+ G  DC1(157)
+ G  DC1(158)
+ G  DC1(159)
+ G  DC1(160)
+ G  DC1(161)
+ G  DC1(162)
+ G  DC1(163)
+ G  DC1(164)
+ G  DC1(165)
+ G  DC1(166)
+ G  DC1(167)
+ G  DC1(168)
+ G  DC1(169)
+ G  DC1(170)
+ G  DC1(171)
+ G  DC1(172)
+ G  DC1(173)
+ G  DC1(174)
+ G  DC1(175)
+ G  DC1(176)
+ G  DC1(177)
+ G  DC1(178)
+ G  DC1(179)
+ G  DC1(180)
+ G  DC1(181)
+ G  DC1(182)
+ G  DC1(183)
+ G  DC1(184)
+ G  DC1(185)
+ G  DC1(186)
+ G  DC1(187)
+ G  DC1(188)
+ G  DC1(189)
+ G  DC1(190)
+ G  DC1(191)
+ G  DC1(192)
+ G  DC1(193)
+ G  DC1(194)
+ G  DC1(195)
+ G  DC1(196)
+ G  DC1(197)
+ G  DC1(198)
+ G  DC1(199)
+ G  DC1(200)
+ G  DC2     
+ L  IFC(22) 
+ L  IFC(29) 
+ L  IFC(30) 
+ L  IFC(32) 
+ L  IFC(35) 
+ L  IFC(36) 
+ L  IFC(37) 
+ L  IFC(43) 
+ L  IFC(45) 
+ L  IFC(46) 
+ L  IFC(48) 
+ L  IFC(62) 
+ L  IFC(63) 
+ L  IFC(64) 
+ L  IFC(65) 
+ L  IFC(66) 
+ L  IFC(73) 
+ L  IFC(78) 
+ L  IFC(80) 
+ L  IFC(82) 
+ L  IFC(83) 
+ L  IFC(85) 
+ L  IFC(86) 
+ L  IFC(89) 
+ L  IFC(91) 
+ L  IFC(93) 
+ L  IFC(98) 
+ L  IFC(99) 
+ L  IFC(101)
+ L  IFC(103)
+ L  IFC(105)
+ L  IFC(107)
+ L  IFC(109)
+ L  IFC(114)
+ L  IFC(118)
+ L  IFC(125)
+ L  IFC(126)
+ L  IFC(128)
+ L  IFC(129)
+ L  IFC(131)
+ L  IFC(132)
+ L  IFC(133)
+ L  IFC(134)
+ L  IFC(138)
+ L  IFC(139)
+ L  IFC(141)
+ L  IFC(146)
+ L  IFC(148)
+ L  IFC(150)
+ L  IFC(153)
+ L  IFC(155)
+ L  IFC(158)
+ L  IFC(160)
+ L  IFC(161)
+ L  IFC(162)
+ L  IFC(163)
+ L  IFC(164)
+ L  IFC(165)
+ L  IFC(168)
+ L  IFC(169)
+ L  IFC(171)
+ L  IFC(172)
+ L  IFC(174)
+ L  IFC(175)
+ L  IFC(180)
+COLUMNS
+    g(1)      Resource            20   Lg1(1)              -1
+    g(1)      Lg3(1)               1
+    g(2)      Resource            20   Lg1(2)              -1
+    g(2)      Lg3(2)               1
+    g(3)      Resource            20   Lg1(3)              -1
+    g(3)      Lg3(3)               1
+    g(4)      Resource            20   Lg1(4)              -1
+    g(4)      Lg3(4)               1
+    g(5)      Resource            20   Lg1(5)              -1
+    g(5)      Lg3(5)               1
+    g(6)      Resource            20   Lg1(6)              -1
+    g(6)      Lg3(6)               1
+    g(7)      Resource            20   Lg1(7)              -1
+    g(7)      Lg3(7)               1
+    g(8)      Resource            20   Lg1(8)              -1
+    g(8)      Lg3(8)               1
+    g(9)      Resource            20   Lg1(9)              -1
+    g(9)      Lg3(9)               1
+    g(10)     Resource            20   Lg1(10)             -1
+    g(10)     Lg3(10)              1
+    g(11)     Resource            20   Lg1(11)             -1
+    g(11)     Lg3(11)              1
+    g(12)     Resource            20   Lg1(12)             -1
+    g(12)     Lg3(12)              1
+    g(13)     Resource            20   Lg1(13)             -1
+    g(13)     Lg3(13)              1
+    g(14)     Resource            20   Lg1(14)             -1
+    g(14)     Lg3(14)              1
+    g(15)     Resource            20   Lg1(15)             -1
+    g(15)     Lg3(15)              1
+    g(16)     Resource            20   Lg1(16)             -1
+    g(16)     Lg3(16)              1
+    g(17)     Resource            20   Lg1(17)             -1
+    g(17)     Lg3(17)              1
+    g(18)     Resource            20   Lg1(18)             -1
+    g(18)     Lg3(18)              1
+    g(19)     Resource            20   Lg1(19)             -1
+    g(19)     Lg3(19)              1
+    g(20)     Resource            20   Lg1(20)             -1
+    g(20)     Lg3(20)              1
+    g(21)     Resource            20   Lg1(21)             -1
+    g(21)     Lg3(21)              1
+    g(22)     Resource             1   Lg1(22)             -1
+    g(22)     Lg3(22)              1   IFC(22)             10
+    g(23)     Resource            20   Lg1(23)             -1
+    g(23)     Lg3(23)              1
+    g(24)     Resource            20   Lg1(24)             -1
+    g(24)     Lg3(24)              1
+    g(25)     Resource            20   Lg1(25)             -1
+    g(25)     Lg3(25)              1
+    g(26)     Resource            20   Lg1(26)             -1
+    g(26)     Lg3(26)              1
+    g(27)     Resource            20   Lg1(27)             -1
+    g(27)     Lg3(27)              1
+    g(28)     Resource            20   Lg1(28)             -1
+    g(28)     Lg3(28)              1
+    g(29)     Resource             1   Lg1(29)             -1
+    g(29)     Lg3(29)              1   IFC(29)             20
+    g(30)     Resource             1   Lg1(30)             -1
+    g(30)     Lg3(30)              1   IFC(30)             90
+    g(31)     Resource            20   Lg1(31)             -1
+    g(31)     Lg3(31)              1
+    g(32)     Resource             1   Lg1(32)             -1
+    g(32)     Lg3(32)              1   IFC(32)             50
+    g(33)     Resource            20   Lg1(33)             -1
+    g(33)     Lg3(33)              1
+    g(34)     Resource            20   Lg1(34)             -1
+    g(34)     Lg3(34)              1
+    g(35)     Resource             1   Lg1(35)             -1
+    g(35)     Lg3(35)              1   IFC(35)             60
+    g(36)     Resource             1   Lg1(36)             -1
+    g(36)     Lg3(36)              1   IFC(36)            100
+    g(37)     Resource             1   Lg1(37)             -1
+    g(37)     Lg3(37)              1   IFC(37)             40
+    g(38)     Resource            20   Lg1(38)             -1
+    g(38)     Lg3(38)              1
+    g(39)     Resource            20   Lg1(39)             -1
+    g(39)     Lg3(39)              1
+    g(40)     Resource            20   Lg1(40)             -1
+    g(40)     Lg3(40)              1
+    g(41)     Resource            20   Lg1(41)             -1
+    g(41)     Lg3(41)              1
+    g(42)     Resource            20   Lg1(42)             -1
+    g(42)     Lg3(42)              1
+    g(43)     Resource             1   Lg1(43)             -1
+    g(43)     Lg3(43)              1   IFC(43)             20
+    g(44)     Resource            20   Lg1(44)             -1
+    g(44)     Lg3(44)              1
+    g(45)     Resource             1   Lg1(45)             -1
+    g(45)     Lg3(45)              1   IFC(45)             60
+    g(46)     Resource             1   Lg1(46)             -1
+    g(46)     Lg3(46)              1   IFC(46)             80
+    g(47)     Resource            20   Lg1(47)             -1
+    g(47)     Lg3(47)              1
+    g(48)     Resource             1   Lg1(48)             -1
+    g(48)     Lg3(48)              1   IFC(48)             20
+    g(49)     Resource            20   Lg1(49)             -1
+    g(49)     Lg3(49)              1
+    g(50)     Resource            20   Lg1(50)             -1
+    g(50)     Lg3(50)              1
+    g(51)     Resource            20   Lg1(51)             -1
+    g(51)     Lg3(51)              1
+    g(52)     Resource            20   Lg1(52)             -1
+    g(52)     Lg3(52)              1
+    g(53)     Resource            20   Lg1(53)             -1
+    g(53)     Lg3(53)              1
+    g(54)     Resource            20   Lg1(54)             -1
+    g(54)     Lg3(54)              1
+    g(55)     Resource            20   Lg1(55)             -1
+    g(55)     Lg3(55)              1
+    g(56)     Resource            20   Lg1(56)             -1
+    g(56)     Lg3(56)              1
+    g(57)     Resource            20   Lg1(57)             -1
+    g(57)     Lg3(57)              1
+    g(58)     Resource            20   Lg1(58)             -1
+    g(58)     Lg3(58)              1
+    g(59)     Resource            20   Lg1(59)             -1
+    g(59)     Lg3(59)              1
+    g(60)     Resource            20   Lg1(60)             -1
+    g(60)     Lg3(60)              1
+    g(61)     Resource            20   Lg1(61)             -1
+    g(61)     Lg3(61)              1
+    g(62)     Resource             1   Lg1(62)             -1
+    g(62)     Lg3(62)              1   IFC(62)             40
+    g(63)     Resource             1   Lg1(63)             -1
+    g(63)     Lg3(63)              1   IFC(63)             30
+    g(64)     Resource             1   Lg1(64)             -1
+    g(64)     Lg3(64)              1   IFC(64)             30
+    g(65)     Resource             1   Lg1(65)             -1
+    g(65)     Lg3(65)              1   IFC(65)             20
+    g(66)     Resource             1   Lg1(66)             -1
+    g(66)     Lg3(66)              1   IFC(66)             90
+    g(67)     Resource            20   Lg1(67)             -1
+    g(67)     Lg3(67)              1
+    g(68)     Resource            20   Lg1(68)             -1
+    g(68)     Lg3(68)              1
+    g(69)     Resource            20   Lg1(69)             -1
+    g(69)     Lg3(69)              1
+    g(70)     Resource            20   Lg1(70)             -1
+    g(70)     Lg3(70)              1
+    g(71)     Resource            20   Lg1(71)             -1
+    g(71)     Lg3(71)              1
+    g(72)     Resource            20   Lg1(72)             -1
+    g(72)     Lg3(72)              1
+    g(73)     Resource             1   Lg1(73)             -1
+    g(73)     Lg3(73)              1   IFC(73)             10
+    g(74)     Resource            20   Lg1(74)             -1
+    g(74)     Lg3(74)              1
+    g(75)     Resource            20   Lg1(75)             -1
+    g(75)     Lg3(75)              1
+    g(76)     Resource            20   Lg1(76)             -1
+    g(76)     Lg3(76)              1
+    g(77)     Resource            20   Lg1(77)             -1
+    g(77)     Lg3(77)              1
+    g(78)     Resource             1   Lg1(78)             -1
+    g(78)     Lg3(78)              1   IFC(78)             10
+    g(79)     Resource            20   Lg1(79)             -1
+    g(79)     Lg3(79)              1
+    g(80)     Resource             1   Lg1(80)             -1
+    g(80)     Lg3(80)              1   IFC(80)             10
+    g(81)     Resource            20   Lg1(81)             -1
+    g(81)     Lg3(81)              1
+    g(82)     Resource             1   Lg1(82)             -1
+    g(82)     Lg3(82)              1   IFC(82)             40
+    g(83)     Resource             1   Lg1(83)             -1
+    g(83)     Lg3(83)              1   IFC(83)             80
+    g(84)     Resource            20   Lg1(84)             -1
+    g(84)     Lg3(84)              1
+    g(85)     Resource             1   Lg1(85)             -1
+    g(85)     Lg3(85)              1   IFC(85)             30
+    g(86)     Resource             1   Lg1(86)             -1
+    g(86)     Lg3(86)              1   IFC(86)             70
+    g(87)     Resource            20   Lg1(87)             -1
+    g(87)     Lg3(87)              1
+    g(88)     Resource            20   Lg1(88)             -1
+    g(88)     Lg3(88)              1
+    g(89)     Resource             1   Lg1(89)             -1
+    g(89)     Lg3(89)              1   IFC(89)             40
+    g(90)     Resource            20   Lg1(90)             -1
+    g(90)     Lg3(90)              1
+    g(91)     Resource             1   Lg1(91)             -1
+    g(91)     Lg3(91)              1   IFC(91)             60
+    g(92)     Resource            20   Lg1(92)             -1
+    g(92)     Lg3(92)              1
+    g(93)     Resource             1   Lg1(93)             -1
+    g(93)     Lg3(93)              1   IFC(93)             30
+    g(94)     Resource            20   Lg1(94)             -1
+    g(94)     Lg3(94)              1
+    g(95)     Resource            20   Lg1(95)             -1
+    g(95)     Lg3(95)              1
+    g(96)     Resource            20   Lg1(96)             -1
+    g(96)     Lg3(96)              1
+    g(97)     Resource            20   Lg1(97)             -1
+    g(97)     Lg3(97)              1
+    g(98)     Resource             1   Lg1(98)             -1
+    g(98)     Lg3(98)              1   IFC(98)             30
+    g(99)     Resource             1   Lg1(99)             -1
+    g(99)     Lg3(99)              1   IFC(99)             90
+    g(100)    Resource            20   Lg1(100)            -1
+    g(100)    Lg3(100)             1
+    g(101)    Resource             1   Lg1(101)            -1
+    g(101)    Lg3(101)             1   IFC(101)            20
+    g(102)    Resource            20   Lg1(102)            -1
+    g(102)    Lg3(102)             1
+    g(103)    Resource             1   Lg1(103)            -1
+    g(103)    Lg3(103)             1   IFC(103)            20
+    g(104)    Resource            20   Lg1(104)            -1
+    g(104)    Lg3(104)             1
+    g(105)    Resource             1   Lg1(105)            -1
+    g(105)    Lg3(105)             1   IFC(105)            60
+    g(106)    Resource            20   Lg1(106)            -1
+    g(106)    Lg3(106)             1
+    g(107)    Resource             1   Lg1(107)            -1
+    g(107)    Lg3(107)             1   IFC(107)            90
+    g(108)    Resource            20   Lg1(108)            -1
+    g(108)    Lg3(108)             1
+    g(109)    Resource             1   Lg1(109)            -1
+    g(109)    Lg3(109)             1   IFC(109)            10
+    g(110)    Resource            20   Lg1(110)            -1
+    g(110)    Lg3(110)             1
+    g(111)    Resource            20   Lg1(111)            -1
+    g(111)    Lg3(111)             1
+    g(112)    Resource            20   Lg1(112)            -1
+    g(112)    Lg3(112)             1
+    g(113)    Resource            20   Lg1(113)            -1
+    g(113)    Lg3(113)             1
+    g(114)    Resource             1   Lg1(114)            -1
+    g(114)    Lg3(114)             1   IFC(114)           100
+    g(115)    Resource            20   Lg1(115)            -1
+    g(115)    Lg3(115)             1
+    g(116)    Resource            20   Lg1(116)            -1
+    g(116)    Lg3(116)             1
+    g(117)    Resource            20   Lg1(117)            -1
+    g(117)    Lg3(117)             1
+    g(118)    Resource             1   Lg1(118)            -1
+    g(118)    Lg3(118)             1   IFC(118)            90
+    g(119)    Resource            20   Lg1(119)            -1
+    g(119)    Lg3(119)             1
+    g(120)    Resource            20   Lg1(120)            -1
+    g(120)    Lg3(120)             1
+    g(121)    Resource            20   Lg1(121)            -1
+    g(121)    Lg3(121)             1
+    g(122)    Resource            20   Lg1(122)            -1
+    g(122)    Lg3(122)             1
+    g(123)    Resource            20   Lg1(123)            -1
+    g(123)    Lg3(123)             1
+    g(124)    Resource            20   Lg1(124)            -1
+    g(124)    Lg3(124)             1
+    g(125)    Resource             1   Lg1(125)            -1
+    g(125)    Lg3(125)             1   IFC(125)            60
+    g(126)    Resource             1   Lg1(126)            -1
+    g(126)    Lg3(126)             1   IFC(126)            90
+    g(127)    Resource            20   Lg1(127)            -1
+    g(127)    Lg3(127)             1
+    g(128)    Resource             1   Lg1(128)            -1
+    g(128)    Lg3(128)             1   IFC(128)            20
+    g(129)    Resource             1   Lg1(129)            -1
+    g(129)    Lg3(129)             1   IFC(129)            20
+    g(130)    Resource            20   Lg1(130)            -1
+    g(130)    Lg3(130)             1
+    g(131)    Resource             1   Lg1(131)            -1
+    g(131)    Lg3(131)             1   IFC(131)            90
+    g(132)    Resource             1   Lg1(132)            -1
+    g(132)    Lg3(132)             1   IFC(132)            30
+    g(133)    Resource             1   Lg1(133)            -1
+    g(133)    Lg3(133)             1   IFC(133)            90
+    g(134)    Resource             1   Lg1(134)            -1
+    g(134)    Lg3(134)             1   IFC(134)           100
+    g(135)    Resource            20   Lg1(135)            -1
+    g(135)    Lg3(135)             1
+    g(136)    Resource            20   Lg1(136)            -1
+    g(136)    Lg3(136)             1
+    g(137)    Resource            20   Lg1(137)            -1
+    g(137)    Lg3(137)             1
+    g(138)    Resource             1   Lg1(138)            -1
+    g(138)    Lg3(138)             1   IFC(138)            40
+    g(139)    Resource             1   Lg1(139)            -1
+    g(139)    Lg3(139)             1   IFC(139)            60
+    g(140)    Resource            20   Lg1(140)            -1
+    g(140)    Lg3(140)             1
+    g(141)    Resource             1   Lg1(141)            -1
+    g(141)    Lg3(141)             1   IFC(141)            10
+    g(142)    Resource            20   Lg1(142)            -1
+    g(142)    Lg3(142)             1
+    g(143)    Resource            20   Lg1(143)            -1
+    g(143)    Lg3(143)             1
+    g(144)    Resource            20   Lg1(144)            -1
+    g(144)    Lg3(144)             1
+    g(145)    Resource            20   Lg1(145)            -1
+    g(145)    Lg3(145)             1
+    g(146)    Resource             1   Lg1(146)            -1
+    g(146)    Lg3(146)             1   IFC(146)            80
+    g(147)    Resource            20   Lg1(147)            -1
+    g(147)    Lg3(147)             1
+    g(148)    Resource             1   Lg1(148)            -1
+    g(148)    Lg3(148)             1   IFC(148)            50
+    g(149)    Resource            20   Lg1(149)            -1
+    g(149)    Lg3(149)             1
+    g(150)    Resource             1   Lg1(150)            -1
+    g(150)    Lg3(150)             1   IFC(150)            50
+    g(151)    Resource            20   Lg1(151)            -1
+    g(151)    Lg3(151)             1
+    g(152)    Resource            20   Lg1(152)            -1
+    g(152)    Lg3(152)             1
+    g(153)    Resource             1   Lg1(153)            -1
+    g(153)    Lg3(153)             1   IFC(153)            20
+    g(154)    Resource            20   Lg1(154)            -1
+    g(154)    Lg3(154)             1
+    g(155)    Resource             1   Lg1(155)            -1
+    g(155)    Lg3(155)             1   IFC(155)            40
+    g(156)    Resource            20   Lg1(156)            -1
+    g(156)    Lg3(156)             1
+    g(157)    Resource            20   Lg1(157)            -1
+    g(157)    Lg3(157)             1
+    g(158)    Resource             1   Lg1(158)            -1
+    g(158)    Lg3(158)             1   IFC(158)            80
+    g(159)    Resource            20   Lg1(159)            -1
+    g(159)    Lg3(159)             1
+    g(160)    Resource             1   Lg1(160)            -1
+    g(160)    Lg3(160)             1   IFC(160)            10
+    g(161)    Resource             1   Lg1(161)            -1
+    g(161)    Lg3(161)             1   IFC(161)            90
+    g(162)    Resource             1   Lg1(162)            -1
+    g(162)    Lg3(162)             1   IFC(162)            60
+    g(163)    Resource             1   Lg1(163)            -1
+    g(163)    Lg3(163)             1   IFC(163)            40
+    g(164)    Resource             1   Lg1(164)            -1
+    g(164)    Lg3(164)             1   IFC(164)            80
+    g(165)    Resource             1   Lg1(165)            -1
+    g(165)    Lg3(165)             1   IFC(165)            60
+    g(166)    Resource            20   Lg1(166)            -1
+    g(166)    Lg3(166)             1
+    g(167)    Resource            20   Lg1(167)            -1
+    g(167)    Lg3(167)             1
+    g(168)    Resource             1   Lg1(168)            -1
+    g(168)    Lg3(168)             1   IFC(168)            50
+    g(169)    Resource             1   Lg1(169)            -1
+    g(169)    Lg3(169)             1   IFC(169)            10
+    g(170)    Resource            20   Lg1(170)            -1
+    g(170)    Lg3(170)             1
+    g(171)    Resource             1   Lg1(171)            -1
+    g(171)    Lg3(171)             1   IFC(171)            50
+    g(172)    Resource             1   Lg1(172)            -1
+    g(172)    Lg3(172)             1   IFC(172)            10
+    g(173)    Resource            20   Lg1(173)            -1
+    g(173)    Lg3(173)             1
+    g(174)    Resource             1   Lg1(174)            -1
+    g(174)    Lg3(174)             1   IFC(174)            20
+    g(175)    Resource             1   Lg1(175)            -1
+    g(175)    Lg3(175)             1   IFC(175)            20
+    g(176)    Resource            20   Lg1(176)            -1
+    g(176)    Lg3(176)             1
+    g(177)    Resource            20   Lg1(177)            -1
+    g(177)    Lg3(177)             1
+    g(178)    Resource            20   Lg1(178)            -1
+    g(178)    Lg3(178)             1
+    g(179)    Resource            20   Lg1(179)            -1
+    g(179)    Lg3(179)             1
+    g(180)    Resource             1   Lg1(180)            -1
+    g(180)    Lg3(180)             1   IFC(180)            60
+    g(181)    Resource            20   Lg1(181)            -1
+    g(181)    Lg3(181)             1
+    g(182)    Resource            20   Lg1(182)            -1
+    g(182)    Lg3(182)             1
+    g(183)    Resource            20   Lg1(183)            -1
+    g(183)    Lg3(183)             1
+    g(184)    Resource            20   Lg1(184)            -1
+    g(184)    Lg3(184)             1
+    g(185)    Resource            20   Lg1(185)            -1
+    g(185)    Lg3(185)             1
+    g(186)    Resource            20   Lg1(186)            -1
+    g(186)    Lg3(186)             1
+    g(187)    Resource            20   Lg1(187)            -1
+    g(187)    Lg3(187)             1
+    g(188)    Resource            20   Lg1(188)            -1
+    g(188)    Lg3(188)             1
+    g(189)    Resource            20   Lg1(189)            -1
+    g(189)    Lg3(189)             1
+    g(190)    Resource            20   Lg1(190)            -1
+    g(190)    Lg3(190)             1
+    g(191)    Resource            20   Lg1(191)            -1
+    g(191)    Lg3(191)             1
+    g(192)    Resource            20   Lg1(192)            -1
+    g(192)    Lg3(192)             1
+    g(193)    Resource            20   Lg1(193)            -1
+    g(193)    Lg3(193)             1
+    g(194)    Resource            20   Lg1(194)            -1
+    g(194)    Lg3(194)             1
+    g(195)    Resource            20   Lg1(195)            -1
+    g(195)    Lg3(195)             1
+    g(196)    Resource            20   Lg1(196)            -1
+    g(196)    Lg3(196)             1
+    g(197)    Resource            20   Lg1(197)            -1
+    g(197)    Lg3(197)             1
+    g(198)    Resource            20   Lg1(198)            -1
+    g(198)    Lg3(198)             1
+    g(199)    Resource            20   Lg1(199)            -1
+    g(199)    Lg3(199)             1
+    g(200)    Resource            20   Lg1(200)            -1
+    g(200)    Lg3(200)             1
+    x(1)      FC(1)                1   FB(1)                1
+    x(1)      FB(2)               -1
+    x(2)      FC(2)                1   FB(1)                1
+    x(2)      FB(3)               -1
+    x(3)      FC(3)                1   FB(1)                1
+    x(3)      FB(4)               -1
+    x(4)      FC(4)                1   FB(1)                1
+    x(4)      FB(5)               -1
+    x(5)      FC(5)                1   FB(1)                1
+    x(5)      FB(6)               -1
+    x(6)      FC(6)                1   FB(1)                1
+    x(6)      FB(7)               -1
+    x(7)      FC(7)                1   FB(1)                1
+    x(7)      FB(8)               -1
+    x(8)      FC(8)                1   FB(1)                1
+    x(8)      FB(9)               -1
+    x(9)      FC(9)                1   FB(1)                1
+    x(9)      FB(10)              -1
+    x(10)     FC(10)               1   FB(1)                1
+    x(10)     FB(11)              -1
+    x(11)     FC(11)               1   FB(2)               -1
+    x(11)     FB(3)                1
+    x(12)     FC(12)               1   FB(3)                1
+    x(12)     FB(4)               -1
+    x(13)     FC(13)               1   FB(4)                1
+    x(13)     FB(5)               -1
+    x(14)     FC(14)               1   FB(5)               -1
+    x(14)     FB(6)                1
+    x(15)     FC(15)               1   FB(6)               -1
+    x(15)     FB(7)                1
+    x(16)     FC(16)               1   FB(7)                1
+    x(16)     FB(8)               -1
+    x(17)     FC(17)               1   FB(8)               -1
+    x(17)     FB(9)                1
+    x(18)     FC(18)               1   FB(9)               -1
+    x(18)     FB(10)               1
+    x(19)     FC(19)               1   FB(10)              -1
+    x(19)     FB(11)               1
+    x(20)     FC(20)               1   FB(2)                1
+    x(20)     FB(12)              -1
+    x(21)     FC(21)               1   FB(3)                1
+    x(21)     FB(13)              -1
+    x(22)     FC(22)               1   FB(4)                1
+    x(22)     FB(14)              -1   IFC(22)              1
+    x(23)     FC(23)               1   FB(5)                1
+    x(23)     FB(15)              -1
+    x(24)     FC(24)               1   FB(6)                1
+    x(24)     FB(16)              -1
+    x(25)     FC(25)               1   FB(7)                1
+    x(25)     FB(17)              -1
+    x(26)     FC(26)               1   FB(8)                1
+    x(26)     FB(18)              -1
+    x(27)     FC(27)               1   FB(9)                1
+    x(27)     FB(19)              -1
+    x(28)     FC(28)               1   FB(10)               1
+    x(28)     FB(20)              -1
+    x(29)     FC(29)               1   FB(11)               1
+    x(29)     FB(21)              -1   IFC(29)              1
+    x(30)     FC(30)               1   FB(12)              -1
+    x(30)     FB(13)               1   IFC(30)              1
+    x(31)     FC(31)               1   FB(13)               1
+    x(31)     FB(14)              -1
+    x(32)     FC(32)               1   FB(14)               1
+    x(32)     FB(15)              -1   IFC(32)              1
+    x(33)     FC(33)               1   FB(15)               1
+    x(33)     FB(16)              -1
+    x(34)     FC(34)               1   FB(16)               1
+    x(34)     FB(17)              -1
+    x(35)     FC(35)               1   FB(17)               1
+    x(35)     FB(18)              -1   IFC(35)              1
+    x(36)     FC(36)               1   FB(18)              -1
+    x(36)     FB(19)               1   IFC(36)              1
+    x(37)     FC(37)               1   FB(19)               1
+    x(37)     FB(20)              -1   IFC(37)              1
+    x(38)     FC(38)               1   FB(20)               1
+    x(38)     FB(21)              -1
+    x(39)     FC(39)               1   FB(12)               1
+    x(39)     FB(22)              -1
+    x(40)     FC(40)               1   FB(13)               1
+    x(40)     FB(23)              -1
+    x(41)     FC(41)               1   FB(14)               1
+    x(41)     FB(24)              -1
+    x(42)     FC(42)               1   FB(15)               1
+    x(42)     FB(25)              -1
+    x(43)     FC(43)               1   FB(16)               1
+    x(43)     FB(26)              -1   IFC(43)              1
+    x(44)     FC(44)               1   FB(17)               1
+    x(44)     FB(27)              -1
+    x(45)     FC(45)               1   FB(18)               1
+    x(45)     FB(28)              -1   IFC(45)              1
+    x(46)     FC(46)               1   FB(19)               1
+    x(46)     FB(29)              -1   IFC(46)              1
+    x(47)     FC(47)               1   FB(20)               1
+    x(47)     FB(30)              -1
+    x(48)     FC(48)               1   FB(21)               1
+    x(48)     FB(31)              -1   IFC(48)              1
+    x(49)     FC(49)               1   FB(22)              -1
+    x(49)     FB(23)               1
+    x(50)     FC(50)               1   FB(23)              -1
+    x(50)     FB(24)               1
+    x(51)     FC(51)               1   FB(24)              -1
+    x(51)     FB(25)               1
+    x(52)     FC(52)               1   FB(25)              -1
+    x(52)     FB(26)               1
+    x(53)     FC(53)               1   FB(26)               1
+    x(53)     FB(27)              -1
+    x(54)     FC(54)               1   FB(27)               1
+    x(54)     FB(28)              -1
+    x(55)     FC(55)               1   FB(28)               1
+    x(55)     FB(29)              -1
+    x(56)     FC(56)               1   FB(29)              -1
+    x(56)     FB(30)               1
+    x(57)     FC(57)               1   FB(30)               1
+    x(57)     FB(31)              -1
+    x(58)     FC(58)               1   FB(22)               1
+    x(58)     FB(32)              -1
+    x(59)     FC(59)               1   FB(23)               1
+    x(59)     FB(33)              -1
+    x(60)     FC(60)               1   FB(24)               1
+    x(60)     FB(34)              -1
+    x(61)     FC(61)               1   FB(25)               1
+    x(61)     FB(35)              -1
+    x(62)     FC(62)               1   FB(26)               1
+    x(62)     FB(36)              -1   IFC(62)              1
+    x(63)     FC(63)               1   FB(27)               1
+    x(63)     FB(37)              -1   IFC(63)              1
+    x(64)     FC(64)               1   FB(28)               1
+    x(64)     FB(38)              -1   IFC(64)              1
+    x(65)     FC(65)               1   FB(29)               1
+    x(65)     FB(39)              -1   IFC(65)              1
+    x(66)     FC(66)               1   FB(30)               1
+    x(66)     FB(40)              -1   IFC(66)              1
+    x(67)     FC(67)               1   FB(31)               1
+    x(67)     FB(41)              -1
+    x(68)     FC(68)               1   FB(32)              -1
+    x(68)     FB(33)               1
+    x(69)     FC(69)               1   FB(33)               1
+    x(69)     FB(34)              -1
+    x(70)     FC(70)               1   FB(34)              -1
+    x(70)     FB(35)               1
+    x(71)     FC(71)               1   FB(35)               1
+    x(71)     FB(36)              -1
+    x(72)     FC(72)               1   FB(36)               1
+    x(72)     FB(37)              -1
+    x(73)     FC(73)               1   FB(37)              -1
+    x(73)     FB(38)               1   IFC(73)              1
+    x(74)     FC(74)               1   FB(38)               1
+    x(74)     FB(39)              -1
+    x(75)     FC(75)               1   FB(39)               1
+    x(75)     FB(40)              -1
+    x(76)     FC(76)               1   FB(40)              -1
+    x(76)     FB(41)               1
+    x(77)     FC(77)               1   FB(32)               1
+    x(77)     FB(42)              -1
+    x(78)     FC(78)               1   FB(33)               1
+    x(78)     FB(43)              -1   IFC(78)              1
+    x(79)     FC(79)               1   FB(34)               1
+    x(79)     FB(44)              -1
+    x(80)     FC(80)               1   FB(35)               1
+    x(80)     FB(45)              -1   IFC(80)              1
+    x(81)     FC(81)               1   FB(36)               1
+    x(81)     FB(46)              -1
+    x(82)     FC(82)               1   FB(37)               1
+    x(82)     FB(47)              -1   IFC(82)              1
+    x(83)     FC(83)               1   FB(38)               1
+    x(83)     FB(48)              -1   IFC(83)              1
+    x(84)     FC(84)               1   FB(39)               1
+    x(84)     FB(49)              -1
+    x(85)     FC(85)               1   FB(40)               1
+    x(85)     FB(50)              -1   IFC(85)              1
+    x(86)     FC(86)               1   FB(41)               1
+    x(86)     FB(51)              -1   IFC(86)              1
+    x(87)     FC(87)               1   FB(42)               1
+    x(87)     FB(43)              -1
+    x(88)     FC(88)               1   FB(43)              -1
+    x(88)     FB(44)               1
+    x(89)     FC(89)               1   FB(44)              -1
+    x(89)     FB(45)               1   IFC(89)              1
+    x(90)     FC(90)               1   FB(45)               1
+    x(90)     FB(46)              -1
+    x(91)     FC(91)               1   FB(46)              -1
+    x(91)     FB(47)               1   IFC(91)              1
+    x(92)     FC(92)               1   FB(47)              -1
+    x(92)     FB(48)               1
+    x(93)     FC(93)               1   FB(48)               1
+    x(93)     FB(49)              -1   IFC(93)              1
+    x(94)     FC(94)               1   FB(49)               1
+    x(94)     FB(50)              -1
+    x(95)     FC(95)               1   FB(50)               1
+    x(95)     FB(51)              -1
+    x(96)     FC(96)               1   FB(42)               1
+    x(96)     FB(52)              -1
+    x(97)     FC(97)               1   FB(43)               1
+    x(97)     FB(53)              -1
+    x(98)     FC(98)               1   FB(44)               1
+    x(98)     FB(54)              -1   IFC(98)              1
+    x(99)     FC(99)               1   FB(45)               1
+    x(99)     FB(55)              -1   IFC(99)              1
+    x(100)    FC(100)              1   FB(46)               1
+    x(100)    FB(56)              -1
+    x(101)    FC(101)              1   FB(47)               1
+    x(101)    FB(57)              -1   IFC(101)             1
+    x(102)    FC(102)              1   FB(48)               1
+    x(102)    FB(58)              -1
+    x(103)    FC(103)              1   FB(49)               1
+    x(103)    FB(59)              -1   IFC(103)             1
+    x(104)    FC(104)              1   FB(50)               1
+    x(104)    FB(60)              -1
+    x(105)    FC(105)              1   FB(51)               1
+    x(105)    FB(61)              -1   IFC(105)             1
+    x(106)    FC(106)              1   FB(52)              -1
+    x(106)    FB(53)               1
+    x(107)    FC(107)              1   FB(53)              -1
+    x(107)    FB(54)               1   IFC(107)             1
+    x(108)    FC(108)              1   FB(54)               1
+    x(108)    FB(55)              -1
+    x(109)    FC(109)              1   FB(55)              -1
+    x(109)    FB(56)               1   IFC(109)             1
+    x(110)    FC(110)              1   FB(56)               1
+    x(110)    FB(57)              -1
+    x(111)    FC(111)              1   FB(57)               1
+    x(111)    FB(58)              -1
+    x(112)    FC(112)              1   FB(58)               1
+    x(112)    FB(59)              -1
+    x(113)    FC(113)              1   FB(59)              -1
+    x(113)    FB(60)               1
+    x(114)    FC(114)              1   FB(60)               1
+    x(114)    FB(61)              -1   IFC(114)             1
+    x(115)    FC(115)              1   FB(52)               1
+    x(115)    FB(62)              -1
+    x(116)    FC(116)              1   FB(53)               1
+    x(116)    FB(63)              -1
+    x(117)    FC(117)              1   FB(54)               1
+    x(117)    FB(64)              -1
+    x(118)    FC(118)              1   FB(55)               1
+    x(118)    FB(65)              -1   IFC(118)             1
+    x(119)    FC(119)              1   FB(56)               1
+    x(119)    FB(66)              -1
+    x(120)    FC(120)              1   FB(57)               1
+    x(120)    FB(67)              -1
+    x(121)    FC(121)              1   FB(58)               1
+    x(121)    FB(68)              -1
+    x(122)    FC(122)              1   FB(59)               1
+    x(122)    FB(69)              -1
+    x(123)    FC(123)              1   FB(60)               1
+    x(123)    FB(70)              -1
+    x(124)    FC(124)              1   FB(61)               1
+    x(124)    FB(71)              -1
+    x(125)    FC(125)              1   FB(62)              -1
+    x(125)    FB(63)               1   IFC(125)             1
+    x(126)    FC(126)              1   FB(63)               1
+    x(126)    FB(64)              -1   IFC(126)             1
+    x(127)    FC(127)              1   FB(64)               1
+    x(127)    FB(65)              -1
+    x(128)    FC(128)              1   FB(65)              -1
+    x(128)    FB(66)               1   IFC(128)             1
+    x(129)    FC(129)              1   FB(66)               1
+    x(129)    FB(67)              -1   IFC(129)             1
+    x(130)    FC(130)              1   FB(67)              -1
+    x(130)    FB(68)               1
+    x(131)    FC(131)              1   FB(68)              -1
+    x(131)    FB(69)               1   IFC(131)             1
+    x(132)    FC(132)              1   FB(69)               1
+    x(132)    FB(70)              -1   IFC(132)             1
+    x(133)    FC(133)              1   FB(70)              -1
+    x(133)    FB(71)               1   IFC(133)             1
+    x(134)    FC(134)              1   FB(62)               1
+    x(134)    FB(72)              -1   IFC(134)             1
+    x(135)    FC(135)              1   FB(63)               1
+    x(135)    FB(73)              -1
+    x(136)    FC(136)              1   FB(64)               1
+    x(136)    FB(74)              -1
+    x(137)    FC(137)              1   FB(65)               1
+    x(137)    FB(75)              -1
+    x(138)    FC(138)              1   FB(66)               1
+    x(138)    FB(76)              -1   IFC(138)             1
+    x(139)    FC(139)              1   FB(67)               1
+    x(139)    FB(77)              -1   IFC(139)             1
+    x(140)    FC(140)              1   FB(68)               1
+    x(140)    FB(78)              -1
+    x(141)    FC(141)              1   FB(69)               1
+    x(141)    FB(79)              -1   IFC(141)             1
+    x(142)    FC(142)              1   FB(70)               1
+    x(142)    FB(80)              -1
+    x(143)    FC(143)              1   FB(71)               1
+    x(143)    FB(81)              -1
+    x(144)    FC(144)              1   FB(72)              -1
+    x(144)    FB(73)               1
+    x(145)    FC(145)              1   FB(73)               1
+    x(145)    FB(74)              -1
+    x(146)    FC(146)              1   FB(74)              -1
+    x(146)    FB(75)               1   IFC(146)             1
+    x(147)    FC(147)              1   FB(75)               1
+    x(147)    FB(76)              -1
+    x(148)    FC(148)              1   FB(76)              -1
+    x(148)    FB(77)               1   IFC(148)             1
+    x(149)    FC(149)              1   FB(77)              -1
+    x(149)    FB(78)               1
+    x(150)    FC(150)              1   FB(78)               1
+    x(150)    FB(79)              -1   IFC(150)             1
+    x(151)    FC(151)              1   FB(79)              -1
+    x(151)    FB(80)               1
+    x(152)    FC(152)              1   FB(80)               1
+    x(152)    FB(81)              -1
+    x(153)    FC(153)              1   FB(72)               1
+    x(153)    FB(82)              -1   IFC(153)             1
+    x(154)    FC(154)              1   FB(73)               1
+    x(154)    FB(83)              -1
+    x(155)    FC(155)              1   FB(74)               1
+    x(155)    FB(84)              -1   IFC(155)             1
+    x(156)    FC(156)              1   FB(75)               1
+    x(156)    FB(85)              -1
+    x(157)    FC(157)              1   FB(76)               1
+    x(157)    FB(86)              -1
+    x(158)    FC(158)              1   FB(77)               1
+    x(158)    FB(87)              -1   IFC(158)             1
+    x(159)    FC(159)              1   FB(78)               1
+    x(159)    FB(88)              -1
+    x(160)    FC(160)              1   FB(79)               1
+    x(160)    FB(89)              -1   IFC(160)             1
+    x(161)    FC(161)              1   FB(80)               1
+    x(161)    FB(90)              -1   IFC(161)             1
+    x(162)    FC(162)              1   FB(81)               1
+    x(162)    FB(91)              -1   IFC(162)             1
+    x(163)    FC(163)              1   FB(82)              -1
+    x(163)    FB(83)               1   IFC(163)             1
+    x(164)    FC(164)              1   FB(83)               1
+    x(164)    FB(84)              -1   IFC(164)             1
+    x(165)    FC(165)              1   FB(84)               1
+    x(165)    FB(85)              -1   IFC(165)             1
+    x(166)    FC(166)              1   FB(85)              -1
+    x(166)    FB(86)               1
+    x(167)    FC(167)              1   FB(86)              -1
+    x(167)    FB(87)               1
+    x(168)    FC(168)              1   FB(87)               1
+    x(168)    FB(88)              -1   IFC(168)             1
+    x(169)    FC(169)              1   FB(88)               1
+    x(169)    FB(89)              -1   IFC(169)             1
+    x(170)    FC(170)              1   FB(89)               1
+    x(170)    FB(90)              -1
+    x(171)    FC(171)              1   FB(90)               1
+    x(171)    FB(91)              -1   IFC(171)             1
+    x(172)    FC(172)              1   FB(82)               1
+    x(172)    FB(92)              -1   IFC(172)             1
+    x(173)    FC(173)              1   FB(83)               1
+    x(173)    FB(93)              -1
+    x(174)    FC(174)              1   FB(84)               1
+    x(174)    FB(94)              -1   IFC(174)             1
+    x(175)    FC(175)              1   FB(85)               1
+    x(175)    FB(95)              -1   IFC(175)             1
+    x(176)    FC(176)              1   FB(86)               1
+    x(176)    FB(96)              -1
+    x(177)    FC(177)              1   FB(87)               1
+    x(177)    FB(97)              -1
+    x(178)    FC(178)              1   FB(88)               1
+    x(178)    FB(98)              -1
+    x(179)    FC(179)              1   FB(89)               1
+    x(179)    FB(99)              -1
+    x(180)    FC(180)              1   FB(90)               1
+    x(180)    FB(100)             -1   IFC(180)             1
+    x(181)    FC(181)              1   FB(91)               1
+    x(181)    FB(101)             -1
+    x(182)    FC(182)              1   FB(92)               1
+    x(182)    FB(93)              -1
+    x(183)    FC(183)              1   FB(93)               1
+    x(183)    FB(94)              -1
+    x(184)    FC(184)              1   FB(94)               1
+    x(184)    FB(95)              -1
+    x(185)    FC(185)              1   FB(95)              -1
+    x(185)    FB(96)               1
+    x(186)    FC(186)              1   FB(96)              -1
+    x(186)    FB(97)               1
+    x(187)    FC(187)              1   FB(97)              -1
+    x(187)    FB(98)               1
+    x(188)    FC(188)              1   FB(98)              -1
+    x(188)    FB(99)               1
+    x(189)    FC(189)              1   FB(99)              -1
+    x(189)    FB(100)              1
+    x(190)    FC(190)              1   FB(100)             -1
+    x(190)    FB(101)              1
+    x(191)    FC(191)              1   FB(92)               1
+    x(191)    FB(102)             -1
+    x(192)    FC(192)              1   FB(93)               1
+    x(192)    FB(102)             -1
+    x(193)    FC(193)              1   FB(94)               1
+    x(193)    FB(102)             -1
+    x(194)    FC(194)              1   FB(95)               1
+    x(194)    FB(102)             -1
+    x(195)    FC(195)              1   FB(96)               1
+    x(195)    FB(102)             -1
+    x(196)    FC(196)              1   FB(97)               1
+    x(196)    FB(102)             -1
+    x(197)    FC(197)              1   FB(98)               1
+    x(197)    FB(102)             -1
+    x(198)    FC(198)              1   FB(99)               1
+    x(198)    FB(102)             -1
+    x(199)    FC(199)              1   FB(100)              1
+    x(199)    FB(102)             -1
+    x(200)    FC(200)              1   FB(101)              1
+    x(200)    FB(102)             -1
+    v         EMaxFlow             1   FB(1)               -1
+    v         FB(102)              1   stDual              -1
+    p(1)      stDual            1000   Lg2(1)              -1
+    p(1)      Lg3(1)               1   DC1(1)               1
+    p(2)      stDual            1000   Lg2(2)              -1
+    p(2)      Lg3(2)               1   DC1(2)               1
+    p(3)      stDual            1000   Lg2(3)              -1
+    p(3)      Lg3(3)               1   DC1(3)               1
+    p(4)      stDual            1000   Lg2(4)              -1
+    p(4)      Lg3(4)               1   DC1(4)               1
+    p(5)      stDual            1000   Lg2(5)              -1
+    p(5)      Lg3(5)               1   DC1(5)               1
+    p(6)      stDual            1000   Lg2(6)              -1
+    p(6)      Lg3(6)               1   DC1(6)               1
+    p(7)      stDual            1000   Lg2(7)              -1
+    p(7)      Lg3(7)               1   DC1(7)               1
+    p(8)      stDual            1000   Lg2(8)              -1
+    p(8)      Lg3(8)               1   DC1(8)               1
+    p(9)      stDual            1000   Lg2(9)              -1
+    p(9)      Lg3(9)               1   DC1(9)               1
+    p(10)     stDual            1000   Lg2(10)             -1
+    p(10)     Lg3(10)              1   DC1(10)              1
+    p(11)     stDual            1000   Lg2(11)             -1
+    p(11)     Lg3(11)              1   DC1(11)              1
+    p(12)     stDual            1000   Lg2(12)             -1
+    p(12)     Lg3(12)              1   DC1(12)              1
+    p(13)     stDual            1000   Lg2(13)             -1
+    p(13)     Lg3(13)              1   DC1(13)              1
+    p(14)     stDual            1000   Lg2(14)             -1
+    p(14)     Lg3(14)              1   DC1(14)              1
+    p(15)     stDual            1000   Lg2(15)             -1
+    p(15)     Lg3(15)              1   DC1(15)              1
+    p(16)     stDual            1000   Lg2(16)             -1
+    p(16)     Lg3(16)              1   DC1(16)              1
+    p(17)     stDual            1000   Lg2(17)             -1
+    p(17)     Lg3(17)              1   DC1(17)              1
+    p(18)     stDual            1000   Lg2(18)             -1
+    p(18)     Lg3(18)              1   DC1(18)              1
+    p(19)     stDual            1000   Lg2(19)             -1
+    p(19)     Lg3(19)              1   DC1(19)              1
+    p(20)     stDual              50   Lg2(20)             -1
+    p(20)     Lg3(20)              1   DC1(20)              1
+    p(21)     stDual              40   Lg2(21)             -1
+    p(21)     Lg3(21)              1   DC1(21)              1
+    p(22)     stDual              10   Lg2(22)             -1
+    p(22)     Lg3(22)              1   DC1(22)              1
+    p(23)     stDual              40   Lg2(23)             -1
+    p(23)     Lg3(23)              1   DC1(23)              1
+    p(24)     stDual              20   Lg2(24)             -1
+    p(24)     Lg3(24)              1   DC1(24)              1
+    p(25)     stDual              90   Lg2(25)             -1
+    p(25)     Lg3(25)              1   DC1(25)              1
+    p(26)     stDual              80   Lg2(26)             -1
+    p(26)     Lg3(26)              1   DC1(26)              1
+    p(27)     stDual              80   Lg2(27)             -1
+    p(27)     Lg3(27)              1   DC1(27)              1
+    p(28)     stDual              70   Lg2(28)             -1
+    p(28)     Lg3(28)              1   DC1(28)              1
+    p(29)     stDual              20   Lg2(29)             -1
+    p(29)     Lg3(29)              1   DC1(29)              1
+    p(30)     stDual              90   Lg2(30)             -1
+    p(30)     Lg3(30)              1   DC1(30)              1
+    p(31)     stDual              30   Lg2(31)             -1
+    p(31)     Lg3(31)              1   DC1(31)              1
+    p(32)     stDual              50   Lg2(32)             -1
+    p(32)     Lg3(32)              1   DC1(32)              1
+    p(33)     stDual              80   Lg2(33)             -1
+    p(33)     Lg3(33)              1   DC1(33)              1
+    p(34)     stDual              90   Lg2(34)             -1
+    p(34)     Lg3(34)              1   DC1(34)              1
+    p(35)     stDual              60   Lg2(35)             -1
+    p(35)     Lg3(35)              1   DC1(35)              1
+    p(36)     stDual             100   Lg2(36)             -1
+    p(36)     Lg3(36)              1   DC1(36)              1
+    p(37)     stDual              40   Lg2(37)             -1
+    p(37)     Lg3(37)              1   DC1(37)              1
+    p(38)     stDual              30   Lg2(38)             -1
+    p(38)     Lg3(38)              1   DC1(38)              1
+    p(39)     stDual              80   Lg2(39)             -1
+    p(39)     Lg3(39)              1   DC1(39)              1
+    p(40)     stDual              30   Lg2(40)             -1
+    p(40)     Lg3(40)              1   DC1(40)              1
+    p(41)     stDual              40   Lg2(41)             -1
+    p(41)     Lg3(41)              1   DC1(41)              1
+    p(42)     stDual              20   Lg2(42)             -1
+    p(42)     Lg3(42)              1   DC1(42)              1
+    p(43)     stDual              20   Lg2(43)             -1
+    p(43)     Lg3(43)              1   DC1(43)              1
+    p(44)     stDual              40   Lg2(44)             -1
+    p(44)     Lg3(44)              1   DC1(44)              1
+    p(45)     stDual              60   Lg2(45)             -1
+    p(45)     Lg3(45)              1   DC1(45)              1
+    p(46)     stDual              80   Lg2(46)             -1
+    p(46)     Lg3(46)              1   DC1(46)              1
+    p(47)     stDual              30   Lg2(47)             -1
+    p(47)     Lg3(47)              1   DC1(47)              1
+    p(48)     stDual              20   Lg2(48)             -1
+    p(48)     Lg3(48)              1   DC1(48)              1
+    p(49)     stDual              40   Lg2(49)             -1
+    p(49)     Lg3(49)              1   DC1(49)              1
+    p(50)     stDual              60   Lg2(50)             -1
+    p(50)     Lg3(50)              1   DC1(50)              1
+    p(51)     stDual              60   Lg2(51)             -1
+    p(51)     Lg3(51)              1   DC1(51)              1
+    p(52)     stDual              80   Lg2(52)             -1
+    p(52)     Lg3(52)              1   DC1(52)              1
+    p(53)     stDual              70   Lg2(53)             -1
+    p(53)     Lg3(53)              1   DC1(53)              1
+    p(54)     stDual              90   Lg2(54)             -1
+    p(54)     Lg3(54)              1   DC1(54)              1
+    p(55)     stDual             100   Lg2(55)             -1
+    p(55)     Lg3(55)              1   DC1(55)              1
+    p(56)     stDual              50   Lg2(56)             -1
+    p(56)     Lg3(56)              1   DC1(56)              1
+    p(57)     stDual              70   Lg2(57)             -1
+    p(57)     Lg3(57)              1   DC1(57)              1
+    p(58)     stDual              70   Lg2(58)             -1
+    p(58)     Lg3(58)              1   DC1(58)              1
+    p(59)     stDual              20   Lg2(59)             -1
+    p(59)     Lg3(59)              1   DC1(59)              1
+    p(60)     stDual              80   Lg2(60)             -1
+    p(60)     Lg3(60)              1   DC1(60)              1
+    p(61)     stDual              60   Lg2(61)             -1
+    p(61)     Lg3(61)              1   DC1(61)              1
+    p(62)     stDual              40   Lg2(62)             -1
+    p(62)     Lg3(62)              1   DC1(62)              1
+    p(63)     stDual              30   Lg2(63)             -1
+    p(63)     Lg3(63)              1   DC1(63)              1
+    p(64)     stDual              30   Lg2(64)             -1
+    p(64)     Lg3(64)              1   DC1(64)              1
+    p(65)     stDual              20   Lg2(65)             -1
+    p(65)     Lg3(65)              1   DC1(65)              1
+    p(66)     stDual              90   Lg2(66)             -1
+    p(66)     Lg3(66)              1   DC1(66)              1
+    p(67)     stDual              20   Lg2(67)             -1
+    p(67)     Lg3(67)              1   DC1(67)              1
+    p(68)     stDual              50   Lg2(68)             -1
+    p(68)     Lg3(68)              1   DC1(68)              1
+    p(69)     stDual              10   Lg2(69)             -1
+    p(69)     Lg3(69)              1   DC1(69)              1
+    p(70)     stDual              90   Lg2(70)             -1
+    p(70)     Lg3(70)              1   DC1(70)              1
+    p(71)     stDual              80   Lg2(71)             -1
+    p(71)     Lg3(71)              1   DC1(71)              1
+    p(72)     stDual              50   Lg2(72)             -1
+    p(72)     Lg3(72)              1   DC1(72)              1
+    p(73)     stDual              10   Lg2(73)             -1
+    p(73)     Lg3(73)              1   DC1(73)              1
+    p(74)     stDual             100   Lg2(74)             -1
+    p(74)     Lg3(74)              1   DC1(74)              1
+    p(75)     stDual              90   Lg2(75)             -1
+    p(75)     Lg3(75)              1   DC1(75)              1
+    p(76)     stDual              70   Lg2(76)             -1
+    p(76)     Lg3(76)              1   DC1(76)              1
+    p(77)     stDual              70   Lg2(77)             -1
+    p(77)     Lg3(77)              1   DC1(77)              1
+    p(78)     stDual              10   Lg2(78)             -1
+    p(78)     Lg3(78)              1   DC1(78)              1
+    p(79)     stDual              90   Lg2(79)             -1
+    p(79)     Lg3(79)              1   DC1(79)              1
+    p(80)     stDual              10   Lg2(80)             -1
+    p(80)     Lg3(80)              1   DC1(80)              1
+    p(81)     stDual              70   Lg2(81)             -1
+    p(81)     Lg3(81)              1   DC1(81)              1
+    p(82)     stDual              40   Lg2(82)             -1
+    p(82)     Lg3(82)              1   DC1(82)              1
+    p(83)     stDual              80   Lg2(83)             -1
+    p(83)     Lg3(83)              1   DC1(83)              1
+    p(84)     stDual              40   Lg2(84)             -1
+    p(84)     Lg3(84)              1   DC1(84)              1
+    p(85)     stDual              30   Lg2(85)             -1
+    p(85)     Lg3(85)              1   DC1(85)              1
+    p(86)     stDual              70   Lg2(86)             -1
+    p(86)     Lg3(86)              1   DC1(86)              1
+    p(87)     stDual              90   Lg2(87)             -1
+    p(87)     Lg3(87)              1   DC1(87)              1
+    p(88)     stDual              90   Lg2(88)             -1
+    p(88)     Lg3(88)              1   DC1(88)              1
+    p(89)     stDual              40   Lg2(89)             -1
+    p(89)     Lg3(89)              1   DC1(89)              1
+    p(90)     stDual             100   Lg2(90)             -1
+    p(90)     Lg3(90)              1   DC1(90)              1
+    p(91)     stDual              60   Lg2(91)             -1
+    p(91)     Lg3(91)              1   DC1(91)              1
+    p(92)     stDual              90   Lg2(92)             -1
+    p(92)     Lg3(92)              1   DC1(92)              1
+    p(93)     stDual              30   Lg2(93)             -1
+    p(93)     Lg3(93)              1   DC1(93)              1
+    p(94)     stDual              90   Lg2(94)             -1
+    p(94)     Lg3(94)              1   DC1(94)              1
+    p(95)     stDual              10   Lg2(95)             -1
+    p(95)     Lg3(95)              1   DC1(95)              1
+    p(96)     stDual              40   Lg2(96)             -1
+    p(96)     Lg3(96)              1   DC1(96)              1
+    p(97)     stDual              70   Lg2(97)             -1
+    p(97)     Lg3(97)              1   DC1(97)              1
+    p(98)     stDual              30   Lg2(98)             -1
+    p(98)     Lg3(98)              1   DC1(98)              1
+    p(99)     stDual              90   Lg2(99)             -1
+    p(99)     Lg3(99)              1   DC1(99)              1
+    p(100)    stDual              80   Lg2(100)            -1
+    p(100)    Lg3(100)             1   DC1(100)             1
+    p(101)    stDual              20   Lg2(101)            -1
+    p(101)    Lg3(101)             1   DC1(101)             1
+    p(102)    stDual              70   Lg2(102)            -1
+    p(102)    Lg3(102)             1   DC1(102)             1
+    p(103)    stDual              20   Lg2(103)            -1
+    p(103)    Lg3(103)             1   DC1(103)             1
+    p(104)    stDual              30   Lg2(104)            -1
+    p(104)    Lg3(104)             1   DC1(104)             1
+    p(105)    stDual              60   Lg2(105)            -1
+    p(105)    Lg3(105)             1   DC1(105)             1
+    p(106)    stDual             100   Lg2(106)            -1
+    p(106)    Lg3(106)             1   DC1(106)             1
+    p(107)    stDual              90   Lg2(107)            -1
+    p(107)    Lg3(107)             1   DC1(107)             1
+    p(108)    stDual              30   Lg2(108)            -1
+    p(108)    Lg3(108)             1   DC1(108)             1
+    p(109)    stDual              10   Lg2(109)            -1
+    p(109)    Lg3(109)             1   DC1(109)             1
+    p(110)    stDual              70   Lg2(110)            -1
+    p(110)    Lg3(110)             1   DC1(110)             1
+    p(111)    stDual              30   Lg2(111)            -1
+    p(111)    Lg3(111)             1   DC1(111)             1
+    p(112)    stDual              80   Lg2(112)            -1
+    p(112)    Lg3(112)             1   DC1(112)             1
+    p(113)    stDual              10   Lg2(113)            -1
+    p(113)    Lg3(113)             1   DC1(113)             1
+    p(114)    stDual             100   Lg2(114)            -1
+    p(114)    Lg3(114)             1   DC1(114)             1
+    p(115)    stDual              10   Lg2(115)            -1
+    p(115)    Lg3(115)             1   DC1(115)             1
+    p(116)    stDual              30   Lg2(116)            -1
+    p(116)    Lg3(116)             1   DC1(116)             1
+    p(117)    stDual              70   Lg2(117)            -1
+    p(117)    Lg3(117)             1   DC1(117)             1
+    p(118)    stDual              90   Lg2(118)            -1
+    p(118)    Lg3(118)             1   DC1(118)             1
+    p(119)    stDual              20   Lg2(119)            -1
+    p(119)    Lg3(119)             1   DC1(119)             1
+    p(120)    stDual             100   Lg2(120)            -1
+    p(120)    Lg3(120)             1   DC1(120)             1
+    p(121)    stDual              80   Lg2(121)            -1
+    p(121)    Lg3(121)             1   DC1(121)             1
+    p(122)    stDual              80   Lg2(122)            -1
+    p(122)    Lg3(122)             1   DC1(122)             1
+    p(123)    stDual              80   Lg2(123)            -1
+    p(123)    Lg3(123)             1   DC1(123)             1
+    p(124)    stDual             100   Lg2(124)            -1
+    p(124)    Lg3(124)             1   DC1(124)             1
+    p(125)    stDual              60   Lg2(125)            -1
+    p(125)    Lg3(125)             1   DC1(125)             1
+    p(126)    stDual              90   Lg2(126)            -1
+    p(126)    Lg3(126)             1   DC1(126)             1
+    p(127)    stDual              40   Lg2(127)            -1
+    p(127)    Lg3(127)             1   DC1(127)             1
+    p(128)    stDual              20   Lg2(128)            -1
+    p(128)    Lg3(128)             1   DC1(128)             1
+    p(129)    stDual              20   Lg2(129)            -1
+    p(129)    Lg3(129)             1   DC1(129)             1
+    p(130)    stDual              20   Lg2(130)            -1
+    p(130)    Lg3(130)             1   DC1(130)             1
+    p(131)    stDual              90   Lg2(131)            -1
+    p(131)    Lg3(131)             1   DC1(131)             1
+    p(132)    stDual              30   Lg2(132)            -1
+    p(132)    Lg3(132)             1   DC1(132)             1
+    p(133)    stDual              90   Lg2(133)            -1
+    p(133)    Lg3(133)             1   DC1(133)             1
+    p(134)    stDual             100   Lg2(134)            -1
+    p(134)    Lg3(134)             1   DC1(134)             1
+    p(135)    stDual              50   Lg2(135)            -1
+    p(135)    Lg3(135)             1   DC1(135)             1
+    p(136)    stDual              40   Lg2(136)            -1
+    p(136)    Lg3(136)             1   DC1(136)             1
+    p(137)    stDual             100   Lg2(137)            -1
+    p(137)    Lg3(137)             1   DC1(137)             1
+    p(138)    stDual              40   Lg2(138)            -1
+    p(138)    Lg3(138)             1   DC1(138)             1
+    p(139)    stDual              60   Lg2(139)            -1
+    p(139)    Lg3(139)             1   DC1(139)             1
+    p(140)    stDual             100   Lg2(140)            -1
+    p(140)    Lg3(140)             1   DC1(140)             1
+    p(141)    stDual              10   Lg2(141)            -1
+    p(141)    Lg3(141)             1   DC1(141)             1
+    p(142)    stDual              90   Lg2(142)            -1
+    p(142)    Lg3(142)             1   DC1(142)             1
+    p(143)    stDual              80   Lg2(143)            -1
+    p(143)    Lg3(143)             1   DC1(143)             1
+    p(144)    stDual              10   Lg2(144)            -1
+    p(144)    Lg3(144)             1   DC1(144)             1
+    p(145)    stDual              80   Lg2(145)            -1
+    p(145)    Lg3(145)             1   DC1(145)             1
+    p(146)    stDual              80   Lg2(146)            -1
+    p(146)    Lg3(146)             1   DC1(146)             1
+    p(147)    stDual              40   Lg2(147)            -1
+    p(147)    Lg3(147)             1   DC1(147)             1
+    p(148)    stDual              50   Lg2(148)            -1
+    p(148)    Lg3(148)             1   DC1(148)             1
+    p(149)    stDual              70   Lg2(149)            -1
+    p(149)    Lg3(149)             1   DC1(149)             1
+    p(150)    stDual              50   Lg2(150)            -1
+    p(150)    Lg3(150)             1   DC1(150)             1
+    p(151)    stDual              40   Lg2(151)            -1
+    p(151)    Lg3(151)             1   DC1(151)             1
+    p(152)    stDual              40   Lg2(152)            -1
+    p(152)    Lg3(152)             1   DC1(152)             1
+    p(153)    stDual              20   Lg2(153)            -1
+    p(153)    Lg3(153)             1   DC1(153)             1
+    p(154)    stDual              20   Lg2(154)            -1
+    p(154)    Lg3(154)             1   DC1(154)             1
+    p(155)    stDual              40   Lg2(155)            -1
+    p(155)    Lg3(155)             1   DC1(155)             1
+    p(156)    stDual              70   Lg2(156)            -1
+    p(156)    Lg3(156)             1   DC1(156)             1
+    p(157)    stDual             100   Lg2(157)            -1
+    p(157)    Lg3(157)             1   DC1(157)             1
+    p(158)    stDual              80   Lg2(158)            -1
+    p(158)    Lg3(158)             1   DC1(158)             1
+    p(159)    stDual              80   Lg2(159)            -1
+    p(159)    Lg3(159)             1   DC1(159)             1
+    p(160)    stDual              10   Lg2(160)            -1
+    p(160)    Lg3(160)             1   DC1(160)             1
+    p(161)    stDual              90   Lg2(161)            -1
+    p(161)    Lg3(161)             1   DC1(161)             1
+    p(162)    stDual              60   Lg2(162)            -1
+    p(162)    Lg3(162)             1   DC1(162)             1
+    p(163)    stDual              40   Lg2(163)            -1
+    p(163)    Lg3(163)             1   DC1(163)             1
+    p(164)    stDual              80   Lg2(164)            -1
+    p(164)    Lg3(164)             1   DC1(164)             1
+    p(165)    stDual              60   Lg2(165)            -1
+    p(165)    Lg3(165)             1   DC1(165)             1
+    p(166)    stDual              80   Lg2(166)            -1
+    p(166)    Lg3(166)             1   DC1(166)             1
+    p(167)    stDual              10   Lg2(167)            -1
+    p(167)    Lg3(167)             1   DC1(167)             1
+    p(168)    stDual              50   Lg2(168)            -1
+    p(168)    Lg3(168)             1   DC1(168)             1
+    p(169)    stDual              10   Lg2(169)            -1
+    p(169)    Lg3(169)             1   DC1(169)             1
+    p(170)    stDual              70   Lg2(170)            -1
+    p(170)    Lg3(170)             1   DC1(170)             1
+    p(171)    stDual              50   Lg2(171)            -1
+    p(171)    Lg3(171)             1   DC1(171)             1
+    p(172)    stDual              10   Lg2(172)            -1
+    p(172)    Lg3(172)             1   DC1(172)             1
+    p(173)    stDual              50   Lg2(173)            -1
+    p(173)    Lg3(173)             1   DC1(173)             1
+    p(174)    stDual              20   Lg2(174)            -1
+    p(174)    Lg3(174)             1   DC1(174)             1
+    p(175)    stDual              20   Lg2(175)            -1
+    p(175)    Lg3(175)             1   DC1(175)             1
+    p(176)    stDual              30   Lg2(176)            -1
+    p(176)    Lg3(176)             1   DC1(176)             1
+    p(177)    stDual             100   Lg2(177)            -1
+    p(177)    Lg3(177)             1   DC1(177)             1
+    p(178)    stDual              50   Lg2(178)            -1
+    p(178)    Lg3(178)             1   DC1(178)             1
+    p(179)    stDual              70   Lg2(179)            -1
+    p(179)    Lg3(179)             1   DC1(179)             1
+    p(180)    stDual              60   Lg2(180)            -1
+    p(180)    Lg3(180)             1   DC1(180)             1
+    p(181)    stDual              90   Lg2(181)            -1
+    p(181)    Lg3(181)             1   DC1(181)             1
+    p(182)    stDual            1000   Lg2(182)            -1
+    p(182)    Lg3(182)             1   DC1(182)             1
+    p(183)    stDual            1000   Lg2(183)            -1
+    p(183)    Lg3(183)             1   DC1(183)             1
+    p(184)    stDual            1000   Lg2(184)            -1
+    p(184)    Lg3(184)             1   DC1(184)             1
+    p(185)    stDual            1000   Lg2(185)            -1
+    p(185)    Lg3(185)             1   DC1(185)             1
+    p(186)    stDual            1000   Lg2(186)            -1
+    p(186)    Lg3(186)             1   DC1(186)             1
+    p(187)    stDual            1000   Lg2(187)            -1
+    p(187)    Lg3(187)             1   DC1(187)             1
+    p(188)    stDual            1000   Lg2(188)            -1
+    p(188)    Lg3(188)             1   DC1(188)             1
+    p(189)    stDual            1000   Lg2(189)            -1
+    p(189)    Lg3(189)             1   DC1(189)             1
+    p(190)    stDual            1000   Lg2(190)            -1
+    p(190)    Lg3(190)             1   DC1(190)             1
+    p(191)    stDual            1000   Lg2(191)            -1
+    p(191)    Lg3(191)             1   DC1(191)             1
+    p(192)    stDual            1000   Lg2(192)            -1
+    p(192)    Lg3(192)             1   DC1(192)             1
+    p(193)    stDual            1000   Lg2(193)            -1
+    p(193)    Lg3(193)             1   DC1(193)             1
+    p(194)    stDual            1000   Lg2(194)            -1
+    p(194)    Lg3(194)             1   DC1(194)             1
+    p(195)    stDual            1000   Lg2(195)            -1
+    p(195)    Lg3(195)             1   DC1(195)             1
+    p(196)    stDual            1000   Lg2(196)            -1
+    p(196)    Lg3(196)             1   DC1(196)             1
+    p(197)    stDual            1000   Lg2(197)            -1
+    p(197)    Lg3(197)             1   DC1(197)             1
+    p(198)    stDual            1000   Lg2(198)            -1
+    p(198)    Lg3(198)             1   DC1(198)             1
+    p(199)    stDual            1000   Lg2(199)            -1
+    p(199)    Lg3(199)             1   DC1(199)             1
+    p(200)    stDual            1000   Lg2(200)            -1
+    p(200)    Lg3(200)             1   DC1(200)             1
+    pi(1)     DC1(1)               1   DC1(2)               1
+    pi(1)     DC1(3)               1   DC1(4)               1
+    pi(1)     DC1(5)               1   DC1(6)               1
+    pi(1)     DC1(7)               1   DC1(8)               1
+    pi(1)     DC1(9)               1   DC1(10)              1
+    pi(1)     DC2                 -1
+    pi(2)     DC1(1)              -1   DC1(11)             -1
+    pi(2)     DC1(20)              1
+    pi(3)     DC1(2)              -1   DC1(11)              1
+    pi(3)     DC1(12)              1   DC1(21)              1
+    pi(4)     DC1(3)              -1   DC1(12)             -1
+    pi(4)     DC1(13)              1   DC1(22)              1
+    pi(5)     DC1(4)              -1   DC1(13)             -1
+    pi(5)     DC1(14)             -1   DC1(23)              1
+    pi(6)     DC1(5)              -1   DC1(14)              1
+    pi(6)     DC1(15)             -1   DC1(24)              1
+    pi(7)     DC1(6)              -1   DC1(15)              1
+    pi(7)     DC1(16)              1   DC1(25)              1
+    pi(8)     DC1(7)              -1   DC1(16)             -1
+    pi(8)     DC1(17)             -1   DC1(26)              1
+    pi(9)     DC1(8)              -1   DC1(17)              1
+    pi(9)     DC1(18)             -1   DC1(27)              1
+    pi(10)    DC1(9)              -1   DC1(18)              1
+    pi(10)    DC1(19)             -1   DC1(28)              1
+    pi(11)    DC1(10)             -1   DC1(19)              1
+    pi(11)    DC1(29)              1
+    pi(12)    DC1(20)             -1   DC1(30)             -1
+    pi(12)    DC1(39)              1
+    pi(13)    DC1(21)             -1   DC1(30)              1
+    pi(13)    DC1(31)              1   DC1(40)              1
+    pi(14)    DC1(22)             -1   DC1(31)             -1
+    pi(14)    DC1(32)              1   DC1(41)              1
+    pi(15)    DC1(23)             -1   DC1(32)             -1
+    pi(15)    DC1(33)              1   DC1(42)              1
+    pi(16)    DC1(24)             -1   DC1(33)             -1
+    pi(16)    DC1(34)              1   DC1(43)              1
+    pi(17)    DC1(25)             -1   DC1(34)             -1
+    pi(17)    DC1(35)              1   DC1(44)              1
+    pi(18)    DC1(26)             -1   DC1(35)             -1
+    pi(18)    DC1(36)             -1   DC1(45)              1
+    pi(19)    DC1(27)             -1   DC1(36)              1
+    pi(19)    DC1(37)              1   DC1(46)              1
+    pi(20)    DC1(28)             -1   DC1(37)             -1
+    pi(20)    DC1(38)              1   DC1(47)              1
+    pi(21)    DC1(29)             -1   DC1(38)             -1
+    pi(21)    DC1(48)              1
+    pi(22)    DC1(39)             -1   DC1(49)             -1
+    pi(22)    DC1(58)              1
+    pi(23)    DC1(40)             -1   DC1(49)              1
+    pi(23)    DC1(50)             -1   DC1(59)              1
+    pi(24)    DC1(41)             -1   DC1(50)              1
+    pi(24)    DC1(51)             -1   DC1(60)              1
+    pi(25)    DC1(42)             -1   DC1(51)              1
+    pi(25)    DC1(52)             -1   DC1(61)              1
+    pi(26)    DC1(43)             -1   DC1(52)              1
+    pi(26)    DC1(53)              1   DC1(62)              1
+    pi(27)    DC1(44)             -1   DC1(53)             -1
+    pi(27)    DC1(54)              1   DC1(63)              1
+    pi(28)    DC1(45)             -1   DC1(54)             -1
+    pi(28)    DC1(55)              1   DC1(64)              1
+    pi(29)    DC1(46)             -1   DC1(55)             -1
+    pi(29)    DC1(56)             -1   DC1(65)              1
+    pi(30)    DC1(47)             -1   DC1(56)              1
+    pi(30)    DC1(57)              1   DC1(66)              1
+    pi(31)    DC1(48)             -1   DC1(57)             -1
+    pi(31)    DC1(67)              1
+    pi(32)    DC1(58)             -1   DC1(68)             -1
+    pi(32)    DC1(77)              1
+    pi(33)    DC1(59)             -1   DC1(68)              1
+    pi(33)    DC1(69)              1   DC1(78)              1
+    pi(34)    DC1(60)             -1   DC1(69)             -1
+    pi(34)    DC1(70)             -1   DC1(79)              1
+    pi(35)    DC1(61)             -1   DC1(70)              1
+    pi(35)    DC1(71)              1   DC1(80)              1
+    pi(36)    DC1(62)             -1   DC1(71)             -1
+    pi(36)    DC1(72)              1   DC1(81)              1
+    pi(37)    DC1(63)             -1   DC1(72)             -1
+    pi(37)    DC1(73)             -1   DC1(82)              1
+    pi(38)    DC1(64)             -1   DC1(73)              1
+    pi(38)    DC1(74)              1   DC1(83)              1
+    pi(39)    DC1(65)             -1   DC1(74)             -1
+    pi(39)    DC1(75)              1   DC1(84)              1
+    pi(40)    DC1(66)             -1   DC1(75)             -1
+    pi(40)    DC1(76)             -1   DC1(85)              1
+    pi(41)    DC1(67)             -1   DC1(76)              1
+    pi(41)    DC1(86)              1
+    pi(42)    DC1(77)             -1   DC1(87)              1
+    pi(42)    DC1(96)              1
+    pi(43)    DC1(78)             -1   DC1(87)             -1
+    pi(43)    DC1(88)             -1   DC1(97)              1
+    pi(44)    DC1(79)             -1   DC1(88)              1
+    pi(44)    DC1(89)             -1   DC1(98)              1
+    pi(45)    DC1(80)             -1   DC1(89)              1
+    pi(45)    DC1(90)              1   DC1(99)              1
+    pi(46)    DC1(81)             -1   DC1(90)             -1
+    pi(46)    DC1(91)             -1   DC1(100)             1
+    pi(47)    DC1(82)             -1   DC1(91)              1
+    pi(47)    DC1(92)             -1   DC1(101)             1
+    pi(48)    DC1(83)             -1   DC1(92)              1
+    pi(48)    DC1(93)              1   DC1(102)             1
+    pi(49)    DC1(84)             -1   DC1(93)             -1
+    pi(49)    DC1(94)              1   DC1(103)             1
+    pi(50)    DC1(85)             -1   DC1(94)             -1
+    pi(50)    DC1(95)              1   DC1(104)             1
+    pi(51)    DC1(86)             -1   DC1(95)             -1
+    pi(51)    DC1(105)             1
+    pi(52)    DC1(96)             -1   DC1(106)            -1
+    pi(52)    DC1(115)             1
+    pi(53)    DC1(97)             -1   DC1(106)             1
+    pi(53)    DC1(107)            -1   DC1(116)             1
+    pi(54)    DC1(98)             -1   DC1(107)             1
+    pi(54)    DC1(108)             1   DC1(117)             1
+    pi(55)    DC1(99)             -1   DC1(108)            -1
+    pi(55)    DC1(109)            -1   DC1(118)             1
+    pi(56)    DC1(100)            -1   DC1(109)             1
+    pi(56)    DC1(110)             1   DC1(119)             1
+    pi(57)    DC1(101)            -1   DC1(110)            -1
+    pi(57)    DC1(111)             1   DC1(120)             1
+    pi(58)    DC1(102)            -1   DC1(111)            -1
+    pi(58)    DC1(112)             1   DC1(121)             1
+    pi(59)    DC1(103)            -1   DC1(112)            -1
+    pi(59)    DC1(113)            -1   DC1(122)             1
+    pi(60)    DC1(104)            -1   DC1(113)             1
+    pi(60)    DC1(114)             1   DC1(123)             1
+    pi(61)    DC1(105)            -1   DC1(114)            -1
+    pi(61)    DC1(124)             1
+    pi(62)    DC1(115)            -1   DC1(125)            -1
+    pi(62)    DC1(134)             1
+    pi(63)    DC1(116)            -1   DC1(125)             1
+    pi(63)    DC1(126)             1   DC1(135)             1
+    pi(64)    DC1(117)            -1   DC1(126)            -1
+    pi(64)    DC1(127)             1   DC1(136)             1
+    pi(65)    DC1(118)            -1   DC1(127)            -1
+    pi(65)    DC1(128)            -1   DC1(137)             1
+    pi(66)    DC1(119)            -1   DC1(128)             1
+    pi(66)    DC1(129)             1   DC1(138)             1
+    pi(67)    DC1(120)            -1   DC1(129)            -1
+    pi(67)    DC1(130)            -1   DC1(139)             1
+    pi(68)    DC1(121)            -1   DC1(130)             1
+    pi(68)    DC1(131)            -1   DC1(140)             1
+    pi(69)    DC1(122)            -1   DC1(131)             1
+    pi(69)    DC1(132)             1   DC1(141)             1
+    pi(70)    DC1(123)            -1   DC1(132)            -1
+    pi(70)    DC1(133)            -1   DC1(142)             1
+    pi(71)    DC1(124)            -1   DC1(133)             1
+    pi(71)    DC1(143)             1
+    pi(72)    DC1(134)            -1   DC1(144)            -1
+    pi(72)    DC1(153)             1
+    pi(73)    DC1(135)            -1   DC1(144)             1
+    pi(73)    DC1(145)             1   DC1(154)             1
+    pi(74)    DC1(136)            -1   DC1(145)            -1
+    pi(74)    DC1(146)            -1   DC1(155)             1
+    pi(75)    DC1(137)            -1   DC1(146)             1
+    pi(75)    DC1(147)             1   DC1(156)             1
+    pi(76)    DC1(138)            -1   DC1(147)            -1
+    pi(76)    DC1(148)            -1   DC1(157)             1
+    pi(77)    DC1(139)            -1   DC1(148)             1
+    pi(77)    DC1(149)            -1   DC1(158)             1
+    pi(78)    DC1(140)            -1   DC1(149)             1
+    pi(78)    DC1(150)             1   DC1(159)             1
+    pi(79)    DC1(141)            -1   DC1(150)            -1
+    pi(79)    DC1(151)            -1   DC1(160)             1
+    pi(80)    DC1(142)            -1   DC1(151)             1
+    pi(80)    DC1(152)             1   DC1(161)             1
+    pi(81)    DC1(143)            -1   DC1(152)            -1
+    pi(81)    DC1(162)             1
+    pi(82)    DC1(153)            -1   DC1(163)            -1
+    pi(82)    DC1(172)             1
+    pi(83)    DC1(154)            -1   DC1(163)             1
+    pi(83)    DC1(164)             1   DC1(173)             1
+    pi(84)    DC1(155)            -1   DC1(164)            -1
+    pi(84)    DC1(165)             1   DC1(174)             1
+    pi(85)    DC1(156)            -1   DC1(165)            -1
+    pi(85)    DC1(166)            -1   DC1(175)             1
+    pi(86)    DC1(157)            -1   DC1(166)             1
+    pi(86)    DC1(167)            -1   DC1(176)             1
+    pi(87)    DC1(158)            -1   DC1(167)             1
+    pi(87)    DC1(168)             1   DC1(177)             1
+    pi(88)    DC1(159)            -1   DC1(168)            -1
+    pi(88)    DC1(169)             1   DC1(178)             1
+    pi(89)    DC1(160)            -1   DC1(169)            -1
+    pi(89)    DC1(170)             1   DC1(179)             1
+    pi(90)    DC1(161)            -1   DC1(170)            -1
+    pi(90)    DC1(171)             1   DC1(180)             1
+    pi(91)    DC1(162)            -1   DC1(171)            -1
+    pi(91)    DC1(181)             1
+    pi(92)    DC1(172)            -1   DC1(182)             1
+    pi(92)    DC1(191)             1
+    pi(93)    DC1(173)            -1   DC1(182)            -1
+    pi(93)    DC1(183)             1   DC1(192)             1
+    pi(94)    DC1(174)            -1   DC1(183)            -1
+    pi(94)    DC1(184)             1   DC1(193)             1
+    pi(95)    DC1(175)            -1   DC1(184)            -1
+    pi(95)    DC1(185)            -1   DC1(194)             1
+    pi(96)    DC1(176)            -1   DC1(185)             1
+    pi(96)    DC1(186)            -1   DC1(195)             1
+    pi(97)    DC1(177)            -1   DC1(186)             1
+    pi(97)    DC1(187)            -1   DC1(196)             1
+    pi(98)    DC1(178)            -1   DC1(187)             1
+    pi(98)    DC1(188)            -1   DC1(197)             1
+    pi(99)    DC1(179)            -1   DC1(188)             1
+    pi(99)    DC1(189)            -1   DC1(198)             1
+    pi(100)   DC1(180)            -1   DC1(189)             1
+    pi(100)   DC1(190)            -1   DC1(199)             1
+    pi(101)   DC1(181)            -1   DC1(190)             1
+    pi(101)   DC1(200)             1
+    pi(102)   DC1(191)            -1   DC1(192)            -1
+    pi(102)   DC1(193)            -1   DC1(194)            -1
+    pi(102)   DC1(195)            -1   DC1(196)            -1
+    pi(102)   DC1(197)            -1   DC1(198)            -1
+    pi(102)   DC1(199)            -1   DC1(200)            -1
+    pi(102)   DC2                  1
+    z(1)      Lg1(1)               1   Lg2(1)               1
+    z(1)      Lg3(1)              -1
+    z(2)      Lg1(2)               1   Lg2(2)               1
+    z(2)      Lg3(2)              -1
+    z(3)      Lg1(3)               1   Lg2(3)               1
+    z(3)      Lg3(3)              -1
+    z(4)      Lg1(4)               1   Lg2(4)               1
+    z(4)      Lg3(4)              -1
+    z(5)      Lg1(5)               1   Lg2(5)               1
+    z(5)      Lg3(5)              -1
+    z(6)      Lg1(6)               1   Lg2(6)               1
+    z(6)      Lg3(6)              -1
+    z(7)      Lg1(7)               1   Lg2(7)               1
+    z(7)      Lg3(7)              -1
+    z(8)      Lg1(8)               1   Lg2(8)               1
+    z(8)      Lg3(8)              -1
+    z(9)      Lg1(9)               1   Lg2(9)               1
+    z(9)      Lg3(9)              -1
+    z(10)     Lg1(10)              1   Lg2(10)              1
+    z(10)     Lg3(10)             -1
+    z(11)     Lg1(11)              1   Lg2(11)              1
+    z(11)     Lg3(11)             -1
+    z(12)     Lg1(12)              1   Lg2(12)              1
+    z(12)     Lg3(12)             -1
+    z(13)     Lg1(13)              1   Lg2(13)              1
+    z(13)     Lg3(13)             -1
+    z(14)     Lg1(14)              1   Lg2(14)              1
+    z(14)     Lg3(14)             -1
+    z(15)     Lg1(15)              1   Lg2(15)              1
+    z(15)     Lg3(15)             -1
+    z(16)     Lg1(16)              1   Lg2(16)              1
+    z(16)     Lg3(16)             -1
+    z(17)     Lg1(17)              1   Lg2(17)              1
+    z(17)     Lg3(17)             -1
+    z(18)     Lg1(18)              1   Lg2(18)              1
+    z(18)     Lg3(18)             -1
+    z(19)     Lg1(19)              1   Lg2(19)              1
+    z(19)     Lg3(19)             -1
+    z(20)     Lg1(20)              1   Lg2(20)              1
+    z(20)     Lg3(20)             -1
+    z(21)     Lg1(21)              1   Lg2(21)              1
+    z(21)     Lg3(21)             -1
+    z(22)     stDual             -10   Lg1(22)              1
+    z(22)     Lg2(22)              1   Lg3(22)             -1
+    z(23)     Lg1(23)              1   Lg2(23)              1
+    z(23)     Lg3(23)             -1
+    z(24)     Lg1(24)              1   Lg2(24)              1
+    z(24)     Lg3(24)             -1
+    z(25)     Lg1(25)              1   Lg2(25)              1
+    z(25)     Lg3(25)             -1
+    z(26)     Lg1(26)              1   Lg2(26)              1
+    z(26)     Lg3(26)             -1
+    z(27)     Lg1(27)              1   Lg2(27)              1
+    z(27)     Lg3(27)             -1
+    z(28)     Lg1(28)              1   Lg2(28)              1
+    z(28)     Lg3(28)             -1
+    z(29)     stDual             -20   Lg1(29)              1
+    z(29)     Lg2(29)              1   Lg3(29)             -1
+    z(30)     stDual             -90   Lg1(30)              1
+    z(30)     Lg2(30)              1   Lg3(30)             -1
+    z(31)     Lg1(31)              1   Lg2(31)              1
+    z(31)     Lg3(31)             -1
+    z(32)     stDual             -50   Lg1(32)              1
+    z(32)     Lg2(32)              1   Lg3(32)             -1
+    z(33)     Lg1(33)              1   Lg2(33)              1
+    z(33)     Lg3(33)             -1
+    z(34)     Lg1(34)              1   Lg2(34)              1
+    z(34)     Lg3(34)             -1
+    z(35)     stDual             -60   Lg1(35)              1
+    z(35)     Lg2(35)              1   Lg3(35)             -1
+    z(36)     stDual            -100   Lg1(36)              1
+    z(36)     Lg2(36)              1   Lg3(36)             -1
+    z(37)     stDual             -40   Lg1(37)              1
+    z(37)     Lg2(37)              1   Lg3(37)             -1
+    z(38)     Lg1(38)              1   Lg2(38)              1
+    z(38)     Lg3(38)             -1
+    z(39)     Lg1(39)              1   Lg2(39)              1
+    z(39)     Lg3(39)             -1
+    z(40)     Lg1(40)              1   Lg2(40)              1
+    z(40)     Lg3(40)             -1
+    z(41)     Lg1(41)              1   Lg2(41)              1
+    z(41)     Lg3(41)             -1
+    z(42)     Lg1(42)              1   Lg2(42)              1
+    z(42)     Lg3(42)             -1
+    z(43)     stDual             -20   Lg1(43)              1
+    z(43)     Lg2(43)              1   Lg3(43)             -1
+    z(44)     Lg1(44)              1   Lg2(44)              1
+    z(44)     Lg3(44)             -1
+    z(45)     stDual             -60   Lg1(45)              1
+    z(45)     Lg2(45)              1   Lg3(45)             -1
+    z(46)     stDual             -80   Lg1(46)              1
+    z(46)     Lg2(46)              1   Lg3(46)             -1
+    z(47)     Lg1(47)              1   Lg2(47)              1
+    z(47)     Lg3(47)             -1
+    z(48)     stDual             -20   Lg1(48)              1
+    z(48)     Lg2(48)              1   Lg3(48)             -1
+    z(49)     Lg1(49)              1   Lg2(49)              1
+    z(49)     Lg3(49)             -1
+    z(50)     Lg1(50)              1   Lg2(50)              1
+    z(50)     Lg3(50)             -1
+    z(51)     Lg1(51)              1   Lg2(51)              1
+    z(51)     Lg3(51)             -1
+    z(52)     Lg1(52)              1   Lg2(52)              1
+    z(52)     Lg3(52)             -1
+    z(53)     Lg1(53)              1   Lg2(53)              1
+    z(53)     Lg3(53)             -1
+    z(54)     Lg1(54)              1   Lg2(54)              1
+    z(54)     Lg3(54)             -1
+    z(55)     Lg1(55)              1   Lg2(55)              1
+    z(55)     Lg3(55)             -1
+    z(56)     Lg1(56)              1   Lg2(56)              1
+    z(56)     Lg3(56)             -1
+    z(57)     Lg1(57)              1   Lg2(57)              1
+    z(57)     Lg3(57)             -1
+    z(58)     Lg1(58)              1   Lg2(58)              1
+    z(58)     Lg3(58)             -1
+    z(59)     Lg1(59)              1   Lg2(59)              1
+    z(59)     Lg3(59)             -1
+    z(60)     Lg1(60)              1   Lg2(60)              1
+    z(60)     Lg3(60)             -1
+    z(61)     Lg1(61)              1   Lg2(61)              1
+    z(61)     Lg3(61)             -1
+    z(62)     stDual             -40   Lg1(62)              1
+    z(62)     Lg2(62)              1   Lg3(62)             -1
+    z(63)     stDual             -30   Lg1(63)              1
+    z(63)     Lg2(63)              1   Lg3(63)             -1
+    z(64)     stDual             -30   Lg1(64)              1
+    z(64)     Lg2(64)              1   Lg3(64)             -1
+    z(65)     stDual             -20   Lg1(65)              1
+    z(65)     Lg2(65)              1   Lg3(65)             -1
+    z(66)     stDual             -90   Lg1(66)              1
+    z(66)     Lg2(66)              1   Lg3(66)             -1
+    z(67)     Lg1(67)              1   Lg2(67)              1
+    z(67)     Lg3(67)             -1
+    z(68)     Lg1(68)              1   Lg2(68)              1
+    z(68)     Lg3(68)             -1
+    z(69)     Lg1(69)              1   Lg2(69)              1
+    z(69)     Lg3(69)             -1
+    z(70)     Lg1(70)              1   Lg2(70)              1
+    z(70)     Lg3(70)             -1
+    z(71)     Lg1(71)              1   Lg2(71)              1
+    z(71)     Lg3(71)             -1
+    z(72)     Lg1(72)              1   Lg2(72)              1
+    z(72)     Lg3(72)             -1
+    z(73)     stDual             -10   Lg1(73)              1
+    z(73)     Lg2(73)              1   Lg3(73)             -1
+    z(74)     Lg1(74)              1   Lg2(74)              1
+    z(74)     Lg3(74)             -1
+    z(75)     Lg1(75)              1   Lg2(75)              1
+    z(75)     Lg3(75)             -1
+    z(76)     Lg1(76)              1   Lg2(76)              1
+    z(76)     Lg3(76)             -1
+    z(77)     Lg1(77)              1   Lg2(77)              1
+    z(77)     Lg3(77)             -1
+    z(78)     stDual             -10   Lg1(78)              1
+    z(78)     Lg2(78)              1   Lg3(78)             -1
+    z(79)     Lg1(79)              1   Lg2(79)              1
+    z(79)     Lg3(79)             -1
+    z(80)     stDual             -10   Lg1(80)              1
+    z(80)     Lg2(80)              1   Lg3(80)             -1
+    z(81)     Lg1(81)              1   Lg2(81)              1
+    z(81)     Lg3(81)             -1
+    z(82)     stDual             -40   Lg1(82)              1
+    z(82)     Lg2(82)              1   Lg3(82)             -1
+    z(83)     stDual             -80   Lg1(83)              1
+    z(83)     Lg2(83)              1   Lg3(83)             -1
+    z(84)     Lg1(84)              1   Lg2(84)              1
+    z(84)     Lg3(84)             -1
+    z(85)     stDual             -30   Lg1(85)              1
+    z(85)     Lg2(85)              1   Lg3(85)             -1
+    z(86)     stDual             -70   Lg1(86)              1
+    z(86)     Lg2(86)              1   Lg3(86)             -1
+    z(87)     Lg1(87)              1   Lg2(87)              1
+    z(87)     Lg3(87)             -1
+    z(88)     Lg1(88)              1   Lg2(88)              1
+    z(88)     Lg3(88)             -1
+    z(89)     stDual             -40   Lg1(89)              1
+    z(89)     Lg2(89)              1   Lg3(89)             -1
+    z(90)     Lg1(90)              1   Lg2(90)              1
+    z(90)     Lg3(90)             -1
+    z(91)     stDual             -60   Lg1(91)              1
+    z(91)     Lg2(91)              1   Lg3(91)             -1
+    z(92)     Lg1(92)              1   Lg2(92)              1
+    z(92)     Lg3(92)             -1
+    z(93)     stDual             -30   Lg1(93)              1
+    z(93)     Lg2(93)              1   Lg3(93)             -1
+    z(94)     Lg1(94)              1   Lg2(94)              1
+    z(94)     Lg3(94)             -1
+    z(95)     Lg1(95)              1   Lg2(95)              1
+    z(95)     Lg3(95)             -1
+    z(96)     Lg1(96)              1   Lg2(96)              1
+    z(96)     Lg3(96)             -1
+    z(97)     Lg1(97)              1   Lg2(97)              1
+    z(97)     Lg3(97)             -1
+    z(98)     stDual             -30   Lg1(98)              1
+    z(98)     Lg2(98)              1   Lg3(98)             -1
+    z(99)     stDual             -90   Lg1(99)              1
+    z(99)     Lg2(99)              1   Lg3(99)             -1
+    z(100)    Lg1(100)             1   Lg2(100)             1
+    z(100)    Lg3(100)            -1
+    z(101)    stDual             -20   Lg1(101)             1
+    z(101)    Lg2(101)             1   Lg3(101)            -1
+    z(102)    Lg1(102)             1   Lg2(102)             1
+    z(102)    Lg3(102)            -1
+    z(103)    stDual             -20   Lg1(103)             1
+    z(103)    Lg2(103)             1   Lg3(103)            -1
+    z(104)    Lg1(104)             1   Lg2(104)             1
+    z(104)    Lg3(104)            -1
+    z(105)    stDual             -60   Lg1(105)             1
+    z(105)    Lg2(105)             1   Lg3(105)            -1
+    z(106)    Lg1(106)             1   Lg2(106)             1
+    z(106)    Lg3(106)            -1
+    z(107)    stDual             -90   Lg1(107)             1
+    z(107)    Lg2(107)             1   Lg3(107)            -1
+    z(108)    Lg1(108)             1   Lg2(108)             1
+    z(108)    Lg3(108)            -1
+    z(109)    stDual             -10   Lg1(109)             1
+    z(109)    Lg2(109)             1   Lg3(109)            -1
+    z(110)    Lg1(110)             1   Lg2(110)             1
+    z(110)    Lg3(110)            -1
+    z(111)    Lg1(111)             1   Lg2(111)             1
+    z(111)    Lg3(111)            -1
+    z(112)    Lg1(112)             1   Lg2(112)             1
+    z(112)    Lg3(112)            -1
+    z(113)    Lg1(113)             1   Lg2(113)             1
+    z(113)    Lg3(113)            -1
+    z(114)    stDual            -100   Lg1(114)             1
+    z(114)    Lg2(114)             1   Lg3(114)            -1
+    z(115)    Lg1(115)             1   Lg2(115)             1
+    z(115)    Lg3(115)            -1
+    z(116)    Lg1(116)             1   Lg2(116)             1
+    z(116)    Lg3(116)            -1
+    z(117)    Lg1(117)             1   Lg2(117)             1
+    z(117)    Lg3(117)            -1
+    z(118)    stDual             -90   Lg1(118)             1
+    z(118)    Lg2(118)             1   Lg3(118)            -1
+    z(119)    Lg1(119)             1   Lg2(119)             1
+    z(119)    Lg3(119)            -1
+    z(120)    Lg1(120)             1   Lg2(120)             1
+    z(120)    Lg3(120)            -1
+    z(121)    Lg1(121)             1   Lg2(121)             1
+    z(121)    Lg3(121)            -1
+    z(122)    Lg1(122)             1   Lg2(122)             1
+    z(122)    Lg3(122)            -1
+    z(123)    Lg1(123)             1   Lg2(123)             1
+    z(123)    Lg3(123)            -1
+    z(124)    Lg1(124)             1   Lg2(124)             1
+    z(124)    Lg3(124)            -1
+    z(125)    stDual             -60   Lg1(125)             1
+    z(125)    Lg2(125)             1   Lg3(125)            -1
+    z(126)    stDual             -90   Lg1(126)             1
+    z(126)    Lg2(126)             1   Lg3(126)            -1
+    z(127)    Lg1(127)             1   Lg2(127)             1
+    z(127)    Lg3(127)            -1
+    z(128)    stDual             -20   Lg1(128)             1
+    z(128)    Lg2(128)             1   Lg3(128)            -1
+    z(129)    stDual             -20   Lg1(129)             1
+    z(129)    Lg2(129)             1   Lg3(129)            -1
+    z(130)    Lg1(130)             1   Lg2(130)             1
+    z(130)    Lg3(130)            -1
+    z(131)    stDual             -90   Lg1(131)             1
+    z(131)    Lg2(131)             1   Lg3(131)            -1
+    z(132)    stDual             -30   Lg1(132)             1
+    z(132)    Lg2(132)             1   Lg3(132)            -1
+    z(133)    stDual             -90   Lg1(133)             1
+    z(133)    Lg2(133)             1   Lg3(133)            -1
+    z(134)    stDual            -100   Lg1(134)             1
+    z(134)    Lg2(134)             1   Lg3(134)            -1
+    z(135)    Lg1(135)             1   Lg2(135)             1
+    z(135)    Lg3(135)            -1
+    z(136)    Lg1(136)             1   Lg2(136)             1
+    z(136)    Lg3(136)            -1
+    z(137)    Lg1(137)             1   Lg2(137)             1
+    z(137)    Lg3(137)            -1
+    z(138)    stDual             -40   Lg1(138)             1
+    z(138)    Lg2(138)             1   Lg3(138)            -1
+    z(139)    stDual             -60   Lg1(139)             1
+    z(139)    Lg2(139)             1   Lg3(139)            -1
+    z(140)    Lg1(140)             1   Lg2(140)             1
+    z(140)    Lg3(140)            -1
+    z(141)    stDual             -10   Lg1(141)             1
+    z(141)    Lg2(141)             1   Lg3(141)            -1
+    z(142)    Lg1(142)             1   Lg2(142)             1
+    z(142)    Lg3(142)            -1
+    z(143)    Lg1(143)             1   Lg2(143)             1
+    z(143)    Lg3(143)            -1
+    z(144)    Lg1(144)             1   Lg2(144)             1
+    z(144)    Lg3(144)            -1
+    z(145)    Lg1(145)             1   Lg2(145)             1
+    z(145)    Lg3(145)            -1
+    z(146)    stDual             -80   Lg1(146)             1
+    z(146)    Lg2(146)             1   Lg3(146)            -1
+    z(147)    Lg1(147)             1   Lg2(147)             1
+    z(147)    Lg3(147)            -1
+    z(148)    stDual             -50   Lg1(148)             1
+    z(148)    Lg2(148)             1   Lg3(148)            -1
+    z(149)    Lg1(149)             1   Lg2(149)             1
+    z(149)    Lg3(149)            -1
+    z(150)    stDual             -50   Lg1(150)             1
+    z(150)    Lg2(150)             1   Lg3(150)            -1
+    z(151)    Lg1(151)             1   Lg2(151)             1
+    z(151)    Lg3(151)            -1
+    z(152)    Lg1(152)             1   Lg2(152)             1
+    z(152)    Lg3(152)            -1
+    z(153)    stDual             -20   Lg1(153)             1
+    z(153)    Lg2(153)             1   Lg3(153)            -1
+    z(154)    Lg1(154)             1   Lg2(154)             1
+    z(154)    Lg3(154)            -1
+    z(155)    stDual             -40   Lg1(155)             1
+    z(155)    Lg2(155)             1   Lg3(155)            -1
+    z(156)    Lg1(156)             1   Lg2(156)             1
+    z(156)    Lg3(156)            -1
+    z(157)    Lg1(157)             1   Lg2(157)             1
+    z(157)    Lg3(157)            -1
+    z(158)    stDual             -80   Lg1(158)             1
+    z(158)    Lg2(158)             1   Lg3(158)            -1
+    z(159)    Lg1(159)             1   Lg2(159)             1
+    z(159)    Lg3(159)            -1
+    z(160)    stDual             -10   Lg1(160)             1
+    z(160)    Lg2(160)             1   Lg3(160)            -1
+    z(161)    stDual             -90   Lg1(161)             1
+    z(161)    Lg2(161)             1   Lg3(161)            -1
+    z(162)    stDual             -60   Lg1(162)             1
+    z(162)    Lg2(162)             1   Lg3(162)            -1
+    z(163)    stDual             -40   Lg1(163)             1
+    z(163)    Lg2(163)             1   Lg3(163)            -1
+    z(164)    stDual             -80   Lg1(164)             1
+    z(164)    Lg2(164)             1   Lg3(164)            -1
+    z(165)    stDual             -60   Lg1(165)             1
+    z(165)    Lg2(165)             1   Lg3(165)            -1
+    z(166)    Lg1(166)             1   Lg2(166)             1
+    z(166)    Lg3(166)            -1
+    z(167)    Lg1(167)             1   Lg2(167)             1
+    z(167)    Lg3(167)            -1
+    z(168)    stDual             -50   Lg1(168)             1
+    z(168)    Lg2(168)             1   Lg3(168)            -1
+    z(169)    stDual             -10   Lg1(169)             1
+    z(169)    Lg2(169)             1   Lg3(169)            -1
+    z(170)    Lg1(170)             1   Lg2(170)             1
+    z(170)    Lg3(170)            -1
+    z(171)    stDual             -50   Lg1(171)             1
+    z(171)    Lg2(171)             1   Lg3(171)            -1
+    z(172)    stDual             -10   Lg1(172)             1
+    z(172)    Lg2(172)             1   Lg3(172)            -1
+    z(173)    Lg1(173)             1   Lg2(173)             1
+    z(173)    Lg3(173)            -1
+    z(174)    stDual             -20   Lg1(174)             1
+    z(174)    Lg2(174)             1   Lg3(174)            -1
+    z(175)    stDual             -20   Lg1(175)             1
+    z(175)    Lg2(175)             1   Lg3(175)            -1
+    z(176)    Lg1(176)             1   Lg2(176)             1
+    z(176)    Lg3(176)            -1
+    z(177)    Lg1(177)             1   Lg2(177)             1
+    z(177)    Lg3(177)            -1
+    z(178)    Lg1(178)             1   Lg2(178)             1
+    z(178)    Lg3(178)            -1
+    z(179)    Lg1(179)             1   Lg2(179)             1
+    z(179)    Lg3(179)            -1
+    z(180)    stDual             -60   Lg1(180)             1
+    z(180)    Lg2(180)             1   Lg3(180)            -1
+    z(181)    Lg1(181)             1   Lg2(181)             1
+    z(181)    Lg3(181)            -1
+    z(182)    Lg1(182)             1   Lg2(182)             1
+    z(182)    Lg3(182)            -1
+    z(183)    Lg1(183)             1   Lg2(183)             1
+    z(183)    Lg3(183)            -1
+    z(184)    Lg1(184)             1   Lg2(184)             1
+    z(184)    Lg3(184)            -1
+    z(185)    Lg1(185)             1   Lg2(185)             1
+    z(185)    Lg3(185)            -1
+    z(186)    Lg1(186)             1   Lg2(186)             1
+    z(186)    Lg3(186)            -1
+    z(187)    Lg1(187)             1   Lg2(187)             1
+    z(187)    Lg3(187)            -1
+    z(188)    Lg1(188)             1   Lg2(188)             1
+    z(188)    Lg3(188)            -1
+    z(189)    Lg1(189)             1   Lg2(189)             1
+    z(189)    Lg3(189)            -1
+    z(190)    Lg1(190)             1   Lg2(190)             1
+    z(190)    Lg3(190)            -1
+    z(191)    Lg1(191)             1   Lg2(191)             1
+    z(191)    Lg3(191)            -1
+    z(192)    Lg1(192)             1   Lg2(192)             1
+    z(192)    Lg3(192)            -1
+    z(193)    Lg1(193)             1   Lg2(193)             1
+    z(193)    Lg3(193)            -1
+    z(194)    Lg1(194)             1   Lg2(194)             1
+    z(194)    Lg3(194)            -1
+    z(195)    Lg1(195)             1   Lg2(195)             1
+    z(195)    Lg3(195)            -1
+    z(196)    Lg1(196)             1   Lg2(196)             1
+    z(196)    Lg3(196)            -1
+    z(197)    Lg1(197)             1   Lg2(197)             1
+    z(197)    Lg3(197)            -1
+    z(198)    Lg1(198)             1   Lg2(198)             1
+    z(198)    Lg3(198)            -1
+    z(199)    Lg1(199)             1   Lg2(199)             1
+    z(199)    Lg3(199)            -1
+    z(200)    Lg1(200)             1   Lg2(200)             1
+    z(200)    Lg3(200)            -1
+RHS
+    rhs       Resource            10   FC(1)             1000
+    rhs       FC(2)             1000   FC(3)             1000
+    rhs       FC(4)             1000   FC(5)             1000
+    rhs       FC(6)             1000   FC(7)             1000
+    rhs       FC(8)             1000   FC(9)             1000
+    rhs       FC(10)            1000   FC(11)            1000
+    rhs       FC(12)            1000   FC(13)            1000
+    rhs       FC(14)            1000   FC(15)            1000
+    rhs       FC(16)            1000   FC(17)            1000
+    rhs       FC(18)            1000   FC(19)            1000
+    rhs       FC(20)              50   FC(21)              40
+    rhs       FC(22)              10   FC(23)              40
+    rhs       FC(24)              20   FC(25)              90
+    rhs       FC(26)              80   FC(27)              80
+    rhs       FC(28)              70   FC(29)              20
+    rhs       FC(30)              90   FC(31)              30
+    rhs       FC(32)              50   FC(33)              80
+    rhs       FC(34)              90   FC(35)              60
+    rhs       FC(36)             100   FC(37)              40
+    rhs       FC(38)              30   FC(39)              80
+    rhs       FC(40)              30   FC(41)              40
+    rhs       FC(42)              20   FC(43)              20
+    rhs       FC(44)              40   FC(45)              60
+    rhs       FC(46)              80   FC(47)              30
+    rhs       FC(48)              20   FC(49)              40
+    rhs       FC(50)              60   FC(51)              60
+    rhs       FC(52)              80   FC(53)              70
+    rhs       FC(54)              90   FC(55)             100
+    rhs       FC(56)              50   FC(57)              70
+    rhs       FC(58)              70   FC(59)              20
+    rhs       FC(60)              80   FC(61)              60
+    rhs       FC(62)              40   FC(63)              30
+    rhs       FC(64)              30   FC(65)              20
+    rhs       FC(66)              90   FC(67)              20
+    rhs       FC(68)              50   FC(69)              10
+    rhs       FC(70)              90   FC(71)              80
+    rhs       FC(72)              50   FC(73)              10
+    rhs       FC(74)             100   FC(75)              90
+    rhs       FC(76)              70   FC(77)              70
+    rhs       FC(78)              10   FC(79)              90
+    rhs       FC(80)              10   FC(81)              70
+    rhs       FC(82)              40   FC(83)              80
+    rhs       FC(84)              40   FC(85)              30
+    rhs       FC(86)              70   FC(87)              90
+    rhs       FC(88)              90   FC(89)              40
+    rhs       FC(90)             100   FC(91)              60
+    rhs       FC(92)              90   FC(93)              30
+    rhs       FC(94)              90   FC(95)              10
+    rhs       FC(96)              40   FC(97)              70
+    rhs       FC(98)              30   FC(99)              90
+    rhs       FC(100)             80   FC(101)             20
+    rhs       FC(102)             70   FC(103)             20
+    rhs       FC(104)             30   FC(105)             60
+    rhs       FC(106)            100   FC(107)             90
+    rhs       FC(108)             30   FC(109)             10
+    rhs       FC(110)             70   FC(111)             30
+    rhs       FC(112)             80   FC(113)             10
+    rhs       FC(114)            100   FC(115)             10
+    rhs       FC(116)             30   FC(117)             70
+    rhs       FC(118)             90   FC(119)             20
+    rhs       FC(120)            100   FC(121)             80
+    rhs       FC(122)             80   FC(123)             80
+    rhs       FC(124)            100   FC(125)             60
+    rhs       FC(126)             90   FC(127)             40
+    rhs       FC(128)             20   FC(129)             20
+    rhs       FC(130)             20   FC(131)             90
+    rhs       FC(132)             30   FC(133)             90
+    rhs       FC(134)            100   FC(135)             50
+    rhs       FC(136)             40   FC(137)            100
+    rhs       FC(138)             40   FC(139)             60
+    rhs       FC(140)            100   FC(141)             10
+    rhs       FC(142)             90   FC(143)             80
+    rhs       FC(144)             10   FC(145)             80
+    rhs       FC(146)             80   FC(147)             40
+    rhs       FC(148)             50   FC(149)             70
+    rhs       FC(150)             50   FC(151)             40
+    rhs       FC(152)             40   FC(153)             20
+    rhs       FC(154)             20   FC(155)             40
+    rhs       FC(156)             70   FC(157)            100
+    rhs       FC(158)             80   FC(159)             80
+    rhs       FC(160)             10   FC(161)             90
+    rhs       FC(162)             60   FC(163)             40
+    rhs       FC(164)             80   FC(165)             60
+    rhs       FC(166)             80   FC(167)             10
+    rhs       FC(168)             50   FC(169)             10
+    rhs       FC(170)             70   FC(171)             50
+    rhs       FC(172)             10   FC(173)             50
+    rhs       FC(174)             20   FC(175)             20
+    rhs       FC(176)             30   FC(177)            100
+    rhs       FC(178)             50   FC(179)             70
+    rhs       FC(180)             60   FC(181)             90
+    rhs       FC(182)           1000   FC(183)           1000
+    rhs       FC(184)           1000   FC(185)           1000
+    rhs       FC(186)           1000   FC(187)           1000
+    rhs       FC(188)           1000   FC(189)           1000
+    rhs       FC(190)           1000   FC(191)           1000
+    rhs       FC(192)           1000   FC(193)           1000
+    rhs       FC(194)           1000   FC(195)           1000
+    rhs       FC(196)           1000   FC(197)           1000
+    rhs       FC(198)           1000   FC(199)           1000
+    rhs       FC(200)           1000   Lg3(1)               1
+    rhs       Lg3(2)               1   Lg3(3)               1
+    rhs       Lg3(4)               1   Lg3(5)               1
+    rhs       Lg3(6)               1   Lg3(7)               1
+    rhs       Lg3(8)               1   Lg3(9)               1
+    rhs       Lg3(10)              1   Lg3(11)              1
+    rhs       Lg3(12)              1   Lg3(13)              1
+    rhs       Lg3(14)              1   Lg3(15)              1
+    rhs       Lg3(16)              1   Lg3(17)              1
+    rhs       Lg3(18)              1   Lg3(19)              1
+    rhs       Lg3(20)              1   Lg3(21)              1
+    rhs       Lg3(22)              1   Lg3(23)              1
+    rhs       Lg3(24)              1   Lg3(25)              1
+    rhs       Lg3(26)              1   Lg3(27)              1
+    rhs       Lg3(28)              1   Lg3(29)              1
+    rhs       Lg3(30)              1   Lg3(31)              1
+    rhs       Lg3(32)              1   Lg3(33)              1
+    rhs       Lg3(34)              1   Lg3(35)              1
+    rhs       Lg3(36)              1   Lg3(37)              1
+    rhs       Lg3(38)              1   Lg3(39)              1
+    rhs       Lg3(40)              1   Lg3(41)              1
+    rhs       Lg3(42)              1   Lg3(43)              1
+    rhs       Lg3(44)              1   Lg3(45)              1
+    rhs       Lg3(46)              1   Lg3(47)              1
+    rhs       Lg3(48)              1   Lg3(49)              1
+    rhs       Lg3(50)              1   Lg3(51)              1
+    rhs       Lg3(52)              1   Lg3(53)              1
+    rhs       Lg3(54)              1   Lg3(55)              1
+    rhs       Lg3(56)              1   Lg3(57)              1
+    rhs       Lg3(58)              1   Lg3(59)              1
+    rhs       Lg3(60)              1   Lg3(61)              1
+    rhs       Lg3(62)              1   Lg3(63)              1
+    rhs       Lg3(64)              1   Lg3(65)              1
+    rhs       Lg3(66)              1   Lg3(67)              1
+    rhs       Lg3(68)              1   Lg3(69)              1
+    rhs       Lg3(70)              1   Lg3(71)              1
+    rhs       Lg3(72)              1   Lg3(73)              1
+    rhs       Lg3(74)              1   Lg3(75)              1
+    rhs       Lg3(76)              1   Lg3(77)              1
+    rhs       Lg3(78)              1   Lg3(79)              1
+    rhs       Lg3(80)              1   Lg3(81)              1
+    rhs       Lg3(82)              1   Lg3(83)              1
+    rhs       Lg3(84)              1   Lg3(85)              1
+    rhs       Lg3(86)              1   Lg3(87)              1
+    rhs       Lg3(88)              1   Lg3(89)              1
+    rhs       Lg3(90)              1   Lg3(91)              1
+    rhs       Lg3(92)              1   Lg3(93)              1
+    rhs       Lg3(94)              1   Lg3(95)              1
+    rhs       Lg3(96)              1   Lg3(97)              1
+    rhs       Lg3(98)              1   Lg3(99)              1
+    rhs       Lg3(100)             1   Lg3(101)             1
+    rhs       Lg3(102)             1   Lg3(103)             1
+    rhs       Lg3(104)             1   Lg3(105)             1
+    rhs       Lg3(106)             1   Lg3(107)             1
+    rhs       Lg3(108)             1   Lg3(109)             1
+    rhs       Lg3(110)             1   Lg3(111)             1
+    rhs       Lg3(112)             1   Lg3(113)             1
+    rhs       Lg3(114)             1   Lg3(115)             1
+    rhs       Lg3(116)             1   Lg3(117)             1
+    rhs       Lg3(118)             1   Lg3(119)             1
+    rhs       Lg3(120)             1   Lg3(121)             1
+    rhs       Lg3(122)             1   Lg3(123)             1
+    rhs       Lg3(124)             1   Lg3(125)             1
+    rhs       Lg3(126)             1   Lg3(127)             1
+    rhs       Lg3(128)             1   Lg3(129)             1
+    rhs       Lg3(130)             1   Lg3(131)             1
+    rhs       Lg3(132)             1   Lg3(133)             1
+    rhs       Lg3(134)             1   Lg3(135)             1
+    rhs       Lg3(136)             1   Lg3(137)             1
+    rhs       Lg3(138)             1   Lg3(139)             1
+    rhs       Lg3(140)             1   Lg3(141)             1
+    rhs       Lg3(142)             1   Lg3(143)             1
+    rhs       Lg3(144)             1   Lg3(145)             1
+    rhs       Lg3(146)             1   Lg3(147)             1
+    rhs       Lg3(148)             1   Lg3(149)             1
+    rhs       Lg3(150)             1   Lg3(151)             1
+    rhs       Lg3(152)             1   Lg3(153)             1
+    rhs       Lg3(154)             1   Lg3(155)             1
+    rhs       Lg3(156)             1   Lg3(157)             1
+    rhs       Lg3(158)             1   Lg3(159)             1
+    rhs       Lg3(160)             1   Lg3(161)             1
+    rhs       Lg3(162)             1   Lg3(163)             1
+    rhs       Lg3(164)             1   Lg3(165)             1
+    rhs       Lg3(166)             1   Lg3(167)             1
+    rhs       Lg3(168)             1   Lg3(169)             1
+    rhs       Lg3(170)             1   Lg3(171)             1
+    rhs       Lg3(172)             1   Lg3(173)             1
+    rhs       Lg3(174)             1   Lg3(175)             1
+    rhs       Lg3(176)             1   Lg3(177)             1
+    rhs       Lg3(178)             1   Lg3(179)             1
+    rhs       Lg3(180)             1   Lg3(181)             1
+    rhs       Lg3(182)             1   Lg3(183)             1
+    rhs       Lg3(184)             1   Lg3(185)             1
+    rhs       Lg3(186)             1   Lg3(187)             1
+    rhs       Lg3(188)             1   Lg3(189)             1
+    rhs       Lg3(190)             1   Lg3(191)             1
+    rhs       Lg3(192)             1   Lg3(193)             1
+    rhs       Lg3(194)             1   Lg3(195)             1
+    rhs       Lg3(196)             1   Lg3(197)             1
+    rhs       Lg3(198)             1   Lg3(199)             1
+    rhs       Lg3(200)             1   DC2                  1
+    rhs       IFC(22)             10   IFC(29)             20
+    rhs       IFC(30)             90   IFC(32)             50
+    rhs       IFC(35)             60   IFC(36)            100
+    rhs       IFC(37)             40   IFC(43)             20
+    rhs       IFC(45)             60   IFC(46)             80
+    rhs       IFC(48)             20   IFC(62)             40
+    rhs       IFC(63)             30   IFC(64)             30
+    rhs       IFC(65)             20   IFC(66)             90
+    rhs       IFC(73)             10   IFC(78)             10
+    rhs       IFC(80)             10   IFC(82)             40
+    rhs       IFC(83)             80   IFC(85)             30
+    rhs       IFC(86)             70   IFC(89)             40
+    rhs       IFC(91)             60   IFC(93)             30
+    rhs       IFC(98)             30   IFC(99)             90
+    rhs       IFC(101)            20   IFC(103)            20
+    rhs       IFC(105)            60   IFC(107)            90
+    rhs       IFC(109)            10   IFC(114)           100
+    rhs       IFC(118)            90   IFC(125)            60
+    rhs       IFC(126)            90   IFC(128)            20
+    rhs       IFC(129)            20   IFC(131)            90
+    rhs       IFC(132)            30   IFC(133)            90
+    rhs       IFC(134)           100   IFC(138)            40
+    rhs       IFC(139)            60   IFC(141)            10
+    rhs       IFC(146)            80   IFC(148)            50
+    rhs       IFC(150)            50   IFC(153)            20
+    rhs       IFC(155)            40   IFC(158)            80
+    rhs       IFC(160)            10   IFC(161)            90
+    rhs       IFC(162)            60   IFC(163)            40
+    rhs       IFC(164)            80   IFC(165)            60
+    rhs       IFC(168)            50   IFC(169)            10
+    rhs       IFC(171)            50   IFC(172)            10
+    rhs       IFC(174)            20   IFC(175)            20
+    rhs       IFC(180)            60
+BOUNDS
+ UP bnd       g(1)                 1
+ UP bnd       g(2)                 1
+ UP bnd       g(3)                 1
+ UP bnd       g(4)                 1
+ UP bnd       g(5)                 1
+ UP bnd       g(6)                 1
+ UP bnd       g(7)                 1
+ UP bnd       g(8)                 1
+ UP bnd       g(9)                 1
+ UP bnd       g(10)                1
+ UP bnd       g(11)                1
+ UP bnd       g(12)                1
+ UP bnd       g(13)                1
+ UP bnd       g(14)                1
+ UP bnd       g(15)                1
+ UP bnd       g(16)                1
+ UP bnd       g(17)                1
+ UP bnd       g(18)                1
+ UP bnd       g(19)                1
+ UP bnd       g(20)                1
+ UP bnd       g(21)                1
+ UP bnd       g(22)                1
+ UP bnd       g(23)                1
+ UP bnd       g(24)                1
+ UP bnd       g(25)                1
+ UP bnd       g(26)                1
+ UP bnd       g(27)                1
+ UP bnd       g(28)                1
+ UP bnd       g(29)                1
+ UP bnd       g(30)                1
+ UP bnd       g(31)                1
+ UP bnd       g(32)                1
+ UP bnd       g(33)                1
+ UP bnd       g(34)                1
+ UP bnd       g(35)                1
+ UP bnd       g(36)                1
+ UP bnd       g(37)                1
+ UP bnd       g(38)                1
+ UP bnd       g(39)                1
+ UP bnd       g(40)                1
+ UP bnd       g(41)                1
+ UP bnd       g(42)                1
+ UP bnd       g(43)                1
+ UP bnd       g(44)                1
+ UP bnd       g(45)                1
+ UP bnd       g(46)                1
+ UP bnd       g(47)                1
+ UP bnd       g(48)                1
+ UP bnd       g(49)                1
+ UP bnd       g(50)                1
+ UP bnd       g(51)                1
+ UP bnd       g(52)                1
+ UP bnd       g(53)                1
+ UP bnd       g(54)                1
+ UP bnd       g(55)                1
+ UP bnd       g(56)                1
+ UP bnd       g(57)                1
+ UP bnd       g(58)                1
+ UP bnd       g(59)                1
+ UP bnd       g(60)                1
+ UP bnd       g(61)                1
+ UP bnd       g(62)                1
+ UP bnd       g(63)                1
+ UP bnd       g(64)                1
+ UP bnd       g(65)                1
+ UP bnd       g(66)                1
+ UP bnd       g(67)                1
+ UP bnd       g(68)                1
+ UP bnd       g(69)                1
+ UP bnd       g(70)                1
+ UP bnd       g(71)                1
+ UP bnd       g(72)                1
+ UP bnd       g(73)                1
+ UP bnd       g(74)                1
+ UP bnd       g(75)                1
+ UP bnd       g(76)                1
+ UP bnd       g(77)                1
+ UP bnd       g(78)                1
+ UP bnd       g(79)                1
+ UP bnd       g(80)                1
+ UP bnd       g(81)                1
+ UP bnd       g(82)                1
+ UP bnd       g(83)                1
+ UP bnd       g(84)                1
+ UP bnd       g(85)                1
+ UP bnd       g(86)                1
+ UP bnd       g(87)                1
+ UP bnd       g(88)                1
+ UP bnd       g(89)                1
+ UP bnd       g(90)                1
+ UP bnd       g(91)                1
+ UP bnd       g(92)                1
+ UP bnd       g(93)                1
+ UP bnd       g(94)                1
+ UP bnd       g(95)                1
+ UP bnd       g(96)                1
+ UP bnd       g(97)                1
+ UP bnd       g(98)                1
+ UP bnd       g(99)                1
+ UP bnd       g(100)               1
+ UP bnd       g(101)               1
+ UP bnd       g(102)               1
+ UP bnd       g(103)               1
+ UP bnd       g(104)               1
+ UP bnd       g(105)               1
+ UP bnd       g(106)               1
+ UP bnd       g(107)               1
+ UP bnd       g(108)               1
+ UP bnd       g(109)               1
+ UP bnd       g(110)               1
+ UP bnd       g(111)               1
+ UP bnd       g(112)               1
+ UP bnd       g(113)               1
+ UP bnd       g(114)               1
+ UP bnd       g(115)               1
+ UP bnd       g(116)               1
+ UP bnd       g(117)               1
+ UP bnd       g(118)               1
+ UP bnd       g(119)               1
+ UP bnd       g(120)               1
+ UP bnd       g(121)               1
+ UP bnd       g(122)               1
+ UP bnd       g(123)               1
+ UP bnd       g(124)               1
+ UP bnd       g(125)               1
+ UP bnd       g(126)               1
+ UP bnd       g(127)               1
+ UP bnd       g(128)               1
+ UP bnd       g(129)               1
+ UP bnd       g(130)               1
+ UP bnd       g(131)               1
+ UP bnd       g(132)               1
+ UP bnd       g(133)               1
+ UP bnd       g(134)               1
+ UP bnd       g(135)               1
+ UP bnd       g(136)               1
+ UP bnd       g(137)               1
+ UP bnd       g(138)               1
+ UP bnd       g(139)               1
+ UP bnd       g(140)               1
+ UP bnd       g(141)               1
+ UP bnd       g(142)               1
+ UP bnd       g(143)               1
+ UP bnd       g(144)               1
+ UP bnd       g(145)               1
+ UP bnd       g(146)               1
+ UP bnd       g(147)               1
+ UP bnd       g(148)               1
+ UP bnd       g(149)               1
+ UP bnd       g(150)               1
+ UP bnd       g(151)               1
+ UP bnd       g(152)               1
+ UP bnd       g(153)               1
+ UP bnd       g(154)               1
+ UP bnd       g(155)               1
+ UP bnd       g(156)               1
+ UP bnd       g(157)               1
+ UP bnd       g(158)               1
+ UP bnd       g(159)               1
+ UP bnd       g(160)               1
+ UP bnd       g(161)               1
+ UP bnd       g(162)               1
+ UP bnd       g(163)               1
+ UP bnd       g(164)               1
+ UP bnd       g(165)               1
+ UP bnd       g(166)               1
+ UP bnd       g(167)               1
+ UP bnd       g(168)               1
+ UP bnd       g(169)               1
+ UP bnd       g(170)               1
+ UP bnd       g(171)               1
+ UP bnd       g(172)               1
+ UP bnd       g(173)               1
+ UP bnd       g(174)               1
+ UP bnd       g(175)               1
+ UP bnd       g(176)               1
+ UP bnd       g(177)               1
+ UP bnd       g(178)               1
+ UP bnd       g(179)               1
+ UP bnd       g(180)               1
+ UP bnd       g(181)               1
+ UP bnd       g(182)               1
+ UP bnd       g(183)               1
+ UP bnd       g(184)               1
+ UP bnd       g(185)               1
+ UP bnd       g(186)               1
+ UP bnd       g(187)               1
+ UP bnd       g(188)               1
+ UP bnd       g(189)               1
+ UP bnd       g(190)               1
+ UP bnd       g(191)               1
+ UP bnd       g(192)               1
+ UP bnd       g(193)               1
+ UP bnd       g(194)               1
+ UP bnd       g(195)               1
+ UP bnd       g(196)               1
+ UP bnd       g(197)               1
+ UP bnd       g(198)               1
+ UP bnd       g(199)               1
+ UP bnd       g(200)               1
+ FR bnd       v       
+ FR bnd       pi(1)   
+ FR bnd       pi(2)   
+ FR bnd       pi(3)   
+ FR bnd       pi(4)   
+ FR bnd       pi(5)   
+ FR bnd       pi(6)   
+ FR bnd       pi(7)   
+ FR bnd       pi(8)   
+ FR bnd       pi(9)   
+ FR bnd       pi(10)  
+ FR bnd       pi(11)  
+ FR bnd       pi(12)  
+ FR bnd       pi(13)  
+ FR bnd       pi(14)  
+ FR bnd       pi(15)  
+ FR bnd       pi(16)  
+ FR bnd       pi(17)  
+ FR bnd       pi(18)  
+ FR bnd       pi(19)  
+ FR bnd       pi(20)  
+ FR bnd       pi(21)  
+ FR bnd       pi(22)  
+ FR bnd       pi(23)  
+ FR bnd       pi(24)  
+ FR bnd       pi(25)  
+ FR bnd       pi(26)  
+ FR bnd       pi(27)  
+ FR bnd       pi(28)  
+ FR bnd       pi(29)  
+ FR bnd       pi(30)  
+ FR bnd       pi(31)  
+ FR bnd       pi(32)  
+ FR bnd       pi(33)  
+ FR bnd       pi(34)  
+ FR bnd       pi(35)  
+ FR bnd       pi(36)  
+ FR bnd       pi(37)  
+ FR bnd       pi(38)  
+ FR bnd       pi(39)  
+ FR bnd       pi(40)  
+ FR bnd       pi(41)  
+ FR bnd       pi(42)  
+ FR bnd       pi(43)  
+ FR bnd       pi(44)  
+ FR bnd       pi(45)  
+ FR bnd       pi(46)  
+ FR bnd       pi(47)  
+ FR bnd       pi(48)  
+ FR bnd       pi(49)  
+ FR bnd       pi(50)  
+ FR bnd       pi(51)  
+ FR bnd       pi(52)  
+ FR bnd       pi(53)  
+ FR bnd       pi(54)  
+ FR bnd       pi(55)  
+ FR bnd       pi(56)  
+ FR bnd       pi(57)  
+ FR bnd       pi(58)  
+ FR bnd       pi(59)  
+ FR bnd       pi(60)  
+ FR bnd       pi(61)  
+ FR bnd       pi(62)  
+ FR bnd       pi(63)  
+ FR bnd       pi(64)  
+ FR bnd       pi(65)  
+ FR bnd       pi(66)  
+ FR bnd       pi(67)  
+ FR bnd       pi(68)  
+ FR bnd       pi(69)  
+ FR bnd       pi(70)  
+ FR bnd       pi(71)  
+ FR bnd       pi(72)  
+ FR bnd       pi(73)  
+ FR bnd       pi(74)  
+ FR bnd       pi(75)  
+ FR bnd       pi(76)  
+ FR bnd       pi(77)  
+ FR bnd       pi(78)  
+ FR bnd       pi(79)  
+ FR bnd       pi(80)  
+ FR bnd       pi(81)  
+ FR bnd       pi(82)  
+ FR bnd       pi(83)  
+ FR bnd       pi(84)  
+ FR bnd       pi(85)  
+ FR bnd       pi(86)  
+ FR bnd       pi(87)  
+ FR bnd       pi(88)  
+ FR bnd       pi(89)  
+ FR bnd       pi(90)  
+ FR bnd       pi(91)  
+ FR bnd       pi(92)  
+ FR bnd       pi(93)  
+ FR bnd       pi(94)  
+ FR bnd       pi(95)  
+ FR bnd       pi(96)  
+ FR bnd       pi(97)  
+ FR bnd       pi(98)  
+ FR bnd       pi(99)  
+ FR bnd       pi(100) 
+ FR bnd       pi(101) 
+ FR bnd       pi(102) 
+ FR bnd       z(1)    
+ FR bnd       z(2)    
+ FR bnd       z(3)    
+ FR bnd       z(4)    
+ FR bnd       z(5)    
+ FR bnd       z(6)    
+ FR bnd       z(7)    
+ FR bnd       z(8)    
+ FR bnd       z(9)    
+ FR bnd       z(10)   
+ FR bnd       z(11)   
+ FR bnd       z(12)   
+ FR bnd       z(13)   
+ FR bnd       z(14)   
+ FR bnd       z(15)   
+ FR bnd       z(16)   
+ FR bnd       z(17)   
+ FR bnd       z(18)   
+ FR bnd       z(19)   
+ FR bnd       z(20)   
+ FR bnd       z(21)   
+ FR bnd       z(22)   
+ FR bnd       z(23)   
+ FR bnd       z(24)   
+ FR bnd       z(25)   
+ FR bnd       z(26)   
+ FR bnd       z(27)   
+ FR bnd       z(28)   
+ FR bnd       z(29)   
+ FR bnd       z(30)   
+ FR bnd       z(31)   
+ FR bnd       z(32)   
+ FR bnd       z(33)   
+ FR bnd       z(34)   
+ FR bnd       z(35)   
+ FR bnd       z(36)   
+ FR bnd       z(37)   
+ FR bnd       z(38)   
+ FR bnd       z(39)   
+ FR bnd       z(40)   
+ FR bnd       z(41)   
+ FR bnd       z(42)   
+ FR bnd       z(43)   
+ FR bnd       z(44)   
+ FR bnd       z(45)   
+ FR bnd       z(46)   
+ FR bnd       z(47)   
+ FR bnd       z(48)   
+ FR bnd       z(49)   
+ FR bnd       z(50)   
+ FR bnd       z(51)   
+ FR bnd       z(52)   
+ FR bnd       z(53)   
+ FR bnd       z(54)   
+ FR bnd       z(55)   
+ FR bnd       z(56)   
+ FR bnd       z(57)   
+ FR bnd       z(58)   
+ FR bnd       z(59)   
+ FR bnd       z(60)   
+ FR bnd       z(61)   
+ FR bnd       z(62)   
+ FR bnd       z(63)   
+ FR bnd       z(64)   
+ FR bnd       z(65)   
+ FR bnd       z(66)   
+ FR bnd       z(67)   
+ FR bnd       z(68)   
+ FR bnd       z(69)   
+ FR bnd       z(70)   
+ FR bnd       z(71)   
+ FR bnd       z(72)   
+ FR bnd       z(73)   
+ FR bnd       z(74)   
+ FR bnd       z(75)   
+ FR bnd       z(76)   
+ FR bnd       z(77)   
+ FR bnd       z(78)   
+ FR bnd       z(79)   
+ FR bnd       z(80)   
+ FR bnd       z(81)   
+ FR bnd       z(82)   
+ FR bnd       z(83)   
+ FR bnd       z(84)   
+ FR bnd       z(85)   
+ FR bnd       z(86)   
+ FR bnd       z(87)   
+ FR bnd       z(88)   
+ FR bnd       z(89)   
+ FR bnd       z(90)   
+ FR bnd       z(91)   
+ FR bnd       z(92)   
+ FR bnd       z(93)   
+ FR bnd       z(94)   
+ FR bnd       z(95)   
+ FR bnd       z(96)   
+ FR bnd       z(97)   
+ FR bnd       z(98)   
+ FR bnd       z(99)   
+ FR bnd       z(100)  
+ FR bnd       z(101)  
+ FR bnd       z(102)  
+ FR bnd       z(103)  
+ FR bnd       z(104)  
+ FR bnd       z(105)  
+ FR bnd       z(106)  
+ FR bnd       z(107)  
+ FR bnd       z(108)  
+ FR bnd       z(109)  
+ FR bnd       z(110)  
+ FR bnd       z(111)  
+ FR bnd       z(112)  
+ FR bnd       z(113)  
+ FR bnd       z(114)  
+ FR bnd       z(115)  
+ FR bnd       z(116)  
+ FR bnd       z(117)  
+ FR bnd       z(118)  
+ FR bnd       z(119)  
+ FR bnd       z(120)  
+ FR bnd       z(121)  
+ FR bnd       z(122)  
+ FR bnd       z(123)  
+ FR bnd       z(124)  
+ FR bnd       z(125)  
+ FR bnd       z(126)  
+ FR bnd       z(127)  
+ FR bnd       z(128)  
+ FR bnd       z(129)  
+ FR bnd       z(130)  
+ FR bnd       z(131)  
+ FR bnd       z(132)  
+ FR bnd       z(133)  
+ FR bnd       z(134)  
+ FR bnd       z(135)  
+ FR bnd       z(136)  
+ FR bnd       z(137)  
+ FR bnd       z(138)  
+ FR bnd       z(139)  
+ FR bnd       z(140)  
+ FR bnd       z(141)  
+ FR bnd       z(142)  
+ FR bnd       z(143)  
+ FR bnd       z(144)  
+ FR bnd       z(145)  
+ FR bnd       z(146)  
+ FR bnd       z(147)  
+ FR bnd       z(148)  
+ FR bnd       z(149)  
+ FR bnd       z(150)  
+ FR bnd       z(151)  
+ FR bnd       z(152)  
+ FR bnd       z(153)  
+ FR bnd       z(154)  
+ FR bnd       z(155)  
+ FR bnd       z(156)  
+ FR bnd       z(157)  
+ FR bnd       z(158)  
+ FR bnd       z(159)  
+ FR bnd       z(160)  
+ FR bnd       z(161)  
+ FR bnd       z(162)  
+ FR bnd       z(163)  
+ FR bnd       z(164)  
+ FR bnd       z(165)  
+ FR bnd       z(166)  
+ FR bnd       z(167)  
+ FR bnd       z(168)  
+ FR bnd       z(169)  
+ FR bnd       z(170)  
+ FR bnd       z(171)  
+ FR bnd       z(172)  
+ FR bnd       z(173)  
+ FR bnd       z(174)  
+ FR bnd       z(175)  
+ FR bnd       z(176)  
+ FR bnd       z(177)  
+ FR bnd       z(178)  
+ FR bnd       z(179)  
+ FR bnd       z(180)  
+ FR bnd       z(181)  
+ FR bnd       z(182)  
+ FR bnd       z(183)  
+ FR bnd       z(184)  
+ FR bnd       z(185)  
+ FR bnd       z(186)  
+ FR bnd       z(187)  
+ FR bnd       z(188)  
+ FR bnd       z(189)  
+ FR bnd       z(190)  
+ FR bnd       z(191)  
+ FR bnd       z(192)  
+ FR bnd       z(193)  
+ FR bnd       z(194)  
+ FR bnd       z(195)  
+ FR bnd       z(196)  
+ FR bnd       z(197)  
+ FR bnd       z(198)  
+ FR bnd       z(199)  
+ FR bnd       z(200)  
+ENDATA

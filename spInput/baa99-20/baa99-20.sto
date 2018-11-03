@@ -1,4 +1,4 @@
-STOCH BAA99-20
+STOCH baa99-20
 INDEP         DISCRETE
     RHS     	d1       0	       	       0.02
     RHS     	d1	5.960319592	       0.02

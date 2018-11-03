@@ -1,0 +1,5 @@
+TIME
+PERIODS       IMPLICIT
+    g(1)      Resource                 1
+    x(1)      FC(1)                    2
+ENDATA

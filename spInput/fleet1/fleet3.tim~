@@ -1,0 +1,5 @@
+TIME          XXX
+PERIODS       LP
+    ST83      NC0T83                   PER01
+    E1T83T83  NC1T83                   PER02
+ENDATA

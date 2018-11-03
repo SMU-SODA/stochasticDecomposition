@@ -1,0 +1,393 @@
+STOCH
+BLOCKS        DISCRETE
+ BL BLOCK1    2         0.25
+    g(22)     IFC(22)   0
+    z(22)     stDual    0
+ BL BLOCK1    2         0.75
+    g(22)     IFC(22)   10
+    z(22)     stDual    -10
+ BL BLOCK2    2         0.25
+    g(29)     IFC(29)   0
+    z(29)     stDual    0
+ BL BLOCK2    2         0.75
+    g(29)     IFC(29)   20
+    z(29)     stDual    -20
+ BL BLOCK3    2         0.25
+    g(30)     IFC(30)   0
+    z(30)     stDual    0
+ BL BLOCK3    2         0.75
+    g(30)     IFC(30)   90
+    z(30)     stDual    -90
+ BL BLOCK4    2         0.25
+    g(32)     IFC(32)   0
+    z(32)     stDual    0
+ BL BLOCK4    2         0.75
+    g(32)     IFC(32)   50
+    z(32)     stDual    -50
+ BL BLOCK5    2         0.25
+    g(35)     IFC(35)   0
+    z(35)     stDual    0
+ BL BLOCK5    2         0.75
+    g(35)     IFC(35)   60
+    z(35)     stDual    -60
+ BL BLOCK6    2         0.25
+    g(36)     IFC(36)   0
+    z(36)     stDual    0
+ BL BLOCK6    2         0.75
+    g(36)     IFC(36)   100
+    z(36)     stDual    -100
+ BL BLOCK7    2         0.25
+    g(37)     IFC(37)   0
+    z(37)     stDual    0
+ BL BLOCK7    2         0.75
+    g(37)     IFC(37)   40
+    z(37)     stDual    -40
+ BL BLOCK8    2         0.25
+    g(43)     IFC(43)   0
+    z(43)     stDual    0
+ BL BLOCK8    2         0.75
+    g(43)     IFC(43)   20
+    z(43)     stDual    -20
+ BL BLOCK9    2         0.25
+    g(45)     IFC(45)   0
+    z(45)     stDual    0
+ BL BLOCK9    2         0.75
+    g(45)     IFC(45)   60
+    z(45)     stDual    -60
+ BL BLOCK10   2         0.25
+    g(46)     IFC(46)   0
+    z(46)     stDual    0
+ BL BLOCK10   2         0.75
+    g(46)     IFC(46)   80
+    z(46)     stDual    -80
+ BL BLOCK11   2         0.25
+    g(48)     IFC(48)   0
+    z(48)     stDual    0
+ BL BLOCK11   2         0.75
+    g(48)     IFC(48)   20
+    z(48)     stDual    -20
+ BL BLOCK12   2         0.25
+    g(62)     IFC(62)   0
+    z(62)     stDual    0
+ BL BLOCK12   2         0.75
+    g(62)     IFC(62)   40
+    z(62)     stDual    -40
+ BL BLOCK13   2         0.25
+    g(63)     IFC(63)   0
+    z(63)     stDual    0
+ BL BLOCK13   2         0.75
+    g(63)     IFC(63)   30
+    z(63)     stDual    -30
+ BL BLOCK14   2         0.25
+    g(64)     IFC(64)   0
+    z(64)     stDual    0
+ BL BLOCK14   2         0.75
+    g(64)     IFC(64)   30
+    z(64)     stDual    -30
+ BL BLOCK15   2         0.25
+    g(65)     IFC(65)   0
+    z(65)     stDual    0
+ BL BLOCK15   2         0.75
+    g(65)     IFC(65)   20
+    z(65)     stDual    -20
+ BL BLOCK16   2         0.25
+    g(66)     IFC(66)   0
+    z(66)     stDual    0
+ BL BLOCK16   2         0.75
+    g(66)     IFC(66)   90
+    z(66)     stDual    -90
+ BL BLOCK17   2         0.25
+    g(73)     IFC(73)   0
+    z(73)     stDual    0
+ BL BLOCK17   2         0.75
+    g(73)     IFC(73)   10
+    z(73)     stDual    -10
+ BL BLOCK18   2         0.25
+    g(78)     IFC(78)   0
+    z(78)     stDual    0
+ BL BLOCK18   2         0.75
+    g(78)     IFC(78)   10
+    z(78)     stDual    -10
+ BL BLOCK19   2         0.25
+    g(80)     IFC(80)   0
+    z(80)     stDual    0
+ BL BLOCK19   2         0.75
+    g(80)     IFC(80)   10
+    z(80)     stDual    -10
+ BL BLOCK20   2         0.25
+    g(82)     IFC(82)   0
+    z(82)     stDual    0
+ BL BLOCK20   2         0.75
+    g(82)     IFC(82)   40
+    z(82)     stDual    -40
+ BL BLOCK21   2         0.25
+    g(83)     IFC(83)   0
+    z(83)     stDual    0
+ BL BLOCK21   2         0.75
+    g(83)     IFC(83)   80
+    z(83)     stDual    -80
+ BL BLOCK22   2         0.25
+    g(85)     IFC(85)   0
+    z(85)     stDual    0
+ BL BLOCK22   2         0.75
+    g(85)     IFC(85)   30
+    z(85)     stDual    -30
+ BL BLOCK23   2         0.25
+    g(86)     IFC(86)   0
+    z(86)     stDual    0
+ BL BLOCK23   2         0.75
+    g(86)     IFC(86)   70
+    z(86)     stDual    -70
+ BL BLOCK24   2         0.25
+    g(89)     IFC(89)   0
+    z(89)     stDual    0
+ BL BLOCK24   2         0.75
+    g(89)     IFC(89)   40
+    z(89)     stDual    -40
+ BL BLOCK25   2         0.25
+    g(91)     IFC(91)   0
+    z(91)     stDual    0
+ BL BLOCK25   2         0.75
+    g(91)     IFC(91)   60
+    z(91)     stDual    -60
+ BL BLOCK26   2         0.25
+    g(93)     IFC(93)   0
+    z(93)     stDual    0
+ BL BLOCK26   2         0.75
+    g(93)     IFC(93)   30
+    z(93)     stDual    -30
+ BL BLOCK27   2         0.25
+    g(98)     IFC(98)   0
+    z(98)     stDual    0
+ BL BLOCK27   2         0.75
+    g(98)     IFC(98)   30
+    z(98)     stDual    -30
+ BL BLOCK28   2         0.25
+    g(99)     IFC(99)   0
+    z(99)     stDual    0
+ BL BLOCK28   2         0.75
+    g(99)     IFC(99)   90
+    z(99)     stDual    -90
+ BL BLOCK29   2         0.25
+    g(101)    IFC(101)  0
+    z(101)    stDual    0
+ BL BLOCK29   2         0.75
+    g(101)    IFC(101)  20
+    z(101)    stDual    -20
+ BL BLOCK30   2         0.25
+    g(103)    IFC(103)  0
+    z(103)    stDual    0
+ BL BLOCK30   2         0.75
+    g(103)    IFC(103)  20
+    z(103)    stDual    -20
+ BL BLOCK31   2         0.25
+    g(105)    IFC(105)  0
+    z(105)    stDual    0
+ BL BLOCK31   2         0.75
+    g(105)    IFC(105)  60
+    z(105)    stDual    -60
+ BL BLOCK32   2         0.25
+    g(107)    IFC(107)  0
+    z(107)    stDual    0
+ BL BLOCK32   2         0.75
+    g(107)    IFC(107)  90
+    z(107)    stDual    -90
+ BL BLOCK33   2         0.25
+    g(109)    IFC(109)  0
+    z(109)    stDual    0
+ BL BLOCK33   2         0.75
+    g(109)    IFC(109)  10
+    z(109)    stDual    -10
+ BL BLOCK34   2         0.25
+    g(114)    IFC(114)  0
+    z(114)    stDual    0
+ BL BLOCK34   2         0.75
+    g(114)    IFC(114)  100
+    z(114)    stDual    -100
+ BL BLOCK35   2         0.25
+    g(118)    IFC(118)  0
+    z(118)    stDual    0
+ BL BLOCK35   2         0.75
+    g(118)    IFC(118)  90
+    z(118)    stDual    -90
+ BL BLOCK36   2         0.25
+    g(125)    IFC(125)  0
+    z(125)    stDual    0
+ BL BLOCK36   2         0.75
+    g(125)    IFC(125)  60
+    z(125)    stDual    -60
+ BL BLOCK37   2         0.25
+    g(126)    IFC(126)  0
+    z(126)    stDual    0
+ BL BLOCK37   2         0.75
+    g(126)    IFC(126)  90
+    z(126)    stDual    -90
+ BL BLOCK38   2         0.25
+    g(128)    IFC(128)  0
+    z(128)    stDual    0
+ BL BLOCK38   2         0.75
+    g(128)    IFC(128)  20
+    z(128)    stDual    -20
+ BL BLOCK39   2         0.25
+    g(129)    IFC(129)  0
+    z(129)    stDual    0
+ BL BLOCK39   2         0.75
+    g(129)    IFC(129)  20
+    z(129)    stDual    -20
+ BL BLOCK40   2         0.25
+    g(131)    IFC(131)  0
+    z(131)    stDual    0
+ BL BLOCK40   2         0.75
+    g(131)    IFC(131)  90
+    z(131)    stDual    -90
+ BL BLOCK41   2         0.25
+    g(132)    IFC(132)  0
+    z(132)    stDual    0
+ BL BLOCK41   2         0.75
+    g(132)    IFC(132)  30
+    z(132)    stDual    -30
+ BL BLOCK42   2         0.25
+    g(133)    IFC(133)  0
+    z(133)    stDual    0
+ BL BLOCK42   2         0.75
+    g(133)    IFC(133)  90
+    z(133)    stDual    -90
+ BL BLOCK43   2         0.25
+    g(134)    IFC(134)  0
+    z(134)    stDual    0
+ BL BLOCK43   2         0.75
+    g(134)    IFC(134)  100
+    z(134)    stDual    -100
+ BL BLOCK44   2         0.25
+    g(138)    IFC(138)  0
+    z(138)    stDual    0
+ BL BLOCK44   2         0.75
+    g(138)    IFC(138)  40
+    z(138)    stDual    -40
+ BL BLOCK45   2         0.25
+    g(139)    IFC(139)  0
+    z(139)    stDual    0
+ BL BLOCK45   2         0.75
+    g(139)    IFC(139)  60
+    z(139)    stDual    -60
+ BL BLOCK46   2         0.25
+    g(141)    IFC(141)  0
+    z(141)    stDual    0
+ BL BLOCK46   2         0.75
+    g(141)    IFC(141)  10
+    z(141)    stDual    -10
+ BL BLOCK47   2         0.25
+    g(146)    IFC(146)  0
+    z(146)    stDual    0
+ BL BLOCK47   2         0.75
+    g(146)    IFC(146)  80
+    z(146)    stDual    -80
+ BL BLOCK48   2         0.25
+    g(148)    IFC(148)  0
+    z(148)    stDual    0
+ BL BLOCK48   2         0.75
+    g(148)    IFC(148)  50
+    z(148)    stDual    -50
+ BL BLOCK49   2         0.25
+    g(150)    IFC(150)  0
+    z(150)    stDual    0
+ BL BLOCK49   2         0.75
+    g(150)    IFC(150)  50
+    z(150)    stDual    -50
+ BL BLOCK50   2         0.25
+    g(153)    IFC(153)  0
+    z(153)    stDual    0
+ BL BLOCK50   2         0.75
+    g(153)    IFC(153)  20
+    z(153)    stDual    -20
+ BL BLOCK51   2         0.25
+    g(155)    IFC(155)  0
+    z(155)    stDual    0
+ BL BLOCK51   2         0.75
+    g(155)    IFC(155)  40
+    z(155)    stDual    -40
+ BL BLOCK52   2         0.25
+    g(158)    IFC(158)  0
+    z(158)    stDual    0
+ BL BLOCK52   2         0.75
+    g(158)    IFC(158)  80
+    z(158)    stDual    -80
+ BL BLOCK53   2         0.25
+    g(160)    IFC(160)  0
+    z(160)    stDual    0
+ BL BLOCK53   2         0.75
+    g(160)    IFC(160)  10
+    z(160)    stDual    -10
+ BL BLOCK54   2         0.25
+    g(161)    IFC(161)  0
+    z(161)    stDual    0
+ BL BLOCK54   2         0.75
+    g(161)    IFC(161)  90
+    z(161)    stDual    -90
+ BL BLOCK55   2         0.25
+    g(162)    IFC(162)  0
+    z(162)    stDual    0
+ BL BLOCK55   2         0.75
+    g(162)    IFC(162)  60
+    z(162)    stDual    -60
+ BL BLOCK56   2         0.25
+    g(163)    IFC(163)  0
+    z(163)    stDual    0
+ BL BLOCK56   2         0.75
+    g(163)    IFC(163)  40
+    z(163)    stDual    -40
+ BL BLOCK57   2         0.25
+    g(164)    IFC(164)  0
+    z(164)    stDual    0
+ BL BLOCK57   2         0.75
+    g(164)    IFC(164)  80
+    z(164)    stDual    -80
+ BL BLOCK58   2         0.25
+    g(165)    IFC(165)  0
+    z(165)    stDual    0
+ BL BLOCK58   2         0.75
+    g(165)    IFC(165)  60
+    z(165)    stDual    -60
+ BL BLOCK59   2         0.25
+    g(168)    IFC(168)  0
+    z(168)    stDual    0
+ BL BLOCK59   2         0.75
+    g(168)    IFC(168)  50
+    z(168)    stDual    -50
+ BL BLOCK60   2         0.25
+    g(169)    IFC(169)  0
+    z(169)    stDual    0
+ BL BLOCK60   2         0.75
+    g(169)    IFC(169)  10
+    z(169)    stDual    -10
+ BL BLOCK61   2         0.25
+    g(171)    IFC(171)  0
+    z(171)    stDual    0
+ BL BLOCK61   2         0.75
+    g(171)    IFC(171)  50
+    z(171)    stDual    -50
+ BL BLOCK62   2         0.25
+    g(172)    IFC(172)  0
+    z(172)    stDual    0
+ BL BLOCK62   2         0.75
+    g(172)    IFC(172)  10
+    z(172)    stDual    -10
+ BL BLOCK63   2         0.25
+    g(174)    IFC(174)  0
+    z(174)    stDual    0
+ BL BLOCK63   2         0.75
+    g(174)    IFC(174)  20
+    z(174)    stDual    -20
+ BL BLOCK64   2         0.25
+    g(175)    IFC(175)  0
+    z(175)    stDual    0
+ BL BLOCK64   2         0.75
+    g(175)    IFC(175)  20
+    z(175)    stDual    -20
+ BL BLOCK65   2         0.25
+    g(180)    IFC(180)  0
+    z(180)    stDual    0
+ BL BLOCK65   2         0.75
+    g(180)    IFC(180)  60
+    z(180)    stDual    -60
+ENDATA

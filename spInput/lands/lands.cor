@@ -1,4 +1,4 @@
-NAME          lands3
+NAME          lands
 ROWS
  N  OBJ
  G  S1C1
@@ -70,9 +70,9 @@ RHS
     RHS       S2C2         0.0
     RHS       S2C3         0.0
     RHS       S2C4         0.0
-    RHS       S2C5         1.98
-    RHS       S2C6         1.98
-    RHS       S2C7         1.98
+    RHS       S2C5         0.0
+    RHS       S2C6         3.0
+    RHS       S2C7         2.0
 BOUNDS
  LO BND       X1           0.0
  LO BND       X2           0.0

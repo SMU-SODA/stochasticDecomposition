@@ -1,5 +1,4 @@
-
-STOCH         LandS         
+STOCH         lands3
 INDEP         DISCRETE      
     RHS       S2C5            0.0000      0.01
     RHS       S2C5            0.0400      0.01
