@@ -11,11 +11,11 @@
 
 #include "twoSD.h"
 
-extern string outputDir;
+extern cString outputDir;
 extern configType config;
 
-int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, string probName) {
-	vector	 meanSol = NULL;
+int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
+	dVector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	batchSummary *batch = NULL;
@@ -59,12 +59,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 
 		/* Write solution statistics for optimization process */
 		if (rep == 0 ) {
-			writeOptimizationSummary(sFile, iFile, prob, cell, TRUE);
-			writeOptimizationSummary(stdout, NULL, prob, cell, TRUE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, true);
+			writeOptimizationSummary(stdout, NULL, prob, cell, true);
 		}
 		else {
-			writeOptimizationSummary(sFile, iFile, prob, cell, FALSE);
-			writeOptimizationSummary(stdout, NULL, prob, cell, FALSE);
+			writeOptimizationSummary(sFile, iFile, prob, cell, false);
+			writeOptimizationSummary(stdout, NULL, prob, cell, false);
 		}
 
 		/* evaluate the optimal solution*/
@@ -116,17 +116,15 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, string inputDir, strin
 }//END algo()
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
-	vector 	observ;
-	int		m, omegaIdx, candidCut;
-	BOOL 	newOmegaFlag;
-	clock_t	tic;
+	dVector 	observ;
+	int			m, candidCut, obs;
+	clock_t		tic;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
-		errMsg("allocation", "solveCell", "observ", 0);
+	observ = (dVector) arr_alloc(stoc->numOmega + 1, double);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
-	while (cell->optFlag == FALSE && cell->k < config.MAX_ITER) {
+	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
 		cell->k++;
 		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -141,26 +139,28 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		if (optimal(prob, cell))
 			break;
 
-		/******* 2. Generate new observation, and add it to the set of observations *******/
-		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0]);
+		/******* 2. Generate new observations, and add it to the set of observations *******/
+		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
+			/* (a) Use the stoc file to generate observations */
+			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0]);
 
-		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
-		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];
+			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+			for ( m = 0; m < stoc->numOmega; m++ )
+				observ[m] -= stoc->mean[m];
 
-		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
+			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+		}
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob, cell, cell->candidX, omegaIdx, &newOmegaFlag, prob[0]->lb)) < 0 ) {
+		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, omegaIdx, &newOmegaFlag, prob[0]->lb) ) < 0 ) {
+			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				goto TERMINATE;
 			}
@@ -192,7 +192,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	return 1;
 }//END solveCell()
 
-void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, BOOL header) {
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header) {
 
 	if ( header ) {
 		fprintf(soln, "\n--------------------------------------- Problem Information ----------------------------------------\n\n");

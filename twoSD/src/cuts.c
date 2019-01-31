@@ -13,47 +13,49 @@
 
 extern configType config;
 
-int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx);
+int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx);
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut);
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
 
-int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL *newOmegaFlag, double lb) {
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;
-	int    	cutIdx;
-	BOOL	newBasisFlag;
+	int    	cutIdx, obs;
 
-	/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-	if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
-			&cell->time.subprobIter, &cell->time.argmaxIter) ){
-		errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
-		return -1;
-	}
-
-	/* increment the number of subproblems solved during algorithm */
-	cell->LPcnt++;
-
-	if ( ! cell->spFeasFlag ) {
-		/* Subproblem is infeasible, resolve infeasibility */
-		if ( resolveInfeasibility(prob, cell, newOmegaFlag, omegaIdx) ) {
-			errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
+		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE, &cell->spFeasFlag,
+				&cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
-	}
-	else if ( cell->fcutsPool->cnt > 0 && (*newOmegaFlag) ) {
-		/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
-		 * to see if new feasibility cuts need to be added. */
-		if ( formFeasCut(prob[1], cell) ) {
-			errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
-			return -1;
+
+		/* increment the number of subproblems solved during algorithm */
+		cell->LPcnt++;
+
+		if ( ! cell->spFeasFlag ) {
+			/* Subproblem is infeasible, resolve infeasibility */
+			if ( resolveInfeasibility(prob, cell, cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
+				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+				return -1;
+			}
+		}
+		else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
+			/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+			 * to see if new feasibility cuts need to be added. */
+			if ( formFeasCut(prob[1], cell) ) {
+				errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+				return -1;
+			}
 		}
 	}
 
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
-	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag,
+			cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -75,7 +77,7 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, FALSE)) < 0) {
+	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
@@ -87,13 +89,13 @@ int formSDCut(probType **prob, cellType *cell, vector Xvect, int omegaIdx, BOOL 
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, vector Xvect, int numSamples,
-		BOOL *dualStableFlag, vector pi_ratio, double lb) {
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
+		bool *dualStableFlag, dVector pi_ratio, double lb) {
 	oneCut *cut;
-	vector 	piCbarX, beta;
+	dVector 	piCbarX, beta;
 	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
 	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
-	BOOL    pi_eval_flag = FALSE;
+	bool    pi_eval_flag = false;
 
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
@@ -104,21 +106,21 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	for (c = 0; c < sigma->cnt; c++)
 		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
-	if ( !(beta = (vector) arr_alloc(num->prevCols + 1, double)) )
+	if ( !(beta = (dVector) arr_alloc(num->prevCols + 1, double)) )
 		errMsg("Allocation", "SDCut", "beta", 0);
 
 	/* Calculate pi_eval_flag to determine the way of computing argmax */
 	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
-		pi_eval_flag = TRUE;
+		pi_eval_flag = true;
 
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* For each observation, find the Pi which maximizes height at X. */
-		if (pi_eval_flag == TRUE) {
+		if (pi_eval_flag == true) {
 			istarOld = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, pi_eval_flag, &argmaxOld, FALSE);
+					obs, numSamples, pi_eval_flag, &argmaxOld, false);
 			istarNew = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, TRUE, &argmaxNew, TRUE);
+					obs, numSamples, true, &argmaxNew, true);
 
 			argmax = max(argmaxOld, argmaxNew);
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
@@ -129,7 +131,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		else {
 			/* identify the maximal Pi for each observation */
 			istar = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, pi_eval_flag, &argmax, FALSE);
+					obs, numSamples, pi_eval_flag, &argmax, false);
 		}
 
 		if (istar < 0) {
@@ -167,7 +169,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		}
 	}
 
-	if (pi_eval_flag == TRUE) {
+	if (pi_eval_flag == true) {
 		pi_ratio[numSamples % config.SCAN_LEN] = cummOld / cummAll;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			variance = calcVariance(pi_ratio, NULL, NULL, 0);
@@ -175,9 +177,9 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			variance = 1.0;
 
 		if (DBL_ABS(variance) >= .000002 || pi_ratio[numSamples % config.SCAN_LEN] < 0.95 )
-			*dualStableFlag = FALSE;
+			*dualStableFlag = false;
 		else
-			*dualStableFlag = TRUE;
+			*dualStableFlag = true;
 	}
 
 	cut->alpha = alpha / numSamples;
@@ -193,7 +195,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 }//END SDCut
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double lb) {
+double maxCutHeight(cutsType *cuts, int currIter, dVector xk, int betaLen, double lb) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
@@ -209,7 +211,7 @@ double maxCutHeight(cutsType *cuts, int currIter, vector xk, int betaLen, double
 
 /* This function calculates and returns the height of a given cut at a given X.  It includes the k/(k-1) update, but does not include
  * the coefficients due to the cell. */
-double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb) {
+double cutHeight(oneCut *cut, int currIter, dVector xk, int betaLen, double lb) {
 	double height;
 	double t_over_k = ((double) cut->numSamples / (double) currIter);
 
@@ -226,7 +228,7 @@ double cutHeight(oneCut *cut, int currIter, vector xk, int betaLen, double lb) {
 }//END cutHeight()
 
 /* This function allocates memory for the arrays inside a single cut, and initializes its values accordingly.  The cut structure
- * itself is assumed to be already allocated.  Note, each beta vector contains room for its one-norm, thought it just gets filled
+ * itself is assumed to be already allocated.  Note, each beta dVector contains room for its one-norm, thought it just gets filled
  * with zero anyway. */
 oneCut *newCut(int numX, int numIstar, int numSamples) {
 	oneCut *cut;
@@ -234,7 +236,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
 	cut->numSamples = numSamples;
 	cut->omegaCnt = numIstar;
-	cut->isIncumb = FALSE; 								/* new cut is by default not an incumbent */
+	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 
@@ -250,7 +252,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 
 	cut->alpha = 0.0;
 
-	cut->name = (string) arr_alloc(NAMESIZE, char);
+	cut->name = (cString) arr_alloc(NAMESIZE, char);
 
 	return cut;
 }//END newCut
@@ -273,7 +275,7 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(cellType *cell, vector candidX, vector pi, int betaLen, double lb) {
+int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb) {
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
@@ -360,7 +362,7 @@ int dropCut(cellType *cell, int cutIdx) {
 
 /*
  ** This function calculate the variance of the
- ** vector x.
+ ** dVector x.
  */
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size) {
 	double mean, vari, temp;
@@ -398,13 +400,13 @@ double calcVariance(double *x, double *mean_value, double *stdev_value, int batc
  * until the a feasible candidate and incumbent solution are identified.*/
 /* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
  until the candidate and incumbent solution are both feasible. */
-int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, int omegaIdx) {
-	BOOL newBasisFlag;
+int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx) {
+	bool newBasisFlag;
 
 	/* QP master will be solved in feasibility mode */
-	cell->optMode = FALSE;
+	cell->optMode = false;
 
-	while ( TRUE ) {
+	while ( true ) {
 		/* form a feasibility cut */
 		formFeasCut(prob[1], cell);
 
@@ -426,23 +428,23 @@ int resolveInfeasibility(probType **prob, cellType *cell, BOOL *newOmegaFlag, in
 
 		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
 				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
-				&cell->time.subprobIter, &cell->time.argmaxIter) ) {
+				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
 			return 1;
 		}
 
 		/* end the feasibility mode if a feasible candidate solution is observed */
-		if (cell->spFeasFlag == TRUE)
+		if (cell->spFeasFlag == true)
 			break;
 	}
 
-	if ( cell->infeasIncumb == TRUE ) {
+	if ( cell->infeasIncumb == true ) {
 		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
 		replaceIncumbent(prob[0], cell, cell->candidEst);
 	}
 
 	/* QP master will be solved in optimality mode again */
-	cell->optMode = TRUE;
+	cell->optMode = true;
 
 	return 0;
 }//END resolveInfeasibility()
@@ -454,7 +456,7 @@ int formFeasCut(probType *prob, cellType *cell) {
 
 	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
 	checkFeasCutPool(cell, prob->num->prevCols);
-	cell->piM = (vector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fcuts->cnt);
+	cell->piM = (dVector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fcuts->cnt);
 
 	return 0;
 }//END formFeasCut()
@@ -484,7 +486,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
 			}
 		}
 	cell->fUpdt[1] = cell->omega->cnt;
@@ -507,7 +509,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, TRUE);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
 			}
 		}
 	cell->fUpdt[0] = cell->basis->cnt;
@@ -520,15 +522,15 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 int checkFeasCutPool(cellType *cell, int lenX) {
 	double 	betaX, alpha;
 	int 	idx, c;
-	BOOL 	duplicCut;
+	bool 	duplicCut;
 
 	for (idx = 0; idx < cell->fcutsPool->cnt; idx++) {
-		duplicCut = FALSE;
+		duplicCut = false;
 		alpha = cell->fcutsPool->vals[idx]->alpha;
 		for (c = 0; c < cell->fcuts->cnt; c++) {
 			if (DBL_ABS(alpha - cell->fcuts->vals[c]->alpha) < config.TOLERANCE) {
 				if (equalVector(cell->fcutsPool->vals[idx]->beta, cell->fcuts->vals[c]->beta, lenX, config.TOLERANCE)) {
-					duplicCut = TRUE;
+					duplicCut = true;
 					break;
 				}
 			}
@@ -537,8 +539,8 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 		/* Add those cuts in cut pool that will be violated by incumbent solution */
 		betaX = vXv(cell->fcutsPool->vals[idx]->beta, cell->incumbX, NULL, lenX);
 		if (betaX < alpha) {
-			cell->infeasIncumb = TRUE;
-			if (duplicCut == TRUE)
+			cell->infeasIncumb = true;
+			if (duplicCut == true)
 				printf("Incumbent violates one old cut from feasible cut pool, but the cut already exists in the master problem.\n");
 			else {
 				printf( "Incumbent violates one new cut from feasible cut pool, also adding to master problem.\n");
@@ -547,7 +549,7 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 		}
 		else {
 			/* Check if the cut will be violated by the candidate solution*/
-			if (duplicCut == TRUE)
+			if (duplicCut == true)
 				continue;
 			betaX = vXv(cell->fcutsPool->vals[idx]->beta, cell->candidX, NULL, lenX);
 
@@ -592,7 +594,7 @@ void freeOneCut(oneCut *cut) {
 	}
 }//END freeOneCut()
 
-void freeCutsType(cutsType *cuts, BOOL partial) {
+void freeCutsType(cutsType *cuts, bool partial) {
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++)
@@ -609,7 +611,7 @@ void freeCutsType(cutsType *cuts, BOOL partial) {
 /* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
  * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
  * duplicate of existing cut before it is added to the pool. */
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, BOOL feasCut) {
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) {
 	int	cnt;
 
 	if ( feasCut ) {

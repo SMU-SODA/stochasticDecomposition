@@ -40,7 +40,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			return 1;
 		}
 		cell->iCutIdx = candidCut;
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 		printf("+"); fflush(stdout);
 	}
 	else {
@@ -79,12 +79,12 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
 	/* update the candidate cut as the new incumbent cut */
 	cell->iCutUpdt = cell->k;
-	cell->incumbChg = TRUE;
+	cell->incumbChg = true;
 
 	/* keep the two norm of solution*/
 	cell->normDk_1 = cell->normDk;
 	/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
-	cell->infeasIncumb = FALSE;
+	cell->infeasIncumb = false;
 	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
 	cell->gamma = 0.0;
 

@@ -12,10 +12,10 @@
 #include "stoc.h"
 
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
- * observation of omega, and some X vector of primal variables from the master problem.  Generally, the latest observation is used.  When
+ * observation of omega, and some X dVector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newBasisFlag,
+int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag, bool *newBasisFlag,
 		double *subprobTime, double *argmaxTime) {
 	int  	status;
 	clock_t tic;
@@ -23,14 +23,14 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 	/* (a) compute and change the right-hand side using current observation and first-stage solution */
 	if ( computeRHS(subproblem->lp, prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, omega->vals[omegaIdx]) ) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-		return 1;
+		return -1;
 	}
 
 	if ( prob->num->rvdOmCnt > 0 ) {
 		/* (b) Compute and change the cost coefficients using current observation */
 		if ( computeCostCoeff(subproblem->lp, prob->num, prob->coord, prob->dBar, omega->vals[omegaIdx]) ) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
-			return 1;
+			return -1;
 		}
 	}
 
@@ -48,11 +48,11 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 			 * used to generate the feasibility cuts later. */
 			printf("Subproblem is infeasible for current first-stage decision and observation.\n");
 			writeProblem(subproblem->lp, "infeasibleSP.lp");
-			(*subFeasFlag) = FALSE;
+			(*subFeasFlag) = false;
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-			return 1;
+			return -1;
 		}
 	}
 	setIntParam(PARAM_PREIND, ON);
@@ -69,7 +69,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 		/* (d) update the stochastic elements in the problem */
 		status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
 				omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag, (*subFeasFlag));
-		(*newOmegaFlag) = FALSE;
+		(*newOmegaFlag) = false;
 		(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #ifdef STOCH_CHECK
@@ -80,26 +80,26 @@ int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType
 #endif
 	}
 
-	return 0;
+	return status;
 }// END solveSubprob()
 
-/* This function computes the right hand side of the subproblem, based on a given X vector and a given observation of omega.
+/* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
  * It is defined as:
  * 			rhs = R(omega) - T(omega) x X
  * and is calculated as:
  * 			rhs = (Rbar - Tbar x X) + (Romega - Tomega x X)
  *
  * where the "bar" denotes the fixed or mean value, and the "omega" denotes a random variation from this mean. The function allocates an array
- * for the vector, which must be freed by the customer.  Also, the zeroth position of this rhs vector is reserved, and the actual values begin at rhs[1].
+ * for the dVector, which must be freed by the customer.  Also, the zeroth position of this rhs dVector is reserved, and the actual values begin at rhs[1].
  * R is b, and T is C
  \***********************************************************************/
-int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs) {
+int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector obs) {
 	sparseMatrix Comega;
 	sparseVector bomega;
-	vector rhs;
+	dVector rhs;
 	int cnt, *indices;
 
-	if ( !(indices = (intvec) arr_alloc(num->rows, int)) )
+	if ( !(indices = (iVector) arr_alloc(num->rows, int)) )
 		errMsg("allocation", "solveSubprob", "indices", 0);
 	for ( cnt = 0; cnt < num->rows; cnt++ )
 		indices[cnt] = cnt;
@@ -128,12 +128,12 @@ int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, spa
 	return 0;
 }//END computeRHS()
 
-int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, vector observ) {
+int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, dVector observ) {
 	sparseVector dOmega;
-	vector cost;
+	dVector cost;
 	int	cnt, *indices;
 
-	if ( !(indices = (intvec) arr_alloc(num->cols, int)) )
+	if ( !(indices = (iVector) arr_alloc(num->cols, int)) )
 		errMsg("allocation", "solveSubprob", "indices", 0);
 	for ( cnt = 0; cnt < num->cols; cnt++ )
 		indices[cnt] = cnt;
@@ -155,7 +155,7 @@ int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBa
 	return 0;
 }//END computeCostCoeff()
 
-void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
+void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, dVector rhs, dVector X) {
 	int cnt;
 
 	/* copy the original right-hand side */
@@ -167,11 +167,11 @@ void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) {
 
 }//END chgRHSwMean()
 
-int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X) {
+int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, dVector observ, dVector spRHS, dVector X) {
 	sparseVector bomega;
 	sparseMatrix Comega;
-	vector 	rhs;
-	intvec	indices;
+	dVector 	rhs;
+	iVector	indices;
 	int		cnt, stat1;
 
 	bomega.cnt = num->rvbOmCnt;	bomega.col = coord->rvbOmRows; bomega.val = observ;
@@ -179,9 +179,9 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 	Comega.cnt = num->rvCOmCnt; Comega.col = coord->rvCOmCols + num->rvbOmCnt;
 	Comega.row = coord->rvCOmRows + num->rvbOmCnt; Comega.val = observ + num->rvbOmCnt;
 
-	if ( !(indices = (intvec) arr_alloc(num->rows, int)) )
+	if ( !(indices = (iVector) arr_alloc(num->rows, int)) )
 		errMsg("allocation", "chgRHSwObserv", "indices", 0);
-	if ( !(rhs = (vector) arr_alloc(num->rows+1, double)) )
+	if ( !(rhs = (dVector) arr_alloc(num->rows+1, double)) )
 		errMsg("allocation", "chgRHSwObserv", "rhs", 0);
 
 	/* copy right-hand side modified with mean information */
@@ -209,11 +209,11 @@ int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vecto
 
 }//END chgRHSwRand()
 
-int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ) {
-	vector vals;
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, dVector cost, iVector indices, dVector observ) {
+	dVector vals;
 	int n;
 
-	if ( !(vals = (vector) arr_alloc(num->rvdOmCnt+1, double)) )
+	if ( !(vals = (dVector) arr_alloc(num->rvdOmCnt+1, double)) )
 		errMsg("allocation", "chgObjwObserv", "vals", 0);
 
 	for ( n = 1; n <= num->rvdOmCnt; n++ )
