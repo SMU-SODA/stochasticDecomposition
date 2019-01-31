@@ -15,6 +15,7 @@
 
 #undef ALGO_CHECK
 #undef STOCH_CHECK
+#undef BASIS_CHECK
 
 /* To save time and space, Pi x b and Pi x C are calculated as soon as possible and stored in structures like sigma and delta.  Towards this end,
  * pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a vector).*/
@@ -68,22 +69,50 @@ typedef struct {
 	pixbCType 	**vals;
 } deltaType;
 
+typedef struct {
+	int				ck;			/* The first time the basis was encountered. */
+	int				weight;		/* Frequency of observation for each unique basis */
+	unsigned long 	*rCode;		/* Encoded row status in the basis (currently not being used */
+	unsigned long	*cCode;		/* Encoded column status in the basis */
+	int				phiLength;	/* Number of basic columns with random cost coefficients */
+	vector			*phi;		/* The phi matrix: the columns of inverse dual basis matrix which have random cost coefficients */
+	intvec			omegaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
+	intvec			sigmaIdx;	/* Indices within the random cost coefficient vector to which the columns of phi matrix correspond to. */
+	vector			piDet;		/* Deterministic component of the dual solution. This depends only on the basis. */
+	double			mubBar;
+	vector			gBar;
+	sparseMatrix	*psi;		/* The simplex tableau matrix corresponding to the basis. */
+	BOOL			feasFlag;
+}oneBasis;
+
+/* The basis type data structure holds all the information regarding the basis identified during the course of the algorithm.
+ * This structure will be at the heart of all calculations related to stochastic updates. */
+typedef struct {
+	int			basisDim;	/* The dimension of the basis matrix */
+	int			cnt;		/* Number of unique basis encountered by the algorithm */
+	int			rCodeLen;	/* Length of encoded row status */
+	int			cCodeLen;	/* Length of encoded column status */
+	BOOL		**obsFeasible;
+	oneBasis	**vals;		/* a structure for each basis */
+}basisType;
+
 /* subprob.c */
-int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newSigmaFlag,
+int solveSubprob(probType *prob, oneProblem *subproblem, vector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL *newOmegaFlag, int currentIter, double TOLERANCE, BOOL *subFeasFlag, BOOL *newBasisFlag,
 		double *subprobTime, double *argmaxTime);
-vector computeRHS(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
+int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, vector X, vector obs);
+int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, vector observ);
 void chgRHSwSoln(sparseVector *bBar, sparseMatrix *Cbar, vector rhs, vector X) ;
 int chgRHSwObserv(LPptr lp, numType *num, coordType *coord, vector observ, vector spRHS, vector X);
+int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, vector cost, intvec indices, vector observ);
 oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
-int stochasticUpdates(probType *prob, LPptr spLP, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength, omegaType *omega,
-		int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE);
-int computeIstar(numType *num, coordType *coord, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, int obs,
-		int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
-void calcDelta(numType *num, coordType *coord, lambdaType *lambda, omegaType *omega, deltaType *delta, int deltaRowLength, int elemIdx,
-		BOOL newOmegaFlag);
+int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, BOOL newOmegaFlag, int currentIter, double TOLERANCE, BOOL *newBasisFlag, BOOL subFeasFlag);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, vector piCbarX, vector Xvect, vector observ,
+		int obs, int numSamples, BOOL pi_eval, double *argmax, BOOL isNew);
+int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, BOOL newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, vector Pi, lambdaType *lambda, BOOL *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, vector pi, double mubBar,
               int idxLambda, BOOL newLambdaFlag, int currentIter, sigmaType *sigma, BOOL *newSigmaFlag, double TOLERANCE);
@@ -92,10 +121,19 @@ int computeMU(LPptr lp, intvec cstat, int numCols, double *mubBar);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
 sigmaType *newSigma(int numIter, int numNzCols, int numPi);
 deltaType *newDelta(int numIter);
-omegaType *newOmega(int numIter);
+omegaType *newOmega(int numOmega, int numIter);
 void freeLambdaType(lambdaType *lambda, BOOL partial);
 void freeSigmaType(sigmaType *sigma, BOOL partial);
 void freeOmegaType(omegaType *omega, BOOL partial);
 void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, BOOL partial);
+
+/* randCost.c */
+void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim);
+int decomposeDualSolution(LPptr spLP, oneBasis *B, vector omegaVals, int numRows);
+oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter, BOOL subFeasFlag);
+BOOL checkBasisFeasibility(oneBasis *B, sparseVector dOmega, string senx, int numCols, int numRows, double TOLERANCE);
+basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
+void freeOneBasis(oneBasis *B);
+void freeBasisType(basisType *basis, BOOL partial);
 
 #endif /* STOC_H_ */

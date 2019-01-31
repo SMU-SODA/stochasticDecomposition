@@ -12,10 +12,10 @@
 #include "twoSD.h"
 
 extern configType config;
-extern string outputDir;
 
-int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector Xvect) {
-	vector 	observ, rhs;
+int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, vector Xvect) {
+	vector 	observ, rhs, cost, costTemp;
+	intvec   objxIdx;
 	double 	obj, mean, variance, stdev, temp;
 	int		cnt, status, m;
 
@@ -31,22 +31,44 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 	if (!(rhs =(vector) arr_alloc(prob[1]->num->rows+1, double)))
 		errMsg("Allocation", "evaluate", "rhs",0);
 
+	/* cost coefficients */
+	if ( !(cost = (vector) arr_alloc(prob[1]->num->rvdOmCnt+1, double)) )
+		errMsg("allocation", "evaluate", "cost", 0);
+	if ( !(objxIdx = (intvec) arr_alloc(prob[1]->num->cols+1, int)) )
+		errMsg("allocation", "evaluate", "objxIdx", 0);
+	costTemp = expandVector(prob[1]->dBar->val, prob[1]->dBar->col, prob[1]->dBar->cnt, prob[1]->num->cols);
+	for (m = 1; m <= prob[1]->num->rvdOmCnt; m++ ) {
+		objxIdx[m] = prob[1]->coord->rvdOmCols[m] - 1;
+		cost[m] = costTemp[prob[1]->coord->rvdOmCols[m]];
+	}
+	mem_free(costTemp);
+
 	/* change the right hand side with the solution */
 	chgRHSwSoln(prob[1]->bBar, prob[1]->Cbar, rhs, Xvect);
+
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, &config.EVAL_SEED[0]);
+		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0]);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(cell->subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
+		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
 			return 1;
 		}
 
-		if ( solveProblem(cell->subprob->lp, cell->subprob->name, cell->subprob->type, &status) ) {
+		/* Change cost coefficients with random observations */
+		if ( prob[1]->num->rvdOmCnt > 0 ) {
+			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
+				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
+				return 1;
+			}
+		}
+
+		changeLPSolverType(ALG_AUTOMATIC);
+		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
 				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
@@ -59,15 +81,14 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 		}
 
 		/* use subproblem objective and compute evaluation statistics */
-		obj = getObjective(cell->subprob->lp, PROB_LP);
+		obj = getObjective(subprob->lp, PROB_LP);
 
 		if ( cnt == 0 )
 			mean = obj;
 		else {
 			temp = mean;
 			mean = mean + (obj - mean) / (double) (cnt + 1);
-			variance  = (1 - 1 / (double) cnt) * variance
-					+ (cnt + 1) * (mean - temp) * (mean - temp);
+			variance  = (1 - 1 / (double) cnt) * variance + (cnt + 1) * (mean - temp) * (mean - temp);
 			stdev = sqrt(variance/ (double) cnt);
 		}
 		cnt++;
@@ -78,16 +99,15 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, cellType *cell, vector
 			fflush(stdout);
 		}
 		if (!(cnt % 10000))
-			printf("\nObs:%d mean:%lf   error: %lf \n 0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
+			printf("\nObs:%d mean:%lf   error: %lf \n0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
 	}//END while loop
-	mean += vXvSparse(Xvect, prob[0]->dBar);;
+	mean += vXvSparse(Xvect, prob[0]->dBar);
 
 	writeEvaluationSummary(soln, mean, stdev, cnt);
 	writeEvaluationSummary(stdout, mean, stdev, cnt);
 
-	mem_free(observ); mem_free(rhs);
+	mem_free(observ); mem_free(rhs);  mem_free(objxIdx); mem_free(cost);
 	return 0;
-
 }//END evaluate()
 
 

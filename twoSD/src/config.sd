@@ -20,8 +20,8 @@ TAU 2
 MIN_QUAD_SCALAR 0.001
 
 // Run seeds
-RUN_SEED	3554548844580680
 RUN_SEED    4650175399072632
+RUN_SEED	3554548844580680
 RUN_SEED    6070772756632709
 RUN_SEED    5451675876709589
 RUN_SEED    5285327724846206
@@ -52,7 +52,7 @@ RUN_SEED    1395182510837913
 RUN_SEED    3735836402047426
 
 // Indicate whether to employ (by setting equal to 1) evaluation of the eventual solution
-EVAL_FLAG 0
+EVAL_FLAG 1
 
 // Solution tolerance for deciding the usage of mean solution.
 EVAL_MIN_ITER 250
@@ -61,8 +61,8 @@ EVAL_MIN_ITER 250
 EVAL_ERROR 0.01
 
 // Random number seed for resampling omegas during evaluation
-EVAL_SEED	8879657642464524
 EVAL_SEED	4317459304174907
+EVAL_SEED	8879657642464524
 EVAL_SEED	1499740298834250
 EVAL_SEED	8272809468603661
 EVAL_SEED	9321928632105101
@@ -105,8 +105,11 @@ R2 0.95
 // For updating the scaling factor.
 R3 2
 
+// Switch for dual stability test 
+DUAL_STABILITY	1
+
 // Number of iterations before checking new pis impact
-PI_EVAL_START 1
+PI_EVAL_START 0
 
 // Number of iterations between evaluation of the impact of new dual vertex
 PI_CYCLE 1
@@ -122,8 +125,8 @@ PRE_EPSILON 0.01
 
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
-EPSILON 0.001
-SCAN_LEN 256
+EPSILON 0.01
+SCAN_LEN 128
 
-// 1 for multiple replications, 0 for single replication
-MULTIPLE_REP 1
+// Number of replications
+MULTIPLE_REP 0

@@ -26,9 +26,8 @@ BOOL optimal(probType **prob, cellType *cell) {
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag ) {
 		/* perform the pre-test */
 		if ( preTest(cell) ) {
-			if (fullTest(prob, cell)) {
+			if ((cell->optFlag = fullTest(prob, cell)) == TRUE) {
 				/* full test satisfied */
-				cell->optFlag = TRUE;
 				printf (">"); fflush(stdout);
 				return TRUE;
 			}
@@ -71,12 +70,16 @@ BOOL preTest(cellType *cell) {
 BOOL fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	intvec  cdf, observ;
-	double  est, ht, LB=0.0;
+	double  est, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
 	clock_t tic = clock();
 	/* (a) choose good cuts */
 	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
+	if ( gCuts->cnt == 0 ) {
+		freeCutsType(gCuts, FALSE);
+		return FALSE;
+	}
 
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(cdf = (intvec) arr_alloc(cell->omega->cnt+1, int)) )
@@ -91,7 +94,8 @@ BOOL fullTest(probType **prob, cellType *cell) {
 		resampleOmega(cdf, observ, cell->k-1);
 
 		/* (d) reform the good cuts by plugging in the omegas */
-		reformCuts(cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord, gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord,
+				gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
@@ -101,9 +105,13 @@ BOOL fullTest(probType **prob, cellType *cell) {
 				est = ht;
 		}
 
-		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach, we don't include the incumb_x * c in estimate */
-		if (config.MASTER_TYPE == 1)
+		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach,
+		 * we don't include the incumb_x * c in estimate */
+		if (config.MASTER_TYPE == PROB_LP) {
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
+			// TODO: solve a temporary master problem
+			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
+		}
 		else
 			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
 
@@ -122,6 +130,7 @@ BOOL fullTest(probType **prob, cellType *cell) {
 			return FALSE;
 		}
 	}//END replication loop
+	cell->time.optTestIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	mem_free(cdf); mem_free(observ);
 	freeCutsType(gCuts, FALSE);
@@ -181,8 +190,10 @@ void resampleOmega(intvec cdf, intvec observ, int numSamples) {
 
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
  * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
-void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord, cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
-	int cnt, obs, idx, count, istar;
+void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
+		cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
+	double multiplier;
+	int cnt, obs, idx, count, c, istar, sigmaIdx, lambdaIdx;
 
 	/* Loop through all the cuts and reform them */
 	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
@@ -198,14 +209,25 @@ void reformCuts(sigmaType *sigma, deltaType *delta, omegaType *omega, numType *n
 			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
 				istar = gCuts->vals[cnt]->iStar[observ[obs]];
 
-				gCuts->vals[cnt]->alpha += sigma->vals[istar].pib + delta->vals[sigma->lambdaIdx[istar]][observ[obs]].pib;
+				for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
+					sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+					if ( idx == 0 )
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
-				for (idx = 1; idx <= num->cntCcols; idx++)
-					gCuts->vals[cnt]->beta[coord->CCols[idx]] += sigma->vals[istar].piC[idx];
+					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+					gCuts->vals[cnt]->alpha += omega->weights[observ[obs]] * multiplier *
+							(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
 
-				for (idx = 1; idx <= num->rvCOmCnt; idx++)
-					gCuts->vals[cnt]->beta[coord->rvCols[idx]] += delta->vals[sigma->lambdaIdx[istar]][observ[obs]].piC[idx];
-
+					for (c = 1; c <= num->cntCcols; c++)
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[observ[obs]] *
+						multiplier * sigma->vals[sigmaIdx].piC[c];
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[observ[obs]] *
+						multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
+				}
 				count++;
 			}
 		}

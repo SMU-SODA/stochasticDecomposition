@@ -33,21 +33,24 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 #ifdef ALGO_CHECK
-	writeProblem(cell->master->lp, "masterCell.lp");
+	writeProblem(cell->master->lp, "cellMaster.lp");
 #endif
 
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
-		writeProblem(cell->master->lp, "error.lp");
-		errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		if ( status == STAT_INFEASIBLE ) {
+			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
+			writeProblem(cell->master->lp, "infeasibleM.lp");
+		}
+		else {
+			writeProblem(cell->master->lp, "errorM.lp");
+			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		}
 		return 1;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
-
-	/* increment the number of problems solved during algorithm */
-	cell->LPcnt++;
 
 	/* Get the most recent optimal solution to master program */
 	if ( getPrimal(cell->master->lp, cell->candidX, num->cols) ) {
@@ -88,18 +91,24 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 int addCut2Master(oneProblem *master, oneCut *cut, vector vectX, int lenX) {
 	intvec 	indices;
 	int 	cnt;
+	static int cummCutNum = 0;
 
-	if (!(indices = arr_alloc(lenX + 1, int)))
+	/* Set up indices */
+	if (!(indices = (intvec) arr_alloc(lenX + 1, int)))
 		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta",0);
 	for (cnt = 1; cnt <= lenX; cnt++)
 		indices[cnt] = cnt - 1;
 	indices[0] = lenX;
 
+	/* Cut right-hand side */
 	if ( config.MASTER_TYPE == PROB_QP )
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
 
+	/* Set up the cut name */
+	sprintf(cut->name, "cut_%04d", cummCutNum++);
+
 	/* add the cut to the cell cuts structure as well as on the solver */
-	if ( addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta) ) {
+	if ( addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name) ) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return 1;
 	}
@@ -114,25 +123,23 @@ int addCut2Master(oneProblem *master, oneCut *cut, vector vectX, int lenX) {
 }//END addCuts2Master()
 
 int constructQP(probType *prob, cellType *cell, vector incumbX, double quadScalar) {
-	int status;
 
-	status = changeQPproximal(cell->master->lp, prob->num->cols, quadScalar);
-	if ( status ) {
+	if ( changeQPproximal(cell->master->lp, prob->num->cols, quadScalar) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
 		return 1;
 	}
-	status = changeQPrhs(prob, cell, incumbX);
-	if ( status ) {
+
+	if ( changeQPrhs(prob, cell, incumbX) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
 		return 1;
 	}
-	status = changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX);
-	if ( status ) {
+
+	if ( changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX, 0) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}
 
-	return status;
+	return 0;
 }//END constructQP()
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
@@ -258,7 +265,7 @@ int changeQPrhs(probType *prob, cellType *cell, vector xk) {
 
 /* This function changes the (lower) bounds of the variables, while changing from x to d. The lower bounds of d varibles are -xbar
  * (incumbent solution). */
-int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
+int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk, int offset) {
 	int 	status = 0, cnt;
 	vector	lbounds, ubounds;
 	intvec	lindices, uindices;
@@ -281,7 +288,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 	/* Change the Upper Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		ubounds[cnt] = bdu[cnt] - xk[cnt + 1];
-		uindices[cnt] = cnt;
+		uindices[cnt] = cnt+offset;
 		ulu[cnt] = 'U';
 	}
 
@@ -294,7 +301,7 @@ int changeQPbds(LPptr lp, int numCols, vector bdl, vector bdu, vector xk) {
 	/* Change the Lower Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		lbounds[cnt] = bdl[cnt] - xk[cnt + 1];
-		lindices[cnt] = cnt;
+		lindices[cnt] = cnt+offset;
 		llu[cnt] = 'L';
 	}
 
@@ -343,14 +350,19 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->ctype",0);
 	if (!(master->objname = (string) arr_alloc(NAMESIZE,char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->objname",0);
-	if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
-	if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
-		errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
 	if (!(master->cname = (string*) arr_alloc(master->macsz,string)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cname",0);
 	if (!(master->cstore = (string) arr_alloc(master->cstorsz, char)))
 		errMsg("Allocation", "new_master", "Fail to allocate memory to master->cstore",0);
+	if ( master->mar > 0 ) {
+		if (!(master->rname = (string *) arr_alloc(master->marsz,string)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rname",0);
+		if (!(master->rstore = (string) arr_alloc(master->rstorsz, char)))
+			errMsg("Allocation", "new_master", "Fail to allocate memory to master->rstore",0);
+	}
+	else {
+		master->rname = NULL; master->rstore = NULL;
+	}
 
 	/* Allocate memory to the information whose type is vector */
 	if (!(master->objx = (vector) arr_alloc(master->macsz, double)))
@@ -375,18 +387,18 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	strcpy(master->name, orig->name);           /* Copy problem name */
 	strcpy(master->objname, orig->objname);     /* Copy objective name */
 
-	/* Copy problem's column and row names */
+	/* Copy problem's column and row names. Calculate difference in pointers for master/copy row and column names. */
 	i = 0;
 	for (q = orig->cname[0]; q < orig->cname[0] + orig->cstorsz; q++)
 		master->cstore[i++] = *q;
-
-	i = 0;
-	for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
-		master->rstore[i++] = *q;
-
-	/* Calculate difference in pointers for master/copy row and column names */
 	colOffset = master->cstore - orig->cname[0];
-	rowOffset = master->rstore - orig->rname[0];
+
+	if ( master->mar > 0 ) {
+		i = 0;
+		for (q = orig->rname[0]; q < orig->rname[0] + orig->rstorsz; q++)
+			master->rstore[i++] = *q;
+		rowOffset = master->rstore - orig->rname[0];
+	}
 
 	/* Copy the all column information from the original master problem */
 	cnt = 0;

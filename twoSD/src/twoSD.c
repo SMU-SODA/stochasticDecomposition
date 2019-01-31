@@ -49,7 +49,7 @@ int main (int argc, char *argv[]) {
 	/* launch the algorithm */
 	status = algo(orig, tim, stoc, inputDir, probName);
 	if ( status ) {
-		errMsg("allocation", "main", "failed to solve the problem using SDDP", 0);
+		errMsg("allocation", "main", "failed to solve the problem using 2-SD algorithm", 0);
 		goto TERMINATE;
 	}
 
@@ -143,6 +143,8 @@ int readConfig() {
 			fscanf(fptr, "%lf", &config.R2);
 		else if (!(strcmp(line, "R3")))
 			fscanf(fptr, "%lf", &config.R3);
+		else if (!(strcmp(line, "DUAL_STABILITY")))
+			fscanf(fptr, "%d", &config.DUAL_STABILITY);
 		else if (!(strcmp(line, "PI_EVAL_START")))
 			fscanf(fptr, "%d", &config.PI_EVAL_START);
 		else if (!(strcmp(line, "PI_CYCLE")))
