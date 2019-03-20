@@ -136,4 +136,4 @@ MULTIPLE_REP 0
 COMPROMISE_PROB	0
 
 // Number of observations added to the sample in each iteration (default is 1)
-SAMPLE_INCREMENT	10
+SAMPLE_INCREMENT	1

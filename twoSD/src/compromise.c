@@ -21,7 +21,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 
 	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
 
-	batch->ck[batch->cnt] 	 = cell->k;
+	batch->ck[batch->cnt] 	 = cell->sampleSize;
 	batch->objLB[batch->cnt] = cell->incumbEst;
 
 	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols);

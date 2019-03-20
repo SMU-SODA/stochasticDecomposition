@@ -140,6 +140,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 			break;
 
 		/******* 2. Generate new observations, and add it to the set of observations *******/
+		cell->sampleSize += config.SAMPLE_INCREMENT;
 		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 			/* (a) Use the stoc file to generate observations */
 			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0]);

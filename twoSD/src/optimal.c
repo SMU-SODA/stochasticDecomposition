@@ -84,18 +84,19 @@ bool fullTest(probType **prob, cellType *cell) {
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt+1, int)) )
 		errMsg("allocation", "fullTest", "failed to allocate memory to cdf",0);
-	if ( !(observ = (iVector) arr_alloc(cell->k, int)))
+	if ( !(observ = (iVector) arr_alloc(cell->sampleSize, int)))
 		errMsg("allocation", "fullTest", "resampled observations", 0);
 
 	empiricalDistribution(cell->omega, cdf);
 
 	for (rep = 0; rep < config.BOOTSTRAP_REP; rep++) {
-		/* (c) resample from the set of observations */
-		resampleOmega(cdf, observ, cell->k-1);
+		/* (c) resample from the set of observations.
+		 * Since sample size is already updated, we need to resample from (k-1)*N samples. */
+		resampleOmega(cdf, observ, cell->sampleSize);
 
 		/* (d) reform the good cuts by plugging in the omegas */
 		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord,
-				gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+				gCuts, observ, cell->sampleSize, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
@@ -113,7 +114,7 @@ bool fullTest(probType **prob, cellType *cell) {
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
 		else
-			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->k, cell->quadScalar, gCuts);
+			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts);//TODO: Sample size update
 
 #if 0
 		printf("\niter = %d, replication = %d, UB = %f, LB = %f, Gap = %lf", cell->k, rep, est, LB, DBL_ABS((est - LB) / cell->incumbEst));
@@ -191,7 +192,7 @@ void resampleOmega(iVector cdf, iVector observ, int numSamples) {
 /* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
  * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
-		cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX) {
+		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX) {
 	double multiplier;
 	int cnt, obs, idx, count, c, istar, sigmaIdx, lambdaIdx;
 
@@ -204,7 +205,7 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 		count = 0;
 		/* Reform this cut based on resampled observations */
-		for (obs = 0; obs < k; obs++) {
+		for (obs = 0; obs < sampleSize; obs++) {
 			/* Only sum values if the cut has an istar for this observation */
 			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
 				istar = gCuts->vals[cnt]->iStar[observ[obs]];
@@ -234,19 +235,19 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 		/* Take the average of the alpha and beta values */
 		for (idx = 0; idx <= lenX; idx++)
-			gCuts->vals[cnt]->beta[idx] /= (double) k;
+			gCuts->vals[cnt]->beta[idx] /= (double) sampleSize;
 
-		gCuts->vals[cnt]->alpha /= (double) k;
+		gCuts->vals[cnt]->alpha /= (double) sampleSize;
 
 		if (lbType == NONTRIVIAL)
-			gCuts->vals[cnt]->alpha += (1 - (double) count / (double) k) * lb;
+			gCuts->vals[cnt]->alpha += (1 - (double) count / (double) sampleSize) * lb;
 	}
 
 }//END reform_cuts
 
 /* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c in the case of
  regularized approach. */
-double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts) {
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts) {
 	double *bk; 			/* dVector: b - A*incumb_x. */
 	double *lambda; 		/* dVector: the dual of the primal constraints. */
 	double bk_lambda; 		/* scalar: bk*lambda. */
@@ -314,7 +315,7 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	Vk_theta = 0.0;
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
 		/* 3a. Obtain theta from c->pi */
-		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
+		theta = ((double) sampleSize / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
 
 		/* 3a. Obtain theta from c->pi */
 		Vk_theta += theta*(cuts->vals[cnt]->alpha - vXv(cuts->vals[cnt]->beta, incumbX, NULL, prob->num->cols));

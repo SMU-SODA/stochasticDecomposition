@@ -23,6 +23,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;
 	int    	cutIdx, obs;
 
+	/* A subproblem is solved for every new observation */
 	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
@@ -54,8 +55,8 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
-	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, Xvect, cell->k, &cell->dualStableFlag,
-			cell->pi_ratio, cell->lb);
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+			Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -89,8 +90,8 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
-		bool *dualStableFlag, dVector pi_ratio, double lb) {
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb) {
 	oneCut *cut;
 	dVector 	piCbarX, beta;
 	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
@@ -115,12 +116,12 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
-		/* For each observation, find the Pi which maximizes height at X. */
+		/* For each observation, find the Pi/basis that generates the Pi which maximizes height at X. */
 		if (pi_eval_flag == true) {
-			istarOld = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, pi_eval_flag, &argmaxOld, false);
-			istarNew = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, true, &argmaxNew, true);
+			istarOld = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmaxOld, false);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, true, &argmaxNew, true);
 
 			argmax = max(argmaxOld, argmaxNew);
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
@@ -129,9 +130,9 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			cummAll += max(argmax-lb, 0)*omega->weights[obs];
 		}
 		else {
-			/* identify the maximal Pi for each observation */
-			istar = computeIstar(num, coord, basis, sigma, delta, piCbarX, Xvect, omega->vals[obs],
-					obs, numSamples, pi_eval_flag, &argmax, false);
+			/* identify the maximal Pi/basis that generates the maximal Pi for each observation */
+			istar = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
 		}
 
 		if (istar < 0) {
@@ -195,12 +196,12 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 }//END SDCut
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currIter, dVector xk, int betaLen, double lb) {
+double maxCutHeight(cutsType *cuts, int sampleSize, dVector xk, int betaLen, double lb) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		ht = cutHeight(cuts->vals[cnt], currIter, xk, betaLen, lb);
+		ht = cutHeight(cuts->vals[cnt], sampleSize, xk, betaLen, lb);
 		if (Sm < ht) {
 			Sm = ht;
 		}
@@ -211,9 +212,9 @@ double maxCutHeight(cutsType *cuts, int currIter, dVector xk, int betaLen, doubl
 
 /* This function calculates and returns the height of a given cut at a given X.  It includes the k/(k-1) update, but does not include
  * the coefficients due to the cell. */
-double cutHeight(oneCut *cut, int currIter, dVector xk, int betaLen, double lb) {
+double cutHeight(oneCut *cut, int currSampleSize, dVector xk, int betaLen, double lb) {
 	double height;
-	double t_over_k = ((double) cut->numSamples / (double) currIter);
+	double t_over_k = ((double) cut->numSamples / (double) currSampleSize);
 
 	/* A cut is calculated as alpha - beta x X */
 	height = cut->alpha - vXv(cut->beta, xk, NULL, betaLen);
@@ -279,7 +280,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
-	minObs 	  = cell->k;
+	minObs 	  = cell->sampleSize;
 	oldestCut = cell->cuts->cnt;
 
 	/* identify the oldest loose cut */
@@ -296,14 +297,14 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 
 	/* if the oldest loose cut is the most recently added cut, then the cut with minimium cut height will be dropped */
 	if ( oldestCut == cell->cuts->cnt ) {
-		minHeight = cutHeight(cell->cuts->vals[0], cell->k, candidX, betaLen, lb);
+		minHeight = cutHeight(cell->cuts->vals[0], cell->sampleSize, candidX, betaLen, lb);
 		oldestCut = 0;
 
 		for (idx = 1; idx < cell->cuts->cnt; idx++) {
 			if (idx == cell->iCutIdx)
 				continue;
 
-			height = cutHeight(cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
+			height = cutHeight(cell->cuts->vals[idx], cell->sampleSize, candidX, betaLen, lb);
 			if (height < minHeight) {
 				minHeight = height;
 				oldestCut = idx;

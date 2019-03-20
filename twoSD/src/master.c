@@ -19,7 +19,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->k, cell->cuts) ) {
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts) ) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -80,7 +80,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->k, cell->candidX, num->cols, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;
@@ -144,13 +144,13 @@ int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScal
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
-int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts) {
+int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *cuts) {
 	double	coef[1];
 	int 	c;
 
 	for (c = 0; c < cuts->cnt; c++){
 		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-		coef[0] = (double) (k) / (double) cuts->vals[c]->numSamples;         // coefficient k/j of eta column
+		coef[0] = (double) (currSampleSize) / (double) cuts->vals[c]->numSamples;         // coefficient k/j of eta column
 
 		if ( changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum+1) ) {
 			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);

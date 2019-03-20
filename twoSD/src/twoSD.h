@@ -77,7 +77,7 @@ typedef struct {
 
 typedef struct {
 	int     cnt;                    /* number of cuts */
-	oneCut  **vals;
+	oneCut  **vals;					/* A vector of oneCut type, each element has information about a particular cut. */
 }cutsType;
 
 typedef struct {
@@ -95,14 +95,8 @@ typedef struct {
 }runTime;
 
 typedef struct {
-	iVector	omegaIdx;
-	bool 	*newOmegaFlag;
-	iVector basisIdx;
-	bool	*newBasisFlag;
-}spSolveSummary;
-
-typedef struct {
 	int         k;                  /* number of iterations */
+	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
@@ -110,7 +104,7 @@ typedef struct {
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
 
-	dVector      candidX;            /* primal solution of the master problem */
+	dVector      candidX;           /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
 
 	dVector      incumbX;			/* incumbent master solution */
@@ -123,8 +117,8 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	dVector 		piM;				/* master dual information */
-	dVector      djM;                /* master reduced cost dVector */
+	dVector 	piM;				/* master dual information */
+	dVector     djM;                /* master reduced cost dVector */
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
@@ -138,8 +132,8 @@ typedef struct {
 	omegaType 	*omega;				/* all realizations observed during the algorithm */
 	basisType	*basis;				/* hold unique basis identified */
 
-    bool        optFlag;
-	dVector      pi_ratio;
+    bool        optFlag;			/* Optimality flag */
+	dVector     pi_ratio;			/* Pi ratios over a window of selected size (determined by tolerance level) */
     bool        dualStableFlag; 	/* indicates if dual variables are stable */
 
     bool 		optMode;			/* When false, the algorithm tries to resolve infeasibility */
@@ -148,7 +142,7 @@ typedef struct {
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
-	spSolveSummary	*sample;
+	sampleType	*sample;
 
 	runTime		time;				/* Run time structure */
 }cellType;
@@ -192,8 +186,8 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
-		bool *dualStableFlag, dVector pi_ratio, double lb);
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
@@ -216,7 +210,7 @@ bool preTest(cellType *cell);
 bool fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
-		cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
+		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
 double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(iVector cdf, iVector observ, int numSamples);
