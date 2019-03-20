@@ -148,7 +148,7 @@ typedef struct {
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
-	spSolveSummary	sample;
+	spSolveSummary	*sample;
 
 	runTime		time;				/* Run time structure */
 }cellType;
@@ -191,7 +191,7 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
 		bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);

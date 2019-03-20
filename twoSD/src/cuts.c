@@ -37,7 +37,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
 		if ( ! cell->spFeasFlag ) {
 			/* Subproblem is infeasible, resolve infeasibility */
-			if ( resolveInfeasibility(prob, cell, cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
+			if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
 				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
 				return -1;
 			}
