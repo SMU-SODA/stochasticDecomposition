@@ -193,6 +193,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
+	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	if (prob[0]->lb == 0)
 		cell->lbType = TRIVIAL;
@@ -245,6 +246,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->sigma  = newSigma(length, prob[1]->num->cntCcols, 0);
 	cell->delta  = newDelta(length);
 	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
+	cell->sample = newSample(config.SAMPLE_INCREMENT);
 
 	cell->optFlag 			= false;
 
@@ -300,6 +302,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* constants and arrays */
 	cell->k = 0;
+	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;
@@ -387,6 +390,7 @@ void freeCellType(cellType *cell) {
 		if (cell->lambda) freeLambdaType(cell->lambda, false);
 		if (cell->sigma) freeSigmaType(cell->sigma, false);
 		if (cell->basis) freeBasisType(cell->basis, false);
+		if (cell->sample) freeSampleType(cell->sample);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
 		mem_free(cell);
 	}

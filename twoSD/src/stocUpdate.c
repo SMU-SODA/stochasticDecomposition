@@ -138,8 +138,8 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
  * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
  * containing two indices.  (While both indices point to pieces of the dual dVectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant dVectors. */
-int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, dVector piCbarX, dVector Xvect, dVector observ,
-		int obs, int numSamples, bool pi_eval, double *argmax, bool isNew) {
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
+		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew) {
 	double 	arg, multiplier = 1.0;
 	int 	cnt, maxCnt, c, basisUp, basisLow, sigmaIdx, lambdaIdx;
 
@@ -154,8 +154,21 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		basisUp = INT_MAX; basisLow = numSamples;
 	}
 
-	*argmax = -DBL_MAX; maxCnt = 0;
+	/* Check to see if the subproblem corresponding to the observation _obs_ was solved in the current iteration. If so, the argmax operation is not
+	 * necessary. */
+	cnt = 0;
+	while ( cnt < sample->cnt ) {
+		if ( obs == sample->omegaIdx[cnt] )
+			break;
+		cnt++;
+	}
+	if ( cnt < sample->cnt ) {
+		/* If the subproblem was indeed solved, then make sure the basis is within the desired range (relevant when pi-ratio test is being conducted). */
+		if ( basis->vals[sample->basisIdx[cnt]]->ck > basisLow && basis->vals[sample->basisIdx[cnt]]->ck <= basisUp )
+			return sample->basisIdx[cnt];
+	}
 
+	*argmax = -DBL_MAX; maxCnt = 0;
 	/* Run through the list of basis to choose the one which provides the best lower bound */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 		if ( basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
@@ -468,6 +481,24 @@ omegaType *newOmega(int numOmega, int numIter) {
 	return omega;
 }//END newOmega()
 
+sampleType *newSample(int sampleSize) {
+	sampleType *sample;
+
+	if ( !(sample = (sampleType *) mem_malloc(sizeof(sampleType))) )
+		errMsg("allocation", "newSample", "sample", 0);
+	if ( !(sample->omegaIdx = (iVector) arr_alloc(sampleSize, int)) )
+		errMsg("allocation", "newSample", "sample->omegaIdx", 0);
+	if ( !(sample->newOmegaFlag = (bool *) arr_alloc(sampleSize, bool)) )
+		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
+	if ( !(sample->basisIdx = (iVector) arr_alloc(sampleSize, int)) )
+		errMsg("allocation", "newSample", "sample->basisIdx", 0);
+	if ( !(sample->newBasisFlag = (bool *) arr_alloc(sampleSize, bool)) )
+		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
+	sample->cnt = sampleSize;
+
+	return sample;
+}//END sampleType()
+
 void freeOmegaType(omegaType *omega, bool partial) {
 	int n;
 
@@ -542,3 +573,15 @@ void freeDeltaType (deltaType *delta, int numDeltaRows, int omegaCnt, bool parti
 	}
 
 }//END freeDeltaType()
+
+void freeSampleType(sampleType *sample) {
+
+	if ( sample ) {
+		if ( sample->omegaIdx ) mem_free(sample->omegaIdx);
+		if ( sample->basisIdx ) mem_free(sample->basisIdx);
+		if ( sample->newOmegaFlag) mem_free(sample->newOmegaFlag);
+		if ( sample->newBasisFlag) mem_free(sample->newBasisFlag);
+		mem_free(sample);
+	}
+
+}
