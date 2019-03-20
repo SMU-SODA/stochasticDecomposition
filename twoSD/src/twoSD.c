@@ -29,7 +29,7 @@ int main (int argc, char *argv[]) {
 
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
-	if (readConfig("./", inputDir) ) {
+	if (readConfig("./src/", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
@@ -82,18 +82,33 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 				outputDir = (cString) arr_alloc(2*BLOCKSIZE, char);
 				strcpy(outputDir, argv[++i]); break;
 			}
-			case 'e': config.EVAL_FLAG = atoi(argv[++i]); break;
-			case 'd': config.DUAL_STABILITY = atoi(argv[++i]); break;
-			case 'l':
-				switch (argv[++i][0])
+			case 'e': {
+				config.EVAL_FLAG = atoi(argv[++i]);
+				break;
+			}
+			case 'd': {
+				config.DUAL_STABILITY = atoi(argv[++i]);
+				break;
+			}
+			case 't': {
+				switch (argv[++i][0]) {
 				case 'l': config.EPSILON = 0.01; config.SCAN_LEN = 128; break;
 				case 'n': config.EPSILON = 0.001; config.SCAN_LEN = 256; break;
 				case 't': config.EPSILON = 0.0001; config.SCAN_LEN = 512; break;
-				default:
-					goto TERMINATE; break;
-				case 'm': config.MULTIPLE_REP = atoi(argv[++i]); break;
-				case 'c': config.COMPROMISE_PROB = atoi(argv[++i]); break;
+				default: {
+					goto TERMINATE;
+					break;
+				}}
+				break;
 			}
+			case 'm': {
+				config.MULTIPLE_REP = atoi(argv[++i]);
+				break;
+			}
+			case 'c': {
+				config.COMPROMISE_PROB = atoi(argv[++i]);
+				break;
+			}}
 		}
 		else {
 			printf("Input options must begin with a '-'. Use '-?' for help.\n"); exit(0);
@@ -124,8 +139,8 @@ void printHelpMenu() {
 	/* DUAL_STABILITY */
 	printf("         -d {0,1}   -> use the dual stability test.\n");
 	/* TOLERANCE */
-	printf("         -l {0,1}   -> tolerance level to be employed.\n");
-	printf("                        Suggested tolerance(EPSILON, SCAN_LEN) = loose (0.01, 128), nomimal (0.001, 256) and tight (0.0001, 512)\n");
+	printf("         -t {l,n,t} -> tolerance level to be employed.\n");
+	printf("                        Suggested tolerance(EPSILON, SCAN_LEN) = 'l'oose (0.01, 128), 'n'omimal (0.001, 256) and 't'ight (0.0001, 512)\n");
 	/* MULTIPLE_REP */
 	printf("         -m {0,1}   -> use multiple replication.\n");
 	/* COMPROMISE_PROB */
