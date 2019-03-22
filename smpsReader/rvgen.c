@@ -127,7 +127,7 @@ void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal,
 	}
 
 	for (n = 0; n < stoc->numPerGroup[groupID]; n++ )
-		observ[n] = max(observ[n], 0.01);
+		observ[n] = maximum(observ[n], 0.01);
 
 	mem_free(eps);
 	return;

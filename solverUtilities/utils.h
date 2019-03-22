@@ -37,8 +37,8 @@ typedef		int					*iVector;
 #define		arr_alloc(n,type)	(type *) mem_calloc((n),sizeof(type))
 #define 	mem_realloc(ptr, n) log_realloc("realloc : " #ptr " : " #n,(ptr), realloc((ptr),(n)), (n))
 #define 	mem_free(ptr) 		free(ptr)
-#define 	min(X, Y) 			((X) <= (Y) ? (X) : (Y))
-#define 	max(X, Y) 			((X) >= (Y) ? (X) : (Y))
+#define 	minimum(X, Y) 		((X) <= (Y) ? (X) : (Y))
+#define 	maximum(X, Y) 		((X) >= (Y) ? (X) : (Y))
 #define		DBL_ABS(x)			((x) > 0.0 ? (x) : -(x))
 
 typedef struct sparseVector_{

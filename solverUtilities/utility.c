@@ -565,7 +565,7 @@ iVector iVectorIntersect(iVector a, iVector b, int lenA, int lenB) {
 	iVector inter;
 	int	cnt, n;
 
-	if ( !(inter = (iVector) arr_alloc(max(lenA, lenB)+1, int)) )
+	if ( !(inter = (iVector) arr_alloc(maximum(lenA, lenB)+1, int)) )
 		errMsg("allocation", "iVectorIntersect", "inter", 0);
 
 	cnt = 1;

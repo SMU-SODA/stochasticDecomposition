@@ -1338,7 +1338,7 @@ void freeStocType(stocType *stoc) {
 				if (stoc->probs[0]) mem_free(stoc->probs[0]);
 			}
 			else {
-				for ( n = 0; n < max(stoc->numOmega, stoc->numGroups); n++ )
+				for ( n = 0; n < maximum(stoc->numOmega, stoc->numGroups); n++ )
 					if ( stoc->probs[n] ) mem_free(stoc->probs[n]);
 			}
 			mem_free(stoc->probs);

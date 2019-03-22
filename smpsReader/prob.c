@@ -656,7 +656,7 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 			}
 
 			/* get lower bound */
-			lb[t-1] = min(0, getObjective(lpClone, PROB_LP) + alpha);
+			lb[t-1] = minimum(0, getObjective(lpClone, PROB_LP) + alpha);
 
 			/* release the problem */
 			if ( freeProblem(lpClone) ) {
