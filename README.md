@@ -9,7 +9,7 @@ Stochastic decomposition (SD) is a sequential sampling-based algorithm for two-s
 This software is developed by Jason Mai, Lei Zhao, Yifan Liu, and Harsha Gangammanavar and Suvrajeet Sen.
 
 ### Support
-Please report bugs [here on GitHub](https://github.com/USC3DLAB/SD/issues).
+Please report bugs [here on GitHub](https://github.com/SMU-SODA/stochasticDecomposition/issues).
 
 ## Version information: 
 `v1.0`: Supports 2-SLPs with randomness in right-hand side and the technology matrix.  
