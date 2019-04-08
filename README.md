@@ -32,7 +32,7 @@ Note: Only Unix systems have been tested.
 
 #### Steps
   1. Download the SD source codes.  
-    * `git clone https://github.com/USC3DLAB/SD`  
+    * `git clone https://github.com/SMU-SODA/stochasticDecomposition.git`  
   2. For `v1.0`  
     * Checkout the version with: `git checkout v1.0`  
     * Follow instructions in the README file.  
@@ -42,8 +42,17 @@ Note: Only Unix systems have been tested.
     * Compile the code: `make all`  
   4. Setup a directory to write output files.  
     * `mkdir spOutput`  
-  5. Execute the algorithm by invoking the executable with three inputs (i) problem name, (ii) directory where the problem files reside, and (iii) directory where you wish output files be written.  
-    * `./twoSD problem_name input_directory_path output_directory_path`  
-    * Example: `./twoSD pgp2 ./spInput ./spOutput`  
+  5. Execute the algorithm. The input options for the algorithm are:  
+         Input options:  
+             `-p` string  -> problem name.  
+             `-i` string  -> input directory where the problem SMPS files are saved.  
+             `-o` string  -> output directory where the result files will be written.  
+             `-e` {0,1}   -> evaluation flag which determines if the final solution will be evaluated through out of sample evalauation.  
+             `-d` {0,1}   -> use the dual stability test.  
+             `-t` {l,n,t} -> tolerance level to be employed.  
+                        Suggested tolerance(EPSILON, SCAN_LEN) = 'l'oose (0.01, 128), 'n'omimal (0.001, 256) and 't'ight (0.0001, 512)  
+             `-m` {0,1}   -> use multiple replication.  
+             `-c` {0,1}   -> build and solve compromise problem.  
+     * Example: `-p pgp2 -i ../../spAlgorithms/spInput/ -o ../../spOutput -e 0 -d 1 -t l -m 0 -c 0`  
 
-A collection of classical 2-SLP problems are included in the `spInput` folder. Results will be stored in `spOutput/problem_name` folder. Please check `pgp2.detailed_soln.out` for solutions and `time_sample.out` for CPU time and number of samples used.
+A collection of classical 2-SLP problems are included in the `spInput` folder of `spAlgorithms` repository. Results will be stored in `spOutput/problem_name` folder. Please check `pgp2.detailed_soln.out` for solutions and `time_sample.out` for CPU time and number of samples used.
