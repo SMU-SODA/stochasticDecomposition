@@ -123,11 +123,11 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			istarNew = computeIstar(num, coord, basis, sigma, delta, sample,
 					piCbarX, Xvect, omega->vals[obs], obs, numSamples, true, &argmaxNew, true);
 
-			argmax = max(argmaxOld, argmaxNew);
+			argmax = maximum(argmaxOld, argmaxNew);
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
 
-			cummOld += max(argmaxOld-lb, 0)*omega->weights[obs];
-			cummAll += max(argmax-lb, 0)*omega->weights[obs];
+			cummOld += maximum(argmaxOld-lb, 0)*omega->weights[obs];
+			cummAll += maximum(argmax-lb, 0)*omega->weights[obs];
 		}
 		else {
 			/* identify the maximal Pi/basis that generates the maximal Pi for each observation */

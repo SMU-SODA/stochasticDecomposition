@@ -60,6 +60,7 @@ int main (int argc, char *argv[]) {
 	freeTimeType(tim);
 	freeStocType(stoc);
 	closeSolver();
+	mem_free(probName); mem_free(inputDir);
 
 	return 0;
 }//END main()
@@ -108,7 +109,12 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 			case 'c': {
 				config.COMPROMISE_PROB = atoi(argv[++i]);
 				break;
-			}}
+			}
+			case 's':{
+				config.SAMPLE_INCREMENT = atoi(argv[++i]);
+				break;
+			}
+			}
 		}
 		else {
 			printf("Input options must begin with a '-'. Use '-?' for help.\n"); exit(0);

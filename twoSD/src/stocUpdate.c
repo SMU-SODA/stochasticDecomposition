@@ -164,8 +164,25 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	}
 	if ( cnt < sample->cnt ) {
 		/* If the subproblem was indeed solved, then make sure the basis is within the desired range (relevant when pi-ratio test is being conducted). */
-		if ( basis->vals[sample->basisIdx[cnt]]->ck > basisLow && basis->vals[sample->basisIdx[cnt]]->ck <= basisUp )
+		if ( basis->vals[sample->basisIdx[cnt]]->ck > basisLow && basis->vals[sample->basisIdx[cnt]]->ck <= basisUp ) {
+			arg = 0.0;
+			for ( c = 0; c <= basis->vals[sample->basisIdx[cnt]]->phiLength; c++ ) {
+				sigmaIdx = basis->vals[sample->basisIdx[cnt]]->sigmaIdx[c];
+
+				lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+
+				if ( c == 0 )
+					multiplier = 1.0;
+				else
+					multiplier = observ[coord->rvOffset[2] + basis->vals[sample->basisIdx[cnt]]->omegaIdx[c]];
+
+				arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
+				arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+			}
+			*argmax = arg;
+
 			return sample->basisIdx[cnt];
+		}
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;

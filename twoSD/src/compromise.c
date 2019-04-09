@@ -163,7 +163,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* b. Change the right-hand side with the incumbent solution of the current batch */
-	indices = (iVector) arr_alloc(max(prob->num->cols,prob->num->rows)+1, int);
+	indices = (iVector) arr_alloc(maximum(prob->num->cols,prob->num->rows)+1, int);
 	coef = (dVector) arr_alloc(prob->num->rows+1, double);
 	for (i = 0; i < prob->num->rows; i++) {
 		coef[i+1]  = prob->sp->rhsx[i];
@@ -180,7 +180,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* c. Add the cuts in the problem */
-	for ( i = 0; i < max(prob->num->cols,prob->num->rows); i++ )
+	for ( i = 0; i < maximum(prob->num->cols,prob->num->rows); i++ )
 		indices[i+1] = i+cOffset;
 	indices[0] = idx;
 

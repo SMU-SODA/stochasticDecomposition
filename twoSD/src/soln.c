@@ -45,7 +45,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */
-		cell->quadScalar = min(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
+		cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
 		cell->normDk_1 = cell->normDk;
 	}
 
@@ -67,8 +67,8 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	if ( cell->normDk > config.TOLERANCE )
 		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
 			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
-			cell->quadScalar  = min(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = max(config.MIN_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar  = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
 		}
 
 	/* update the right-hand side and the bounds with new incumbent solution */
