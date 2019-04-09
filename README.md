@@ -29,6 +29,7 @@ Note: Only Unix systems have been tested.
 #### Prerequisite: 
   * CPLEX should be available on your machine. Trial version is available [here](http://www-01.ibm.com/software/commerce/optimization/cplex-optimizer/).
   * Git, if you want to directly use the commands below.
+  * This repository uses certain utilities and data sets from the `spAlgorithms` respository. 
 
 #### Steps
   1. Download the SD source codes.  
