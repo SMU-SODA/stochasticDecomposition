@@ -76,6 +76,8 @@ oneProblem *readCore(cString inputDir, cString probName) {
 			return NULL;
 		}
 	fclose (fptr);
+
+	openSolver();
 	/* Create LP pointer */
 	if ((createProblem(probName, &lp))) {
 		errMsg("solver", "readCore", "failed to create problem in solver.\n", 0);
@@ -198,8 +200,8 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	orig->marsz = nzcnt;
 	orig->numnz = nzcnt;
 
+	closeSolver();
 	return orig;
-
 }//END readCore()
 
 timeType *readTime(cString inputDir, cString probName, oneProblem *orig) {

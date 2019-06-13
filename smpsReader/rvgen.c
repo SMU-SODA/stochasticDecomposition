@@ -276,7 +276,7 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-int setupSAA(stocType *stoc, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE) {
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE) {
 	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
@@ -284,7 +284,16 @@ int setupSAA(stocType *stoc, long long *seed, dVector **simObservVals, dVector *
 		printf("Enter the number of samples used for setting up the SAA : ");
 		scanf("%d", numSamples);
 	}
-	printf("Generating SAA with %d samples.\n", (*numSamples));
+
+	if ( strcmp(stoc->type, "SIMULATOR") ) {
+		printf("Generating SAA with %d samples.\n", (*numSamples));
+	}
+	else {
+		if ( readSimData(fname, (*simObservVals), (*probs), stoc->numOmega, numSamples) ) {
+			errMsg("read", "setupSAA", "failed to read simulated data", 0);
+			return 1;
+		}
+	}
 
 	(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
 	(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
@@ -323,4 +332,48 @@ int setupSAA(stocType *stoc, long long *seed, dVector **simObservVals, dVector *
 	}
 
 	return 0;
-}//END setupSAA
+}//END setupSAA()
+
+int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV, int *numSamples) {
+	FILE *fid;
+	int cnt, bufferSize = numRV*NAMESIZE;
+	char buffer[bufferSize];
+
+	fid = fopen(fname, "r");
+	if ( fid == NULL ) {
+		errMsg("read", "readSimData", "failed to open the simulated data file", 0);
+		return 1;
+	}
+
+	/* Count the column headers to get the number of random variables */
+	fgets(buffer, bufferSize, fid);
+	char *field = strtok(buffer, ",");
+	while(field) {
+		cnt++;
+		field = strtok(NULL, ",");
+	}
+	if ( cnt != numRV ) {
+		errMsg("read", "readSimData", "number of random variables do not match", 0);
+		return 1;
+	}
+
+	/* Read the rest of the file for data */
+	cnt = 0;
+	while ( fgets(buffer, bufferSize, fid) && cnt < (*numSamples) ) {
+		int n = 0; double temp; char *pEnd;
+		while ( (temp = strtof(buffer, &pEnd)) ) {
+			simObservVals[cnt][n] = temp;
+		}
+		cnt++;
+	}
+
+	if ( cnt < (*numSamples) ) {
+		printf("Warning:: Siumlated file has less number of scenarios than desired.\n");
+	}
+
+	for ( int n = 0; n < cnt; n++ ) {
+		probs[n] = 1.0/(double) cnt;
+	}
+
+	return 0;
+}//End readSimData

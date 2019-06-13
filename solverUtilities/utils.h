@@ -20,6 +20,7 @@
 #define 	NAMESIZE			32
 #define		BLOCKSIZE			256
 #define 	WORDLENGTH			8*sizeof(unsigned long)
+#define 	DELTA 0.000001
 
 #define 	INF					DBL_MAX
 
