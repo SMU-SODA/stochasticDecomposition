@@ -7,8 +7,12 @@
 #ifndef MTSD_SOLVER_H_
 #define MTSD_SOLVER_H_
 
+#include <./ilcplex/cplex.h>
+#include <./ilcplex/cplexx.h>
 #include <./ilcplex/cpxconst.h>
 #include <utils.h>
+
+#define DIAGONISE
 
 #define		ENVptr			CPXENVptr
 #define 	LPptr			CPXLPptr
@@ -16,6 +20,9 @@
 #define		ON				CPX_ON
 #define		OFF				CPX_OFF
 #define 	INFBOUND    	CPX_INFBOUND
+
+#define		SOLVER_MIN		CPX_MIN;
+#define		SOLVER_MAX		CPX_MAX;
 
 #define		PARAM_SCRIND	CPX_PARAM_SCRIND
 #define		PARAM_SCAIND	CPX_PARAM_SCAIND
@@ -53,7 +60,7 @@
 
 #define 	THREADS			CPXPARAM_Threads
 
-int solveProblem(LPptr lp, cString pname, int type, int *status);
+int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status);
 int getProbType(LPptr lp);
 double getObjective(LPptr lp, int type);
 int getPrimal(LPptr lp, dVector X, int length);
@@ -117,5 +124,7 @@ int getBasisInvCol(LPptr lp, int i, dVector phi);
 int getBasisInvARow(LPptr lp, int i, dVector phi);
 int getBasisInvACol(LPptr lp, int i, dVector phi);
 int freeProblem(LPptr lp);
+
+int refineConflict (LPptr lp , int mar, int mac);
 
 #endif /* MTSD_SOLVER_H_ */

@@ -1280,6 +1280,7 @@ void freeOneProblem(oneProblem *p) {
 
 	if(p){
 		if ( p->lp ) freeProblem(p->lp);
+		if(p->objname) mem_free(p->objname);
 		if(p->name) mem_free(p->name);
 		if(p->objx) mem_free(p->objx);
 		if(p->rhsx) mem_free(p->rhsx);
@@ -1291,7 +1292,6 @@ void freeOneProblem(oneProblem *p) {
 		if(p->matval) mem_free(p->matval);
 		if(p->matind) mem_free(p->matind);
 		if(p->matcnt) mem_free(p->matcnt);
-		if(p->objname) mem_free(p->objname);
 		if(p->cname) mem_free(p->cname);
 		if(p->rname) mem_free(p->rname);
 		if(p->cstore) mem_free(p->cstore);
@@ -1305,6 +1305,7 @@ void freeTimeType(timeType *tim) {
 	int n;
 
 	if(tim){
+//		if (tim->probName) mem_free(tim->probName);
 		if (tim->colStg) mem_free(tim->colStg);
 		if (tim->rowStg) mem_free(tim->rowStg);
 		if (tim->col) mem_free(tim->col);

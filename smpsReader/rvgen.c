@@ -182,7 +182,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-									/ (((b3 * r + b2) * r + b1) * r + one);
+											/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -200,13 +200,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-									/ ((d2 * r + d1) * r + one);
+											/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-									/ ((f2 * r + f1) * r + one);
+											/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -276,7 +276,8 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE) {
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples,
+		double TOLERANCE) {
 	int 	obs;
 
 	if ( (*numSamples) == 0 ) {
@@ -286,49 +287,54 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 	}
 
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
+		/* Using the internal simulator to generate samples */
 		printf("Generating SAA with %d samples.\n", (*numSamples));
+		(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
+		(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
+
+		if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
+			for (obs = 0; obs < (*numSamples); obs++ ) {
+				(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+				generateBlocks(stoc, (*simObservVals)[obs]+1, 0, seed);
+				(*probs)[obs] = 1.0/(double) (*numSamples);
+			}
+		}
+		else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
+			for (obs = 0; obs < (*numSamples); obs++ ) {
+				(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+				generateIndep(stoc, (*simObservVals)[obs]+1, 0, seed);
+				(*probs)[obs] = 1.0/(double) (*numSamples);
+			}
+		}
+		else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
+			for (obs = 0; obs < (*numSamples); obs++ ) {
+				(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+				normal(stoc->mean, stoc->vals[0], stoc->numOmega, (*simObservVals)[obs]+1, seed);
+				(*probs)[obs] = 1.0/(double) (*numSamples);
+			}
+		}
+		else if ( !strcmp(stoc->type, "LINTRAN") ) {
+			for (obs = 0; obs < (*numSamples); obs++ ) {
+				(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+				generateLinTran(stoc, (*simObservVals)[obs]+1, 0, TOLERANCE, seed);
+				(*probs)[obs] = 1.0/(double) (*numSamples);
+			}
+		}
+		else {
+			errMsg("sampling", "setupSAA", "no procedure for simulating distribution type", 0);
+			return 1;
+		}
 	}
 	else {
+		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
+		/* Allocate memory to elements of omegaType in cell */
+		for (obs = 0; obs < (*numSamples); obs++ ) {
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+		}
 		if ( readSimData(fname, (*simObservVals), (*probs), stoc->numOmega, numSamples) ) {
 			errMsg("read", "setupSAA", "failed to read simulated data", 0);
 			return 1;
 		}
-	}
-
-	(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
-	(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
-
-	if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
-		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			generateBlocks(stoc, (*simObservVals)[obs]+1, 0, seed);
-			(*probs)[obs] = 1.0/(double) (*numSamples);
-		}
-	}
-	else if ( !strcmp(stoc->type, "INDEP_DISCRETE")) {
-		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			generateIndep(stoc, (*simObservVals)[obs]+1, 0, seed);
-			(*probs)[obs] = 1.0/(double) (*numSamples);
-		}
-	}
-	else if ( !strcmp(stoc->type, "INDEP_NORMAL") ) {
-		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			normal(stoc->mean, stoc->vals[0], stoc->numOmega, (*simObservVals)[obs]+1, seed);
-			(*probs)[obs] = 1.0/(double) (*numSamples);
-		}
-	}
-	else if ( !strcmp(stoc->type, "LINTRAN") ) {
-		for (obs = 0; obs < (*numSamples); obs++ ) {
-			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			generateLinTran(stoc, (*simObservVals)[obs]+1, 0, TOLERANCE, seed);
-			(*probs)[obs] = 1.0/(double) (*numSamples);
-		}
-	}
-	else {
-		errMsg("sampling", "setupSAA", "no procedure for simulating distribution type", 0);
-		return 1;
 	}
 
 	return 0;
@@ -336,7 +342,7 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 
 int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV, int *numSamples) {
 	FILE *fid;
-	int cnt, bufferSize = numRV*NAMESIZE;
+	int cnt = 0, bufferSize = numRV*NAMESIZE;
 	char buffer[bufferSize];
 
 	fid = fopen(fname, "r");
@@ -360,15 +366,17 @@ int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV,
 	/* Read the rest of the file for data */
 	cnt = 0;
 	while ( fgets(buffer, bufferSize, fid) && cnt < (*numSamples) ) {
-		int n = 0; double temp; char *pEnd;
-		while ( (temp = strtof(buffer, &pEnd)) ) {
-			simObservVals[cnt][n] = temp;
+		int n = 0;
+		field = strtok (buffer, ",");
+		while ( field ) {
+			sscanf(field, "%lf", &simObservVals[cnt][n++]);
+			field = strtok (NULL, ",");
 		}
 		cnt++;
 	}
 
 	if ( cnt < (*numSamples) ) {
-		printf("Warning:: Siumlated file has less number of scenarios than desired.\n");
+		printf("Warning:: Simulated file has less number of scenarios than desired.\n");
 	}
 
 	for ( int n = 0; n < cnt; n++ ) {

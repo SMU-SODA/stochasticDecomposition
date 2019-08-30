@@ -11,7 +11,7 @@
 extern cString 	outputDir;
 ENVptr	env;
 
-int solveProblem(LPptr lp, cString pname, int type, int *status) {
+int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status) {
 	int		aggres = 0;
 
 	solveagain:
@@ -39,6 +39,12 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
 		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
 			writeProblem(lp, "error.lp");
+			fprintf(stderr, "\nProblem is infeasible.\n");
+#if defined(DIAGONISE)
+			if ( refineConflict(lp , mar, mac) ) {
+				fprintf(stderr, "Failed to resolve conflict.\n");
+			}
+#endif
 			return (*status);
 		}
 		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
@@ -717,3 +723,105 @@ int freeProblem(LPptr lp) {
 
 	return status;
 }//END freeProb()
+
+int refineConflict (LPptr lp , int mar, int mac) {
+	int confnumrows_p, confnumcols_p, confstat_p;
+	iVector rowind,rowbdstat, colind, colbdstat;
+
+	if ( CPXrefineconflict(env, lp, &confnumrows_p, &confnumcols_p ) ) {
+		fprintf (stderr, "Failed to obtain refine conflict info.\n");
+		return 1;
+	}
+
+	/* Allocate memory to elements necessary for diagnosis. */
+	rowind=(iVector)arr_alloc(mar, int);
+	rowbdstat=(iVector)arr_alloc(mar, int);
+	colind=(iVector)arr_alloc(mac, int);
+	colbdstat=(iVector)arr_alloc(mac, int);
+
+	if ( CPXXgetconflict(env, lp, &confstat_p, rowind, rowbdstat, &confnumrows_p, colind, colbdstat, &confnumcols_p) ) {
+		fprintf (stderr, "Failed to obtain get conflict info.\n");
+		return 1;
+	}
+
+	/* Identifying the type of conflict */
+	switch (confstat_p){
+	case CPX_STAT_CONFLICT_MINIMAL:
+		printf("\tConflict is minimal\n");
+		break;
+	case CPX_STAT_CONFLICT_FEASIBLE:
+		printf("\tNo conflict is available\n");
+		break;
+	case CPX_STAT_CONFLICT_ABORT_IT_LIM:
+		printf("\tConflict resolution aborted\n");
+		break;
+	default :
+		printf("\tUnknown Conflict Status\n");
+		return 1;
+	}
+
+	/* Identifying type of row conflict */
+	for (int n=0; n< confnumrows_p ;n++){
+		switch (rowbdstat[n]){
+		case CPX_CONFLICT_MEMBER:
+			printf("\t\tRow id = %d,  Row status = conflict member\n",rowind[n]);
+			break;
+		case CPX_CONFLICT_LB:
+			printf("\t\tRow id = %d,  Row status = conflict LB\n",rowind[n]);
+			break;
+
+		case CPX_CONFLICT_UB:
+			printf("\t\tRow id = %d,  Row status = conflict UB\n",rowind[n]);
+			break;
+		case CPX_CONFLICT_POSSIBLE_MEMBER:
+			printf("\t\tRow id = %d,  Row status = conflict possible member\n",rowind[n]);
+			break;
+		case CPX_CONFLICT_POSSIBLE_LB:
+			printf("\t\tRow id = %d,  Row status = conflict possible LB\n",rowind[n]);
+			break;
+		case CPX_CONFLICT_POSSIBLE_UB:
+			printf("\t\tRow id = %d,  Row status = conflict possible UB\n",rowind[n]);
+			break;
+		default :
+			printf("\t\tUnknown row conflict status\n");
+			return 1;
+		}
+
+	}
+
+	/* Identifying the column conflicts */
+	for (int n=0; n< confnumcols_p ;n++){
+		switch (rowbdstat[n]){
+		case CPX_CONFLICT_MEMBER:
+			printf("\t\tColumn id = %d,  Column status = conflict member\n",colind[n]);
+			break;
+		case CPX_CONFLICT_LB:
+			printf("\t\tColumn id = %d,  Column status = conflict LB\n",colind[n]);
+			break;
+
+		case CPX_CONFLICT_UB:
+			printf("\t\tColumn id = %d,  Column status = conflict UB\n",colind[n]);
+			break;
+		case CPX_CONFLICT_POSSIBLE_MEMBER:
+			printf("\t\tColumn id = %d,  Column status = conflict possible member\n",colind[n]);
+			break;
+		case CPX_CONFLICT_POSSIBLE_LB:
+			printf("\t\tColumn id = %d,  Column status = conflict possible LB\n",colind[n]);
+			break;
+
+		case CPX_CONFLICT_POSSIBLE_UB:
+			printf("\t\tColumn id = %d,  Column status = conflict possible UB\n",colind[n]);
+			break;
+		default :
+			printf("\t\tUnknown columns conflict status\n");
+			break;
+		}
+	}
+
+	mem_free(rowind);
+	mem_free(rowbdstat);
+	mem_free(colind);
+	mem_free(colbdstat);
+
+	return 0;
+}//END refineConflict()
