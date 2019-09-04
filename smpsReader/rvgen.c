@@ -358,7 +358,7 @@ int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV,
 		cnt++;
 		field = strtok(NULL, ",");
 	}
-	if ( cnt != numRV ) {
+	if ( cnt != numRV + 1 ) {
 		errMsg("read", "readSimData", "number of random variables do not match", 0);
 		return 1;
 	}
@@ -366,8 +366,9 @@ int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV,
 	/* Read the rest of the file for data */
 	cnt = 0;
 	while ( fgets(buffer, bufferSize, fid) && cnt < (*numSamples) ) {
-		int n = 0;
-		field = strtok (buffer, ",");
+		field = strtok (buffer, ","); /* The first column has the row name */
+		field = strtok (NULL, ",");
+		int n = 1;
 		while ( field ) {
 			sscanf(field, "%lf", &simObservVals[cnt][n++]);
 			field = strtok (NULL, ",");
