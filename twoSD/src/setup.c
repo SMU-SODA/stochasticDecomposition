@@ -109,8 +109,10 @@ int readConfig(cString path2config, cString inputDir) {
 
 	fclose(fptr);
 
-	if ( config.MULTIPLE_REP == 0 )
+	if ( config.MULTIPLE_REP == 0 ) {
 		config.NUM_REPS = 1;
+		config.COMPROMISE_PROB = 0;
+	}
 
 	return 0;
 }//END readConfig()

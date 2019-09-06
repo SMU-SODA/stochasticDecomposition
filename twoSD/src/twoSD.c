@@ -24,9 +24,6 @@ int main (int argc, char *argv[]) {
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 
-	/* open solver environment */
-	openSolver();
-
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
 	if (readConfig("./src/", inputDir) ) {

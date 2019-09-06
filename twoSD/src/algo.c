@@ -21,6 +21,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL;
 
+	/* open solver environment */
+	openSolver();
+
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
@@ -72,12 +75,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
 
 		/* Save the batch details and build the compromise problem. */
-		if ( config.MULTIPLE_REP ) {
+		if ( config.COMPROMISE_PROB) {
 			buildCompromise(prob[0], cell, batch);
 		}
 	}
 
-	if ( config.MULTIPLE_REP ) {
+	if ( config.COMPROMISE_PROB ) {
 		/* Solve the compromise problem. */
 		if ( solveCompromise(prob[0], batch)) {
 			errMsg("algorithm", "algo", "failed to solve the compromise problem", 0);
