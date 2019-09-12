@@ -30,10 +30,11 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 	return 0;
 }//END generateOmegaIdx()
 
-void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed) {
+void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fid) {
 	int n, offset = 0;
 
 	for ( n = 0; n < stoc->numGroups; n++ ) {
+		/* Using an internal simulator */
 		if ( strstr(stoc->type, "INDEP") != NULL ) {
 			if ( strstr(stoc->type, "DISCRETE") != NULL )
 				generateIndep(stoc, observ+offset, n, seed);
@@ -58,8 +59,15 @@ void generateOmega(stocType *stoc, dVector observ, double minVal, long long *see
 			generateLinTran(stoc, observ+offset, n, minVal, seed);
 			n++; 			/* Linear transformation is associated with a block of residual random variables. */
 		}
-		else
+		else if ( !strcmp(stoc->type, "SIMULATOR") ) {
+			/* Using an external simulator */
+			if ( readSimLine(fid, observ, stoc->numOmega, true) ) {
+				errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
+			}
+		}
+		else {
 			errMsg("rvgen", "generateOmega", "unknown section type in omegastuff", 0);
+		}
 	}
 
 }//END generateOmega()
@@ -385,4 +393,38 @@ int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV,
 	}
 
 	return 0;
-}//End readSimData
+}//End readSimData()
+
+int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
+	int		bufferSize = numRV*NAMESIZE, cnt = 0;
+	char 	buffer[bufferSize], *field;
+
+	if (!simulate) {
+		/* Count the column headers to get the number of random variables */
+		char buffer[numRV*NAMESIZE];
+		fgets(buffer, numRV*NAMESIZE, (*fid));
+		char *field = strtok(buffer, ",");
+		while(field) {
+			cnt++;
+			field = strtok(NULL, ",");
+		}
+		if ( cnt != numRV + 1 ) {
+			errMsg("read", "readSimData", "number of random variables do not match", 0);
+			return 1;
+		}
+		return 0;
+	}
+
+	/* Read the rest of the file for data */
+	while ( fgets(buffer, bufferSize, (*fid)) ) {
+		field = strtok (buffer, ","); /* The first column has the row name */
+		field = strtok (NULL, ",");
+		int n = 1;
+		while ( field ) {
+			sscanf(field, "%lf", &observ[n++]);
+			field = strtok (NULL, ",");
+		}
+	}
+
+	return 0;
+}//End readSimLine()

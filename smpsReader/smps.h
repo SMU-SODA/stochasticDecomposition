@@ -109,7 +109,7 @@ void freeStatModel(statModel *model);
 
 /* subroutines in rvgen.c */
 int generateOmegaIdx(stocType *stoc, long long *seed);
-void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed);
+void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fptr);
 void generateBlocks(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal, long long *seed);
@@ -120,5 +120,6 @@ float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
 int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE);
 int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV, int *numSamples);
+int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
 
 #endif /* SMPS_H_ */
