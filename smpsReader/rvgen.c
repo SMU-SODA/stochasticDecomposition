@@ -294,12 +294,12 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 		scanf("%d", numSamples);
 	}
 
+	printf("Generating SAA with %d samples.\n", (*numSamples));
+	(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
+	(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
+
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
 		/* Using the internal simulator to generate samples */
-		printf("Generating SAA with %d samples.\n", (*numSamples));
-		(*simObservVals) = (dVector *) mem_realloc((*simObservVals), (*numSamples)*sizeof(dVector));
-		(*probs) = (dVector) mem_realloc((*probs), (*numSamples)*sizeof(double));
-
 		if ( strstr(stoc->type, "BLOCKS_DISCRETE") != NULL ) {
 			for (obs = 0; obs < (*numSamples); obs++ ) {
 				(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
@@ -416,14 +416,13 @@ int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
 	}
 
 	/* Read the rest of the file for data */
-	while ( fgets(buffer, bufferSize, (*fid)) ) {
-		field = strtok (buffer, ","); /* The first column has the row name */
+	fgets(buffer, bufferSize, (*fid));
+	field = strtok (buffer, ","); /* The first column has the row name */
+	field = strtok (NULL, ",");
+	int n = 1;
+	while ( field ) {
+		sscanf(field, "%lf", &observ[n++]);
 		field = strtok (NULL, ",");
-		int n = 1;
-		while ( field ) {
-			sscanf(field, "%lf", &observ[n++]);
-			field = strtok (NULL, ",");
-		}
 	}
 
 	return 0;
