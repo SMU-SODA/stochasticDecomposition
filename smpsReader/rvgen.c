@@ -30,6 +30,9 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 	return 0;
 }//END generateOmegaIdx()
 
+/* This function does not assume that the _observ_ vector follows convention that the first element of the double vector holds
+ * the one-norm of the vector. This is to avoid this insistence on this convention on external simulators.
+ */
 void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fid) {
 	int n, offset = 0;
 
@@ -419,7 +422,7 @@ int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
 	fgets(buffer, bufferSize, (*fid));
 	field = strtok (buffer, ","); /* The first column has the row name */
 	field = strtok (NULL, ",");
-	int n = 1;
+	int n = 0;
 	while ( field ) {
 		sscanf(field, "%lf", &observ[n++]);
 		field = strtok (NULL, ",");
