@@ -1305,7 +1305,7 @@ void freeTimeType(timeType *tim) {
 	int n;
 
 	if(tim){
-//		if (tim->probName) mem_free(tim->probName);
+		if (tim->probName) mem_free(tim->probName);
 		if (tim->colStg) mem_free(tim->colStg);
 		if (tim->rowStg) mem_free(tim->rowStg);
 		if (tim->col) mem_free(tim->col);

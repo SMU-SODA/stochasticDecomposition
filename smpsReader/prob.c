@@ -16,7 +16,8 @@
 probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, dVector lb, double TOLERANCE) {
 	probType **prob;
 	char	 *q;
-	int		 i, k, m, t, rOffset = 0, cOffset = 0;
+	int		 i, k, m, t;
+	long int rOffset = 0, cOffset = 0;
 
 	/* allocate memory to elements of probType */
 	if ( !(prob = (probType **) arr_alloc(tim->numStages, probType *)) )

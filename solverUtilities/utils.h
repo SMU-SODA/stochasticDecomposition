@@ -17,7 +17,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 
-#define 	NAMESIZE			32
+#define 	NAMESIZE			64
 #define		BLOCKSIZE			256
 #define 	WORDLENGTH			8*sizeof(unsigned long)
 #define 	DELTA 0.000001
