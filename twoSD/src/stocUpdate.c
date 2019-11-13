@@ -146,7 +146,8 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	if (pi_eval == true)
 		numSamples -= (int) (0.1*numSamples + 1);
 
-	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered in this iteration range are used. */
+	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered
+	 * in this iteration range are used. */
 	if ( !isNew ) {
 		basisUp = numSamples; basisLow = -INT_MAX;
 	}
@@ -154,8 +155,8 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		basisUp = INT_MAX; basisLow = numSamples;
 	}
 
-	/* Check to see if the subproblem corresponding to the observation _obs_ was solved in the current iteration. If so, the argmax operation is not
-	 * necessary. */
+	/* Check to see if the subproblem corresponding to the observation _obs_ was solved in the current iteration.
+	 * If so, the argmax operation is not necessary. */
 	cnt = 0;
 	while ( cnt < sample->cnt ) {
 		if ( obs == sample->omegaIdx[cnt] )
@@ -163,7 +164,8 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		cnt++;
 	}
 	if ( cnt < sample->cnt ) {
-		/* If the subproblem was indeed solved, then make sure the basis is within the desired range (relevant when pi-ratio test is being conducted). */
+		/* If the subproblem was indeed solved, then make sure the basis is within the desired range
+		 * (relevant when pi-ratio test is being conducted). */
 		if ( basis->vals[sample->basisIdx[cnt]]->ck > basisLow && basis->vals[sample->basisIdx[cnt]]->ck <= basisUp ) {
 			arg = 0.0;
 			for ( c = 0; c <= basis->vals[sample->basisIdx[cnt]]->phiLength; c++ ) {

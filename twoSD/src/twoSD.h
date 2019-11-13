@@ -187,13 +187,13 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
-void printCut(cutsType *cuts, numType *num, int idx);
+void printCut(oneCut *cut, int betaLen);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts, bool partial);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
