@@ -11,15 +11,18 @@
 
 #include "twoSD.h"
 
+#undef OPT_CHECK
+
 extern configType config;
 
-/* This function determines whether or not the current incumbent solution is considered to be optimal. Optimality is guarenteed if the
+/* This function determines whether or not the current incumbent solution is considered to be optimal. Optimality is guaranteed if the
  * following criteria are satisfied:
  * 		0. Minimum number of iterations have been completed.
  * 		1. Dual solution set has stabilized.
  * 		2. If dual solution set is stable, the pre-test checks for "convergence" of objective function estimate.
- * 		3. Full test is based on boot-strapping, and checks the gap between primal (upper) and dual (lower) values.
- * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test is successful. */
+ * 		3. Full test is based on bootstrapping, and checks the gap between primal (upper) and dual (lower) values.
+ * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test
+ * is successful. */
 bool optimal(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
@@ -60,11 +63,11 @@ bool preTest(cellType *cell) {
 }//END preTest()
 
 /* This function performs a complete statistical test of optimality. First, it selects cuts whose height at the incumbent is "close" to
- * incumbent cut's height.  Then, it performs M resamplings of the observations in omega, and reforms the selected cuts with respect
- * to these observations (as if *they* were observed instead of the actual omega).  For each of the M resamplings, a master program
+ * incumbent cut's height.  Then, it performs M re-samplings of the observations in omega, and reforms the selected cuts with respect
+ * to these observations (as if *they* were observed instead of the actual omega).  For each of the M re-samplings, a master program
  * containing the reformed cuts is solved, and if almost all of the solutions to these master programs.
  * Multi-cut version selects "good" cuts within each agent, and reforms theses cuts. Then the cut value are aggregated.
- * Single-cut version first selects "good" cuts in the master prob. Then by using the information of these "good" cuts to find the
+ * Single-cut version first selects "good" cuts in the master problem. Then by using the information of these "good" cuts to find the
  * corresponding cuts in each agent. After reforming these agent cuts, aggregated these reformed cuts as one single cut and add it to the
  * master problem */
 bool fullTest(probType **prob, cellType *cell) {
@@ -80,6 +83,21 @@ bool fullTest(probType **prob, cellType *cell) {
 		freeCutsType(gCuts, false);
 		return false;
 	}
+
+#if defined(OPT_CHECK)
+	double incumb_cx = vXvSparse(cell->incumbX, prob[0]->dBar);
+	printf("-------------------------------------------------------------------------------------------\n");
+	printf("Original :: \n");
+	for ( int cnt = 0; cnt < cell->cuts->cnt; cnt++ ) {
+		if (cell->piM[cell->cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
+			printf("Cut-%02d :: ", cnt);
+			printCut(cell->cuts->vals[cnt], prob[0]->num->cols);
+			printf("Estimate: %lf\n", incumb_cx + cutHeight(cell->cuts->vals[cnt], cell->sampleSize, cell->incumbX,
+					prob[0]->num->cols, cell->lb));
+		}
+	}
+	printf("-------------------------------------------------------------------------------------------\n");
+#endif
 
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt+1, int)) )
@@ -99,28 +117,42 @@ bool fullTest(probType **prob, cellType *cell) {
 				gCuts, observ, cell->sampleSize, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
-		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
-		for (j = 1; j < gCuts->cnt; j++) {
+		est = -INF;
+#if defined(OPT_CHECK)
+		printf("-------------------------------------------------------------------------------------------\n");
+		printf("Reform-%02d::\n", rep);
+#endif
+		for (j = 0; j < gCuts->cnt; j++) {
 			ht = gCuts->vals[j]->alpha - vXv(gCuts->vals[j]->beta, cell->incumbX, NULL, prob[0]->num->cols);
+#if defined(OPT_CHECK)
+			printf("Cut-%02d :: ", j);
+			printCut(gCuts->vals[0], prob[0]->num->cols);
+			printf("Estimate: %lf\n", incumb_cx + ht);
+#endif
 			if ( est < ht)
 				est = ht;
 		}
+#if defined(OPT_CHECK)
+		printf("-------------------------------------------------------------------------------------------\n");
+#endif
 
-		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach,
+
+		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lower bound. In QP approach,
 		 * we don't include the incumb_x * c in estimate */
 		if (config.MASTER_TYPE == PROB_LP) {
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
 			// TODO: solve a temporary master problem
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
-		else
-			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts);//TODO: Sample size update
+		else {
+			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts);
+		}
 
-#if 0
-		printf("\niter = %d, replication = %d, UB = %f, LB = %f, Gap = %lf", cell->k, rep, est, LB, DBL_ABS((est - LB) / cell->incumbEst));
+#if defined(OPT_CHECK)
+		printf("Iter = %d, replication = %d, UB = %f, LB = %f, Gap = %lf\n", cell->k, rep, est, LB, DBL_ABS((est - LB) / cell->incumbEst));
 #endif
-
-		/* (g) compare the normalized difference between estimate and the lower bound. If the problem is a QP problem, we don't need add the constant term c^T x \hat{x} */
+		/* (g) compare the normalized difference between estimate and the lower bound. If the problem is a QP problem, we don't need
+		 * add the constant term c^T x \hat{x} */
 		if (DBL_ABS((est - LB) / cell->incumbEst) <= config.EPSILON)
 			numPass++;
 
@@ -161,8 +193,9 @@ cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX) {
 	return gCuts;
 }//END choose_cuts
 
-/* This function forms an empirical distribution on the observations stored in omega, and calculates an integer cdf to represent the distribution.
- * An observation which has been seen n times will have n times the probability of being chosen as an observation seen only once. */
+/* This function forms an empirical distribution on the observations stored in omega, and calculates an integer cdf to represent
+ * the distribution. An observation which has been seen n times will have n times the probability of being chosen as an observation
+ * seen only once. */
 void empiricalDistribution(omegaType *omega, iVector cdf) {
 	int cnt;
 
@@ -173,14 +206,14 @@ void empiricalDistribution(omegaType *omega, iVector cdf) {
 
 }//END empirical_distrib
 
-/* This function randomly selects a new set of observations from the old set of observations stored in omega.  Entries in omega which have been observed
- * multiple times have a proportionally higher chance of being selected for the new set.  The function fills an array, assumed to be of a size equal to the
- * number of iterations, with the new set of observations. */
+/* This function randomly selects a new set of observations from the old set of observations stored in omega.  Entries in omega
+ * which have been observed multiple times have a proportionally higher chance of being selected for the new set.  The function
+ * fills an array, assumed to be of a size equal to the number of iterations, with the new set of observations. */
 void resampleOmega(iVector cdf, iVector observ, int numSamples) {
 	int cnt, obs;
 	int sample;
 
-	/* Choose k observations according to cdf (k = number of iterations) */
+	/* Choose k*N observations according to cdf (k = number of iterations) */
 	for (obs = 0; obs < numSamples; obs++) {
 		sample = randInteger(&config.EVAL_SEED[0], numSamples);
 		for (cnt = 0; sample > cdf[cnt]; cnt++)
@@ -189,8 +222,9 @@ void resampleOmega(iVector cdf, iVector observ, int numSamples) {
 	}
 }//END resampleOmega
 
-/* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's which have already been stored in
- * the _istar_ field of each cut. If an istar field does not exist for a given observation, then a value of zero is averaged into the calculation of alpha & beta. */
+/* This function will calculate a new set of cuts based on the observations of omega passed in as _observ_, and the istar's
+ * which have already been stored in the _istar_ field of each cut. If an istar field does not exist for a given observation,
+ * then a value of zero is averaged into the calculation of alpha & beta. */
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
 		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX) {
 	double multiplier;
@@ -219,15 +253,12 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
 					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					gCuts->vals[cnt]->alpha += omega->weights[observ[obs]] * multiplier *
-							(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
+					gCuts->vals[cnt]->alpha += multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
 
 					for (c = 1; c <= num->cntCcols; c++)
-						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[observ[obs]] *
-						multiplier * sigma->vals[sigmaIdx].piC[c];
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += multiplier * sigma->vals[sigmaIdx].piC[c];
 					for (c = 1; c <= num->rvCOmCnt; c++)
-						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[observ[obs]] *
-						multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
 				}
 				count++;
 			}
@@ -245,8 +276,8 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 }//END reform_cuts
 
-/* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c in the case of
- regularized approach. */
+/* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c
+ * in the case of regularized approach. */
 double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts) {
 	double *bk; 			/* dVector: b - A*incumb_x. */
 	double *lambda; 		/* dVector: the dual of the primal constraints. */
