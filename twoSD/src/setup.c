@@ -10,6 +10,7 @@
  */
 
 #include "twoSD.h"
+#include <stdio.h>
 
 extern configType config;
 

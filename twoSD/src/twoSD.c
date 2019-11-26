@@ -23,27 +23,27 @@ int main (int argc, char *argv[]) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
-
+	
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
-	if (readConfig("./src/", inputDir) ) {
+	if (readConfig("C:\\Users\\stabr\\Documents\\GitHub\\stochasticDecomposition\\twoSD\\src\\", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
 
 	/* read problem information */
 	parseCmdLine(argc, argv, &probName, &inputDir);
-
+	
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
 	if ( status ) {
 		errMsg("read", "main", "failed to read problem files using SMPS reader", 0);
 		goto TERMINATE;
 	}
-
+	
 	/* set up output directory: using the outputDir in config file and the input problem name */
 	createOutputDir(outputDir, "twoSD", probName);
-
+	
 	/* launch the algorithm */
 	status = algo(orig, tim, stoc, inputDir, probName);
 	if ( status ) {
@@ -117,7 +117,7 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 			printf("Input options must begin with a '-'. Use '-?' for help.\n"); exit(0);
 		}
 	}
-
+	
 	if ( probName == NULL || inputDir == NULL || outputDir == NULL ) {
 		printf("Problem name, input and output directory are mandatory input.\n");
 		TERMINATE:
