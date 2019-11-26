@@ -27,7 +27,7 @@
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
+	int		NUM_SEEDS;			/* Number of seeds read */
 	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
@@ -38,7 +38,6 @@ typedef struct{
 	double	EPSILON;			/* Optimality gap */
 
 	int		EVAL_FLAG;
-	int		NUM_EVALS;
 	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
@@ -56,7 +55,7 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
-	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
+	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
 	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
@@ -163,7 +162,6 @@ typedef struct {
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
-void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -224,6 +222,11 @@ void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
-void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+
+/* inout.c */
+void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
+void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
+void printOptimizationSummary(cellType *cell);
+void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */

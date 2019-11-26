@@ -25,18 +25,18 @@ int readConfig(cString path2config, cString inputDir) {
 		return 1;
 	}
 
-	config.RUN_SEED = (long long *) arr_alloc(maxReps+1, long long);
+	config.RUN_SEED  = (long long *) arr_alloc(maxReps+1, long long);
 	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
-	config.NUM_REPS = 0;
+	config.NUM_SEEDS = 0;
 	config.SAMPLE_INCREMENT = 1;
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
 		if (!(strcmp(line, "RUN_SEED"))) {
-			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_REPS+1]);
-			config.NUM_REPS++;
-			if ( config.NUM_REPS > maxReps ) {
-				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
+			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_SEEDS+1]);
+			config.NUM_SEEDS++;
+			if ( config.NUM_SEEDS > maxReps + 1 ) {
 				maxReps *= 2;
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (maxReps+1)*sizeof(long long));
 			}
 		}
 		else if (!(strcmp(line, "TOLERANCE")))
@@ -109,8 +109,13 @@ int readConfig(cString path2config, cString inputDir) {
 
 	fclose(fptr);
 
-	if ( config.MULTIPLE_REP == 0 ) {
-		config.NUM_REPS = 1;
+	config.NUM_SEEDS = minimum(config.NUM_SEEDS, r2);
+	if ( config.MULTIPLE_REP > config.NUM_SEEDS ) {
+		printf("Requesting to perform more replications than the number of seeds provided.\n");
+		return 1;
+	}
+
+	if ( config.MULTIPLE_REP == 1 ) {
 		config.COMPROMISE_PROB = 0;
 	}
 
@@ -161,8 +166,8 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		return 1;
 	}
 
-	if ( config.NUM_REPS > 1 )
-		(*batch)  = newBatchSummary((*prob)[0], config.NUM_REPS);
+	if ( config.MULTIPLE_REP > 1 )
+		(*batch)  = newBatchSummary((*prob)[0], config.MULTIPLE_REP);
 
 	mem_free(lb);
 	return 0;
