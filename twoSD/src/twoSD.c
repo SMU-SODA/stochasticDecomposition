@@ -64,10 +64,16 @@ int main (int argc, char *argv[]) {
 
 void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) {
 
+
 	for(int i=1; (i < argc); i++) {
 		if ( argv[i][0] == '-' ) {
 			switch ((argv[i])[1]) {
 			case '?': printHelpMenu(); exit(0);
+			case 'r': {
+				(*probName) = (cString)arr_alloc(2 * BLOCKSIZE, char);
+				printf("Please enter the problem name: ");
+				scanf("%s", (*probName)); break;
+			}
 			case 'p': {
 				(*probName) = (cString) arr_alloc(2*BLOCKSIZE, char);
 				strcpy((*probName), argv[++i]); break;
@@ -117,15 +123,17 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 			printf("Input options must begin with a '-'. Use '-?' for help.\n"); exit(0);
 		}
 	}
-	
-	if ( probName == NULL || inputDir == NULL || outputDir == NULL ) {
+
+
+	if (probName == NULL || inputDir == NULL || outputDir == NULL) {
 		printf("Problem name, input and output directory are mandatory input.\n");
-		TERMINATE:
-		if ( (*probName) ) mem_free((*probName));
-		if ( outputDir ) mem_free(outputDir);
-		if ( (*inputDir) ) mem_free((*inputDir));
+	TERMINATE:
+		if ((*probName)) mem_free((*probName));
+		if (outputDir) mem_free(outputDir);
+		if ((*inputDir)) mem_free((*inputDir));
 		closeSolver(); exit(0);
 	}
+
 
 }//END parseCmdLine()
 
