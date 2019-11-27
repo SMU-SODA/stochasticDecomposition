@@ -69,7 +69,7 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 		if ( argv[i][0] == '-' ) {
 			switch ((argv[i])[1]) {
 			case '?': printHelpMenu(); exit(0);
-			case 'r': { //getting the probname form the user
+			case 'r': { //getting the probName form the user
 				(*probName) = (cString)arr_alloc(2 * BLOCKSIZE, char);
 				printf("Please enter the problem name: ");
 				scanf("%s", (*probName)); break;

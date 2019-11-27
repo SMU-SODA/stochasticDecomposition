@@ -118,6 +118,110 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	return 1;
 }//END algo()
 
+int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
+	dVector	 meanSol = NULL;
+	probType **prob = NULL;
+	cellType *cell = NULL;
+	batchSummary *batch = NULL;
+	FILE 	*sFile = NULL, *iFile = NULL;
+
+	/* open solver environment */
+	openSolver();
+
+	/* complete necessary initialization for the algorithm */
+	if (setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol))
+		goto TERMINATE;
+
+	printf("Starting two-stage stochastic decomposition.\n");
+	sFile = openFile(outputDir, "results.dat", "w");
+	iFile = openFile(outputDir, "incumb.dat", "w");
+	printDecomposeSummary(sFile, probName, tim, prob);
+	printDecomposeSummary(stdout, probName, tim, prob);
+
+	for (int rep = 0; rep < config.NUM_REPS; rep++) {
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "Replication-%d\n", rep + 1);
+		fprintf(stdout, "\n====================================================================================================================================\n");
+		fprintf(stdout, "Replication-%d\n", rep + 1);
+
+		/* setup the seed to be used in the current iteration */
+		config.RUN_SEED[0] = config.RUN_SEED[rep + 1];
+		config.EVAL_SEED[0] = config.EVAL_SEED[rep + 1];
+
+		if (rep != 0) {
+			/* clean up the cell for the next replication */
+			if (cleanCellType(cell, prob[0], meanSol)) {
+				errMsg("algorithm", "algo", "failed clean the problem cell", 0);
+				goto TERMINATE;
+			}
+		}
+
+		clock_t tic = clock();
+		/* Use two-stage stochastic decomposition algorithm to solve the problem */
+		if (solveCell(stoc, prob, cell)) {
+			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
+			goto TERMINATE;
+		}
+		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
+
+		/* Write solution statistics for optimization process */
+		if (rep == 0) {
+			writeOptimizationSummary(sFile, iFile, prob, cell, true);
+			writeOptimizationSummary(stdout, NULL, prob, cell, true);
+		}
+		else {
+			writeOptimizationSummary(sFile, iFile, prob, cell, false);
+			writeOptimizationSummary(stdout, NULL, prob, cell, false);
+		}
+
+		/* evaluate the optimal solution*/
+		if (config.EVAL_FLAG == 1)
+			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
+
+		/* Save the batch details and build the compromise problem. */
+		if (config.COMPROMISE_PROB) {
+			buildCompromise(prob[0], cell, batch);
+		}
+	}
+
+	if (config.COMPROMISE_PROB) {
+		/* Solve the compromise problem. */
+		if (solveCompromise(prob[0], batch)) {
+			errMsg("algorithm", "algo", "failed to solve the compromise problem", 0);
+			goto TERMINATE;
+		}
+
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		/* Evaluate the compromise solution */
+		evaluate(sFile, stoc, prob, cell->subprob, batch->compromiseX);
+
+		fprintf(sFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		/* Evaluate the average solution */
+		evaluate(sFile, stoc, prob, cell->subprob, batch->avgX);
+	}
+
+	fclose(sFile); fclose(iFile);
+	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
+
+	/* free up memory before leaving */
+	if (meanSol) mem_free(meanSol);
+	freeBatchType(batch);
+	freeCellType(cell);
+	freeProbType(prob, 2);
+	return 0;
+
+TERMINATE:
+	if (meanSol) mem_free(meanSol);
+	freeBatchType(batch);
+	freeCellType(cell);
+	freeProbType(prob, 2);
+	return 1;
+}//END algo()
+
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	dVector 	observ;
 	int			m, candidCut, obs;
