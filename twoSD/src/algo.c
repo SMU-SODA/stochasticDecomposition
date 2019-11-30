@@ -314,24 +314,20 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	tic = clock();
 
 	/******* 1. Get the basis, and form a GMI incumbent cut *******/
-	if ((cell->iCutIdx = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
-		errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+	if ((cell->iGCutIdx = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
 		goto TERMINATE;
 	}
-	cell->iCutUpdt = cell->k;
 
 	/******* 2. Form a MIR incumbent cut *******/
-	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
-		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
-			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-			goto TERMINATE;
-		}
-		cell->iCutUpdt = cell->k;
+	if ((cell->iMCutIdx = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		errMsg("algorithm", "solveCell", "failed to create the MIR incumbent cut", 0);
+		goto TERMINATE;
 	}
 
 	/******* 3. Solve the master problem to obtain the new candidate solution */
 	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		errMsg("algorithm", "solveCell", "failed to solve master problem after adding GMI and MIR cuts", 0);
 		goto TERMINATE;
 	}
 

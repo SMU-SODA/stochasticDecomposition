@@ -96,6 +96,8 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
+	int         gk;                  /* number of GMI cuts */
+	int         mk;                  /* number of MIR cuts */
 	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
