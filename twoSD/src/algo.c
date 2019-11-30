@@ -162,6 +162,13 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
+
+		/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
+		if (solveIntCell(stoc, prob, cell)) {
+			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
+			goto TERMINATE;
+		}
+
 		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
 
 		/* Write solution statistics for optimization process */
@@ -297,6 +304,45 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	TERMINATE:
 	mem_free(observ);
+	return 1;
+}//END solveCell()
+
+int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
+	int			m, GMICut, MIRCut;
+	clock_t		tic;
+
+	tic = clock();
+
+	/******* 1. Get the basis, and form a GMI incumbent cut *******/
+	if ((cell->iCutIdx = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+		goto TERMINATE;
+	}
+	cell->iCutUpdt = cell->k;
+
+	/******* 2. Form a MIR incumbent cut *******/
+	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
+		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+			goto TERMINATE;
+		}
+		cell->iCutUpdt = cell->k;
+	}
+
+	/******* 3. Solve the master problem to obtain the new candidate solution */
+	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		goto TERMINATE;
+	}
+
+	cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
+	cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
+	cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
+	cell->time.iterTime = ((double)clock() - tic) / CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
+
+	return 0;
+
+TERMINATE:
 	return 1;
 }//END solveCell()
 

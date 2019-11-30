@@ -107,11 +107,14 @@ typedef struct {
 	dVector      candidX;           /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
 
-	dVector      incumbX;			/* incumbent master solution */
+	dVector     incumbX;			/* incumbent master solution */
+	dVector     incumbMIPX;			/* incumbent master solution after MIP procedure */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
 	int         iCutIdx;			/* index of incumbent cut in cell->cuts structure */
+	int         iGCutIdx;			/* index of GMI incumbent cut in cell->MIPcuts structure */
+	int         iMCutIdx;			/* index of MIR incumbent cut in cell->MIPcuts structure */
 	int         iCutUpdt;			/* iteration number when incumbent cut is updated */
 	double      gamma;				/* improvement in objective function value */
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
@@ -122,6 +125,7 @@ typedef struct {
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
+	cutsType    *MIPcuts;           /* MIP feasibility cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
     cutsType 	*fcutsPool;			/* Pool of feasibility cuts */
     int			fUpdt[2];			/* coordinate in delta structure for which the updates have been carried out */
