@@ -313,32 +313,36 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	tic = clock();
 
-	/******* 1. Get the basis, and form a GMI incumbent cut *******/
-	if ((GMICut = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
-		errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
-		goto TERMINATE;
+	while (cell->MIPFlag == false)
+	{
+		/******* 1. Get the basis, and form a GMI incumbent cut *******/
+		if ((GMICut = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
+			goto TERMINATE;
+		}
+
+
+		/******* 2. Form a MIR incumbent cut *******/
+		if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the MIR incumbent cut", 0);
+			goto TERMINATE;
+		}
+
+
+		/******* 3. Solve the master problem to obtain the new candidate solution */
+		cell->gk += GMICut;
+		cell->mk += MIRCut;
+		if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+			errMsg("algorithm", "solveCell", "failed to solve master problem after adding GMI and MIR cuts", 0);
+			goto TERMINATE;
+		}
+
+		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
+		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
+		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
+		cell->time.iterTime = ((double)clock() - tic) / CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
+
 	}
-
-
-	/******* 2. Form a MIR incumbent cut *******/
-	if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
-		errMsg("algorithm", "solveCell", "failed to create the MIR incumbent cut", 0);
-		goto TERMINATE;
-	}
-
-
-	/******* 3. Solve the master problem to obtain the new candidate solution */
-	cell->gk += GMICut;
-	cell->mk += MIRCut;
-	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-		errMsg("algorithm", "solveCell", "failed to solve master problem after adding GMI and MIR cuts", 0);
-		goto TERMINATE;
-	}
-
-	cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
-	cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
-	cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
-	cell->time.iterTime = ((double)clock() - tic) / CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
 
 	return 0;
 

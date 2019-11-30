@@ -139,6 +139,7 @@ typedef struct {
 	basisType	*basis;				/* hold unique basis identified */
 
     bool        optFlag;			/* Optimality flag */
+	bool        MIPFlag;			/* MIP feasibility flag */
 	dVector     pi_ratio;			/* Pi ratios over a window of selected size (determined by tolerance level) */
     bool        dualStableFlag; 	/* indicates if dual variables are stable */
 
