@@ -90,6 +90,80 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	return cutIdx;
 }//END formCut()
 
+ ///// -----------------------------------------------
+/*
+
+form the MIP cuts 
+
+siavash tabrizian 30 Nov
+
+*/
+int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	*cut;
+	int    	GcutIdx;
+
+	/* A subproblem is solved for every new observation */
+	for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
+		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+		if ((cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
+			config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
+			&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0)) {
+			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
+			return -1;
+		}
+
+		/* increment the number of subproblems solved during algorithm */
+		cell->LPcnt++;
+
+		if (!cell->spFeasFlag) {
+			/* Subproblem is infeasible, resolve infeasibility */
+			if (resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs])) {
+				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+				return -1;
+			}
+		}
+		else if (cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs]) {
+			/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+			* to see if new feasibility cuts need to be added. */
+			if (formFeasCut(prob[1], cell)) {
+				errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+				return -1;
+			}
+		}
+	}
+
+	/* (b) create an affine lower bound */
+	clock_t tic = clock();
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+		Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
+	if (cut == NULL) {
+		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+
+	/* (c) add cut to the structure and master problem  */
+	if ((cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
+		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
+		return -1;
+	}
+	if (addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols)) {
+		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
+		return -1;
+	}
+
+	return cutIdx;
+}//END formCut()
+
+int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	*cut;
+	int    	McutIdx;
+
+}//END formCut()
+
+/////-----------------------------------------------------
+
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
 	oneCut *cut;

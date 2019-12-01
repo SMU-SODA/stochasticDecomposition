@@ -315,6 +315,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	while (cell->MIPFlag == false)
 	{
+
 		/******* 1. Get the basis, and form a GMI incumbent cut *******/
 		if ((GMICut = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
