@@ -142,6 +142,5 @@ SAMPLE_INCREMENT	1
 //MIP Parameters
 //------------------------
 
-
 //Integer tolerance 
 INT_TOLERANCE  0.000001

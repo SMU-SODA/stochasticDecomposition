@@ -140,11 +140,7 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 			bhat = basicX[k] - floor(basicX[k]);
 			if ((cell->master->ctype[Bhead[k]] == 'I' || cell->master->ctype[Bhead[k]] == 'B') && (bhat >= config.INT_TOLERANCE && (1 - bhat) >= config.INT_TOLERANCE)) {
 				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
-				printf("[%i , %i] \t", k, bhead[k]);
-				printf("\n");
 				status = binvArow(cell->master->lp, k, binvA);
-				printVector(binvA, p->num->cols + 1 + numRows, NULL);
-				printf("\n");
 
 				if (status) {
 					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
