@@ -101,7 +101,24 @@ siavash tabrizian 30 Nov
 int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;
 	int    	cutNum;
-
+	dVector	basicX, BinvA, theta, slack;
+	iVector	Bhead, indices;
+	double	bhat, ahat, a, b, abar, r;
+	int 	status, k, i, j, cnt, startID, endID, numRows;
+	a = b = r = 0;
+	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIPcuts->cnt;
+	if (!(slack = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "slacks", 0);
+	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
+		errMsg("allocation", "formGMIcut", "Bhead", 0);
+	if (!(basicX = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "basicX", 0);
+	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
+		errMsg("allocation", "formGMIcut", "BinvA", 0);
+	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
+		errMsg("allocation", "formGMIcut", "indices", 0);
+	if (!(theta = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "theta", 0);
 
 	return cutNum;
 }//END formCut()
