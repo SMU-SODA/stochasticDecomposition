@@ -211,6 +211,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* incumbent solution and estimates */
 	if (config.MASTER_TYPE == PROB_QP) {
 		cell->incumbX   = duplicVector(xk, prob[0]->num->cols);
+		cell->incumbMIPX = duplicVector(xk, prob[0]->num->cols);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
@@ -218,6 +219,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 		cell->incumbChg = true;
 	}
 	else {
+		cell->incumbMIPX = NULL;
 		cell->incumbX   = NULL;
 		cell->incumbEst = 0.0;
 		cell->quadScalar= 0.0;
@@ -232,6 +234,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->cuts 	  = newCuts(cell->maxCuts);
+	cell->MIPcuts = newCuts(cell->maxCuts);
 
 	/* solution parts of the cell */
 	if ( !(cell->djM = (dVector) arr_alloc(prob[0]->num->cols + 2, double)) )

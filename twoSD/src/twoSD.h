@@ -126,6 +126,7 @@ typedef struct {
 	dVector     djM;                /* master reduced cost dVector */
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
+	int      	maxMIPCuts;         /* maximum number of MIP cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
 	cutsType    *MIPcuts;           /* MIP feasibility cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
