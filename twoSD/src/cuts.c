@@ -120,6 +120,157 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	if (!(theta = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formGMIcut", "theta", 0);
 
+	for (i = 0; i < prob[0]->num->cols + 1; i++)
+		indices[i] = i;
+
+	/* get the B matrix header and the value of the basic variables. 
+	The order of basic variables is the same as the order in Bhead */
+	status = getBasisHead(cell->master->lp, Bhead, basicX);
+	if (status) {
+		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
+		return 1;
+	}
+
+	printf("\n");
+	startID = cell->MIPcuts->cnt;
+
+	for (k = 0; k < numRows; k++) {
+		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
+			/* column is not a slack variable */
+			bhat = basicX[k] - floor(basicX[k]);
+			if ((cell->master->ctype[Bhead[k]] == 'I' || cell->master->ctype[Bhead[k]] == 'B') && (bhat >= config.INT_TOLERANCE && (1 - bhat) >= config.INT_TOLERANCE)) {
+				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
+				printf("[%i , %i] \t", k, bhead[k]);
+				printf("\n");
+				status = binvArow(cell->master->lp, k, binvA);
+				printVector(binvA, p->num->cols + 1 + numRows, NULL);
+				printf("\n");
+
+				if (status) {
+					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
+					return 1;
+				}
+
+				/* allocate memory to a new GMI cut */
+				cut = newCut(p->num->cols);
+
+				/* compute GMI cut coefficients */ /*Theta_1 & Theta_2*/
+				for (i = 0; i < p->num->cols + 1; i++) {
+					if (binvA[i]<0.00000005 && binvA[i]> -1 * 0.00000005)
+						binvA[i] = 0;
+					ahat = binvA[i] - floor(binvA[i]);
+					if (cell->master->ctype[i] == 'I' || cell->master->ctype[i] == 'B') {
+						if (ahat < bhat)
+							cut->beta[i] = ahat / bhat;
+						else
+							cut->beta[i] = (1 - ahat) / (1 - bhat);
+					}
+					else {
+						if (binvA[i] > 0)
+							cut->beta[i] = binvA[i] / bhat;
+						else
+							cut->beta[i] = binvA[i] / (1 - bhat);
+					}
+				}
+				/*Theta_3 & Theta_4*/
+				for (i = 0; i<numRows; i++)
+				{
+					ahat = binvA[i + p->num->cols + 1] - floor(binvA[i + p->num->cols + 1]);
+					if (binvA[i + p->num->cols + 1] > 0)
+						theta[i] = binvA[i + p->num->cols + 1] / bhat;
+					else
+						theta[i] = binvA[i + p->num->cols + 1] / (1 - bhat);
+				}
+
+				status = getSlack(cell->master->lp, slack);
+				if (status) {
+					errMsg("solver", "getSlack", "failed to get slack values", 0);
+					return 1;
+				}
+				if (vXv(cut->beta, cell->candidX, NULL, p->num->cols + 1) + vXv(theta, slack, NULL, numRows) < 1)
+					printf("It should be added. \n");
+				/*coefficients with eliminated slack variables*/
+				/* x column and right hand sides*/
+				for (i = 0; i<p->num->cols; i++)/* X column*/
+				{
+					for (j = 0; j<p->num->rows; j++) /*original constraints*/
+					{
+						for (cnt = 1; cnt <= p->Dbar->cnt; cnt++)
+						{
+							if (p->Dbar->col[cnt] == i + 1 && p->Dbar->row[cnt] == j + 1)
+							{
+								abar = p->Dbar->val[cnt];
+								break;
+							}
+							else
+								abar = 0;
+						}
+						a += (theta[j] * abar);
+						r += (theta[j] * cell->master->rhsx[j]);
+					}
+					for (j = 0; j < cell->cuts->cnt + cell->fCuts->cnt; j++)/*optimality and feasibility cuts*/
+					{
+						b += (theta[j + p->num->rows] * cell->cuts->val[j]->beta[i]);
+						r -= (theta[j + p->num->rows] * cell->cuts->val[j]->alpha);
+					}
+					for (j = 0; j<cell->gmi->cnt; j++)
+					{
+						b += (theta[j + p->num->rows + cell->cuts->cnt + cell->fCuts->cnt] * cell->gmi->val[j]->beta[i]);
+						r -= (theta[j + p->num->rows + cell->cuts->cnt + cell->fCuts->cnt] * cell->gmi->val[j]->alpha);
+					}
+					cut->beta[i] = cut->beta[i] - a + b;
+				}
+
+				a = b = 0;
+				/*eta column*/
+				for (j = 0; j < cell->cuts->cnt + cell->fCuts->cnt; j++)/*optimality and feasibility cuts*/
+				{
+					a += (theta[j + p->num->rows]);
+				}
+				for (j = 0; j<cell->gmi->cnt; j++)
+				{
+					b += (theta[j + p->num->rows + cell->cuts->cnt + cell->fCuts->cnt]);
+				}
+				cut->beta[p->num->cols] = cut->beta[p->num->cols] + a + b;
+				/* final right handSide*/
+				cut->alpha = 1 - r;
+
+				if (vXv(cut->beta, cell->intX, NULL, p->num->cols + 1) < cut->alpha)
+					printf("\n There is sth wrong. \n");
+				if (vXv(cut->beta, cell->candidX, NULL, p->num->cols + 1)< cut->alpha)
+				{
+					if (!(isZeroVector(cut->beta, p->num->cols + 1, config.TOLERANCE)))
+					{
+						i = 0;
+						while (i<cell->gmi->cnt)
+						{
+							if (equalVector(cut->beta, cell->gmi->val[i]->beta, p->num->cols + 1, config.TOLERANCE))
+							{
+								break;
+							}
+
+							i++;
+						}
+						if (i == cell->gmi->cnt)
+							cell->gmi->val[cell->gmi->cnt++] = cut;
+						else
+							freeCut(cut);
+					}
+				}
+				else
+					freeCut(cut);
+			}
+
+		}
+	}
+	endID = cell->gmi->cnt;
+
+	mem_free(bhead);
+	mem_free(basicX);
+	mem_free(binvA);
+	mem_free(slack);
+	mem_free(theta);
+
 	return cutNum;
 }//END formCut()
 
