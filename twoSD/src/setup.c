@@ -99,7 +99,8 @@ int readConfig(cString path2config, cString inputDir) {
 
 		else if (!(strcmp(line, "SAMPLE_INCREMENT")))
 			fscanf(fptr, "%d", &config.SAMPLE_INCREMENT);
-
+		else if (!(strcmp(line, "INT_TOLERANCE")))
+			fscanf(fptr, "%lf", &config.INT_TOLERANCE);
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
 		else {

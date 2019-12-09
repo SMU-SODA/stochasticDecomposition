@@ -60,6 +60,7 @@ typedef struct{
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
 	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
+	double     INT_TOLERANCE;      /* Tolerence for call a variable integer*/
 }configType;
 
 typedef struct {
