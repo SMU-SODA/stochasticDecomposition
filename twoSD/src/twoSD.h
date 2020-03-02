@@ -129,7 +129,8 @@ typedef struct {
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	int      	maxMIPCuts;         /* maximum number of MIP cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
-	cutsType    *MIPcuts;           /* MIP feasibility cuts */
+	cutsType    *MIRcuts;           /* MIP feasibility cuts */
+	cutsType    *GMIcuts;           /* MIP feasibility cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
     cutsType 	*fcutsPool;			/* Pool of feasibility cuts */
     int			fUpdt[2];			/* coordinate in delta structure for which the updates have been carried out */

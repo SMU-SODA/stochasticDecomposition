@@ -93,12 +93,13 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
  ///// -----------------------------------------------
 /*
 
-form the MIP cuts 
+form the GMI cuts 
 
 siavash tabrizian 30 Nov
 
 */
-int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+oneCut *GMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	
 	oneCut 	*cut;
 	int    	cutNum;
 	dVector	basicX, BinvA, theta, slack;
@@ -106,7 +107,8 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	double	bhat, ahat, a, b, abar, r;
 	int 	status, k, i, j, cnt, startID, endID, numRows;
 	a = b = r = 0;
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIPcuts->cnt;
+
+	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
 	if (!(slack = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formGMIcut", "slacks", 0);
 	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
@@ -132,7 +134,7 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	}
 
 	printf("\n");
-	startID = cell->MIPcuts->cnt;
+	startID = cell->GMIcuts->cnt;
 
 	for (k = 0; k < numRows; k++) {
 		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
@@ -169,13 +171,13 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 					}
 				}
 
-				cell->MIPcuts->vals[cell->MIPcuts->cnt++] = cut;
+				cut->alpha = 1;
 
 			}
 
 		}
 	}
-	endID = cell->MIPcuts->cnt;
+	endID = cell->GMIcuts->cnt;
 
 	mem_free(Bhead);
 	mem_free(basicX);
@@ -183,10 +185,19 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	mem_free(slack);
 	mem_free(theta);
 
-	return cutNum;
+	return cut;
 }//END formCut()
 
-int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+ ///// -----------------------------------------------
+ /*
+
+ form the MIR cuts
+
+ siavash tabrizian 30 Nov
+
+ */
+oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	
 	oneCut 	*cut;
 	int    	cutNum;
 	dVector	basicX, BinvA, theta, slack;
@@ -194,19 +205,20 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	double	bhat, ahat, a, b, abar, r;
 	int 	status, k, i, j, cnt, startID, endID, numRows;
 	a = b = r = 0;
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIPcuts->cnt;
+
+	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
 	if (!(slack = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "slacks", 0);
+		errMsg("allocation", "formMIRcut", "slacks", 0);
 	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
-		errMsg("allocation", "formGMIcut", "Bhead", 0);
+		errMsg("allocation", "formMIRcut", "Bhead", 0);
 	if (!(basicX = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "basicX", 0);
+		errMsg("allocation", "formMIRcut", "basicX", 0);
 	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
-		errMsg("allocation", "formGMIcut", "BinvA", 0);
+		errMsg("allocation", "formMIRcut", "BinvA", 0);
 	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "formGMIcut", "indices", 0);
+		errMsg("allocation", "formMIRcut", "indices", 0);
 	if (!(theta = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "theta", 0);
+		errMsg("allocation", "formMIRcut", "theta", 0);
 
 	for (i = 0; i < prob[0]->num->cols + 1; i++)
 		indices[i] = i;
@@ -220,7 +232,7 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	}
 
 	printf("\n");
-	startID = cell->MIPcuts->cnt;
+	startID = cell->MIRcuts->cnt;
 
 	for (k = 0; k < numRows; k++) {
 		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
@@ -238,32 +250,29 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 				/* allocate memory to a new GMI cut */
 				cut = newCut(prob[0]->num->cols, 0, 0);
 
-				/* compute GMI cut coefficients */
+				/* compute MIR cut coefficients */
 				for (i = 0; i < prob[0]->num->cols + 1; i++) {
 					if (BinvA[i]<0.00000005 && BinvA[i]> -1 * 0.00000005)
 						BinvA[i] = 0;
 					ahat = BinvA[i] - floor(BinvA[i]);
 					if (cell->master->ctype[i] == 'I' || cell->master->ctype[i] == 'B') {
-						if (ahat < bhat)
-							cut->beta[i] = ahat / bhat;
+						if (ahat - bhat < bhat - ahat)
+							cut->beta[i] = floor(BinvA[i]) + (bhat - ahat) / (1 - bhat);
 						else
-							cut->beta[i] = (1 - ahat) / (1 - bhat);
+							cut->beta[i] = floor(BinvA[i]) + (ahat - bhat) / (1 - bhat);
 					}
 					else {
-						if (BinvA[i] > 0)
-							cut->beta[i] = BinvA[i] / bhat;
-						else
-							cut->beta[i] = BinvA[i] / (1 - bhat);
+						if (BinvA[i] < 0)
+							cut->beta[i] = BinvA[i] / (1 - bhat);	
 					}
 				}
 
-				cell->MIPcuts->vals[cell->MIPcuts->cnt++] = cut;
 
 			}
 
 		}
 	}
-	endID = cell->MIPcuts->cnt;
+	endID = cell->MIRcuts->cnt;
 
 	mem_free(Bhead);
 	mem_free(basicX);
@@ -271,7 +280,7 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	mem_free(slack);
 	mem_free(theta);
 
-	return cutNum;
+	return cut;
 }//END formCut()
 
 /////-----------------------------------------------------

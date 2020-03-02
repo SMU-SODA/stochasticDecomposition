@@ -235,7 +235,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->cuts 	  = newCuts(cell->maxCuts);
-	cell->MIPcuts = newCuts(cell->maxCuts);
+	cell->MIRcuts = newCuts(cell->maxCuts);
+	cell->GMIcuts = newCuts(cell->maxCuts);
 
 	/* solution parts of the cell */
 	if ( !(cell->djM = (dVector) arr_alloc(prob[0]->num->cols + 2, double)) )
