@@ -18,6 +18,7 @@ int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
 int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
+int addMIPCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool GMI);
 
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;

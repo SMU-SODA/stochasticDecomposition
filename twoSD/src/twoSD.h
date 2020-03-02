@@ -186,6 +186,7 @@ void freeCellType(cellType *cell);
 /* master.c */
 int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
+int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
@@ -196,6 +197,10 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
+int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+oneCut *GMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
+oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);

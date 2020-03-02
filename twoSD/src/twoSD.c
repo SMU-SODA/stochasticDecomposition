@@ -45,7 +45,7 @@ int main (int argc, char *argv[]) {
 	createOutputDir(outputDir, "twoSD", probName);
 	
 	/* launch the algorithm */
-	status = algo(orig, tim, stoc, inputDir, probName);
+	status = intalgo(orig, tim, stoc, inputDir, probName);
 	if ( status ) {
 		errMsg("allocation", "main", "failed to solve the problem using 2-SD algorithm", 0);
 		goto TERMINATE;
