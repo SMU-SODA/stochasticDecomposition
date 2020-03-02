@@ -201,6 +201,8 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
 int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *GMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+oneCut *pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
+oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);

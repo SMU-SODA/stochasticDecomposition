@@ -163,13 +163,25 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			goto TERMINATE;
 		}
 
+		printf("\n");
+		for (int vr = 0; vr < prob[0]->num->cols; vr++)
+			printf("var %i:  %d - ", vr, *(cell->candidX + vr));
+		printf("\n");
+
+		fprintf(sFile, "\n Adding GMI and MIR cuts\n\n");
+		fprintf(stdout, "\n Adding GMI and MIR cuts \n\n");
+
 		/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
 		if (solveIntCell(stoc, prob, cell)) {
 			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
 			goto TERMINATE;
 		}
-		fprintf(sFile, "\n GMI and MIR are added \n\n");
-		fprintf(stdout, "\n GMI and MIR are added \n\n");
+		fprintf(sFile, "\n %i GMI and %i MIR cuts are added \n\n", cell->GMIcuts->cnt, cell->MIRcuts->cnt);
+		fprintf(stdout, "\n %i GMI and %i MIR are added \n\n",cell->GMIcuts->cnt, cell->MIRcuts->cnt);
+
+		for (int vr = 0; vr < prob[0]->num->cols; vr++)
+			printf("var %i:  %d", vr, *(cell->candidX+vr));
+		printf("\n");
 
 		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
 
@@ -326,10 +338,10 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 
 		/******* 2. Form a MIR incumbent cut *******/
-		if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		/*if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the MIR incumbent cut", 0);
 			goto TERMINATE;
-		}
+		}*/
 
 
 		/******* 3. Solve the master problem to obtain the new candidate solution */
