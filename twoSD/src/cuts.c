@@ -93,6 +93,71 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
  ///// -----------------------------------------------
 /*
 
+//----------------------------------------------------
+/*
+
+by siavash tabrizian Feb 20
+
+Form MIP cuts (GMI and MIR)
+
+*/
+
+int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	*cut;
+	int    	cutIdx, obs;
+
+
+	/* (b) create a GMI cut */
+	clock_t tic = clock();
+	cut = GMICut(prob, cell, Xvect, lb);
+	if (cut == NULL) {
+		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+	/* (c) add cut to the structure and master problem  */
+	if ((cutIdx = addMIPCut2Pool(cell, cut, prob[0]->num->cols, lb, true)) < 0) {
+		errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
+		return -1;
+	}
+	if (addMIPCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols,true)) {
+		errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
+		return -1;
+	}
+
+	return cutIdx;
+}//END formCut()
+
+int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	*cut;
+	int    	cutIdx, obs;
+
+
+	/* (b) create a GMI cut */
+	clock_t tic = clock();
+	cut = MIRCut(prob, cell, Xvect, lb);
+	if (cut == NULL) {
+		errMsg("algorithm", "formMIRCut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+	/* (c) add cut to the structure and master problem  */
+	if ((cutIdx = addMIPCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
+		errMsg("algorithm", "formMIRCut", "failed to add the new cut to cutsType structure", 0);
+		return -1;
+	}
+	if (addMIPCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols, false)) {
+		errMsg("algorithm", "formMIRCut", "failed to add the new cut to master problem", 0);
+		return -1;
+	}
+
+	return cutIdx;
+}//END formCut()
+
+//-----------------------------------------------------
+/*
 form the GMI cuts 
 
 siavash tabrizian 30 Nov
@@ -267,6 +332,7 @@ oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 					}
 				}
 
+				cut->alpha = floor(basicX[k]);
 
 			}
 
@@ -832,6 +898,28 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) 
 		}
 		cell->cuts->vals[cell->cuts->cnt] = cut;
 		return cell->cuts->cnt++;
+	}
+
+}//END addCut()
+
+
+ /* 
+
+ by siavash tabrizian Feb 2020
+
+ subroutin for adding the MIP (GMI and MIR) cuts to their corresponding cutType structure
+ 
+ */
+int addMIPCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool GMI) {
+	int	cnt;
+
+	if (GMI) {
+		cell->GMIcuts->vals[cell->GMIcuts->cnt] = cut;
+		return cell->GMIcuts->cnt++;
+	}
+	else {
+		cell->MIRcuts->vals[cell->MIRcuts->cnt] = cut;
+		return cell->MIRcuts->cnt++;
 	}
 
 }//END addCut()

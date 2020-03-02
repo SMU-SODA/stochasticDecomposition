@@ -168,6 +168,8 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
 			goto TERMINATE;
 		}
+		fprintf(sFile, "\n GMI and MIR are added \n\n");
+		fprintf(stdout, "\n GMI and MIR are added \n\n");
 
 		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
 

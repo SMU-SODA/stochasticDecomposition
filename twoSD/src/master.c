@@ -122,6 +122,64 @@ int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX) {
 	return 0;
 }//END addCuts2Master()
 
+/*
+
+by siavash tabrizian Feb 20
+
+Subroutine for adding GMI and MIR cuts to the master problem 
+
+*/
+int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI) {
+	iVector 	indices;
+	int 	cnt;
+	static int cummCutNum = 0;
+
+	/* Set up indices */
+	if (!(indices = (iVector)arr_alloc(lenX + 1, int)))
+		errMsg("Allocation", "addMIPcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	for (cnt = 1; cnt <= lenX; cnt++)
+		indices[cnt] = cnt - 1;
+	indices[0] = lenX;
+
+	/* Cut right-hand side */
+	if (config.MASTER_TYPE == PROB_QP)
+		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
+	else
+		cut->alphaIncumb = cut->alpha;
+
+	/* Set up the cut name */
+	if (GMI)
+		sprintf(cut->name, "GMIcut_%04d", cummCutNum++);
+	else
+		sprintf(cut->name, "MIRcut_%04d", cummCutNum++);
+
+	/* add the cut to the cell cuts structure as well as on the solver */
+	if (GMI)
+	{
+		if (addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name)) {
+			errMsg("solver", "addGMIcut2Master", "failed to add new row to problem in solver", 0);
+			return 1;
+		}
+		cut->rowNum = master->mar++;
+	}
+	else
+	{
+		if (addRow(master->lp, lenX + 1, cut->alphaIncumb, LE, 0, indices, cut->beta, cut->name)) {
+			errMsg("solver", "addMIRcut2Master", "failed to add new row to problem in solver", 0);
+			return 1;
+}
+		cut->rowNum = master->mar++;
+	}
+
+
+#ifdef CUT_CHECK
+	writeProblem(cell->master->lp, "master_wNewCut.lp");
+#endif
+
+	mem_free(indices);
+	return 0;
+}//END addCuts2Master()
+
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar) {
 
 	if ( changeQPproximal(cell->master->lp, prob->num->cols, quadScalar) ) {
