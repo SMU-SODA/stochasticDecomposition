@@ -346,6 +346,8 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* cuts */
 	if (cell->cuts) freeCutsType(cell->cuts, true);
+	if (cell->MIRcuts) freeCutsType(cell->MIRcuts, true);
+	if (cell->GMIcuts) freeCutsType(cell->GMIcuts, true);
 	if (cell->fcuts) freeCutsType(cell->fcuts, true);
 	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, true);
 	cell->feasCnt 		= 0;

@@ -163,10 +163,11 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			goto TERMINATE;
 		}
 
+		//set sigma = 0 which is in master.c
+		//changerihgthand side for changing the alpha incumbents master.c (changeQPRHS)
+
 		printf("\n");
-		for (int vr = 0; vr < prob[0]->num->cols; vr++)
-			printf("var %i:  %d - ", vr, *(cell->candidX + vr));
-		printf("\n");
+		printVector(cell->candidX, prob[0]->num->cols, stdout);
 
 		fprintf(sFile, "\n Adding GMI and MIR cuts\n\n");
 		fprintf(stdout, "\n Adding GMI and MIR cuts \n\n");
@@ -178,10 +179,8 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 		}
 		fprintf(sFile, "\n %i GMI and %i MIR cuts are added \n\n", cell->GMIcuts->cnt, cell->MIRcuts->cnt);
 		fprintf(stdout, "\n %i GMI and %i MIR are added \n\n",cell->GMIcuts->cnt, cell->MIRcuts->cnt);
-
-		for (int vr = 0; vr < prob[0]->num->cols; vr++)
-			printf("var %i:  %d", vr, *(cell->candidX+vr));
 		printf("\n");
+		printVector(cell->candidX, prob[0]->num->cols, stdout);
 
 		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
 
