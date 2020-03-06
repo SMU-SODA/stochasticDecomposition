@@ -156,6 +156,12 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			}
 		}
 
+		if (changeQPSolverType(1))
+		{
+			errMsg("algorithm", "algo", "failed to set primal algorithm for QP", 0);
+			goto TERMINATE;
+		}
+
 		clock_t tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
