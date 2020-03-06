@@ -331,24 +331,26 @@ int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	int 	status = 0, cnt;
 	dVector 	rhs;
 	iVector 	indices;
-	
+
+	printf("rhs size: %i ", prob->num->rows);
 	if (!(rhs = (dVector)arr_alloc(prob->num->rows + cell->cuts->cnt + 1, double)))
-		errMsg("Allocation", "changeRhs", "rhs", 0);
+		errMsg("Allocation", "changeRhs", "rhs", 0);	
 	if (!(indices = (iVector)arr_alloc(prob->num->rows + cell->cuts->cnt, int)))
 		errMsg("Allocation", "changeRhs", "indices", 0);
+
 	/* Be careful with the one_norm!! In the CxX() routine, it assumes the 0th element is reserved for the 1_norm, in the returned dVector, the T sparse
 	dVector, and the x dVector. */
 	for (cnt = 0; cnt < prob->num->rows; cnt++) {
-		rhs[cnt + 1] = -prob->sp->rhsx[cnt];
+		rhs[cnt + 1] = prob->sp->rhsx[cnt];
 		indices[cnt] = cnt;
 	}
 	
 	/* b + A * xbar */
-	rhs = MSparsexvSub(prob->Dbar, xk, rhs);
+	//rhs = MSparsexvSub(prob->Dbar, xk, rhs);
 
 	/*** new rhs = alpha + beta * xbar (benders cuts)***/
 	for (cnt = 0; cnt < cell->cuts->cnt; cnt++) {
-		rhs[prob->num->rows + cnt + 1] += vXv(cell->cuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
+		rhs[prob->num->rows + cnt + 1] -= vXv(cell->cuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
 		indices[prob->num->rows + cnt] = cell->cuts->vals[cnt]->rowNum;
 
 		cell->cuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows + cnt + 1];
