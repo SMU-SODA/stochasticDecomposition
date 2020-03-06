@@ -192,6 +192,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, dVector xk);
+int revchangeQPrhs(probType *prob, cellType *cell, dVector xk);
 int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int offset);
 oneProblem *newMaster(oneProblem *orig, double lb);
 

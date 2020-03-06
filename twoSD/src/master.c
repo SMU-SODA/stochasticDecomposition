@@ -321,6 +321,51 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	return 0;
 }//END changeQPrhs()
 
+ /* 
+ * by siavash tabrizian March 20
+ * Since x = xbar + d, the corresponding changes will therefore be:
+ * 		 A * d = b - A * xbar
+ * 		 eta + beta * d >= alpha - beta * xbar
+ * Turning it back to A * x = b */
+int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
+	int 	status = 0, cnt;
+	dVector 	rhs;
+	iVector 	indices;
+
+	if (!(rhs = (dVector)arr_alloc(prob->num->rows + cell->cuts->cnt + 1, double)))
+		errMsg("Allocation", "changeRhs", "rhs", 0);
+	if (!(indices = (iVector)arr_alloc(prob->num->rows + cell->cuts->cnt, int)))
+		errMsg("Allocation", "changeRhs", "indices", 0);
+	/* Be careful with the one_norm!! In the CxX() routine, it assumes the 0th element is reserved for the 1_norm, in the returned dVector, the T sparse
+	dVector, and the x dVector. */
+	for (cnt = 0; cnt < prob->num->rows; cnt++) {
+		rhs[cnt + 1] = -prob->sp->rhsx[cnt];
+		indices[cnt] = cnt;
+	}
+
+	/* b + A * xbar */
+	rhs = MSparsexvSub(prob->Dbar, xk, rhs);
+
+	/*** new rhs = alpha + beta * xbar (benders cuts)***/
+	for (cnt = 0; cnt < cell->cuts->cnt; cnt++) {
+		rhs[prob->num->rows + cnt + 1] += vXv(cell->cuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
+		indices[prob->num->rows + cnt] = cell->cuts->vals[cnt]->rowNum;
+
+		cell->cuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows + cnt + 1];
+	}
+
+	/* Now we change the right-hand of the master problem. */
+	status = changeRHS(cell->master->lp, prob->num->rows + cell->cuts->cnt, indices, rhs + 1);
+	if (status) {
+		errMsg("solver", "changeQPrhs", "failed to change the right-hand side in the solver", 0);
+		return 1;
+	}
+
+	mem_free(rhs);
+	mem_free(indices);
+	return 0;
+}//END changeQPrhs()
+
 /* This function changes the (lower) bounds of the variables, while changing from x to d. The lower bounds of d varibles are -xbar
  * (incumbent solution). */
 int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int offset) {

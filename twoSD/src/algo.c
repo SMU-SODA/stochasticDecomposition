@@ -332,6 +332,42 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	tic = clock();
 
+	/*********00. Set sigma to 0 *********/
+	if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0)) {
+		errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
+		return 1;
+	}
+
+	/*********01. Update the right hand sides of master *********/
+	if (changeQPrhs(prob, cell, cell->incumbX)) {
+		errMsg("algorithm", "SolveIntCell", "failed to change the right-hand side to convert the problem into QP", 0);
+		return 1;
+	}
+
+	/*********02. Change LP solver to primal simplex *********/
+	if (changeLPSolverType(1))
+	{
+		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+		goto TERMINATE;
+	}
+
+	/*********03. solve new master LP *********/
+	int 	status;
+	if (solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status)) {
+		if (status == STAT_INFEASIBLE) {
+			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
+			writeProblem(cell->master->lp, "infeasibleM.lp");
+		}
+		else {
+			writeProblem(cell->master->lp, "errorM.lp");
+			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		}
+		return 1;
+	}
+
+	//////***********************************************
+	///      Adding MIP cuts to the master problem
+	//////***********************************************
 	while (cell->MIPFlag == false)
 	{
 
