@@ -331,7 +331,7 @@ int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	int 	status = 0, cnt;
 	dVector 	rhs;
 	iVector 	indices;
-
+	
 	if (!(rhs = (dVector)arr_alloc(prob->num->rows + cell->cuts->cnt + 1, double)))
 		errMsg("Allocation", "changeRhs", "rhs", 0);
 	if (!(indices = (iVector)arr_alloc(prob->num->rows + cell->cuts->cnt, int)))
@@ -342,7 +342,7 @@ int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 		rhs[cnt + 1] = -prob->sp->rhsx[cnt];
 		indices[cnt] = cnt;
 	}
-
+	
 	/* b + A * xbar */
 	rhs = MSparsexvSub(prob->Dbar, xk, rhs);
 
