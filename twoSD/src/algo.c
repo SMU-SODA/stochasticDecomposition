@@ -354,6 +354,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	/*********03. solve new master LP *********/
 	int 	status;
 	if (solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status)) {
+		printf("Objective: %d", getObjective(cell->master->lp, PROB_LP));
 		if (status == STAT_INFEASIBLE) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
