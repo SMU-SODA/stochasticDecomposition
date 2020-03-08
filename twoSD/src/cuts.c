@@ -291,8 +291,9 @@ oneCut *pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
 	/* get the B matrix header and the value of the basic variables.
 	The order of basic variables is the same as the order in Bhead */
+	printf(sizeof(cell->master->lp));
 	status = getBasisHead(cell->master->lp, Bhead, basicX);
-
+	
 	if (status) {
 		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
 		return 1;

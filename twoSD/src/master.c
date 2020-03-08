@@ -332,7 +332,6 @@ int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	dVector 	rhs;
 	iVector 	indices;
 
-	printf("rhs size: %i ", prob->num->rows);
 	if (!(rhs = (dVector)arr_alloc(prob->num->rows + cell->cuts->cnt + 1, double)))
 		errMsg("Allocation", "changeRhs", "rhs", 0);	
 	if (!(indices = (iVector)arr_alloc(prob->num->rows + cell->cuts->cnt, int)))

@@ -339,7 +339,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	}
 	
 	/*********01. Update the right hand sides of master *********/
-	if (revchangeQPrhs(prob, cell, cell->incumbX)) {
+	if (revchangeQPrhs(prob[0], cell, cell->incumbX)) {
 		errMsg("algorithm", "SolveIntCell", "failed to change the right-hand side to convert the problem into QP", 0);
 		return 1;
 	}
