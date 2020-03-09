@@ -354,17 +354,16 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	/*********03. solve new master LP *********/
 	int 	status;
 	if (solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status)) {
-		printf("Objective: %d", getObjective(cell->master->lp, PROB_LP));
 		if (status == STAT_INFEASIBLE) {
-			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
+			errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
 		}
 		else {
 			writeProblem(cell->master->lp, "errorM.lp");
-			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+			errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
 		}
-		return 1;
 	}
+	printf("Problem type: %i \n", getProbType(cell->master->lp));
 
 	//////***********************************************
 	///      Adding MIP cuts to the master problem
