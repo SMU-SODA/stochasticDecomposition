@@ -168,15 +168,16 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
-
+		printf("\nProblem type before: %i \n", getProbType(cell->master->lp));
+		printf("objective before: %4.6lf \n", getObjective(cell->master->lp, 5));
 		//set sigma = 0 which is in master.c
 		//changerihgthand side for changing the alpha incumbents master.c (changeQPRHS)
 
 		printf("\n");
 		printVector(cell->candidX, prob[0]->num->cols, stdout);
 
-		fprintf(sFile, "\n Adding GMI and MIR cuts\n\n");
-		fprintf(stdout, "\n Adding GMI and MIR cuts \n\n");
+		fprintf(sFile, "\nAdding GMI and MIR cuts\n\n");
+		fprintf(stdout, "\nAdding GMI and MIR cuts \n\n");
 
 		/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
 		if (solveIntCell(stoc, prob, cell)) {
@@ -363,7 +364,12 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
 		}
 	}
-	printf("Problem type: %i \n", getProbType(cell->master->lp));
+	printf("Problem type after: %i \n", getProbType(cell->master->lp));
+	/* Get the most recent optimal solution to master program */
+	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
+		errMsg("solveIntCell", "solveMaster", "failed to obtain the primal solution for master", 0);
+		return 1;
+	}
 
 	//////***********************************************
 	///      Adding MIP cuts to the master problem
@@ -372,7 +378,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	{
 
 		/******* 1. Get the basis, and form a GMI incumbent cut *******/
-		if ((GMICut = formGMICut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		if ((GMICut = formGMICut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
 			goto TERMINATE;
 		}
