@@ -333,6 +333,8 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	tic = clock();
 	
+	writeProblem(cell->master->lp, "QPMaster.lp");
+
 	/*********00. Set sigma to 0 *********/
 	if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
 		errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
@@ -346,7 +348,12 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	}
 
 	/*********02. Change LP solver to primal simplex *********/
-	if (changeLPSolverType(1))
+	if (changeProbType(cell->master->lp, PROB_LP))
+	{
+		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+		goto TERMINATE;
+	}
+	if (changeLPSolverType(PROB_LP))
 	{
 		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
 		goto TERMINATE;
@@ -354,7 +361,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	
 	/*********03. solve new master LP *********/
 	int 	status;
-	if (solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status)) {
+	if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status)) {
 		if (status == STAT_INFEASIBLE) {
 			errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
@@ -364,6 +371,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
 		}
 	}
+	writeProblem(cell->master->lp, "LPMaster.lp");
 	printf("Problem type after: %i \n", getProbType(cell->master->lp));
 	/* Get the most recent optimal solution to master program */
 	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
@@ -394,10 +402,41 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 		/******* 3. Solve the master problem to obtain the new candidate solution */
 		cell->gk += GMICut;
 		cell->mk += MIRCut;
-		if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-			errMsg("algorithm", "solveCell", "failed to solve master problem after adding GMI and MIR cuts", 0);
-			goto TERMINATE;
+		//check the true problem is integer feasible
+		//for integer feasibility solve lp
+		//for stochastic optimality we need to change update rhs based on the new cuts for QP problem
+		//outer loop: stochastic optimality
+		//inner loop: integer feasinility 
+		
+		int 	status;
+		if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status)) {
+			if (status == STAT_INFEASIBLE) {
+				errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
+				writeProblem(cell->master->lp, "infeasibleM.lp");
+			}
+			else {
+				writeProblem(cell->master->lp, "errorM.lp");
+				errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
+			}
 		}
+		printf("Problem type after: %i \n", getProbType(cell->master->lp));
+		/* Get the most recent optimal solution to master program */
+		if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
+			errMsg("solveIntCell", "solveMaster", "failed to obtain the primal solution for master", 0);
+			return 1;
+		}
+		printf("\n");
+		printVector(cell->candidX, prob[0]->num->cols, stdout);
+
+		bool IPflag = true;
+		for (int n = 0; n < prob[0]->num->cols; n++)
+		{
+			if (cell->candidX[n] - floor(cell->candidX[n]) != 0)
+			{
+				IPflag = false;
+			}
+		}
+		cell->MIPFlag == IPflag;
 
 		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;

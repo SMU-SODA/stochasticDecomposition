@@ -142,10 +142,7 @@ int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, b
 	indices[0] = lenX;
 
 	/* Cut right-hand side */
-	if (config.MASTER_TYPE == PROB_QP)
-		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
-	else
-		cut->alphaIncumb = cut->alpha;
+	cut->alphaIncumb = cut->alpha;
 
 	/* Set up the cut name */
 	if (GMI)
