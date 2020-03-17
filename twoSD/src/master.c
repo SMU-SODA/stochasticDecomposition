@@ -343,12 +343,11 @@ int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	
 	/* b + A * xbar */
 	//rhs = MSparsexvSub(prob->Dbar, xk, rhs);
-
+	
 	/*** new rhs = alpha + beta * xbar (benders cuts)***/
-	for (cnt = 0; cnt < cell->cuts->cnt; cnt++) {
-		rhs[prob->num->rows + cnt + 1] -= vXv(cell->cuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
+	for (cnt = 0; cnt < cell->cuts->cnt + cell->GMIcuts->cnt + cell->MIRcuts->cnt; cnt++) {
+		rhs[prob->num->rows + cnt + 1] = cell->cuts->vals[cnt]->alpha;
 		indices[prob->num->rows + cnt] = cell->cuts->vals[cnt]->rowNum;
-
 		cell->cuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows + cnt + 1];
 	}
 
