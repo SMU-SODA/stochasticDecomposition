@@ -285,9 +285,8 @@ oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	a = b = r = 0;
 
 	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
-
+	int totvarsize = prob[0]->num->cols + 1 + numRows;
 	printf("row: %i , opt cuts: %i, f cuts: %i\n", prob[0]->num->rows, cell->cuts->cnt, cell->fcuts->cnt);
-
 	if (!(slack = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formGMIcut", "slacks", 0);
 	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
@@ -296,7 +295,7 @@ oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 		errMsg("allocation", "formGMIcut", "cutarr", 0);
 	if (!(basicX = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formGMIcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
+	if (!(BinvA = (dVector)arr_alloc(totvarsize, dVector)))
 		errMsg("allocation", "formGMIcut", "BinvA", 0);
 	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
 		errMsg("allocation", "formGMIcut", "indices", 0);
@@ -327,7 +326,7 @@ oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 			if (bhat >= config.INT_TOLERANCE) {
 				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
 				status = getBasisInvRow(cell->master->lp, k, BinvA);
-				printVector(BinvA, prob[0]->num->cols + 1 + numRows, stdout);
+				//printVector(BinvA, prob[0]->num->cols + 1 + numRows, stdout);
 				if (status) {
 					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
 					return 1;
@@ -339,12 +338,10 @@ oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 				/* compute GMI cut coefficients */
 				for (i = 0; i < prob[0]->num->cols + 1; i++) {
 					ahat = BinvA[i] - floor(BinvA[i]);
-
 					if (ahat <= bhat)
 						cut->beta[i] = ahat / bhat;
 					else
 						cut->beta[i] = (1 - ahat) / (1 - bhat);
-
 				}
 
 				cut->alpha = 1;
@@ -482,13 +479,14 @@ oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	a = b = r = 0;
 
 	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
+	int totvarsize = prob[0]->num->cols + 1 + numRows;
 	if (!(slack = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formMIRcut", "slacks", 0);
 	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
 		errMsg("allocation", "formMIRcut", "Bhead", 0);
 	if (!(basicX = (dVector)arr_alloc(numRows, double)))
 		errMsg("allocation", "formMIRcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
+	if (!(BinvA = (dVector)arr_alloc(totvarsize, dVector)))
 		errMsg("allocation", "formMIRcut", "BinvA", 0);
 	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
 		errMsg("allocation", "formMIRcut", "indices", 0);
@@ -526,7 +524,7 @@ oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 				cut = newCut(prob[0]->num->cols, 0, 0);
 
 				/* compute MIR cut coefficients */
-				for (i = 0; i < prob[0]->num->cols + 1; i++) {
+				for (i = 0; i < totvarsize; i++) {
 					if (BinvA[i]<0.00000005 && BinvA[i]> -1 * 0.00000005)
 						BinvA[i] = 0;
 					ahat = BinvA[i] - floor(BinvA[i]);
