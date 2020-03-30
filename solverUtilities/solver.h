@@ -60,7 +60,7 @@
 
 #define 	THREADS			CPXPARAM_Threads
 
-int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status);
+int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status, double mipGap);
 int getProbType(LPptr lp);
 double getObjective(LPptr lp, int type);
 int getPrimal(LPptr lp, dVector X, int length);
@@ -95,6 +95,7 @@ int writeProblem(LPptr lp, char *filename);
 void openSolver();
 void closeSolver();
 int setIntParam(int paramname, int paramvalue);
+int setDoubleParam (int paramName, double paramVal);
 void solverErrmsg(int status);
 int changeLPSolverType(int method);
 int changeQPSolverType(int method);

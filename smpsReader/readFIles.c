@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 	long long seed = 3554548844580680;
 	dVector observ = NULL;
 	observ = (dVector) arr_alloc(stoc->numOmega, double);
-	generateOmega(stoc, observ, 0, &seed);
+	generateOmega(stoc, observ, 0, &seed, NULL);
 	mem_free(observ);
 
 	/* setup mean value problem which will act as reference for all future computations */

@@ -11,7 +11,7 @@
 extern cString 	outputDir;
 ENVptr	env;
 
-int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status) {
+int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status, double mipGap) {
 	int		aggres = 0;
 
 	solveagain:
@@ -25,6 +25,7 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 		(*status) = CPXqpopt(env, lp);
 		break;
 	case PROB_MILP:
+		setDoubleParam(CPXPARAM_MIP_Tolerances_MIPGap, mipGap);
 		(*status) = CPXmipopt(env, lp);
 		break;
 	case PROB_MIQP:
@@ -231,11 +232,12 @@ int changeQPSolverType(int method) {
 	return 0;
 }//END changeQPSolverType()
 
+int setDoubleParam (int paramName, double paramVal) {
+	return CPXsetdblparam(env, paramName, paramVal);
+}
 
-int setIntParam(int paramname, int paramvalue){
-
-	return CPXsetintparam (env, paramname, paramvalue);
-
+int setIntParam(int paramName, int paramValue){
+	return CPXsetintparam (env, paramName, paramValue);
 }//END setIntParam()
 
 void solverErrmsg(int status){
@@ -617,6 +619,17 @@ int changeBDS(LPptr lp, int cnt, iVector indices, cString lu, dVector bd) {
 
 	return status;
 }//END changeBDS
+
+/* Change constraint sense solver function */
+int changeSense(LPptr lp, int cnt, iVector indices, cString sense) {
+	int status;
+
+	status = CPXchgsense(env, lp, cnt, indices, sense);
+	if (status)
+		solverErrmsg(status);
+
+	return status;
+}//END changeSense()
 
 int changeCol(LPptr lp, int column, dVector coef, int start, int stop){
 	int		row, status;

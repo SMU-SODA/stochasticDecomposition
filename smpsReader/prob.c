@@ -496,6 +496,13 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 		}
 	}
 
+	/* write the mean value problem */
+	status = writeProblem(orig->lp, "original.lp");
+	if ( status ) {
+		errMsg("solver", "meanProblem", "failed to write the problem", 0);
+		return NULL;
+	}
+
 	/* change the problem type to solve the relaxed mean value problem */
 	if ( orig->type == PROB_MILP || orig->type == PROB_MIQP ) {
 		status = changeProbType(orig->lp, PROB_LP);
@@ -505,16 +512,11 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 		}
 	}
 
-	/* write the mean value problem */
-	status = writeProblem(orig->lp, "original.lp");
-	if ( status ) {
-		errMsg("solver", "meanProblem", "failed to write the problem", 0);
-		return NULL;
-	}
+	writeProblem(orig->lp, "original.lp");
 
 	/* solve the mean value problem */
 	changeLPSolverType(ALG_AUTOMATIC);
-	status = solveProblem(orig->lp, orig->name, PROB_QP, orig->mar, orig->mac, &status);
+	status = solveProblem(orig->lp, orig->name, PROB_QP, orig->mar, orig->mac, &status, 0.0);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;
@@ -652,7 +654,7 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 
 			/* solve the problem */
 			changeLPSolverType(ALG_AUTOMATIC);
-			if (solveProblem(lpClone, "lowerBoundCalc", PROB_LP, orig->mar, orig->mac, &stat1) ) {
+			if (solveProblem(lpClone, "lowerBoundCalc", PROB_LP, orig->mar, orig->mac, &stat1, 0.0) ) {
 				errMsg("setup", "calcLowerBound", "failed to solve problem computing lower bound", 0);
 				return NULL;
 			}
