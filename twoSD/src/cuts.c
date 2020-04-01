@@ -143,28 +143,40 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 }//END formCut()
 
 int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-	oneCut 	*cut;
+	oneCut 	**cut;
 	int    	cutIdx, obs;
 
 
-	/* (b) create a GMI cut */
+	/* (b) create a MIR cut */
 	clock_t tic = clock();
+	int cutnum_before = cell->MIRcuts->cnt;
 	cut = pureMIRCut(prob, cell, Xvect, lb);
+	int cutnum_after = cell->MIRcuts->cnt;
+	int newcuts = cutnum_after - cutnum_before;
 	if (cut == NULL) {
-		errMsg("algorithm", "formMIRCut", "failed to create the affine minorant", 0);
+		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
 		return -1;
 	}
 	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
 
-	/* (c) add cut to the structure and master problem  */
-	if ((cutIdx = addMIPCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
-		errMsg("algorithm", "formMIRCut", "failed to add the new cut to cutsType structure", 0);
-		return -1;
+	for (int c = 0; c < newcuts; c++)
+	{
+		/* (c) add cut to the structure and master problem  */
+		if ((cutIdx = addMIPCut2Pool(cell, cut[c], prob[0]->num->cols, lb, false)) < 0) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
+			return -1;
+		}
+
+		if (addMIPCut2Master(cell->master, cut[c], cell->incumbX, prob[0]->num->cols, false)) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
+			return -1;
+		}
 	}
-	if (addMIPCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols, false)) {
-		errMsg("algorithm", "formMIRCut", "failed to add the new cut to master problem", 0);
-		return -1;
-	}
+
+
+
+	cutIdx = cell->MIRcuts->cnt;
+	printf("# of MIR cuts: %i", cell->MIRcuts->cnt);
 
 	return cutIdx;
 }//END formCut()
@@ -496,18 +508,15 @@ oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	for (i = 0; i < prob[0]->num->cols + 1; i++)
 		indices[i] = i;
 
-	/* get the B matrix header and the value of the basic variables.
-	The order of basic variables is the same as the order in Bhead */
-	status = getBasisHead(cell->master->lp, Bhead, basicX);
-	if (status) {
-		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
-		return 1;
-	}
 
 	printf("\n");
 	startID = cell->MIRcuts->cnt;
 
-	for (k = 0; k < numRows; k++) {
+	for (k = 0; k < cell->cuts->cnt; k++) {
+		for (int v = 0; v < cell->master->mac; v++)
+		{
+
+		}
 		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
 			/* column is not a slack variable */
 			bhat = basicX[k] - floor(basicX[k]);
