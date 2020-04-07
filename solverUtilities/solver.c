@@ -236,8 +236,12 @@ int setDoubleParam (int paramName, double paramVal) {
 	return CPXsetdblparam(env, paramName, paramVal);
 }
 
-int setIntParam(int paramName, int paramValue){
+int setIntParam(int paramName, int paramValue) {
 	return CPXsetintparam (env, paramName, paramValue);
+}//END setIntParam()
+
+int getIntParam(int paramName, int *paramValue) {
+	return CPXgetintparam (env, paramName, paramValue);
 }//END setIntParam()
 
 void solverErrmsg(int status){
@@ -287,6 +291,7 @@ LPptr setupProblem(cString name, int type, int numcols, int numrows, int objsens
 		return NULL;
 	}
 
+
 	if ( type == PROB_MILP || type == PROB_MIQP ) {
 		if ( !(indices = (iVector) arr_alloc(numcols, int)) )
 			errMsg("allocation", "setupProblem", "indices", 0);
@@ -298,6 +303,13 @@ LPptr setupProblem(cString name, int type, int numcols, int numrows, int objsens
 		}
 		mem_free(indices);
 	}
+
+
+	if ( changeProbType(lp, type) ) {
+		errMsg("Problem Setup", "new_subprob", "subprob",0);
+		return NULL;
+	}
+
 
 	return lp;
 }//END setupProblem()
@@ -838,3 +850,34 @@ int refineConflict (LPptr lp , int mar, int mac) {
 
 	return 0;
 }//END refineConflict()
+
+/* Callback functions */
+
+int setsolvecallbackfunc (void *solvecallback, void *cbhandle) {
+
+	return CPXsetsolvecallbackfunc(env, solvecallback, cbhandle);
+
+}//END setsolvecallbackfunc()
+
+int getcallbacknodelp (void * cbdata, int wherefrom, CPXLPptr * nodelp) {
+
+	return CPXgetcallbacknodelp (env, cbdata, wherefrom, nodelp);
+
+}//END getcallbacknodelp()
+
+int getcallbackinfo(void * cbdata, int wherefrom, int whichinfo, void * result_p) {
+
+	return CPXgetcallbackinfo(env, cbdata, wherefrom, whichinfo, result_p);
+
+}//END getcallbackinfo()
+
+int getCallbackPrimal(void * cbdata, int wherefrom, dVector X, int length) {
+	int status;
+	status = CPXgetcallbacknodex (env, cbdata, wherefrom, X+1, 0, length-1);
+	if ( status )
+		solverErrmsg(status);
+	else
+		X[0] = oneNorm(X+1, length);
+
+	return status;
+}//END getCallbackPrimal()
