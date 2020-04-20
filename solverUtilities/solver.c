@@ -12,7 +12,7 @@ extern cString 	outputDir;
 ENVptr	env;
 
 int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status, double mipGap) {
-	int		aggres = 0;
+	int		aggres = 0, res = 0;
 
 	solveagain:
 	switch  ( type ) {
@@ -38,8 +38,8 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 	RESOLVE:
 	(*status) = CPXgetstat(env, lp);
 	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
+		writeProblem(lp, "error.lp");
 		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
-			writeProblem(lp, "error.lp");
 			fprintf(stderr, "\nProblem is infeasible.\n");
 #if defined(DIAGONISE)
 			if ( refineConflict(lp , mar, mac) ) {
@@ -59,10 +59,18 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 			changeLPSolverType(ALG_PRIMAL);
 			(*status) = CPXlpopt(env, lp);
 			goto RESOLVE;
+		} else if ( type == PROB_LP && (*status) == 12 ) {
+			switch (res) {
+			case 0: changeLPSolverType(ALG_PRIMAL); res++; break;
+			case 1: changeLPSolverType(ALG_PRIMAL); res++; break;
+			case 2: changeLPSolverType(ALG_BARRIER); res++; break;
+			default: fprintf(stderr, "Failed to resolve conflict.\n"); return (*status);
+			}
+			(*status) = CPXlpopt(env, lp);
+			goto RESOLVE;
 		}
 		else {
 			solverErrmsg((*status));
-			writeProblem(lp, "error.lp");
 			return (*status);
 		}
 	}
