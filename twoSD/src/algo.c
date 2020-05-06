@@ -333,50 +333,54 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	tic = clock();
 	
-	writeProblem(cell->master->lp, "QPMaster.lp");
-
-	/*********00. Set sigma to 0 *********/
-	if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
-		errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
-		return 1;
-	}
-	
-	/*********01. Update the right hand sides of master *********/
-	if (revchangeQPrhs(prob[0], cell, cell->incumbX)) {
-		errMsg("algorithm", "SolveIntCell", "failed to change the right-hand side to convert the problem into QP", 0);
-		return 1;
-	}
-
-	/*********02. Change LP solver to primal simplex *********/
-	if (changeProbType(cell->master->lp, PROB_LP))
+	if (cell->master->type == PROB_QP)
 	{
-		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
-		goto TERMINATE;
-	}
-	if (changeLPSolverType(PROB_LP))
-	{
-		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
-		goto TERMINATE;
-	}
-	
-	/*********03. solve new master LP *********/
-	int 	status;
-	if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status)) {
-		if (status == STAT_INFEASIBLE) {
-			errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
-			writeProblem(cell->master->lp, "infeasibleM.lp");
+		writeProblem(cell->master->lp, "QPMaster.lp");
+
+		/*********00. Set sigma to 0 *********/
+		if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
+			errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
+			return 1;
 		}
-		else {
-			writeProblem(cell->master->lp, "errorM.lp");
-			errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
+
+		/*********01. Update the right hand sides of master *********/
+		if (revchangeQPrhs(prob[0], cell, cell->incumbX)) {
+			errMsg("algorithm", "SolveIntCell", "failed to change the right-hand side to convert the problem into QP", 0);
+			return 1;
 		}
-	}
-	writeProblem(cell->master->lp, "LPMaster.lp");
-	printf("Problem type after: %i \n", getProbType(cell->master->lp));
-	/* Get the most recent optimal solution to master program */
-	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
-		errMsg("solveIntCell", "solveMaster", "failed to obtain the primal solution for master", 0);
-		return 1;
+
+		/*********02. Change LP solver to primal simplex *********/
+		if (changeProbType(cell->master->lp, PROB_LP))
+		{
+			errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+			goto TERMINATE;
+		}
+		if (changeLPSolverType(PROB_LP))
+		{
+			errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+			goto TERMINATE;
+		}
+
+		/*********03. solve new master LP *********/
+		int 	status;
+		if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status, config.TOLERANCE)) {
+			if (status == STAT_INFEASIBLE) {
+				errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
+				writeProblem(cell->master->lp, "infeasibleM.lp");
+			}
+			else {
+				writeProblem(cell->master->lp, "errorM.lp");
+				errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
+			}
+		}
+		writeProblem(cell->master->lp, "LPMaster.lp");
+		printf("Problem type after: %i \n", getProbType(cell->master->lp));
+		/* Get the most recent optimal solution to master program */
+		if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
+			errMsg("solveIntCell", "solveMaster", "failed to obtain the primal solution for master", 0);
+			return 1;
+		}
+
 	}
 
 	//////***********************************************
@@ -386,30 +390,30 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	{
 
 		/******* 1. Get the basis, and form a GMI incumbent cut *******/
+#if defined(GMIcutsActive)
 		if ((GMICut = formGMICut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the GMI incumbent cut", 0);
 			goto TERMINATE;
 		}
+#endif // GMIcutsActive
+
 
 
 		/******* 2. Form a MIR incumbent cut *******/
-		/*if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+#if defined(MIRcutsActive)
+		if ((MIRCut = formMIRCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the MIR incumbent cut", 0);
 			goto TERMINATE;
-		}*/
+		}
+#endif // defined(MIRcutsActive)
 
 
 		/******* 3. Solve the master problem to obtain the new candidate solution */
 		cell->gk += GMICut;
 		cell->mk += MIRCut;
-		//check the true problem is integer feasible
-		//for integer feasibility solve lp
-		//for stochastic optimality we need to change update rhs based on the new cuts for QP problem
-		//outer loop: stochastic optimality
-		//inner loop: integer feasinility 
 		
 		int 	status;
-		if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status)) {
+		if (solveProblem(cell->master->lp, cell->master->name, PROB_LP, cell->master->mar, cell->master->mac, &status, config.TOLERANCE)) {
 			if (status == STAT_INFEASIBLE) {
 				errMsg("solveIntCell", "solveMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 				writeProblem(cell->master->lp, "infeasibleM.lp");

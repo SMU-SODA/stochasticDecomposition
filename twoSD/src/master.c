@@ -39,7 +39,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
-	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status) ) {
+	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status, config.TOLERANCE) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
@@ -149,11 +149,11 @@ int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, b
 		sprintf(cut->name, "GMIcut_%04d", cummCutNum++);
 	else
 		sprintf(cut->name, "MIRcut_%04d", cummCutNum++);
-
+	
 	/* add the cut to the cell cuts structure as well as on the solver */
 	if (GMI)
 	{
-		if (addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name)) {
+		if (addRow(master->lp, lenX + 1, cut->alpha, GE, 0, indices, cut->beta, cut->name)) {
 			errMsg("solver", "addGMIcut2Master", "failed to add new row to problem in solver", 0);
 			return 1;
 		}
@@ -161,10 +161,12 @@ int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, b
 	}
 	else
 	{
-		if (addRow(master->lp, lenX + 1, cut->alphaIncumb, LE, 0, indices, cut->beta, cut->name)) {
+		
+		if (addRow(master->lp, lenX + 1, cut->alpha, LE, 0, indices, cut->beta, cut->name)) {
 			errMsg("solver", "addMIRcut2Master", "failed to add new row to problem in solver", 0);
 			return 1;
-}
+		}
+		
 		cut->rowNum = master->mar++;
 	}
 

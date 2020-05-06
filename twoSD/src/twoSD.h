@@ -56,6 +56,8 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
+	int 	SMIP;
+	double 	SMIP_OPTGAP;
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
@@ -103,6 +105,7 @@ typedef struct {
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
+	bool		callback;			/* flag to indicate if the cell is being solved in callback phase (true) */
 
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
@@ -203,7 +206,7 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *GMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
-oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
@@ -243,5 +246,9 @@ void freeBatchType(batchSummary *batch);
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+
+/* callback.c */
+int bendersCallback(probType **prob, cellType *cell);
+int callbackNodeSummary(void *cbdata, int wherefrom, LPptr lp);
 
 #endif /* TWOSD_H_ */

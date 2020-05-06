@@ -91,477 +91,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	return cutIdx;
 }//END formCut()
 
- ///// -----------------------------------------------
-/*
 
-//----------------------------------------------------
-/*
-
-by siavash tabrizian Feb 20
-
-Form MIP cuts (GMI and MIR)
-
-*/
-
-int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-	oneCut 	**cut;
-	int    	cutIdx, obs;
-
-
-	/* (b) create a GMI cut */
-	clock_t tic = clock();
-	int cutnum_before = cell->GMIcuts->cnt;
-	cut = pureGMICut(prob, cell, Xvect, lb);
-	int cutnum_after = cell->GMIcuts->cnt;
-	int newcuts = cutnum_after - cutnum_before;
-	if (cut == NULL) {
-		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
-		return -1;
-	}
-	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
-
-	for (int c = 0; c < newcuts; c++)
-	{
-		/* (c) add cut to the structure and master problem  */
-		if ((cutIdx = addMIPCut2Pool(cell, cut[c], prob[0]->num->cols, lb, true)) < 0) {
-			errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
-			return -1;
-		}
-
-		if (addMIPCut2Master(cell->master, cut[c], cell->incumbX, prob[0]->num->cols, true)) {
-			errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
-			return -1;
-		}
-	}
-
-
-	
-	cutIdx = cell->GMIcuts->cnt;
-	printf("# of GMI cuts: %i", cell->GMIcuts->cnt);
-
-	return cutIdx;
-}//END formCut()
-
-int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-	oneCut 	**cut;
-	int    	cutIdx, obs;
-
-
-	/* (b) create a MIR cut */
-	clock_t tic = clock();
-	int cutnum_before = cell->MIRcuts->cnt;
-	cut = pureMIRCut(prob, cell, Xvect, lb);
-	int cutnum_after = cell->MIRcuts->cnt;
-	int newcuts = cutnum_after - cutnum_before;
-	if (cut == NULL) {
-		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
-		return -1;
-	}
-	cell->time.argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
-
-	for (int c = 0; c < newcuts; c++)
-	{
-		/* (c) add cut to the structure and master problem  */
-		if ((cutIdx = addMIPCut2Pool(cell, cut[c], prob[0]->num->cols, lb, false)) < 0) {
-			errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
-			return -1;
-		}
-
-		if (addMIPCut2Master(cell->master, cut[c], cell->incumbX, prob[0]->num->cols, false)) {
-			errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
-			return -1;
-		}
-	}
-
-
-
-	cutIdx = cell->MIRcuts->cnt;
-	printf("# of MIR cuts: %i", cell->MIRcuts->cnt);
-
-	return cutIdx;
-}//END formCut()
-
-//-----------------------------------------------------
-/*
-form the GMI cuts 
-
-siavash tabrizian 30 Nov
-
-*/
-oneCut *GMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-	
-	oneCut 	*cut;
-	int    	cutNum;
-	dVector	basicX, BinvA, theta, slack;
-	iVector	Bhead, indices;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
-
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
-	if (!(slack = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "slacks", 0);
-	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
-		errMsg("allocation", "formGMIcut", "Bhead", 0);
-	if (!(basicX = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
-		errMsg("allocation", "formGMIcut", "BinvA", 0);
-	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "formGMIcut", "indices", 0);
-	if (!(theta = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "theta", 0);
-
-	for (i = 0; i < prob[0]->num->cols + 1; i++)
-		indices[i] = i;
-
-	/* get the B matrix header and the value of the basic variables. 
-	The order of basic variables is the same as the order in Bhead */
-	status = getBasisHead(cell->master->lp, Bhead, basicX);
-	if (status) {
-		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
-		return 1;
-	}
-
-	printf("\n");
-	startID = cell->GMIcuts->cnt;
-
-	for (k = 0; k < numRows; k++) {
-		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
-			/* column is not a slack variable */
-			bhat = basicX[k] - floor(basicX[k]);
-			if ((cell->master->ctype[Bhead[k]] == 'I' || cell->master->ctype[Bhead[k]] == 'B') && (bhat >= config.INT_TOLERANCE && (1 - bhat) >= config.INT_TOLERANCE)) {
-				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
-				status = getBasisInvRow(cell->master->lp, k, BinvA);
-
-				if (status) {
-					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
-					return 1;
-				}
-
-				/* allocate memory to a new GMI cut */
-				cut = newCut(prob[0]->num->cols, 0, 0);
-
-				/* compute GMI cut coefficients */ 
-				for (i = 0; i < prob[0]->num->cols + 1; i++) {
-					if (BinvA[i]<0.00000005 && BinvA[i]> -1 * 0.00000005)
-						BinvA[i] = 0;
-					ahat = BinvA[i] - floor(BinvA[i]);
-					if (cell->master->ctype[i] == 'I' || cell->master->ctype[i] == 'B') {
-						if (ahat < bhat)
-							cut->beta[i] = ahat / bhat;
-						else
-							cut->beta[i] = (1 - ahat) / (1 - bhat);
-					}
-					else {
-						if (BinvA[i] > 0)
-							cut->beta[i] = BinvA[i] / bhat;
-						else
-							cut->beta[i] = BinvA[i] / (1 - bhat);
-					}
-				}
-
-				cut->alpha = 1;
-
-			}
-
-		}
-	}
-	endID = cell->GMIcuts->cnt;
-
-	mem_free(Bhead);
-	mem_free(basicX);
-	mem_free(BinvA);
-	mem_free(slack);
-	mem_free(theta);
-
-	return cut;
-}//END formCut()
-
- /*
- form the pure integer GMI cuts
-
- siavash tabrizian 30 Nov
-
- */
-oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-
-	oneCut 	*cut;
-	oneCut 	**cutarr;
-	int    	cutNum;
-	int    	cutIdx;
-	dVector	basicX, BinvA, theta, slack;
-	iVector	Bhead, indices;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
-
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
-	int totvarsize = prob[0]->num->cols + 1 + numRows;
-	printf("row: %i , opt cuts: %i, f cuts: %i\n", prob[0]->num->rows, cell->cuts->cnt, cell->fcuts->cnt);
-	if (!(slack = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "slacks", 0);
-	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
-		errMsg("allocation", "formGMIcut", "Bhead", 0);
-	if (!(cutarr = (oneCut*)arr_alloc(numRows, oneCut)))
-		errMsg("allocation", "formGMIcut", "cutarr", 0);
-	if (!(basicX = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(totvarsize, dVector)))
-		errMsg("allocation", "formGMIcut", "BinvA", 0);
-	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "formGMIcut", "indices", 0);
-	if (!(theta = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formGMIcut", "theta", 0);
-
-	for (i = 0; i < prob[0]->num->cols + 1; i++)
-		indices[i] = i;
-
-	/* get the B matrix header and the value of the basic variables.
-	The order of basic variables is the same as the order in Bhead */
-	printf("objective: %4.6lf \n", getObjective(cell->master->lp, 5));
-	status = getBasisHead(cell->master->lp, Bhead, basicX);
-	if (status) {
-		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
-		return 1;
-	}
-
-	printf("\n");
-	startID = cell->GMIcuts->cnt;
-	int cutnum = 0;
-
-	for (k = 0; k < numRows; k++) {
-		printf("Bhead[%i]: %i \n", k,Bhead[k]);
-		if (Bhead[k] >= 0) {
-			/* column is not a slack variable */
-			bhat = basicX[k] - floor(basicX[k]);
-			if (bhat >= config.INT_TOLERANCE) {
-				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
-				status = getBasisInvRow(cell->master->lp, k, BinvA);
-				//printVector(BinvA, prob[0]->num->cols + 1 + numRows, stdout);
-				if (status) {
-					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
-					return 1;
-				}
-
-				/* allocate memory to a new GMI cut */
-				cut = newCut(prob[0]->num->cols, 0, 0);
-
-				/* compute GMI cut coefficients */
-				for (i = 0; i < prob[0]->num->cols + 1; i++) {
-					ahat = BinvA[i] - floor(BinvA[i]);
-					if (ahat <= bhat)
-						cut->beta[i] = ahat / bhat;
-					else
-						cut->beta[i] = (1 - ahat) / (1 - bhat);
-				}
-
-				cut->alpha = 1;
-				cell->GMIcuts->cnt++;
-			}
-
-		}
-		
-		cutarr[cutnum] = cut;
-		cutnum++;
-	}
-	
-	
-
-	mem_free(Bhead);
-	mem_free(basicX);
-	mem_free(BinvA);
-	mem_free(slack);
-	mem_free(theta);
-
-	return cutarr;
-}//END formCut()
-
- ///// -----------------------------------------------
- /*
-
- form the MIR cuts
-
- siavash tabrizian 30 Nov
-
- */
-oneCut *MIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-	
-	oneCut 	*cut;
-	int    	cutNum;
-	dVector	basicX, BinvA, theta, slack;
-	iVector	Bhead, indices;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
-
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
-	if (!(slack = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "slacks", 0);
-	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
-		errMsg("allocation", "formMIRcut", "Bhead", 0);
-	if (!(basicX = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(prob[0]->num->cols + 1 + numRows, dVector)))
-		errMsg("allocation", "formMIRcut", "BinvA", 0);
-	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "formMIRcut", "indices", 0);
-	if (!(theta = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "theta", 0);
-
-	for (i = 0; i < prob[0]->num->cols + 1; i++)
-		indices[i] = i;
-
-	/* get the B matrix header and the value of the basic variables.
-	The order of basic variables is the same as the order in Bhead */
-	status = getBasisHead(cell->master->lp, Bhead, basicX);
-	if (status) {
-		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
-		return 1;
-	}
-
-	printf("\n");
-	startID = cell->MIRcuts->cnt;
-
-	for (k = 0; k < numRows; k++) {
-		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
-			/* column is not a slack variable */
-			bhat = basicX[k] - floor(basicX[k]);
-			if ((cell->master->ctype[Bhead[k]] == 'I' || cell->master->ctype[Bhead[k]] == 'B') && (bhat >= config.INT_TOLERANCE && (1 - bhat) >= config.INT_TOLERANCE)) {
-				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
-				status = getBasisInvRow(cell->master->lp, k, BinvA);
-
-				if (status) {
-					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
-					return 1;
-				}
-
-				/* allocate memory to a new GMI cut */
-				cut = newCut(prob[0]->num->cols, 0, 0);
-
-				/* compute MIR cut coefficients */
-				for (i = 0; i < prob[0]->num->cols + 1; i++) {
-					if (BinvA[i]<0.00000005 && BinvA[i]> -1 * 0.00000005)
-						BinvA[i] = 0;
-					ahat = BinvA[i] - floor(BinvA[i]);
-					if (cell->master->ctype[i] == 'B') {
-						if (ahat - bhat < bhat - ahat)
-							cut->beta[i] = floor(BinvA[i]) + (bhat - ahat) / (1 - bhat);
-						else
-							cut->beta[i] = floor(BinvA[i]) + (ahat - bhat) / (1 - bhat);
-					}
-					else {
-						if (BinvA[i] < 0)
-							cut->beta[i] = BinvA[i] / (1 - bhat);	
-					}
-				}
-
-				cut->alpha = floor(basicX[k]);
-
-			}
-
-		}
-	}
-	endID = cell->MIRcuts->cnt;
-
-	mem_free(Bhead);
-	mem_free(basicX);
-	mem_free(BinvA);
-	mem_free(slack);
-	mem_free(theta);
-
-	return cut;
-}//END formCut()
-
- /*
-
- form the pure integer MIR cuts
-
- siavash tabrizian 30 Nov
-
- */
-oneCut *pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-
-	oneCut 	*cut;
-	int    	cutNum;
-	dVector	basicX, BinvA, theta, slack;
-	iVector	Bhead, indices;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
-
-	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fcuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
-	int totvarsize = prob[0]->num->cols + 1 + numRows;
-	if (!(slack = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "slacks", 0);
-	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
-		errMsg("allocation", "formMIRcut", "Bhead", 0);
-	if (!(basicX = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "basicX", 0);
-	if (!(BinvA = (dVector)arr_alloc(totvarsize, dVector)))
-		errMsg("allocation", "formMIRcut", "BinvA", 0);
-	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "formMIRcut", "indices", 0);
-	if (!(theta = (dVector)arr_alloc(numRows, double)))
-		errMsg("allocation", "formMIRcut", "theta", 0);
-
-	for (i = 0; i < prob[0]->num->cols + 1; i++)
-		indices[i] = i;
-
-
-	printf("\n");
-	startID = cell->MIRcuts->cnt;
-
-	for (k = 0; k < cell->cuts->cnt; k++) {
-		for (int v = 0; v < cell->master->mac; v++)
-		{
-
-		}
-		if (Bhead[k] >= 0 && Bhead[k] <= prob[0]->num->cols) {
-			/* column is not a slack variable */
-			bhat = basicX[k] - floor(basicX[k]);
-			if ((cell->master->ctype[Bhead[k]] == 'B') && (bhat >= config.INT_TOLERANCE && (1 - bhat) >= config.INT_TOLERANCE)) {
-				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
-				status = getBasisInvRow(cell->master->lp, k, BinvA);
-
-				if (status) {
-					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
-					return 1;
-				}
-
-				/* allocate memory to a new GMI cut */
-				cut = newCut(prob[0]->num->cols, 0, 0);
-
-				/* compute MIR cut coefficients */
-				for (i = 0; i < totvarsize; i++) {
-					if (BinvA[i]<0.00000005 && BinvA[i]> -1 * 0.00000005)
-						BinvA[i] = 0;
-					ahat = BinvA[i] - floor(BinvA[i]);
-
-					if (ahat - bhat < bhat - ahat)
-						cut->beta[i] = floor(BinvA[i]) + (bhat - ahat) / (1 - bhat);
-					else
-						cut->beta[i] = floor(BinvA[i]) + (ahat - bhat) / (1 - bhat);
-				}
-
-				cut->alpha = floor(basicX[k]);
-
-			}
-
-		}
-	}
-	endID = cell->MIRcuts->cnt;
-
-	mem_free(Bhead);
-	mem_free(basicX);
-	mem_free(BinvA);
-	mem_free(slack);
-	mem_free(theta);
-
-	return cut;
-}//END formCut()
-
-/////-----------------------------------------------------
 
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
@@ -667,6 +197,361 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 	return cut;
 }//END SDCut
+
+
+ //----------------------------------------------------
+ /*
+
+ by siavash tabrizian Feb 20
+
+ Form MIP cuts (GMI and MIR)
+
+ */
+
+int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	**cut;
+	int    	cutIdx, obs;
+
+
+	/* (b) create a GMI cut */
+	clock_t tic = clock();
+	int cutnum_before = cell->GMIcuts->cnt;
+	cut = purefracGMICut(prob, cell, Xvect, lb);
+	int cutnum_after = cell->GMIcuts->cnt;
+	int newcuts = cutnum_after - cutnum_before;
+	if (cut == NULL) {
+		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+	cell->time->argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+	for (int c = 0; c < newcuts; c++)
+	{
+		/* (c) add cut to the structure and master problem  */
+		if ((cutIdx = addMIPCut2Pool(cell, cut[c], prob[0]->num->cols, lb, true)) < 0) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
+			return -1;
+		}
+
+		if (addMIPCut2Master(cell->master, cut[c], cell->incumbX, prob[0]->num->cols, true)) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
+			return -1;
+		}
+	}
+
+
+
+	cutIdx = cell->GMIcuts->cnt;
+
+	return cutIdx;
+}//END formCut()
+
+int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+	oneCut 	**cut;
+	int    	cutIdx, obs;
+
+
+	/* (b) create a MIR cut */
+	clock_t tic = clock();
+	int cutnum_before = cell->MIRcuts->cnt;
+	cut = pureMIRCut(prob, cell, Xvect, lb);
+	int cutnum_after = cell->MIRcuts->cnt;
+	int newcuts = cutnum_after - cutnum_before;
+	if (cut == NULL) {
+		errMsg("algorithm", "formGMICut", "failed to create the affine minorant", 0);
+		return -1;
+	}
+	cell->time->argmaxIter += ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+	for (int c = 0; c < newcuts; c++)
+	{
+		/* (c) add cut to the structure and master problem  */
+		if ((cutIdx = addMIPCut2Pool(cell, cut[c], prob[0]->num->cols, lb, false)) < 0) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to cutsType structure", 0);
+			return -1;
+		}
+
+		if (addMIPCut2Master(cell->master, cut[c], cell->incumbX, prob[0]->num->cols, false)) {
+			errMsg("algorithm", "formGMICut", "failed to add the new cut to master problem", 0);
+			return -1;
+		}
+	}
+
+
+
+	cutIdx = cell->MIRcuts->cnt;
+
+	return cutIdx;
+}//END formCut()
+
+
+ /*
+ form the pure integer GMI cuts
+
+ siavash tabrizian 30 Nov
+
+ */
+oneCut **pureGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+
+	oneCut 	*cut;
+	oneCut 	**cutarr;
+	int    	cutNum;
+	int    	cutIdx;
+	dVector	basicX, BinvA, theta, slack;
+	iVector	Bhead, indices;
+	double	bhat, ahat, a, b, abar, r;
+	int 	status, k, i, j, cnt, startID, endID, numRows;
+	a = b = r = 0;
+
+	numRows = prob[0]->num->rows + cell->cuts->cnt + cell->fCuts->cnt + cell->MIRcuts->cnt + cell->GMIcuts->cnt;
+	int totvarsize = prob[0]->num->cols + 1 + numRows;
+	printf("row: %i , opt cuts: %i, f cuts: %i\n", prob[0]->num->rows, cell->cuts->cnt, cell->fCuts->cnt);
+	if (!(slack = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "slacks", 0);
+	if (!(Bhead = (iVector)arr_alloc(numRows, int)))
+		errMsg("allocation", "formGMIcut", "Bhead", 0);
+	if (!(cutarr = (oneCut*)arr_alloc(numRows, oneCut)))
+		errMsg("allocation", "formGMIcut", "cutarr", 0);
+	if (!(basicX = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "basicX", 0);
+	if (!(BinvA = (dVector)arr_alloc(totvarsize, dVector)))
+		errMsg("allocation", "formGMIcut", "BinvA", 0);
+	if (!(indices = arr_alloc(prob[0]->num->cols + 1, int)))
+		errMsg("allocation", "formGMIcut", "indices", 0);
+	if (!(theta = (dVector)arr_alloc(numRows, double)))
+		errMsg("allocation", "formGMIcut", "theta", 0);
+
+	for (i = 0; i < prob[0]->num->cols + 1; i++)
+		indices[i] = i;
+
+	/* get the B matrix header and the value of the basic variables.
+	The order of basic variables is the same as the order in Bhead */
+	printf("objective: %4.6lf \n", getObjective(cell->master->lp, 5));
+	status = getBasisHead(cell->master->lp, Bhead, basicX);
+	if (status) {
+		errMsg("algorithm", "formGMIcut", "failed to obtain the Base matrix header for master", 0);
+		return 1;
+	}
+
+	printf("\n");
+	startID = cell->GMIcuts->cnt;
+	int cutnum = 0;
+
+	for (k = 0; k < numRows; k++) {
+		printf("Bhead[%i]: %i \n", k, Bhead[k]);
+		if (Bhead[k] >= 0) {
+			/* column is not a slack variable */
+			bhat = basicX[k] - floor(basicX[k]);
+			if (bhat >= config.INT_TOLERANCE) {
+				/* integer variable with fractional solution. Get the corresponding simplex tableau row */
+				status = getBasisInvRow(cell->master->lp, k, BinvA);
+				//printVector(BinvA, prob[0]->num->cols + 1 + numRows, stdout);
+				if (status) {
+					errMsg("algorithm", "solveMaster", "failed to obtain the simplex tableau for basic variables", 0);
+					return 1;
+				}
+
+				/* allocate memory to a new GMI cut */
+				cut = newCut(prob[0]->num->cols, 0, 0);
+
+				/* compute GMI cut coefficients */
+				for (i = 0; i < prob[0]->num->cols + 1; i++) {
+					ahat = BinvA[i] - floor(BinvA[i]);
+					if (ahat <= bhat)
+						cut->beta[i] = ahat / bhat;
+					else
+						cut->beta[i] = (1 - ahat) / (1 - bhat);
+				}
+
+				cut->alpha = 1;
+				cell->GMIcuts->cnt++;
+			}
+
+		}
+
+		cutarr[cutnum] = cut;
+		cutnum++;
+	}
+
+
+
+	mem_free(Bhead);
+	mem_free(basicX);
+	mem_free(BinvA);
+	mem_free(slack);
+	mem_free(theta);
+
+	return cutarr;
+}//END formCut()
+
+
+
+ /*
+
+ form the pure integer MIR cuts
+
+ siavash tabrizian 30 Nov
+
+ */
+oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+
+
+	oneCut 	*cut;
+	oneCut 	**cutarr;
+	int    	cutNum;
+	int    	cutIdx;
+	double	bhat, ahat, a, b, abar, r;
+	int 	status, k, i, j, cnt, startID, endID, numRows;
+	a = b = r = 0;
+
+	numRows = prob[0]->num->rows;
+
+	if (!(cutarr = (oneCut*)arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut)))
+		errMsg("allocation", "formMIRcut", "cutarr", 0);
+
+
+	startID = cell->MIRcuts->cnt;
+	int cutnum = 0;
+
+
+	//// Creating MIR for benders cuts
+	for (k = 0; k < cell->cuts->cnt; k++) {
+
+		/* allocate memory to a new MIR cut */
+		cut = newCut(prob[0]->num->cols, 0, 0);
+
+		double bfloor = floor(cell->cuts->vals[k]->alpha);
+		double bceil = ceil(cell->cuts->vals[k]->alpha);
+		double f0 = cell->cuts->vals[k]->alpha - bfloor;
+		cut->beta[0] = 1;
+		cut->alpha = bceil * f0;
+
+		for (int v = 1; v < cell->master->mac; v++)
+		{
+
+			double afloor = floor(cell->cuts->vals[k]->beta[v]);
+			double aceil = floor(cell->cuts->vals[k]->beta[v]);
+			double fj = cell->cuts->vals[k]->beta[v] - afloor;
+			double beta1 = afloor * f0 + fj;
+			double beta2 = aceil * f0;
+
+			cut->beta[v] = min(beta1, beta2);
+
+		}
+
+		cell->MIRcuts->cnt++;
+		cutarr[cutnum] = cut;
+		cutnum++;
+	}
+
+
+#if defined(MIRSubbaddActive)
+	//// Creating subbadditive cuts from original MIRs
+	for (k = 0; k < cell->cuts->cnt - 1; k++)
+	{
+		for (int k2 = k + 1; k2 < cell->cuts->cnt; k2++)
+		{
+			/* allocate memory to a new MIR cut */
+			cut = newCut(prob[0]->num->cols, 0, 0);
+			//printf("here\n");
+			double alphfloor1 = floor(cell->cuts->vals[k]->alpha);
+			double alphfloor2 = floor(cell->cuts->vals[k2]->alpha);
+			double g01 = cell->cuts->vals[k]->alpha;
+			double g02 = cell->cuts->vals[k2]->alpha;
+			double gbar_0 = (cell->cuts->vals[k2]->alpha - cell->cuts->vals[k]->alpha)
+				- floor((cell->cuts->vals[k2]->alpha - cell->cuts->vals[k]->alpha));
+			if (gbar_0 > 0)
+			{
+				cut->beta[0] = 1;
+				cut->alpha = g01 + gbar_0 * (ceil(cell->cuts->vals[k2]->alpha - cell->cuts->vals[k]->alpha));
+
+				for (int v = 1; v < cell->master->mac; v++)
+				{
+
+					double betfloor1 = floor(cell->cuts->vals[k]->beta[v]);
+					double betfloor2 = floor(cell->cuts->vals[k2]->beta[v]);
+					double gj1 = cell->cuts->vals[k]->beta[v];
+					double gj2 = cell->cuts->vals[k2]->beta[v];
+					double gbar_j = (cell->cuts->vals[k2]->beta[v] - cell->cuts->vals[k]->beta[v]) -
+						floor(cell->cuts->vals[k2]->beta[v] - cell->cuts->vals[k]->beta[v]);
+					double beta1 = gbar_0 *(floor(cell->cuts->vals[k2]->beta[v] - cell->cuts->vals[k]->beta[v])) + gbar_j;
+					double beta2 = gbar_0 *(ceil(cell->cuts->vals[k2]->beta[v] - cell->cuts->vals[k]->beta[v]));
+
+
+					cut->beta[v] = min(beta1, beta2) + gj1;
+
+				}
+
+				cell->MIRcuts->cnt++;
+				cutarr[cutnum] = cut;
+				cutnum++;
+			}
+
+		}
+	}
+#endif // defined(MIRSubbaddActive)
+
+
+	return cutarr;
+}//END formCut()
+
+ /*
+
+ form the pure integer fractional Chavatal-Gomory cuts
+
+ siavash tabrizian Apr 2020
+
+ */
+oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+
+
+	oneCut 	*cut;
+	oneCut 	**cutarr;
+	int    	cutNum;
+	int    	cutIdx;
+	double	bhat, ahat, a, b, abar, r;
+	int 	status, k, i, j, cnt, startID, endID, numRows;
+	a = b = r = 0;
+
+	numRows = prob[0]->num->rows;
+
+	if (!(cutarr = (oneCut*)arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut)))
+		errMsg("allocation", "formMIRcut", "cutarr", 0);
+
+
+	startID = cell->GMIcuts->cnt;
+	int cutnum = 0;
+	//double alpha_coeff[4] = { 0.5,1.0,1.5,2.0 };
+	double alpha_coeff[1] = { 1.0 };
+
+	//// Creating frac GMI for benders cuts
+	for (int al = 0; al < 1; al++)
+	{
+		for (k = 0; k < cell->cuts->cnt; k++) {
+
+			/* allocate memory to a new MIR cut */
+			cut = newCut(prob[0]->num->cols, 0, 0);
+
+			double bceil = ceil(cell->cuts->vals[k]->alpha);
+			cut->beta[0] = alpha_coeff[al] * bceil;
+
+			for (int v = 1; v < cell->master->mac; v++)
+			{
+
+				double aceil = ceil(cell->cuts->vals[k]->beta[v]);
+				cut->beta[v] = alpha_coeff[al] * aceil;
+
+			}
+
+			cell->GMIcuts->cnt++;
+			cutarr[cutnum] = cut;
+			cutnum++;
+		}
+	}
+
+	return cutarr;
+}//END formCut()
+
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
 double maxCutHeight(cutsType *cuts, int currSampleSize, dVector xk, int betaLen, double lb) {
