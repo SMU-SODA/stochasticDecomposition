@@ -251,7 +251,6 @@ TERMINATE:
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	dVector 	observ;
-	
 	clock_t		tic;
 	bool breakLoop = false;
 
@@ -281,7 +280,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	}//END while loop
 
-	if (config.MASTER_TYPE == 1 && config.SMIP != MILP) {
+	if (config.SMIP != MILP) {
 		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
 		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
 		cell->optFlag = false;
@@ -364,16 +363,11 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 }
 
-int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
-	int			m, GMICut, MIRCut;
-	clock_t		tic;
+int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
-	tic = clock();
-	
-	if (cell->master->type == PROB_QP)
+	if (toMIP == 0)
 	{
-		writeProblem(cell->master->lp, "QPMaster.lp");
-
+	
 		/*********00. Set sigma to 0 *********/
 		if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
 			errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
@@ -390,13 +384,69 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 		if (changeProbType(cell->master->lp, PROB_LP))
 		{
 			errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
-			goto TERMINATE;
+			return 1;
 		}
 		if (changeLPSolverType(PROB_LP))
 		{
 			errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
-			goto TERMINATE;
+			return 1;
 		}
+
+	}
+	else
+	{
+		/*********00. Set sigma to 0 *********/
+		if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
+			errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
+			return 1;
+		}
+
+		/*********01. Update the right hand sides of master *********/
+		if (revchangeQPrhs(prob[0], cell, cell->incumbX)) {
+			errMsg("algorithm", "SolveIntCell", "failed to change the right-hand side to convert the problem into QP", 0);
+			return 1;
+		}
+
+		cell->master->type = PROB_MILP;
+		iVector indices;
+
+		if (!(indices = (iVector)arr_alloc(prob[0]->num->cols, int)))
+			errMsg("allocation", "bendersCallback", "indices", 0);
+		for (int c = 0; c < prob[0]->num->cols; c++)
+			indices[c] = c;
+		if (changeCtype(cell->master->lp, prob[0]->num->cols, indices, cell->master->ctype)) {
+			errMsg("solver", "bendersCallback", "failed to change column type", 0);
+			return 1;
+		}
+		mem_free(indices);
+
+		if (changeProbType(cell->master->lp, PROB_MILP)) {
+			errMsg("Problem Setup", "bendersCallback", "master", 0);
+			return 0;
+		}
+
+		/*********02. Change LP solver to B&B *********/
+		if (changeLPSolverType(PROB_MILP))
+		{
+			errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+			return 1;
+		}
+
+	}
+
+}
+
+int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
+	int			m, GMICut, MIRCut;
+	clock_t		tic;
+
+	tic = clock();
+	
+	if (cell->master->type == PROB_QP)
+	{
+		writeProblem(cell->master->lp, "QPMaster.lp");
+
+		QPtoLP(stoc, prob, cell, 0);
 
 		/*********03. solve new master LP *********/
 		int 	status;
@@ -410,6 +460,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 				errMsg("solveIntCell", "solveMaster", "failed to solve the master problem", 0);
 			}
 		}
+
 		writeProblem(cell->master->lp, "LPMaster.lp");
 		printf("Problem type after: %i \n", getProbType(cell->master->lp));
 		/* Get the most recent optimal solution to master program */
@@ -417,7 +468,6 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("solveIntCell", "solveMaster", "failed to obtain the primal solution for master", 0);
 			return 1;
 		}
-
 	}
 
 	//////***********************************************

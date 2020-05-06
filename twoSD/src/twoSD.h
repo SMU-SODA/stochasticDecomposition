@@ -204,6 +204,7 @@ typedef struct {
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
+int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);

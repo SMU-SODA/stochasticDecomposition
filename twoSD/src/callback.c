@@ -29,29 +29,19 @@ extern configType config;
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	int status;
 	iVector indices;
-	callbackArgs *cbhandle;
+	callbackArgs * cbhandle;
 
 	printf("\nStarting branch-and-cut phase of the algorithm....\n");
 	printf("Iteration-%4d: ", cell->k); fflush(stdout);
 	cell->callback = true;
 
 	/* change the master problem type to MILP */
-	cell->master->type = PROB_MILP;
-
-	if (!(indices = (iVector)arr_alloc(prob[0]->num->cols, int)))
-		errMsg("allocation", "bendersCallback", "indices", 0);
-	for (int c = 0; c < prob[0]->num->cols; c++)
-		indices[c] = c;
-	if (changeCtype(cell->master->lp, prob[0]->num->cols, indices, cell->master->ctype)) {
-		errMsg("solver", "bendersCallback", "failed to change column type", 0);
+	if (QPtoLP(stoc, prob, cell, 1))
+	{
+		errMsg("solver", "bendersCallback", "failed to change master type", 0);
 		return 1;
 	}
-	mem_free(indices);
 
-	if (changeProbType(cell->master->lp, PROB_MILP)) {
-		errMsg("Problem Setup", "bendersCallback", "master", 0);
-		return 0;
-	}
 
 #if defined(CALLBACK_CHECK)
 	writeProblem(cell->master->lp, "callback_init.lp");
@@ -60,10 +50,9 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	/* Set up to use MIP callback structure and function. */
 	cbhandle = (callbackArgs *)mem_malloc(sizeof(callbackArgs));
 	cbhandle->cell = cell; cbhandle->prob = prob; cbhandle->call = 0; cbhandle->stoc = stoc;
+	cbhandle->MIPcuts = 0; cbhandle->OPTcuts = getNumRows(cell->master->lp);
 
 	/* Setup the callback solver function */
-	cbhandle->MIPcuts = 0;
-	cbhandle->OPTcuts = getNumRows(cell->master->lp);
 	if (setsolvecallbackfunc(usersolve, cbhandle)) { return 1; }
 
 
