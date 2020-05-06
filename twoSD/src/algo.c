@@ -274,6 +274,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
+		printf("*"); fflush(stdout);
 
 		if (breakLoop)
 			break;

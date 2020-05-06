@@ -163,7 +163,6 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	getCallbackPrimal(cbdata, wherefrom, args->cell->candidX, args->prob[0]->num->cols);
 
 #if defined(UserMIPcutsActive)
-	args->cell->MIPFlag = checkIPfeas(args->cell->candidX, args->prob[0]->num->cols);
 	/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
 	if (args->cell->MIPFlag == false)
 	{

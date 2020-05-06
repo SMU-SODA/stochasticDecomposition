@@ -62,6 +62,10 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%lf", &config.R2);
 		else if (!(strcmp(line, "R3")))
 			fscanf(fptr, "%lf", &config.R3);
+		else if (!(strcmp(line, "SMIP_SOLVER")))
+			fscanf(fptr, "%d", &config.SMIP);
+		else if (!(strcmp(line, "SMIP_OPTGAP")))
+			fscanf(fptr, "%lf", &config.SMIP_OPTGAP);
 		else if (!(strcmp(line, "DUAL_STABILITY")))
 			fscanf(fptr, "%d", &config.DUAL_STABILITY);
 		else if (!(strcmp(line, "PI_EVAL_START")))

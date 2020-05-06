@@ -19,6 +19,13 @@ TAU 2
 // The Minimum value of the cell->quad_scalar.
 MIN_QUAD_SCALAR 0.001
 
+// ******************** SMIP options ********************
+
+// Type of SMIP solver to be employed 0 - MILP, 1 - CUSTOM and 2 - CALLBACK 
+SMIP_SOLVER 2
+// MILP optimality gap (for each solve when used in SMIP_SOLVER = 1
+SMIP_OPTGAP 0.05
+
 // Run seeds
 RUN_SEED    4650175399072632
 RUN_SEED	3554548844580680
