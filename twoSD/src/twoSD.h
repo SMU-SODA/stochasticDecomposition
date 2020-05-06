@@ -31,8 +31,8 @@
 
 #if defined(UserMIPcutsActive)
 #define GMIcutsActive
-#undef MIRcutsActive
-#undef MIRSubbaddActive
+#define MIRcutsActive
+#define MIRSubbaddActive
 #else
 #define CpxGMICutsActive
 #define CpxMIRCutsActive

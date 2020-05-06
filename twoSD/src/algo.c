@@ -475,8 +475,8 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	//////***********************************************
 	///      Adding MIP cuts to the master problem
 	//////***********************************************
-	while (cell->MIPFlag == false)
-	{
+//	while (cell->MIPFlag == false)
+//	{
 
 		/******* 1. Get the basis, and form a GMI incumbent cut *******/
 #if defined(GMIcutsActive)
@@ -535,7 +535,7 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double)clock() - tic) / CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
 
-	}
+//	}
 
 	return 0;
 
