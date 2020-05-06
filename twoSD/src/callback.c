@@ -85,7 +85,7 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	setIntParam(CPX_PARAM_MIRCUTS, -1);								        /* Turn-off MIR cuts (mixed integer rounding cuts) */
 #endif // !defined(UserMIPcutsActive)
 
-																			/* Launch the solver in callback mode to solve the master problem */
+	/* Launch the solver in callback mode to solve the master problem */
 	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
 		&status, config.SMIP_OPTGAP)) {
 		errMsg("algorithm", "bendersCallback", "failed to solve the master problem", 0);
@@ -153,13 +153,9 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 #if defined(UserMIPcutsActive)
 	/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
-	if (args->cell->MIPFlag == false)
-	{
-		if (solveIntCell(args->prob, args->cell)) {
-			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
-			return 1;
-		}
-
+	if (solveIntCell(args->prob, args->cell)) {
+		errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
+		return 1;
 	}
 #endif // defined(UserMIPcutsActive)
 

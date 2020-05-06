@@ -27,7 +27,7 @@
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP
 
-#define UserMIPcutsActive
+#undef UserMIPcutsActive
 
 #if defined(UserMIPcutsActive)
 #define GMIcutsActive
