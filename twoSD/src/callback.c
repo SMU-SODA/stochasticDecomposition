@@ -14,16 +14,19 @@
 ENVptr	env;
 typedef struct {
 	int	call;
+	int MIPcuts;
+	int OPTcuts;
 	probType **prob;
 	cellType *cell;
+	stocType *stoc;
 } callbackArgs;
 
-int bendersCallback(probType **prob, cellType *cell);
+int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
 
 extern configType config;
 
-int bendersCallback(probType **prob, cellType *cell) {
+int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	int status;
 	iVector indices;
 	callbackArgs *cbhandle;
@@ -35,18 +38,18 @@ int bendersCallback(probType **prob, cellType *cell) {
 	/* change the master problem type to MILP */
 	cell->master->type = PROB_MILP;
 
-	if ( !(indices = (iVector) arr_alloc(prob[0]->num->cols, int)) )
+	if (!(indices = (iVector)arr_alloc(prob[0]->num->cols, int)))
 		errMsg("allocation", "bendersCallback", "indices", 0);
-	for ( int c = 0; c < prob[0]->num->cols; c++ )
+	for (int c = 0; c < prob[0]->num->cols; c++)
 		indices[c] = c;
-	if ( changeCtype(cell->master->lp, prob[0]->num->cols, indices, cell->master->ctype) ) {
+	if (changeCtype(cell->master->lp, prob[0]->num->cols, indices, cell->master->ctype)) {
 		errMsg("solver", "bendersCallback", "failed to change column type", 0);
 		return 1;
 	}
 	mem_free(indices);
 
-	if ( changeProbType(cell->master->lp, PROB_MILP) ) {
-		errMsg("Problem Setup", "bendersCallback", "master",0);
+	if (changeProbType(cell->master->lp, PROB_MILP)) {
+		errMsg("Problem Setup", "bendersCallback", "master", 0);
 		return 0;
 	}
 
@@ -55,26 +58,54 @@ int bendersCallback(probType **prob, cellType *cell) {
 #endif
 
 	/* Set up to use MIP callback structure and function. */
-	cbhandle = (callbackArgs *) mem_malloc(sizeof(callbackArgs));
-	cbhandle->cell = cell; cbhandle->prob = prob; cbhandle->call = 0;
+	cbhandle = (callbackArgs *)mem_malloc(sizeof(callbackArgs));
+	cbhandle->cell = cell; cbhandle->prob = prob; cbhandle->call = 0; cbhandle->stoc = stoc;
 
 	/* Setup the callback solver function */
-	if ( setsolvecallbackfunc (usersolve, cbhandle) ) { return 1; }
+	cbhandle->MIPcuts = 0;
+	cbhandle->OPTcuts = getNumRows(cell->master->lp);
+	if (setsolvecallbackfunc(usersolve, cbhandle)) { return 1; }
 
 
-	setIntParam (CPXPARAM_Preprocessing_Linear, 0);		/* Assure linear mappings between the presolved and original models */
-	setIntParam (CPXPARAM_MIP_Strategy_CallbackReducedLP, CPX_OFF);			/* Let MIP callbacks work on the original model */
-	setIntParam (CPXPARAM_MIP_Interval, 1);									/* Set MIP log interval to 1 */
-	setIntParam (CPXPARAM_MIP_Strategy_Search, CPX_MIPSEARCH_TRADITIONAL);	/* Turn on traditional search for use with control callbacks */
+	setIntParam(CPXPARAM_Preprocessing_Linear, 0);		/* Assure linear mappings between the presolved and original models */
+	setIntParam(CPXPARAM_MIP_Strategy_CallbackReducedLP, CPX_OFF);			/* Let MIP callbacks work on the original model */
+	setIntParam(CPXPARAM_MIP_Interval, 1);									/* Set MIP log interval to 1 */
+	setIntParam(CPXPARAM_MIP_Strategy_Search, CPX_MIPSEARCH_TRADITIONAL);	/* Turn on traditional search for use with control callbacks */
 	setIntParam(CPX_PARAM_THREADS, 1);										/* Set the number of threads to be used to one */
-	setIntParam(CPX_PARAM_HEURFREQ,-1);										/* Turn-off the heuristics */
+	setIntParam(CPX_PARAM_HEURFREQ, -1);										/* Turn-off the heuristics */
+	setIntParam(CPX_PARAM_GUBCOVERS, -1);								    /* Turn-off the generalized upper bound (GUB) cover cuts */
+	setIntParam(CPX_PARAM_FLOWCOVERS, -1);								    /* Turn-off flow cover cuts */
+	setIntParam(CPX_PARAM_FLOWPATHS, -1);								    /* Turn-off flow path cuts */
+	setIntParam(CPX_PARAM_IMPLBD, -1);									    /* Turn-off globally valid implied bound cuts */
+	setIntParam(CPX_PARAM_LANDPCUTS, -1);								    /* Turn-off lift-and-project cuts */
+	setIntParam(CPX_PARAM_MCFCUTS, -1);								        /* Turn-off multi-commodity flow cuts */
+#if !defined(UserMIPcutsActive)
+#if defined(CpxMIRCutsActive)
+	setIntParam(CPX_PARAM_MIRCUTS, 1);								        /* Turn-off MIR cuts (mixed integer rounding cuts) */
+#else
+	setIntParam(CPX_PARAM_MIRCUTS, -1);								        /* Turn-off MIR cuts (mixed integer rounding cuts) */
+#endif // defined(CpxMIRCutsActive)
 
-	/* Launch the solver in callback mode to solve the master problem */
-	if ( solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
-			&status, config.SMIP_OPTGAP) ) {
+#if defined(CpxGMICutsActive)
+	setIntParam(CPX_PARAM_FRACCUTS, 1);								        /* Turn-off Gomory fractional cuts */
+#else
+	setIntParam(CPX_PARAM_FRACCUTS, -1);								    /* Turn-off Gomory fractional cuts */
+#endif // defined(CpxGMICutsActive)
+#else
+	setIntParam(CPX_PARAM_FRACCUTS, -1);								    /* Turn-off Gomory fractional cuts */
+	setIntParam(CPX_PARAM_MIRCUTS, -1);								        /* Turn-off MIR cuts (mixed integer rounding cuts) */
+#endif // !defined(UserMIPcutsActive)
+
+																			/* Launch the solver in callback mode to solve the master problem */
+	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
+		&status, config.SMIP_OPTGAP)) {
 		errMsg("algorithm", "bendersCallback", "failed to solve the master problem", 0);
 		return 1;
 	}
+
+	/*Print the summary of callbacks*/
+	printf("\ncallback summary:\n");
+	printf("\# of callbacks calls:%i  - # of OPT cuts:%i - # of MIP cuts:%i\n", cbhandle->call, cbhandle->OPTcuts, cbhandle->MIPcuts);
 
 	copyVector(cell->candidX, cell->incumbX, prob[0]->num->cols, 1);
 	cell->callback = false;
@@ -85,8 +116,11 @@ int bendersCallback(probType **prob, cellType *cell) {
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args) {
 	iVector	candidCuts;
 	bool breakLoop = false;
+	dVector observ;
 	clock_t	tic;
 	int status;
+
+	observ = (dVector)arr_alloc(args->stoc->numOmega + 1, double);
 
 	//if ( config.MULTICUT)
 	if (false)
@@ -102,6 +136,9 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	if ( getcallbacknodelp (cbdata, wherefrom, &temp) ) { return 1; }
 	args->cell->master->lp = temp;
 
+	/*Update couns of callback calls*/
+	args->call++;
+
 #if defined(CALLBACK_CHECK)
 	char fname[NAMESIZE];
 	printf("\tCallback routines execution #: %d\n", args->call++);
@@ -109,6 +146,12 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	writeProblem(args->cell->master->lp, fname);
 	callbackNodeSummary(cbdata, wherefrom, args->cell->master->lp);
 #endif
+
+#if defined(CALLBACK_WRITE_LP)
+	char fname[NAMESIZE];
+	sprintf(fname, "%s_%d.lp", "callback", args->call);
+	writeProblem(args->cell->master->lp, fname);
+#endif // defined(CALLBACK_WRITE_LP)
 
 	if ( solveProblem(args->cell->master->lp, args->cell->master->name, PROB_LP, args->cell->master->mar, args->cell->master->mac,
 			&status, config.SMIP_OPTGAP) ) {
@@ -119,11 +162,29 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 	getCallbackPrimal(cbdata, wherefrom, args->cell->candidX, args->prob[0]->num->cols);
 
+#if defined(UserMIPcutsActive)
+	args->cell->MIPFlag = checkIPfeas(args->cell->candidX, args->prob[0]->num->cols);
+	/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
+	if (args->cell->MIPFlag == false)
+	{
+		if (solveIntCell(args->prob, args->cell)) {
+			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
+			return 1;
+		}
+
+	}
+#endif // defined(UserMIPcutsActive)
+
+
+	/*Update the number of cuts*/
+	args->MIPcuts += getNumRows(args->cell->master->lp) - args->OPTcuts;
+
 	/* Invoke the main loop of the L-shaped method */
 	while (args->cell->k < config.MAX_ITER) {
 		tic = clock();
+		args->OPTcuts++;
 
-		if ( mainloopBendersCell(args->prob, args->cell, candidCuts, &breakLoop) ) {
+		if (mainloopSDCell(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			return 1;
 		}

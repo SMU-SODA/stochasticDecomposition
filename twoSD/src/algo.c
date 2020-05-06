@@ -251,65 +251,22 @@ TERMINATE:
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	dVector 	observ;
-	int			m, candidCut, obs;
+	
 	clock_t		tic;
+	bool breakLoop = false;
+
+
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
 	observ = (dVector) arr_alloc(stoc->numOmega + 1, double);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
-		cell->k++;
+		
 		tic = clock();
-#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
-		printf("\nIteration-%d :: \n", cell->k);
-#else
-		if ( (cell->k -1) % 100 == 0) {
-			printf("\nIteration-%4d: ", cell->k);
-		}
-#endif
 
-		/******* 1. Optimality tests *******/
-		if (optimal(prob, cell))
-			break;
-
-		/******* 2. Generate new observations, and add it to the set of observations *******/
-		cell->sampleSize += config.SAMPLE_INCREMENT;
-		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
-			/* (a) Use the stoc file to generate observations */
-			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
-
-			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
-			for ( m = 0; m < stoc->numOmega; m++ )
-				observ[m] -= stoc->mean[m];
-
-			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
-		}
-
-		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0 ) {
-			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			goto TERMINATE;
-		}
-
-		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
-		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb) ) < 0 ) {
-				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				goto TERMINATE;
-			}
-			cell->iCutUpdt = cell->k;
-		}
-
-		/******* 5. Check improvement in predicted values at candidate solution *******/
-		if ( !(cell->incumbChg) && cell->k > 1)
-			/* If the incumbent has not changed in the current iteration */
-			checkImprovement(prob[0], cell, candidCut);
-
-		/******* 6. Solve the master problem to obtain the new candidate solution */
-		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb) ) {
-			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		if (mainloopSDCell(stoc, prob, cell, &breakLoop, observ)) {
+			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			goto TERMINATE;
 		}
 
@@ -317,7 +274,21 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
+
+		if (breakLoop)
+			break;
+
 	}//END while loop
+
+	if (config.MASTER_TYPE == 1 && config.SMIP != MILP) {
+		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
+		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
+		cell->optFlag = false;
+		if (bendersCallback(stoc, prob, cell)) {
+			errMsg("algorithm", "solverCell", "failed to run the Benders-callback routine", 0);
+			goto TERMINATE;
+		}
+	}
 
 	mem_free(observ);
 	return 0;
@@ -326,6 +297,71 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(observ);
 	return 1;
 }//END solveCell()
+
+int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ)
+{
+	int			m, candidCut, obs;
+	
+	cell->k++;
+#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
+	printf("\nIteration-%d :: \n", cell->k);
+#else
+	if ((cell->k - 1) % 100 == 0) {
+		printf("\nIteration-%4d: ", cell->k);
+	}
+#endif
+
+
+
+	/******* 1. Optimality tests *******/
+	if (optimal(prob, cell))
+	{
+		(*breakLoop) = true; return 0;
+	}
+
+	/******* 2. Generate new observations, and add it to the set of observations *******/
+	cell->sampleSize += config.SAMPLE_INCREMENT;
+	for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
+		/* (a) Use the stoc file to generate observations */
+		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+
+		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+		for (m = 0; m < stoc->numOmega; m++)
+			observ[m] -= stoc->mean[m];
+
+		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+		cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+	}
+
+	/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
+		errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+		return 1;
+	}
+
+	/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
+		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+			return 1;
+		}
+		cell->iCutUpdt = cell->k;
+	}
+
+	/******* 5. Check improvement in predicted values at candidate solution *******/
+	if (!(cell->incumbChg) && cell->k > 1)
+		/* If the incumbent has not changed in the current iteration */
+		checkImprovement(prob[0], cell, candidCut);
+
+	/******* 6. Solve the master problem to obtain the new candidate solution */
+	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		return 1;
+	}
+
+	return 0;
+
+}
 
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	int			m, GMICut, MIRCut;

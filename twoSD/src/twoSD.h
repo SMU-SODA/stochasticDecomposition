@@ -24,6 +24,34 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
+#undef CALLBACK_CHECK
+#define CALLBACK_WRITE_LP
+
+#define UserMIPcutsActive
+
+#if defined(UserMIPcutsActive)
+#define GMIcutsActive
+#define MIRcutsActive
+#define MIRSubbaddActive
+#else
+#define CpxGMICutsActive
+#define CpxMIRCutsActive
+#endif // defined(UserMIPcutsActive)
+
+enum smipSolver {
+	MILP,
+	CUSTOM,
+	CALLBACK
+};
+
+enum cutForm {
+	Regular,
+	Callback,
+	Feasible,
+	MIR,
+	GMI
+};
+
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
