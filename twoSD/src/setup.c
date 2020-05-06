@@ -201,6 +201,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
+	cell->mk    = 0;
+	cell->gk    = 0;
 	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	if (prob[0]->lb == 0)
@@ -261,6 +263,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->sample = newSample(config.SAMPLE_INCREMENT);
 
 	cell->optFlag 			= false;
+	cell->MIPFlag           = false;
 
 	/* Dual stability test is disabled DUAL_STABILITY is false. */
 	if ( !config.DUAL_STABILITY ) {

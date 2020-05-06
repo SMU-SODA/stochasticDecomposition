@@ -27,12 +27,12 @@
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP
 
-#undef UserMIPcutsActive
+#define UserMIPcutsActive
 
 #if defined(UserMIPcutsActive)
 #define GMIcutsActive
-#define MIRcutsActive
-#define MIRSubbaddActive
+#undef MIRcutsActive
+#undef MIRSubbaddActive
 #else
 #define CpxGMICutsActive
 #define CpxMIRCutsActive
@@ -205,6 +205,7 @@ typedef struct {
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
+int solveIntCell(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);

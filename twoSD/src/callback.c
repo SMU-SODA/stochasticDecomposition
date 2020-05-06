@@ -42,7 +42,6 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 		return 1;
 	}
 
-
 #if defined(CALLBACK_CHECK)
 	writeProblem(cell->master->lp, "callback_init.lp");
 #endif
@@ -153,7 +152,8 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 #if defined(UserMIPcutsActive)
 	/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
-	if (solveIntCell(args->prob, args->cell)) {
+	args->cell->MIPFlag = false;
+	if (solveIntCell(args->stoc, args->prob, args->cell)) {
 		errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
 		return 1;
 	}
