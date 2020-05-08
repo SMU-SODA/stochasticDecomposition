@@ -12,8 +12,6 @@
 #include <./ilcplex/cpxconst.h>
 #include <utils.h>
 
-#define DIAGONISE
-
 #define		ENVptr			CPXENVptr
 #define 	LPptr			CPXLPptr
 
@@ -60,7 +58,7 @@
 
 #define 	THREADS			CPXPARAM_Threads
 
-int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status, double mipGap);
+int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap);
 int getProbType(LPptr lp);
 double getObjective(LPptr lp, int type);
 int getPrimal(LPptr lp, dVector X, int length);

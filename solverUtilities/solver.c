@@ -11,7 +11,7 @@
 extern cString 	outputDir;
 ENVptr	env;
 
-int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *status, double mipGap) {
+int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap) {
 	int		aggres = 0, res = 0;
 
 	solveagain:
@@ -40,12 +40,7 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
 		writeProblem(lp, "error.lp");
 		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
-			fprintf(stderr, "\nProblem is infeasible.\n");
-#if defined(DIAGONISE)
-			if ( refineConflict(lp , mar, mac) ) {
-				fprintf(stderr, "Failed to resolve conflict.\n");
-			}
-#endif
+			fprintf(stderr, "\nWarning: Problem is infeasible. ");
 			return (*status);
 		}
 		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
@@ -68,6 +63,11 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 			}
 			(*status) = CPXlpopt(env, lp);
 			goto RESOLVE;
+		} else if ( type == PROB_LP && (*status) == 5 ) {
+			setDoubleParam(CPX_PARAM_EPRHS, 1e-09); 		// Decrease the feasibility tolerance
+			(*status) = CPXlpopt(env, lp);
+			setDoubleParam(CPX_PARAM_EPRHS, 1e-06);	 		// Set it back to the default value 1e-06
+			goto RESOLVE;
 		}
 		else {
 			solverErrmsg((*status));
@@ -77,6 +77,28 @@ int solveProblem(LPptr lp, cString pname, int type, int mar, int mac, int *statu
 
 	skip: if (aggres)
 		setIntParam(PARAM_SCAIND, 0);
+
+	return 0;
+}//END solveProblem()
+
+int solveProblemCallback(LPptr lp, cString pname, int *status, double mipGap) {
+	int		aggres = 0, res = 0;
+
+	setDoubleParam(CPXPARAM_MIP_Tolerances_MIPGap, mipGap);
+	(*status) = CPXmipopt(env, lp);
+
+	(*status) = CPXgetstat(env, lp);
+	if ( (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL ) {
+		writeProblem(lp, "error.lp");
+		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
+			fprintf(stderr, "\nProblem is infeasible.\n");
+			return (*status);
+		}
+		else {
+			solverErrmsg((*status));
+			return (*status);
+		}
+	}
 
 	return 0;
 }//END solveProblem()
