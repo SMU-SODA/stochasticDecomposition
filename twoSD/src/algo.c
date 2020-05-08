@@ -363,6 +363,71 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 }
 
+int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ)
+{
+	int			m, candidCut, obs;
+
+	cell->k++;
+#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
+	printf("\nIteration-%d :: \n", cell->k);
+#else
+	if ((cell->k - 1) % 100 == 0) {
+		printf("\nIteration-%4d: ", cell->k);
+	}
+#endif
+
+
+
+	/******* 1. Optimality tests *******/
+	if (optimal(prob, cell))
+	{
+		(*breakLoop) = true; return 0;
+	}
+
+	/******* 2. Generate new observations, and add it to the set of observations *******/
+	cell->sampleSize += config.SAMPLE_INCREMENT;
+	for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
+		/* (a) Use the stoc file to generate observations */
+		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+
+		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+		for (m = 0; m < stoc->numOmega; m++)
+			observ[m] -= stoc->mean[m];
+
+		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+		cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+	}
+
+	/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
+		errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+		return 1;
+	}
+
+	/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
+		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+			return 1;
+		}
+		cell->iCutUpdt = cell->k;
+	}
+
+	/******* 5. Check improvement in predicted values at candidate solution *******/
+	if (!(cell->incumbChg) && cell->k > 1)
+		/* If the incumbent has not changed in the current iteration */
+		checkImprovement(prob[0], cell, candidCut);
+
+	/******* 6. Solve the master problem to obtain the new candidate solution */
+	if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		return 1;
+	}
+
+	return 0;
+
+}
+
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	if (toMIP == 0)

@@ -207,6 +207,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
+int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
@@ -219,6 +220,7 @@ void freeCellType(cellType *cell);
 
 /* master.c */
 int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
+int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
 int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);

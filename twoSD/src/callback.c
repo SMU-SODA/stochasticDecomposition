@@ -168,7 +168,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 		tic = clock();
 		args->OPTcuts++;
 
-		if (mainloopSDCell(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
+		if (mainloopSDCell_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			return 1;
 		}

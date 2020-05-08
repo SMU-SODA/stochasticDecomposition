@@ -88,6 +88,81 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	return 0;
 }//END solveQPMaster()
 
+ /* This function is the regularized QP version of master problem. The master problem is solved after the newest cut is added to master problem,
+ the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
+int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
+	double 	d2 = 0.0; /* height at the candidate solution. */
+	int 	status, i;
+
+	if (changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts)) {
+		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
+		return 1;
+	}
+
+	if (cell->lbType == NONTRIVIAL) {
+		/* update the right-hand side of cuts to reflect the non-trivial lower bound */
+		if (updateRHS(cell->master->lp, cell->cuts, cell->k, cell->lb)) {
+			errMsg("algorithm", "solveQPMaster", "failed to update right-hand side with lower bound information", 0);
+			return 1;
+		}
+	}
+
+#ifdef ALGO_CHECK
+	writeProblem(cell->master->lp, "cellMaster.lp");
+#endif
+
+	/* solve the master problem */
+	clock_t tic = clock();
+	changeQPSolverType(ALG_CONCURRENT);
+	if (solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status, config.TOLERANCE)) {
+		if (status == STAT_INFEASIBLE) {
+			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
+			writeProblem(cell->master->lp, "infeasibleM.lp");
+		}
+		else {
+			writeProblem(cell->master->lp, "errorM.lp");
+			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
+		}
+		return 1;
+	}
+	cell->time.masterIter = ((double)(clock() - tic)) / CLOCKS_PER_SEC;
+
+	/* Get the most recent optimal solution to master program */
+	if (getPrimal(cell->master->lp, cell->candidX, num->cols)) {
+		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
+		return 1;
+	}
+
+	/* add the incumbent back to change from \Delta X to X */
+	for (i = 1; i <= num->cols; i++)
+		d2 += cell->candidX[i] * cell->candidX[i];
+	addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
+
+	/* update d_norm_k in soln_type. */
+	if (cell->k == 1)
+		cell->normDk_1 = d2;
+	cell->normDk = d2;
+
+	/* Get the dual solution too */
+	if (getDual(cell->master->lp, cell->piM, cell->master->mar)) {
+		errMsg("solver", "solveQPMaster", "failed to obtain dual solutions to master", 0);
+		return 1;
+	}
+
+	if (getDualSlacks(cell->master->lp, cell->djM, num->cols)) {
+		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
+		return 1;
+	}
+
+	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
+
+	/* Calculate gamma for next improvement check on incumbent x. */
+	cell->gamma = cell->candidEst - cell->incumbEst;
+
+	return 0;
+}//END solveLPMaster()
+
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX) {
 	iVector 	indices;
 	int 	cnt;
