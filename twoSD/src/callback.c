@@ -173,6 +173,11 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 			return 1;
 		}
 
+		//if (changeEtaCol(args->cell->master->lp, args->prob[0]->num->rows, args->prob[0]->num->cols, args->cell->sampleSize, args->cell->cuts, args->cell->MIRcuts, args->cell->GMIcuts)) {
+		//	errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
+		//	return 1;
+		//}
+
 		args->cell->time.masterAccumTime += args->cell->time.masterIter; args->cell->time.subprobAccumTime += args->cell->time.subprobIter;
 		args->cell->time.argmaxAccumTime += args->cell->time.argmaxIter; args->cell->time.optTestAccumTime += args->cell->time.optTestIter;
 		args->cell->time.masterIter = args->cell->time.subprobIter = args->cell->time.optTestIter = 0.0;

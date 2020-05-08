@@ -222,7 +222,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
 int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
-int changeEtaCol(LPptr lp, int numRows, int numCols, int k, cutsType *cuts);
+int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, dVector xk);
