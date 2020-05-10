@@ -91,6 +91,7 @@ LPptr cloneProblem(LPptr origLp);
 int writeProblem(LPptr lp, char *filename);
 
 void openSolver();
+ENVptr newEnv();
 void closeSolver();
 int getIntParam(int paramName, int *paramValue);
 int setIntParam(int paramname, int paramvalue);
@@ -127,9 +128,5 @@ int freeProblem(LPptr lp);
 
 int refineConflict (LPptr lp , int mar, int mac);
 
-int setsolvecallbackfunc (void *solvecallback, void *cbhandle);
-int getcallbacknodelp (void * cbdata, int wherefrom, CPXLPptr * nodelp);
-int getcallbackinfo(void * cbdata, int wherefrom, int whichinfo, void * result_p);
-int getCallbackPrimal(void * cbdata, int wherefrom, dVector X, int length);
 
 #endif /* MTSD_SOLVER_H_ */

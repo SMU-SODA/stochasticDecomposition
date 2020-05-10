@@ -54,16 +54,22 @@ int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap) 
 			changeLPSolverType(ALG_PRIMAL);
 			(*status) = CPXlpopt(env, lp);
 			goto RESOLVE;
-		} else if ( type == PROB_LP && (*status) == 12 ) {
+		} else if ( (type == PROB_LP) && ((*status) == 12 || (*status) == 0 || (*status) == 25)) {
 			switch (res) {
 			case 0: changeLPSolverType(ALG_PRIMAL); res++; break;
-			case 1: changeLPSolverType(ALG_PRIMAL); res++; break;
+			case 1: changeLPSolverType(ALG_DUAL); res++; break;
 			case 2: changeLPSolverType(ALG_BARRIER); res++; break;
 			default: fprintf(stderr, "Failed to resolve conflict.\n"); return (*status);
 			}
 			(*status) = CPXlpopt(env, lp);
 			goto RESOLVE;
 		} else if ( type == PROB_LP && (*status) == 5 ) {
+			switch (res) {
+			case 0: changeLPSolverType(ALG_PRIMAL); res++; break;
+			case 1: changeLPSolverType(ALG_DUAL); res++; break;
+			case 2: changeLPSolverType(ALG_BARRIER); res++; break;
+			default: fprintf(stderr, "Failed to resolve conflict.\n"); return (*status);
+			}
 			setDoubleParam(CPX_PARAM_EPRHS, 1e-09); 		// Decrease the feasibility tolerance
 			(*status) = CPXlpopt(env, lp);
 			setDoubleParam(CPX_PARAM_EPRHS, 1e-06);	 		// Set it back to the default value 1e-06
@@ -208,10 +214,9 @@ int getBasis(LPptr lp, iVector cstat, iVector rstat){
 void openSolver(){
 	int 	status = 0;
 
-	env = CPXopenCPLEX(&status);
+	env = newEnv();
 	if ( env == NULL ) {
-		solverErrmsg(status);
-		errMsg("solver", "openSolver", "could not open CPLEX environment", 0);
+		errMsg("solver", "open_solver", "failed to create new environment", 0);
 		goto TERMINATE;
 	}
 
@@ -226,6 +231,19 @@ void openSolver(){
 		closeSolver();
 
 }// openSolver()
+
+ENVptr newEnv() {
+	int status;
+	ENVptr tempEnv = CPXopenCPLEX(&status);
+	if ( tempEnv == NULL ) {
+		solverErrmsg(status);
+		errMsg("solver", "openSolver", "could not open CPLEX environment", 0);
+		goto TERMINATE;
+	}
+
+	return tempEnv;
+	TERMINATE: return NULL;
+}//END newEnv()
 
 void closeSolver(){
 	int status;
@@ -880,34 +898,3 @@ int refineConflict (LPptr lp , int mar, int mac) {
 
 	return 0;
 }//END refineConflict()
-
-/* Callback functions */
-
-int setsolvecallbackfunc (void *solvecallback, void *cbhandle) {
-
-	return CPXsetsolvecallbackfunc(env, solvecallback, cbhandle);
-
-}//END setsolvecallbackfunc()
-
-int getcallbacknodelp (void * cbdata, int wherefrom, CPXLPptr * nodelp) {
-
-	return CPXgetcallbacknodelp (env, cbdata, wherefrom, nodelp);
-
-}//END getcallbacknodelp()
-
-int getcallbackinfo(void * cbdata, int wherefrom, int whichinfo, void * result_p) {
-
-	return CPXgetcallbackinfo(env, cbdata, wherefrom, whichinfo, result_p);
-
-}//END getcallbackinfo()
-
-int getCallbackPrimal(void * cbdata, int wherefrom, dVector X, int length) {
-	int status;
-	status = CPXgetcallbacknodex (env, cbdata, wherefrom, X+1, 0, length-1);
-	if ( status )
-		solverErrmsg(status);
-	else
-		X[0] = oneNorm(X+1, length);
-
-	return status;
-}//END getCallbackPrimal()
