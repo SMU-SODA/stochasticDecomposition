@@ -480,10 +480,28 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 
 			}
 
-			cut->numSamples = cell->cuts->vals[k]->numSamples;
-			cell->GMIcuts->cnt++;
-			cutarr[cutnum] = cut;
-			cutnum++;
+			bool repeatFlag = false;
+			if (cell->GMIcuts->vals == !NULL)
+			{
+				for (int pc = 0; pc < cell->GMIcuts->cnt; pc++)
+				{
+					if (cell->GMIcuts->vals[pc] != NULL && cut->alpha == cell->GMIcuts->vals[pc]->alpha &&
+						twoNorm(cut->beta, cell->GMIcuts->vals[pc]->beta, cell->master->mac) <= 0.001)
+					{
+						repeatFlag = true;
+						break;
+					}
+				}
+			}
+
+			if (repeatFlag == false)
+			{
+				cut->numSamples = cell->cuts->vals[k]->numSamples;
+				cell->GMIcuts->cnt++;
+				cutarr[cutnum] = cut;
+				cutnum++;
+			}
+
 		}
 	}
 
