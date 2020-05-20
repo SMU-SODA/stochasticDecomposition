@@ -335,13 +335,31 @@ oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 			double beta2 = aceil * f0;
 
 			cut->beta[v] = min(beta1, beta2);
-			
+
 		}
 
-		cut->numSamples = cell->cuts->vals[k]->numSamples;
-		cell->MIRcuts->cnt++;
-		cutarr[cutnum] = cut;
-		cutnum++;
+		bool repeatFlag = false;
+		if (cell->MIRcuts->vals != NULL)
+		{
+			for (int pc = 0; pc < cell->MIRcuts->cnt; pc++)
+			{
+				if (cell->MIRcuts->vals[pc] != NULL && cut->alpha == cell->MIRcuts->vals[pc]->alpha &&
+					twoNorm(cut->beta, cell->MIRcuts->vals[pc]->beta, cell->master->mac) <= 0.001)
+				{
+					repeatFlag = true;
+					break;
+				}
+			}
+		}
+
+		if (repeatFlag == false)
+		{
+			cut->numSamples = cell->cuts->vals[k]->numSamples;
+			cell->MIRcuts->cnt++;
+			cutarr[cutnum] = cut;
+			cutnum++;
+		}
+
 	}
 
 
@@ -381,10 +399,29 @@ oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 					cut->beta[v] = min(beta1, beta2) + gj1;
 
 				}
-				cut->numSamples = cell->cuts->vals[k]->numSamples;
-				cell->MIRcuts->cnt++;
-				cutarr[cutnum] = cut;
-				cutnum++;
+
+				bool repeatFlag = false;
+				if (cell->MIRcuts->vals == !NULL)
+				{
+					for (int pc = 0; pc < cell->MIRcuts->cnt; pc++)
+					{
+						if (cell->MIRcuts->vals[pc] != NULL && cut->alpha == cell->MIRcuts->vals[pc]->alpha &&
+							twoNorm(cut->beta, cell->MIRcuts->vals[pc]->beta, cell->master->mac) <= 0.001)
+						{
+							repeatFlag = true;
+							break;
+						}
+					}
+				}
+
+				if (repeatFlag == false)
+				{
+					cut->numSamples = cell->cuts->vals[k]->numSamples;
+					cell->MIRcuts->cnt++;
+					cutarr[cutnum] = cut;
+					cutnum++;
+				}
+
 			}
 
 		}
