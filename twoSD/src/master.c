@@ -288,7 +288,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 		}
 	}
 
-	if (MIRcuts->cnt > 0)
+	if (MIRcuts->cnt > 10000)
 	{
 		for (c = 0; c < MIRcuts->cnt; c++) {
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
@@ -301,7 +301,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 		}
 	}
 
-	if (GMIcuts->cnt > 0)
+	if (GMIcuts->cnt > 10000)
 	{
 		for (c = 0; c < GMIcuts->cnt; c++) {
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */

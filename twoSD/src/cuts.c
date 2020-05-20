@@ -912,13 +912,19 @@ int addMIPCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool GMI) {
 	int	cnt;
 
 	if (GMI) {
-		cell->GMIcuts->vals[cell->GMIcuts->cnt] = cut;
-		return cell->GMIcuts->cnt;
-		printf("%i \n", cell->GMIcuts->cnt);
+		if (cell->GMIcuts->cnt >= cell->maxMIPCuts)
+		{
+			cell->GMIcuts->vals[cell->GMIcuts->cnt] = cut;
+			return cell->GMIcuts->cnt;
+			printf("%i \n", cell->GMIcuts->cnt);
+		}
 	}
 	else {
-		cell->MIRcuts->vals[cell->MIRcuts->cnt] = cut;
-		return cell->MIRcuts->cnt;
+		if (cell->MIRcuts->cnt >= cell->maxMIPCuts)
+		{
+			cell->MIRcuts->vals[cell->MIRcuts->cnt] = cut;
+			return cell->MIRcuts->cnt;
+		}
 	}
 
 }//END addCut()

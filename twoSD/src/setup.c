@@ -240,9 +240,10 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
+	cell->maxMIPCuts = 1000;
 	cell->cuts 	  = newCuts(cell->maxCuts);
-	cell->MIRcuts = newCuts(cell->maxCuts);
-	cell->GMIcuts = newCuts(cell->maxCuts);
+	cell->MIRcuts = newCuts(cell->maxMIPCuts);
+	cell->GMIcuts = newCuts(cell->maxMIPCuts);
 
 	/* solution parts of the cell */
 	if ( !(cell->djM = (dVector) arr_alloc(prob[0]->num->cols + 2, double)) )
@@ -400,6 +401,8 @@ void freeCellType(cellType *cell) {
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
 		if (cell->cuts) freeCutsType(cell->cuts, false);
+		if (cell->MIRcuts) freeCutsType(cell->MIRcuts, false);
+		if (cell->GMIcuts) freeCutsType(cell->GMIcuts, false);
 		if (cell->fcuts) freeCutsType(cell->fcuts, false);
 		if (cell->fcutsPool) freeCutsType(cell->fcutsPool, false);
 		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, false);
