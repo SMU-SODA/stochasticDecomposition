@@ -305,7 +305,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 	{
 		for (c = 0; c < GMIcuts->cnt; c++) {
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-			coef[0] = (double)(currSampleSize) / (double)GMIcuts->vals[c]->numSamples;         // coefficient k/j of eta column
+			coef[0] = ceil((double)(currSampleSize) / (double)GMIcuts->vals[c]->numSamples);         // coefficient k/j of eta column
 
 			if (changeCol(lp, numCols, coef, GMIcuts->vals[c]->rowNum, GMIcuts->vals[c]->rowNum + 1)) {
 				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
