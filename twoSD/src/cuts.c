@@ -469,14 +469,15 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 			/* allocate memory to a new MIR cut */
 			cut = newCut(prob[0]->num->cols, 0, 0);
 
-			double bceil = ceil(cell->cuts->vals[k]->alpha);
-			cut->beta[0] = alpha_coeff[al] * bceil;
+			double bceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->alpha);
+			cut->beta[0] = bceil;
 
 			for (int v = 1; v < cell->master->mac; v++)
 			{
 
-				double aceil = ceil(cell->cuts->vals[k]->beta[v]);
-				cut->beta[v] = alpha_coeff[al] * aceil;
+				double aceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->beta[v]) ;
+				double maxpart = max(0, (bceil - aceil) / (1 + bceil));
+				cut->beta[v] = aceil - maxpart;
 
 			}
 
