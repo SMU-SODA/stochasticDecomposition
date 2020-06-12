@@ -85,6 +85,7 @@ typedef struct{
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
 	int 	SMIP;
+	int 	ALGO;
 	double 	SMIP_OPTGAP;
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
@@ -137,6 +138,8 @@ typedef struct {
 
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
+
+	oneProblem 	*PHsubprob;			/* store Progressive Hedging subproblem information */
 
 	dVector      candidX;           /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */

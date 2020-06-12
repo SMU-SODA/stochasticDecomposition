@@ -23,6 +23,10 @@ MIN_QUAD_SCALAR 0.001
 
 // Type of SMIP solver to be employed 0 - MILP, 1 - CUSTOM and 2 - CALLBACK 
 SMIP_SOLVER 2
+
+// Type of algoithm to be employed 0 - Lshped and 1 - scenario decomposition
+SMIP_ALGO 0
+
 // MILP optimality gap (for each solve when used in SMIP_SOLVER = 1
 SMIP_OPTGAP 0.05
 
