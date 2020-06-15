@@ -466,7 +466,7 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 	{
 		for (k = 0; k < cell->cuts->cnt; k++) {
 
-			/* allocate memory to a new MIR cut */
+			/* allocate memory to a new Chvatal Gomory cut */
 			cut = newCut(prob[0]->num->cols, 0, 0);
 
 			double bceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->alpha);
@@ -482,6 +482,68 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 			}
 
 			bool repeatFlag = false;
+			if (cell->GMIcuts->vals == !NULL)
+			{
+				for (int pc = 0; pc < cell->GMIcuts->cnt; pc++)
+				{
+					if (cell->GMIcuts->vals[pc] != NULL && cut->alpha == cell->GMIcuts->vals[pc]->alpha &&
+						twoNorm(cut->beta, cell->GMIcuts->vals[pc]->beta, cell->master->mac) <= 0.001)
+					{
+						repeatFlag = true;
+						break;
+					}
+				}
+			}
+
+			if (repeatFlag == false)
+			{
+				cut->numSamples = cell->cuts->vals[k]->numSamples;
+				cell->GMIcuts->cnt++;
+				cutarr[cutnum] = cut;
+				cutnum++;
+			}
+
+			/* allocate memory to a new stregthen Chvatal Gomory cut */
+			/* based on Latchford and Lodi paper: Theorem 1*/
+			double fb = bceil - alpha_coeff[al] * cell->cuts->vals[k]->alpha;
+			cut = newCut(prob[0]->num->cols, 0, 0);
+
+			/* Find the max k */
+			int upk = ceil(1.0 / fb);
+			int maxk = 0;
+			for (int i = 1; i < upk; i++)
+			{
+				if ((1.0 / (float)(i + 1) <= fb) && (1.0 / (float)i > fb))
+				{
+					if (i > maxk)
+					{
+						maxk = i;
+					}
+				}
+			}
+			cut->beta[0] = (maxk + 1) * bceil;
+
+			/* Create N_p sets of indices*/
+			iVector N_p = (iVector)arr_alloc(maxk, double);
+			for (int v = 1; v < cell->master->mac; v++)
+			{
+
+				double aceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->beta[v]);
+				double fa = aceil - alpha_coeff[al] * cell->cuts->vals[k]->beta[v];
+				double ai = 0.0;
+				if (fa <= fb) ai += (maxk + 1) * aceil;
+				for (int p = 1;p <= maxk; p++)
+				{
+					if ((fb + ((p - 1)*(1 - fb)) / (float)maxk < fa) && (fa <= fb + (p*(1 - fb)) / (float)maxk))
+					{
+						ai += (maxk + 1)*aceil - p;
+					}
+				}
+				cut->beta[v] = ai;
+
+			}
+
+			repeatFlag = false;
 			if (cell->GMIcuts->vals == !NULL)
 			{
 				for (int pc = 0; pc < cell->GMIcuts->cnt; pc++)
