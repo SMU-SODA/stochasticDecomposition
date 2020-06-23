@@ -466,6 +466,8 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 	{
 		for (k = 0; k < cell->cuts->cnt; k++) {
 
+
+#if defined(GMIstreghtcuts1Active)
 			/* allocate memory to a new Chvatal Gomory cut */
 			cut = newCut(prob[0]->num->cols, 0, 0);
 
@@ -475,7 +477,7 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 			for (int v = 1; v < cell->master->mac; v++)
 			{
 
-				double aceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->beta[v]) ;
+				double aceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->beta[v]);
 				double maxpart = max(0, (bceil - aceil) / (1 + bceil));
 				cut->beta[v] = aceil - maxpart;
 
@@ -502,7 +504,45 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 				cutarr[cutnum] = cut;
 				cutnum++;
 			}
+#else
+			/* allocate memory to a new Chvatal Gomory cut */
+			cut = newCut(prob[0]->num->cols, 0, 0);
 
+			double bceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->alpha);
+			cut->beta[0] = bceil;
+
+			for (int v = 1; v < cell->master->mac; v++)
+			{
+
+				double aceil = ceil(alpha_coeff[al] * cell->cuts->vals[k]->beta[v]);
+				cut->beta[v] = aceil;
+
+			}
+
+			bool repeatFlag = false;
+			if (cell->GMIcuts->vals == !NULL)
+			{
+				for (int pc = 0; pc < cell->GMIcuts->cnt; pc++)
+				{
+					if (cell->GMIcuts->vals[pc] != NULL && cut->alpha == cell->GMIcuts->vals[pc]->alpha &&
+						twoNorm(cut->beta, cell->GMIcuts->vals[pc]->beta, cell->master->mac) <= 0.001)
+					{
+						repeatFlag = true;
+						break;
+					}
+				}
+			}
+
+			if (repeatFlag == false)
+			{
+				cut->numSamples = cell->cuts->vals[k]->numSamples;
+				cell->GMIcuts->cnt++;
+				cutarr[cutnum] = cut;
+				cutnum++;
+			}
+#endif // defined(GMIstreghtcuts1Active)
+
+#if defined(GMIstreghtcuts2Active)
 			/* allocate memory to a new stregthen Chvatal Gomory cut */
 			/* based on Latchford and Lodi paper: Theorem 1*/
 			double fb = bceil - alpha_coeff[al] * cell->cuts->vals[k]->alpha;
@@ -532,7 +572,7 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 				double fa = aceil - alpha_coeff[al] * cell->cuts->vals[k]->beta[v];
 				double ai = 0.0;
 				if (fa <= fb) ai += (maxk + 1) * aceil;
-				for (int p = 1;p <= maxk; p++)
+				for (int p = 1; p <= maxk; p++)
 				{
 					if ((fb + ((p - 1)*(1 - fb)) / (float)maxk < fa) && (fa <= fb + (p*(1 - fb)) / (float)maxk))
 					{
@@ -564,6 +604,9 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 				cutarr[cutnum] = cut;
 				cutnum++;
 			}
+#endif // defined(GMIstreghtcuts2Active)
+
+
 
 		}
 	}
