@@ -72,7 +72,11 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
+		{
+			printVector(cell->incumbX, cell->master->mac,NULL);
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
+		}
+			
 
 		/* Save the batch details and build the compromise problem. */
 		if ( config.COMPROMISE_PROB) {
