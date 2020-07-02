@@ -44,6 +44,26 @@ bool optimal(probType **prob, cellType *cell) {
 	return false;
 }//optimal()
 
+ /* This function determines whether or not the current incumbent solution is considered to be optimal. Optimality is guaranteed if the
+ * following criteria are satisfied:
+ * 		0. Minimum number of iterations have been completed.
+ * 		1. Dual solution set has stabilized.
+ * 		2. If dual solution set is stable, the pre-test checks for "convergence" of objective function estimate.
+ * 		3. Full test is based on bootstrapping, and checks the gap between primal (upper) and dual (lower) values.
+ * The pre-test is performed only after the dual solution set has stabilized, and the full test is performed only if the pre-test
+ * is successful. */
+bool LPoptimal(probType **prob, cellType *cell) {
+
+	/* ensure that the minimum number of iterations have been completed */
+	if (cell->k > config.MIN_ITER && cell->dualStableFlag) {
+		/* perform the pre-test */
+		if (preTest(cell)) {
+			return true;
+		}
+	}
+
+	return false;
+}//LPoptimal()
 
 /* Because checking optimality is an arduous task, we first do a pre-check to determine if the full test is worthwhile. This function
  * determines whether the height at the candidate is close enough to the height at the incumbent to warrant an optimality test. */

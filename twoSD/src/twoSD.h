@@ -36,8 +36,8 @@
 #define MIRcutsActive
 #define MIRSubbaddActive
 #else
-#define CpxGMICutsActive
-#define CpxMIRCutsActive
+#undef CpxGMICutsActive
+#undef CpxMIRCutsActive
 #endif // defined(UserMIPcutsActive)
 
 enum smipSolver {
@@ -263,6 +263,7 @@ double cutHeight(oneCut *cut, int currIter, dVector xk, int betaLen, double lb);
 
 /* optimal.c */
 bool optimal(probType **prob, cellType *cell);
+bool LPoptimal(probType **prob, cellType *cell);
 bool preTest(cellType *cell);
 bool fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);

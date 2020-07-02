@@ -144,35 +144,32 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		mem_free(lb); return 1;
 	}
 
-	if (config.ALGO == 0)
-	{
-		/* decompose the problem into master and subproblem */
-		(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
-		if ((*prob) == NULL) {
-			errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
-			mem_free(lb); return 1;
-		}
+
+	/* decompose the problem into master and subproblem */
+	(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
+	if ((*prob) == NULL) {
+		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
+		mem_free(lb); return 1;
+	}
 
 #ifdef DECOMPOSE_CHECK
-		printDecomposeSummary(stdout, orig->name, tim, (*prob));
+	printDecomposeSummary(stdout, orig->name, tim, (*prob));
 #endif
 
-		/* ensure that we have a linear programs at all stages */
-		t = 0;
-		while (t < tim->numStages) {
+	/* ensure that we have a linear programs at all stages */
+	t = 0;
+	while (t < tim->numStages) {
+		if (config.SMIP != 0)
+		{
 			if ((*prob)[t++]->sp->type != PROB_LP)
 				printf("Warning :: Stage-%d problem is a mixed-integer program. Solving its linear relaxation.\n", t);
 		}
+		else
+		{
+			t++;
+		}
 	}
-	else if (config.ALGO == 1)
-	{
 
-	}
-	else
-	{
-		errMsg("setup", "setupAlgo", "failed to create the proper algorithm", 0);
-		return 1;
-	}
 
 	/* create the cells which will be used in the algorithms */
 	(*cell) = newCell(stoc, (*prob), (*meanSol));

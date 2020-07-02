@@ -74,6 +74,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		if (config.EVAL_FLAG == 1)
 		{
 			printVector(cell->incumbX, cell->master->mac,NULL);
+			//LB estimate: CTx (dot product) + height of the cut(subroutine: )
+			//cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
 		}
 			
@@ -284,6 +286,8 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	}//END while loop
 
+	printVector(cell->incumbX, cell->master->mac, NULL);
+
 	if (config.SMIP != MILP) {
 		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
 		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
@@ -292,6 +296,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 			errMsg("algorithm", "solverCell", "failed to run the Benders-callback routine", 0);
 			goto TERMINATE;
 		}
+		/* Update the incumbent estimate */
+		cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
+
 	}
 
 	mem_free(observ);
@@ -383,7 +390,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 
 	/******* 1. Optimality tests *******/
-	if (optimal(prob, cell))
+	if (LPoptimal(prob, cell))
 	{
 		(*breakLoop) = true; return 0;
 	}
@@ -409,6 +416,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 
 	/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+	//REmove condition
 	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
@@ -418,7 +426,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 
 	/******* 5. Check improvement in predicted values at candidate solution *******/
-	if (!(cell->incumbChg) && cell->k > 1)
+	if (true)
 		/* If the incumbent has not changed in the current iteration */
 		checkImprovement(prob[0], cell, candidCut);
 
