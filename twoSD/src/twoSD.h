@@ -24,6 +24,12 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
+enum spSamplingType {
+	Full,
+	New,
+	Binomial
+};
+
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
@@ -58,7 +64,9 @@ typedef struct{
 	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
-	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
+	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample in each iteration */
+	int		SP_SAMPLING; 		/* Subproblem sampling: 0-Off, 1-New observations only, and 2-fraction */
+	double	SP_FRACTION;		/* Probability for selecting subproblem for solving, applicable only when SP_SAMPLING = 2 */
 }configType;
 
 typedef struct {

@@ -135,5 +135,12 @@ MULTIPLE_REP 1
 // Create compromise problem
 COMPROMISE_PROB	0
 
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%% New features %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // Number of observations added to the sample in each iteration (default is 1)
 SAMPLE_INCREMENT	1
+
+// Subproblem sampling: 0-Off, 1-New observations (default), and 2-fraction
+SP_SAMPLING 1
+
+// Probability for selecting subproblem for solving, applicable only when SP_SAMPLING = 2
+SP_FRACTION 0

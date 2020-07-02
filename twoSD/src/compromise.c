@@ -257,7 +257,7 @@ int solveCompromise(probType *prob, batchSummary *batch) {
 
 	/* solve the compromise problem */
 	changeQPSolverType(ALG_CONCURRENT);
-	if ( solveProblem(batch->sp->lp, batch->sp->name, config.MASTER_TYPE, batch->sp->mar, batch->sp->mac, &status) ) {
+	if ( solveProblem(batch->sp->lp, batch->sp->name, config.MASTER_TYPE, &status, 0.0) ) {
 		writeProblem(batch->sp->lp, "error.lp");
 		errMsg("algorithm", "solveCompromise", "failed to solve the compromise problem", 0);
 		return 1;

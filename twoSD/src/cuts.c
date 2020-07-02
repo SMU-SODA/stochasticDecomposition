@@ -21,39 +21,82 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
 
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;
-	int    	cutIdx, obs;
+	int    	cutIdx;
 
-	/* A subproblem is solved for every new observation */
-	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
-		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
-				config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-				&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
-			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
-			return -1;
-		}
-
-		/* increment the number of subproblems solved during algorithm */
-		cell->LPcnt++;
-
-		if ( ! cell->spFeasFlag ) {
-			/* Subproblem is infeasible, resolve infeasibility */
-			if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
-				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+	/* Loop through all the observations and determine whether a subproblem will be solved */
+	if ( config.SP_SAMPLING == New ) {
+		/* Solve subproblems only for observations encountered in the current iteration */
+		for ( int obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
+			/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+			if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
+					config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
+					&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+				errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 				return -1;
 			}
+
+			/* (b) Increment the number of subproblems solved during algorithm */
+			cell->LPcnt++;
+
+			if ( ! cell->spFeasFlag ) {
+				/* (c1) Subproblem is infeasible, resolve infeasibility */
+				if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
+					errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+					return -1;
+				}
+			}
+			else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
+				/* (c2) Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+				 * to see if new feasibility cuts need to be added. */
+				if ( formFeasCut(prob[1], cell) ) {
+					errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+					return -1;
+				}
+			}
 		}
-		else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
-			/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
-			 * to see if new feasibility cuts need to be added. */
-			if ( formFeasCut(prob[1], cell) ) {
-				errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
-				return -1;
+	}
+	else {
+		/* Loop through all observations and solve the subproblem for each with probability _prob_ */
+		for ( int obs = 0; obs < cell->omega->cnt; obs++ ) {
+
+			double prob = 1.0;
+			if ( config.SP_SAMPLING == Binomial ) {
+				prob = scalit(0,1, &config.RUN_SEED[0]);
+			}
+
+			if ( prob <= config.SP_FRACTION ) {
+
+				/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+				if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
+						config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
+						&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+					errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
+					return -1;
+				}
+
+				/* (b) Increment the number of subproblems solved during algorithm */
+				cell->LPcnt++;
+
+				if ( ! cell->spFeasFlag ) {
+					/* (c1) Subproblem is infeasible, resolve infeasibility */
+					if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
+						errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+						return -1;
+					}
+				}
+				else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
+					/* (c2) Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+					 * to see if new feasibility cuts need to be added. */
+					if ( formFeasCut(prob[1], cell) ) {
+						errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+						return -1;
+					}
+				}
 			}
 		}
 	}
 
-	/* (b) create an affine lower bound */
+	/* Create an affine lower bound */
 	clock_t tic = clock();
 	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
 			Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
