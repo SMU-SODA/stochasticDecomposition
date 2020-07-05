@@ -19,7 +19,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts) ) {
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->omega->sampleSize, cell->cuts) ) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -80,7 +80,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->omega->sampleSize, cell->candidX, num->cols, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;

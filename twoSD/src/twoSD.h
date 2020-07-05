@@ -103,7 +103,6 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
@@ -192,8 +191,7 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
+oneCut *SDCut(numType *num, coordType *coord, omegaType *omega, basisType *basis, sigmaType *sigma, deltaType *delta, iVector istar);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);

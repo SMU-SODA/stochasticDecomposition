@@ -204,7 +204,6 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
-	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	if (prob[0]->lb == 0)
 		cell->lbType = TRIVIAL;
@@ -313,7 +312,6 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* constants and arrays */
 	cell->k = 0;
-	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;
