@@ -18,6 +18,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	dVector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
+	probType **clone_prob = NULL;
+	cellType *clone_cell = NULL;
+	dVector	lb = NULL;
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL;
 
@@ -25,7 +28,11 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	openSolver();
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, &lb) )
+		goto TERMINATE;
+
+	/* create clone problems */
+	if (setupClone(orig, stoc, tim, &clone_prob, &clone_cell, &meanSol, &lb))
 		goto TERMINATE;
 
 	printf("Starting two-stage stochastic decomposition.\n");
@@ -54,7 +61,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 
 		clock_t tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if ( solveCell(stoc, prob, cell) ) {
+		if ( solveCell(stoc, prob, cell,clone_prob,clone_cell) ) {
 			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
@@ -73,7 +80,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
 		{
-			printVector(cell->incumbX, cell->master->mac,NULL);
 			//LB estimate: CTx (dot product) + height of the cut(subroutine: )
 			//cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
@@ -119,8 +125,11 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	TERMINATE:
 	if(meanSol) mem_free(meanSol);
 	freeBatchType(batch);
+	freeCellType(clone_cell);
 	freeCellType(cell);
+	freeProbType(clone_prob, 2);
 	freeProbType(prob, 2);
+	mem_free(lb);
 	return 1;
 }//END algo()
 
@@ -128,6 +137,9 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 	dVector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
+	probType **clone_prob = NULL;
+	cellType *clone_cell = NULL;
+	dVector	lb = NULL;
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL;
 
@@ -135,7 +147,11 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 	openSolver();
 
 	/* complete necessary initialization for the algorithm */
-	if (setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol))
+	if (setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, lb))
+		goto TERMINATE;
+
+	/* create clone problems */
+	if (setupClone(orig, stoc, tim, &clone_prob, &clone_cell, &batch, &meanSol,&lb))
 		goto TERMINATE;
 
 	printf("Starting two-stage stochastic decomposition.\n");
@@ -170,7 +186,7 @@ int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, c
 
 		clock_t tic = clock();
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if (solveCell(stoc, prob, cell)) {
+		if (solveCell(stoc, prob, cell, clone_prob, clone_cell)) {
 			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
@@ -252,10 +268,11 @@ TERMINATE:
 	freeBatchType(batch);
 	freeCellType(cell);
 	freeProbType(prob, 2);
+	mem_free(lb);
 	return 1;
 }//END algo()
 
-int solveCell(stocType *stoc, probType **prob, cellType *cell) {
+int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_prob, cellType *clone_cell) {
 	dVector 	observ;
 	clock_t		tic;
 	bool breakLoop = false;
@@ -286,20 +303,50 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	}//END while loop
 
-	printVector(cell->incumbX, cell->master->mac, NULL);
+#if defined(LPMIP_PRINT)
+	 // Print before branch and bound -------------------------
+	printf("\nLP relaxation solution:\n");
+	printVector(cell->incumbX, cell->master->mac - 1, NULL);
+	printf("\nLP relaxation Estimate %0.4f", cell->incumbEst);
+	//--------------------------------------------------------
+#endif // defined(LPMIP_PRINT)
+
+
+
+	//2a - change master to MILP solve using callback 
+
+	/* Clone the current cell to create an LP cell problem */
+
+	//just clone the master problem in copyCell
+	*clone_cell = *cell;
+	/* Copy the cell to the cloned cell. */
+	if (copyCell(cell,clone_cell)) {
+		errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
+		return 1;
+	}
+	clone_cell->incumbEst = prob[0]->lb;
+
 
 	if (config.SMIP != MILP) {
+		/* Turn the clone problem to LP */
+		QPtoLP(stoc, prob, clone_cell, 1);
+
 		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
 		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
-		cell->optFlag = false;
-		if (bendersCallback(stoc, prob, cell)) {
+		clone_cell->optFlag = false;
+		if (bendersCallback(stoc, prob, clone_cell)) {
 			errMsg("algorithm", "solverCell", "failed to run the Benders-callback routine", 0);
 			goto TERMINATE;
 		}
 		/* Update the incumbent estimate */
-		cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
+		clone_cell->incumbEst = vXvSparse(clone_cell->incumbX, prob[0]->dBar) + maxCutHeight(clone_cell->cuts, clone_cell->sampleSize, clone_cell->incumbX, prob[0]->num->cols, clone_cell->lb);
 
 	}
+
+#if defined(LPMIP_PRINT)
+	printVector(clone_cell->incumbX, clone_cell->master->mac - 1, NULL);
+	printf("\nEstimate %0.4f", cell->incumbEst);
+#endif // defined(LPMIP_PRINT)
 
 	mem_free(observ);
 	return 0;
@@ -374,6 +421,17 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 }
 
+int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
+{
+	//0a - (LB on xLP is cell->incumbEst)
+	//0b - xLP is phase1 solution -> evaluate xLP (UB) 
+	//1a - Change the master to MILP no callback solve to optimality - > xIP (LB)
+	//1b - check the optimality of (xIP) using pretest 
+	//1c - Evaluate the solution (xIP) using evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX); -> (UB)
+	//check UB - LB
+	//summary for the second one 
+}
+
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ)
 {
 	int			m, candidCut, obs;
@@ -387,15 +445,17 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 #endif
 
-
-
-	/******* 1. Optimality tests *******/
-	if (LPoptimal(prob, cell))
+	if (cell->k > 600)
 	{
 		(*breakLoop) = true; return 0;
 	}
+#if defined(LPMIP_PRINT)
+	printf("\ninside callback\n");
+	printVector(cell->incumbX, cell->master->mac - 1, NULL);
+	printf("\nEstimate %0.4f", cell->incumbEst);
+#endif // defined(LPMIP_PRINT)
 
-	/******* 2. Generate new observations, and add it to the set of observations *******/
+	/******* 1. Generate new observations, and add it to the set of observations *******/
 	cell->sampleSize += config.SAMPLE_INCREMENT;
 	for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
 		/* (a) Use the stoc file to generate observations */
@@ -409,13 +469,13 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
 	}
 
-	/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+	/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
 		errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 		return 1;
 	}
 
-	/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+	/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 	//REmove condition
 	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
@@ -425,21 +485,34 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		cell->iCutUpdt = cell->k;
 	}
 
-	/******* 5. Check improvement in predicted values at candidate solution *******/
+	/******* 4. Check improvement in predicted values at candidate solution *******/
 	if (true)
 		/* If the incumbent has not changed in the current iteration */
 		checkImprovement(prob[0], cell, candidCut);
 
-	/******* 6. Solve the master problem to obtain the new candidate solution */
+	/******* 5. Solve the master problem to obtain the new candidate solution */
 	if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
 		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 		return 1;
 	}
 
+
+	/******* 6. Optimality tests *******/
+	//if (LPoptimal(prob, cell))
+	//{
+	//	(*breakLoop) = true; return 0;
+	//}
+
+
 	return 0;
 
 }
 
+
+/*
+  Turn the QP master problem to LP
+  Siavash Tabrizian May 20
+*/
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	if (toMIP == 0)
@@ -511,7 +584,100 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	}
 
+#if defined(LPMIP_PRINT)
+	writeProblem(cell->master->lp, "finalMaster.lp");
+#endif
+
 }
+
+/*
+Copy the cell to a cloned cell
+Siavash Tabrizian May 20
+*/
+int copyCell(cellType *cell, cellType *clone_cell)
+{
+	*clone_cell->master = *cell->master;
+	clone_cell->master->type = 0;
+	LPptr masterLP;
+
+	/* Copy the master problem as a SMIP into another LPptr associated with the new environment. */
+	if (copyMasterSMIP(getEnv(), &masterLP, cell, cell->master->mac)) {
+		errMsg("algorithm", "bendersCallback", "failed to create a copy of the master problem", 0);
+		return 1;
+	}
+
+	clone_cell->master->lp = masterLP;
+
+	return 0;
+}
+
+/* This subroutine copies all the elements of the problem from the master problem in the cell structure. This includes the original
+* master problem as well as the cuts that were generated in the first-phase of the algorithm */
+int copyMasterSMIP(ENVptr env, LPptr *lp, cellType *cell, int numCols) {
+	//iVector indices;
+	//cString lu; cString uu; 
+	//dVector lb; dVector ub;
+	int status;
+
+	/* Create a clone of the current master problem in the cell structure, albeit with the new environment. */
+	(*lp) = CPXcloneprob(env, cell->master->lp, &status);
+	if (status) {
+		solverErrmsg(status);
+		return 1;
+	}
+
+
+	///* Change the column types to integer/binary to change the problem type to SMIP */
+	//if (!(indices = (iVector)arr_alloc(numCols, int)))
+	//	errMsg("allocation", "algo-copymaster", "indices", 0);
+	//if (!(lu = (cString)arr_alloc(numCols, int)))
+	//	errMsg("allocation", "algo-copymaster", "lu", 0);
+	//if (!(uu = (cString)arr_alloc(numCols, int)))
+	//	errMsg("allocation", "algo-copymaster", "uu", 0);
+	//if (!(lb = (dVector)arr_alloc(numCols, int)))
+	//	errMsg("allocation", "algo-copymaster", "lb", 0);
+	//if (!(ub = (dVector)arr_alloc(numCols, int)))
+	//	errMsg("allocation", "algo-copymaster", "ub", 0);
+
+	//for (int c = 1; c < numCols - 1; c++)
+	//{
+	//	indices[c] = c;
+	//	lu[c] = 'L';
+	//	uu[c] = 'U';
+	//	lb[c] = 0.0;
+	//	ub[c] = 1.0;
+	//}
+	//status = changeBDS((*lp), numCols - 1, indices, lu, lb);
+	//if (status) {
+	//	solverErrmsg(status);
+	//	errMsg("solver", "algo-copymaster", "failed to change column lowerbound", 0);
+	//	return 1;
+	//}
+	//status = changeBDS((*lp), numCols - 1, indices, uu, ub);
+	//if (status) {
+	//	solverErrmsg(status);
+	//	errMsg("solver", "algo-copymaster", "failed to change column upperbound", 0);
+	//	return 1;
+	//}
+	//status = CPXchgctype(env, (*lp), numCols, indices, cell->master->ctype);
+	//if (status) {
+	//	solverErrmsg(status);
+	//	errMsg("solver", "algo-copymaster", "failed to change column type", 0);
+	//	return 1;
+	//}
+	//mem_free(indices);
+
+	///* Change the problem type on the solver. */
+	//status = CPXchgprobtype(env, (*lp), PROB_MILP);
+	//if (status) {
+	//	solverErrmsg(status);
+	//	errMsg("Problem Setup", "bendersCallback", "could not change the type of master problem", 0);
+	//	return 1;
+	//}
+
+
+	return 0;
+}//END copyMasterSMIP()
 
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	int			m, GMICut, MIRCut;

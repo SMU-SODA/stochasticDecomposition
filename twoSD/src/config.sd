@@ -22,7 +22,7 @@ MIN_QUAD_SCALAR 0.001
 // ******************** SMIP options ********************
 
 // Type of SMIP solver to be employed 0 - MILP, 1 - CUSTOM and 2 - CALLBACK 
-SMIP_SOLVER 0
+SMIP_SOLVER 2
 
 // Type of algoithm to be employed 0 - Lshped and 1 - scenario decomposition
 SMIP_ALGO 0

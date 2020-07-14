@@ -11,36 +11,32 @@
 
 #include "twoSD.h"
 
-ENVptr	env;
+//ENVptr	env;
 typedef struct {
 	int	call;
 	int MIPcuts;
 	int OPTcuts;
 	probType **prob;
 	cellType *cell;
+	cellType *orig_cell;
 	stocType *stoc;
 } callbackArgs;
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
 
+
 extern configType config;
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
-	int status;
 	iVector indices;
 	callbackArgs * cbhandle;
+	int status = 0;
 
 	printf("\nStarting branch-and-cut phase of the algorithm....\n");
 	printf("Iteration-%4d: ", cell->k); fflush(stdout);
 	cell->callback = true;
 
-	/* change the master problem type to MILP */
-	if (QPtoLP(stoc, prob, cell, 1))
-	{
-		errMsg("solver", "bendersCallback", "failed to change master type", 0);
-		return 1;
-	}
 
 #if defined(CALLBACK_CHECK)
 	writeProblem(cell->master->lp, "callback_init.lp");
@@ -83,6 +79,12 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	setIntParam(CPX_PARAM_FRACCUTS, -1);								    /* Turn-off Gomory fractional cuts */
 	setIntParam(CPX_PARAM_MIRCUTS, -1);								        /* Turn-off MIR cuts (mixed integer rounding cuts) */
 #endif // !defined(UserMIPcutsActive)
+
+#if defined(CALLBACK_WRITE_LP)
+	char fname[NAMESIZE];
+	sprintf(fname, "%s_%d.lp", "callback_before", 0);
+	writeProblem(cell->master->lp, fname);
+#endif // defined(CALLBACK_WRITE_LP)
 
 	/* Launch the solver in callback mode to solve the master problem */
 	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
@@ -222,4 +224,6 @@ int callbackNodeSummary(void *cbdata, int wherefrom, LPptr lp) {
 
 	return 0;
 }//END callbackNodeSummary();
+
+
 

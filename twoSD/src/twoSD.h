@@ -24,10 +24,12 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
+#define LPMIP_PRINT
+
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP
 
-#define UserMIPcutsActive
+#undef UserMIPcutsActive
 
 #if defined(UserMIPcutsActive)
 #define GMIcutsActive
@@ -215,10 +217,13 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
+int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
+int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
 
 /* setup.c */
 int readConfig(cString path2config, cString inputDir);
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, dVector *meanSol);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, dVector *meanSol, dVector lb);
+int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***cloneprob, cellType **clonecell, dVector *meanSol, dVector lb);
 cellType *newCell(stocType *stoc, probType **prob, dVector xk);
 int cleanCellType(cellType *cell, probType *prob, dVector xk);
 void freeCellType(cellType *cell);

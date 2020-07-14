@@ -126,8 +126,7 @@ int readConfig(cString path2config, cString inputDir) {
 }//END readConfig()
 
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell,
-		batchSummary **batch, dVector *meanSol) {
-	dVector	lb = NULL;
+		batchSummary **batch, dVector *meanSol, dVector lb) {
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -181,7 +180,51 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	if ( config.NUM_REPS > 1 )
 		(*batch)  = newBatchSummary((*prob)[0], config.NUM_REPS);
 
-	mem_free(lb);
+	return 0;
+}//END setupAlgo()
+
+/*
+Setup clone cell and probs
+Siavash Tabrizian July 20
+*/
+int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, dVector *meanSol, dVector lb) {
+	int 	t;
+
+
+	/* decompose the problem into master and subproblem */
+	(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
+	if ((*prob) == NULL) {
+		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
+		mem_free(lb); return 1;
+	}
+
+#ifdef DECOMPOSE_CHECK
+	printDecomposeSummary(stdout, orig->name, tim, (*prob));
+#endif
+
+	/* ensure that we have a linear programs at all stages */
+	t = 0;
+	while (t < tim->numStages) {
+		if (config.SMIP != 0)
+		{
+			if ((*prob)[t++]->sp->type != PROB_LP)
+				printf("Warning :: Clone stage-%d problem is a mixed-integer program. Solving its linear relaxation.\n", t);
+		}
+		else
+		{
+			t++;
+		}
+	}
+
+
+	/* create the cells which will be used in the algorithms */
+	(*cell) = newCell(stoc, (*prob), (*meanSol));
+	if ((*cell) == NULL) {
+		errMsg("setup", "setupAlgo", "failed to create the necessary cell structure", 0);
+		return 1;
+	}
+
+
 	return 0;
 }//END setupAlgo()
 
@@ -201,26 +244,14 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
 	cell->pi_ratio = NULL;
 
-	if (config.ALGO == 0)
-	{
-		/* setup the master problem */
-		cell->master = newMaster(prob[0]->sp, prob[0]->lb);
-		if (cell->master == NULL) {
-			errMsg("setup", "newCell", "failed to setup the master problem", 0);
-			return NULL;
-		}
-		/* setup the subproblem */
-		cell->subprob = newSubprob(prob[1]->sp);
+	/* setup the master problem */
+	cell->master = newMaster(prob[0]->sp, prob[0]->lb);
+	if (cell->master == NULL) {
+		errMsg("setup", "newCell", "failed to setup the master problem", 0);
+		return NULL;
 	}
-	else if (config.ALGO == 1)
-	{
-		/* setup the PH subproblem */
-		cell->PHsubprob = newMaster(prob[0]->sp, prob[0]->lb);
-		if (cell->master == NULL) {
-			errMsg("setup", "newCell", "failed to setup the master problem", 0);
-			return NULL;
-		}
-	}
+	/* setup the subproblem */
+	cell->subprob = newSubprob(prob[1]->sp);
 	
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
