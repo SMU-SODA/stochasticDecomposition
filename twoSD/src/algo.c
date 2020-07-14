@@ -311,20 +311,25 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	//--------------------------------------------------------
 #endif // defined(LPMIP_PRINT)
 
-
+#if defined(PHASE1ANLYS)
+	if (phase_one_analysis(stoc, prob, cell)) {
+		errMsg("algorithm", "solveCell-phase-one-analysis", "failed to run analysis after the phase one", 0);
+		goto TERMINATE;
+	}
+#endif // defined(PHASE1ANLYS)
 
 	//2a - change master to MILP solve using callback 
 
 	/* Clone the current cell to create an LP cell problem */
 
-	//just clone the master problem in copyCell
-	*clone_cell = *cell;
 	/* Copy the cell to the cloned cell. */
-	if (copyCell(cell,clone_cell)) {
-		errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
-		return 1;
-	}
+	//if (copyCell(cell,clone_cell)) {
+	//	errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
+	//	return 1;
+	//}
+	clone_cell = cell;
 	clone_cell->incumbEst = prob[0]->lb;
+	clone_cell->candidEst = prob[0]->lb;
 
 
 	if (config.SMIP != MILP) {
@@ -423,13 +428,44 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 {
+	int status = 0;
+	printf("\n--------------------------------Phase 1 summary------------------------------------------\n");
 	//0a - (LB on xLP is cell->incumbEst)
 	//0b - xLP is phase1 solution -> evaluate xLP (UB) 
+	/* Evaluate the compromise solution */
+	printf("LB estimate: %0.4f\n", cell->incumbEst);
+	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
+	
+
 	//1a - Change the master to MILP no callback solve to optimality - > xIP (LB)
 	//1b - check the optimality of (xIP) using pretest 
 	//1c - Evaluate the solution (xIP) using evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX); -> (UB)
-	//check UB - LB
+	/* Turn the clone problem to LP */
+	QPtoLP(stoc, prob, cell, 1);
+	/* Launch the solver to solve the MIP master problem */
+	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
+		&status, config.SMIP_OPTGAP)) {
+		errMsg("algorithm", "algo-after-phase1", "failed to solve the master problem", 0);
+		return 1;
+	}
+	/* Get the most recent optimal solution to master program */
+	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
+		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
+		return 1;
+	}
+
+	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	printf("\n\nMILB estimate: %0.4f\n", cell->candidEst);
+	printVector(cell->candidX, prob[0]->num->cols, NULL);
+	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
+
+
 	//summary for the second one 
+
+	printf("----------------------------------------------------------------------------------------------------\n");
+
+	return 0;
 }
 
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ)
@@ -445,10 +481,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 #endif
 
-	if (cell->k > 600)
-	{
-		(*breakLoop) = true; return 0;
-	}
+
 #if defined(LPMIP_PRINT)
 	printf("\ninside callback\n");
 	printVector(cell->incumbX, cell->master->mac - 1, NULL);
@@ -498,10 +531,10 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 
 	/******* 6. Optimality tests *******/
-	//if (LPoptimal(prob, cell))
-	//{
-	//	(*breakLoop) = true; return 0;
-	//}
+	if (LPoptimal(prob, cell))
+	{
+		(*breakLoop) = true; return 0;
+	}
 
 
 	return 0;
@@ -514,6 +547,17 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
   Siavash Tabrizian May 20
 */
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
+
+	cString lu; cString uu; 
+	dVector lb; dVector ub;
+	iVector indices;
+	int numCols = prob[0]->num->cols;
+	int status = 0;
+
+	if (!(indices = (iVector)arr_alloc(numCols, int)))
+		errMsg("allocation", "bendersCallback", "indices", 0);
+	for (int c = 0; c < numCols; c++)
+		indices[c] = c;
 
 	if (toMIP == 0)
 	{
@@ -558,17 +602,11 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 		}
 
 		cell->master->type = PROB_MILP;
-		iVector indices;
-
-		if (!(indices = (iVector)arr_alloc(prob[0]->num->cols, int)))
-			errMsg("allocation", "bendersCallback", "indices", 0);
-		for (int c = 0; c < prob[0]->num->cols; c++)
-			indices[c] = c;
-		if (changeCtype(cell->master->lp, prob[0]->num->cols, indices, cell->master->ctype)) {
+		
+		if (changeCtype(cell->master->lp, numCols, indices, cell->master->ctype)) {
 			errMsg("solver", "bendersCallback", "failed to change column type", 0);
 			return 1;
 		}
-		mem_free(indices);
 
 		if (changeProbType(cell->master->lp, PROB_MILP)) {
 			errMsg("Problem Setup", "bendersCallback", "master", 0);
@@ -584,20 +622,54 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	}
 
+	///* Change the column types to integer/binary to change the problem type to SMIP */
+	if (!(lu = (cString)arr_alloc(numCols, int)))
+		errMsg("allocation", "algo-copymaster", "lu", 0);
+	if (!(uu = (cString)arr_alloc(numCols, int)))
+		errMsg("allocation", "algo-copymaster", "uu", 0);
+	if (!(lb = (dVector)arr_alloc(numCols, int)))
+		errMsg("allocation", "algo-copymaster", "lb", 0);
+	if (!(ub = (dVector)arr_alloc(numCols, int)))
+		errMsg("allocation", "algo-copymaster", "ub", 0);
+
+	for (int c = 0; c < numCols; c++)
+	{
+		lu[c] = 'L';
+		uu[c] = 'U';
+		lb[c] = 0.0;
+		ub[c] = 1.0;
+	}
+	status = changeBDS(cell->master->lp, numCols, indices, lu, lb);
+	if (status) {
+		solverErrmsg(status);
+		errMsg("solver", "algo-copymaster", "failed to change column lowerbound", 0);
+		return 1;
+	}
+	status = changeBDS(cell->master->lp, numCols, indices, uu, ub);
+	if (status) {
+		solverErrmsg(status);
+		errMsg("solver", "algo-copymaster", "failed to change column upperbound", 0);
+		return 1;
+	}
+
+
 #if defined(LPMIP_PRINT)
-	writeProblem(cell->master->lp, "finalMaster.lp");
+	writeProblem(cell->master->lp, "finalMaster_QP2LP.lp");
 #endif
+
+	mem_free(indices);
+
 
 }
 
 /*
 Copy the cell to a cloned cell
-Siavash Tabrizian May 20
+Siavash Tabrizian July 20
 */
 int copyCell(cellType *cell, cellType *clone_cell)
 {
-	*clone_cell->master = *cell->master;
-	clone_cell->master->type = 0;
+	*clone_cell = *cell;
+	clone_cell->master->type = MILP;
 	LPptr masterLP;
 
 	/* Copy the master problem as a SMIP into another LPptr associated with the new environment. */
@@ -607,6 +679,7 @@ int copyCell(cellType *cell, cellType *clone_cell)
 	}
 
 	clone_cell->master->lp = masterLP;
+
 
 	return 0;
 }

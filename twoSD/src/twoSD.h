@@ -25,6 +25,7 @@
 #undef BATCH_CHECK
 
 #define LPMIP_PRINT
+#define PHASE1ANLYS
 
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP

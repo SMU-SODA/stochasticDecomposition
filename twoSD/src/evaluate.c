@@ -103,6 +103,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 	}//END while loop
 	mean += vXvSparse(Xvect, prob[0]->dBar);
 
+	if(soln)
 	writeEvaluationSummary(soln, mean, stdev, cnt);
 	writeEvaluationSummary(stdout, mean, stdev, cnt);
 
