@@ -25,7 +25,7 @@
 #undef BATCH_CHECK
 
 #define LPMIP_PRINT
-#undef PHASE1ANLYS
+#define PHASE1ANLYS
 
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP
@@ -213,6 +213,7 @@ typedef struct {
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
+int LPtoMILP(stocType *stoc, probType **prob, cellType *cell);
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);

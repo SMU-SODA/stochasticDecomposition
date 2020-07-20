@@ -452,7 +452,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	//1b - check the optimality of (xIP) using pretest 
 	//1c - Evaluate the solution (xIP) using evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX); -> (UB)
 	/* Turn the clone problem to LP */
-	QPtoLP(stoc, prob, cell, 1);
+	QPtoLP(stoc, prob, cell, 0);
 	/* Launch the solver to solve the MIP master problem */
 	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
 		&status, config.SMIP_OPTGAP)) {
@@ -461,16 +461,35 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	}
 	/* Get the most recent optimal solution to master program */
 	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
-		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
+		errMsg("algorithm", "solveMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta . x */ //
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
-	printf("\n\nMILB estimate: %0.4f\n", cell->candidEst);
+	printf("\n\nLP estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
 	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
 
+	/* Turn the clone problem to MILP */
+	LPtoMILP(stoc, prob, cell);
+	/* Launch the solver to solve the MIP master problem */
+	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
+		&status, config.SMIP_OPTGAP)) {
+		errMsg("algorithm", "algo-after-phase1", "failed to solve the master problem", 0);
+		return 1;
+	}
+	/* Get the most recent optimal solution to master program */
+	if (getPrimal(cell->master->lp, cell->candidX, prob[0]->num->cols)) {
+		errMsg("algorithm", "solveMaster", "failed to obtain the primal solution for master", 0);
+		return 1;
+	}
+
+	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta . x */ //
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	printf("\n\nMILP estimate: %0.4f\n", cell->candidEst);
+	printVector(cell->candidX, prob[0]->num->cols, NULL);
+	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
 
 	//summary for the second one 
 
@@ -717,7 +736,59 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 
 #if defined(LPMIP_PRINT)
-	writeProblem(cell->master->lp, "finalMaster_QP2LP.lp");
+	if (toMIP == 0)
+	{
+		writeProblem(cell->master->lp, "finalMaster_QP2LP.lp");
+	}
+	else
+	{
+		writeProblem(cell->master->lp, "finalMaster_QP2MILP.lp");
+	}
+#endif
+
+	mem_free(indices);
+
+
+}
+
+/*
+Turn the LP master problem to MILP
+Siavash Tabrizian July 20
+*/
+int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
+
+	cString lu; cString uu;
+	iVector indices;
+	int numCols = prob[0]->num->cols;
+	int status = 0;
+
+	if (!(indices = (iVector)arr_alloc(numCols, int)))
+		errMsg("allocation", "bendersCallback", "indices", 0);
+	for (int c = 0; c < numCols; c++)
+		indices[c] = c;
+
+	cell->master->type = PROB_MILP;
+
+	if (changeCtype(cell->master->lp, numCols, indices, cell->master->ctype)) {
+		errMsg("solver", "bendersCallback", "failed to change column type", 0);
+		return 1;
+	}
+
+	if (changeProbType(cell->master->lp, PROB_MILP)) {
+		errMsg("Problem Setup", "bendersCallback", "master", 0);
+		return 0;
+	}
+
+	/*********02. Change LP solver to B&B *********/
+	if (changeLPSolverType(PROB_MILP))
+	{
+		errMsg("algorithm", "SolveIntCell", "failed to set primal algorithm for LP", 0);
+		return 1;
+	}
+
+
+#if defined(LPMIP_PRINT)
+	writeProblem(cell->master->lp, "finalMaster_LP2MILP.lp");
 #endif
 
 	mem_free(indices);
