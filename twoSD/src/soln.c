@@ -57,6 +57,29 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	return 0;
 }//END checkImprovement()
 
+int checkImprovement_callback(probType *prob, cellType *cell, int candidCut) {
+	double  candidEst;
+
+	/* Calculate height at new candidate x with newest cut included */
+	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob->num->cols, cell->lb);;
+	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob->num->cols, cell->lb);
+
+#ifdef ALGO_CHECK
+	printf("\nCandidate estimate = %lf, Incumbent estimate = %lf", candidEst, cell->incumbEst);
+#endif
+
+	/* when we find an improvement, then we need to replace the incumbent x with candidate x */
+	if (replaceIncumbent(prob, cell, candidEst)) {
+		errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
+		return 1;
+	}
+	cell->iCutIdx = candidCut;
+	cell->incumbChg = false;
+	printf("+"); fflush(stdout);
+
+	return 0;
+}//END checkImprovement()
+
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
 	/* replace the incumbent solution with the candidate solution */

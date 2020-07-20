@@ -14,13 +14,14 @@
 extern configType config;
 
 int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx);
+int LPresolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx);
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
 int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
 int addMIPCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool GMI);
 
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inCallback) {
 	oneCut 	*cut;
 	int    	cutIdx, obs;
 
@@ -38,10 +39,21 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 		cell->LPcnt++;
 
 		if ( ! cell->spFeasFlag ) {
-			/* Subproblem is infeasible, resolve infeasibility */
-			if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
-				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
-				return -1;
+			if (inCallback == 1)
+			{
+				/* Subproblem is infeasible, resolve infeasibility */
+				if (LPresolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs])) {
+					errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+					return -1;
+				}
+			}
+			else
+			{
+				/* Subproblem is infeasible, resolve infeasibility */
+				if (resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs])) {
+					errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
+					return -1;
+				}
 			}
 		}
 		else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
@@ -860,6 +872,52 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 	}
 
 	if ( cell->infeasIncumb == true ) {
+		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
+		replaceIncumbent(prob[0], cell, cell->candidEst);
+	}
+
+	/* QP master will be solved in optimality mode again */
+	cell->optMode = true;
+
+	return 0;
+}//END resolveInfeasibility()
+
+/* resolve infeasibility for LP relaxation 
+   added by Siavash Tabrizian July 20
+*/
+int LPresolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx) {
+	bool newBasisFlag;
+
+	/* LP master will be solved in feasibility mode */
+	cell->optMode = false;
+
+	while (true) {
+		/* form a feasibility cut */
+		formFeasCut(prob[1], cell);
+
+		
+		/* Solver the master problem with the added feasibility cut */
+		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the master problem", 0);
+			return 1;
+		}
+
+		/* increment the count for number of infeasible master solutions encountered */
+		cell->feasCnt++;
+
+		if (solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+			cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
+			&cell->time.subprobIter, &cell->time.argmaxIter) < 0) {
+			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
+			return 1;
+		}
+
+		/* end the feasibility mode if a feasible candidate solution is observed */
+		if (cell->spFeasFlag == true)
+			break;
+	}
+
+	if (cell->infeasIncumb == true) {
 		/* if the incumbent solution is infeasible then replace the incumbent with the feasible candidate solution */
 		replaceIncumbent(prob[0], cell, cell->candidEst);
 	}

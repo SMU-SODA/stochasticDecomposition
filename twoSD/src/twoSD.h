@@ -25,7 +25,7 @@
 #undef BATCH_CHECK
 
 #define LPMIP_PRINT
-#define PHASE1ANLYS
+#undef PHASE1ANLYS
 
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP
@@ -244,7 +244,7 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inCallback);
 int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb);
 int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb);
@@ -278,6 +278,8 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(iVector cdf, iVector observ, int numSamples);
+bool IPoptimal(probType **prob, cellType *cell);
+bool IPpreTest(cellType *cell);
 
 /* compromise.c */
 int buildCompromise(probType *prob, cellType *cell, batchSummary *batch);

@@ -50,6 +50,9 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	/* Setup the callback solver function */
 	if (setsolvecallbackfunc(usersolve, cbhandle)) { return 1; }
 
+	/* update the maximum number of SD iteration */
+	config.MAX_ITER += config.MAX_ITER;
+
 
 	setIntParam(CPXPARAM_Preprocessing_Linear, 0);		/* Assure linear mappings between the presolved and original models */
 	setIntParam(CPXPARAM_MIP_Strategy_CallbackReducedLP, CPX_OFF);			/* Let MIP callbacks work on the original model */

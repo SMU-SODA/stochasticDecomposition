@@ -14,6 +14,9 @@
 extern cString outputDir;
 extern configType config;
 
+dVector roundX(dVector a, int len);
+int isCandidInt(dVector candidate, int size);
+
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
 	dVector	 meanSol = NULL;
 	probType **prob = NULL;
@@ -30,6 +33,10 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, &lb) )
 		goto TERMINATE;
+
+#if defined(LPMIP_PRINT)
+	writeProblem(orig->lp, "meanvalueprob.lp");
+#endif
 
 	/* create clone problems */
 	if (setupClone(orig, stoc, tim, &clone_prob, &clone_cell, &meanSol, &lb))
@@ -305,11 +312,13 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 
 #if defined(LPMIP_PRINT)
 	 // Print before branch and bound -------------------------
-	printf("\nLP relaxation solution:\n");
+	printf("\nQP relaxation solution:\n");
 	printVector(cell->incumbX, cell->master->mac - 1, NULL);
-	printf("\nLP relaxation Estimate %0.4f", cell->incumbEst);
+	printf("\nQP relaxation Estimate %0.4f", cell->incumbEst);
+	writeProblem(cell->master->lp, "finalMaster_QP.lp");
 	//--------------------------------------------------------
 #endif // defined(LPMIP_PRINT)
+
 
 #if defined(PHASE1ANLYS)
 	if (phase_one_analysis(stoc, prob, cell)) {
@@ -323,14 +332,13 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	/* Clone the current cell to create an LP cell problem */
 
 	/* Copy the cell to the cloned cell. */
-	//if (copyCell(cell,clone_cell)) {
-	//	errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
-	//	return 1;
-	//}
-	clone_cell = cell;
+	if (copyCell(cell,clone_cell)) {
+		errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
+		return 1;
+	}
 	clone_cell->incumbEst = prob[0]->lb;
 	clone_cell->candidEst = prob[0]->lb;
-
+	clone_cell->incumbX = roundX(clone_cell->candidX, prob[0]->num->cols);
 
 	if (config.SMIP != MILP) {
 		/* Turn the clone problem to LP */
@@ -350,8 +358,11 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 
 #if defined(LPMIP_PRINT)
 	printVector(clone_cell->incumbX, clone_cell->master->mac - 1, NULL);
-	printf("\nEstimate %0.4f", cell->incumbEst);
+	printf("\nEstimate %0.4f", clone_cell->incumbEst);
 #endif // defined(LPMIP_PRINT)
+
+	cell->incumbEst = clone_cell->incumbEst;
+	*cell->incumbX = *clone_cell->incumbX;
 
 	mem_free(observ);
 	return 0;
@@ -397,14 +408,14 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 	}
 
 	/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
+	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 0)) < 0) {
 		errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 		return 1;
 	}
 
 	/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
-		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
+		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 0)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 			return 1;
 		}
@@ -454,7 +465,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 		return 1;
 	}
 
-	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
+	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta . x */ //
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 	printf("\n\nMILB estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
@@ -481,60 +492,118 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 #endif
 
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 
 #if defined(LPMIP_PRINT)
-	printf("\ninside callback\n");
-	printVector(cell->incumbX, cell->master->mac - 1, NULL);
-	printf("\nEstimate %0.4f", cell->incumbEst);
+	printf("\ninside callback before SD\n");
+	printVector(cell->candidX, cell->master->mac - 1, NULL);
+	printf("\nEstimate %0.4f  -  Candidate Est %0.4f\n\n", cell->incumbEst, cell->candidEst);
 #endif // defined(LPMIP_PRINT)
 
-	/******* 1. Generate new observations, and add it to the set of observations *******/
-	cell->sampleSize += config.SAMPLE_INCREMENT;
-	for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
-		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+	if (isCandidInt(cell->candidX, prob[0]->num->cols))
+	{
+		if (IPoptimal(prob, cell))
+		{
+			(*breakLoop) = true; return 0;
+		}
 
-		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
-		for (m = 0; m < stoc->numOmega; m++)
-			observ[m] -= stoc->mean[m];
+		/******* 1. Generate new observations, and add it to the set of observations *******/
+		cell->sampleSize += config.SAMPLE_INCREMENT;
+		for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
+			/* (a) Use the stoc file to generate observations */
+			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
 
-		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-		cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
-	}
+			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+			for (m = 0; m < stoc->numOmega; m++)
+				observ[m] -= stoc->mean[m];
 
-	/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-	if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0) {
-		errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-		return 1;
-	}
+			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+		}
 
-	/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
-	//REmove condition
-	if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
-		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb)) < 0) {
-			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+		if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 1)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			return 1;
 		}
-		cell->iCutUpdt = cell->k;
+
+		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+		//REmove condition
+		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
+			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
+				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+				return 1;
+			}
+			cell->iCutUpdt = cell->k;
+		}
+
+		/******* 4. Check improvement in predicted values at candidate solution *******/
+		if (true)
+			/* If the incumbent has not changed in the current iteration */
+			checkImprovement_callback(prob[0], cell, candidCut);
+
+		/******* 5. Solve the master problem to obtain the new candidate solution */
+		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+			return 1;
+		}
 	}
-
-	/******* 4. Check improvement in predicted values at candidate solution *******/
-	if (true)
-		/* If the incumbent has not changed in the current iteration */
-		checkImprovement(prob[0], cell, candidCut);
-
-	/******* 5. Solve the master problem to obtain the new candidate solution */
-	if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-		return 1;
-	}
-
-
-	/******* 6. Optimality tests *******/
-	if (LPoptimal(prob, cell))
+	else
 	{
-		(*breakLoop) = true; return 0;
+		/******* 6. Optimality tests *******/
+		if (LPoptimal(prob, cell))
+		{
+			(*breakLoop) = true; return 0;
+		}
+
+		/******* 1. Generate new observations, and add it to the set of observations *******/
+		cell->sampleSize += config.SAMPLE_INCREMENT;
+		for (obs = 0; obs < config.SAMPLE_INCREMENT; obs++) {
+			/* (a) Use the stoc file to generate observations */
+			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+
+			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+			for (m = 0; m < stoc->numOmega; m++)
+				observ[m] -= stoc->mean[m];
+
+			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+		}
+
+		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
+		if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 1)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
+			return 1;
+		}
+
+		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
+		//REmove condition
+		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
+			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
+				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+				return 1;
+			}
+			cell->iCutUpdt = cell->k;
+		}
+
+		/******* 4. Check improvement in predicted values at candidate solution *******/
+		if (true)
+			/* If the incumbent has not changed in the current iteration */
+			checkImprovement_callback(prob[0], cell, candidCut);
+
+		/******* 5. Solve the master problem to obtain the new candidate solution */
+		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+			return 1;
+		}
 	}
+
+
+#if defined(LPMIP_PRINT)
+	printf("\ninside callback after SD \n");
+	printVector(cell->incumbX, cell->master->mac - 1, NULL);
+	printf("\nEstimate %0.4f\n\n", cell->incumbEst);
+#endif // defined(LPMIP_PRINT)
 
 
 	return 0;
@@ -549,7 +618,6 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	cString lu; cString uu; 
-	dVector lb; dVector ub;
 	iVector indices;
 	int numCols = prob[0]->num->cols;
 	int status = 0;
@@ -621,31 +689,26 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 		}
 
 	}
-
+	prob[0]->sp->bdl;
 	///* Change the column types to integer/binary to change the problem type to SMIP */
 	if (!(lu = (cString)arr_alloc(numCols, int)))
 		errMsg("allocation", "algo-copymaster", "lu", 0);
 	if (!(uu = (cString)arr_alloc(numCols, int)))
 		errMsg("allocation", "algo-copymaster", "uu", 0);
-	if (!(lb = (dVector)arr_alloc(numCols, int)))
-		errMsg("allocation", "algo-copymaster", "lb", 0);
-	if (!(ub = (dVector)arr_alloc(numCols, int)))
-		errMsg("allocation", "algo-copymaster", "ub", 0);
+
 
 	for (int c = 0; c < numCols; c++)
 	{
 		lu[c] = 'L';
 		uu[c] = 'U';
-		lb[c] = 0.0;
-		ub[c] = 1.0;
 	}
-	status = changeBDS(cell->master->lp, numCols, indices, lu, lb);
+	status = changeBDS(cell->master->lp, numCols, indices, lu, prob[0]->sp->bdl);
 	if (status) {
 		solverErrmsg(status);
 		errMsg("solver", "algo-copymaster", "failed to change column lowerbound", 0);
 		return 1;
 	}
-	status = changeBDS(cell->master->lp, numCols, indices, uu, ub);
+	status = changeBDS(cell->master->lp, numCols, indices, uu, prob[0]->sp->bdu);
 	if (status) {
 		solverErrmsg(status);
 		errMsg("solver", "algo-copymaster", "failed to change column upperbound", 0);
@@ -751,6 +814,39 @@ int copyMasterSMIP(ENVptr env, LPptr *lp, cellType *cell, int numCols) {
 
 	return 0;
 }//END copyMasterSMIP()
+
+/* Check if the sloution is integer*/
+int isCandidInt(dVector candidate, int size)
+{
+	int output = 1;
+
+	for (int s = 0; s < size; s++)
+	{
+		if (candidate[s] != floor(candidate[s]))
+		{
+			output = 0;
+			break;
+		}
+	}
+
+	return output;
+}
+
+/* Make a rounding solution from a fractional */
+dVector roundX(dVector a, int len)
+{
+	int		i;
+	dVector	b;
+
+	if ((b = (dVector)arr_alloc(len, double))) {
+		for (i = 0; i < len; i++)
+			b[i] = ceil(a[i]);
+	}
+	else
+		errMsg("algo", "rounding solutioin", "b", 1);
+
+	return b;
+}
 
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 	int			m, GMICut, MIRCut;

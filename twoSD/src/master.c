@@ -88,7 +88,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	return 0;
 }//END solveQPMaster()
 
- /* This function is the regularized QP version of master problem. The master problem is solved after the newest cut is added to master problem,
+ /* This function is the LP version of master problem. The master problem is solved after the newest cut is added to master problem,
  the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
 int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
@@ -422,8 +422,8 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk) {
  /* 
  * by siavash tabrizian March 20
  * Since x = xbar + d, the corresponding changes will therefore be:
- * 		 A * d = b - A * xbar
- * 		 eta + beta * d >= alpha - beta * xbar
+ * 		 A * d = b - A * xbar --->> A * x = b
+ * 		 eta + beta * d >= alpha - beta * xbar ---->> eta + beta * x >= alpha
  * Turning it back to A * x = b */
 int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	int 	status = 0, cnt;

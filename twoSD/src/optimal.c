@@ -15,6 +15,7 @@
 
 extern configType config;
 
+
 /* This function determines whether or not the current incumbent solution is considered to be optimal. Optimality is guaranteed if the
  * following criteria are satisfied:
  * 		0. Minimum number of iterations have been completed.
@@ -58,6 +59,21 @@ bool LPoptimal(probType **prob, cellType *cell) {
 	if (cell->k > config.MIN_ITER && cell->dualStableFlag) {
 		/* perform the pre-test */
 		if (preTest(cell)) {
+			cell->incumbEst = cell->candidEst;
+			return true;
+		}
+	}
+
+	return false;
+}//LPoptimal()
+
+bool IPoptimal(probType **prob, cellType *cell) {
+
+	/* ensure that the minimum number of iterations have been completed */
+	if (cell->k > config.MIN_ITER) {
+		/* perform the pre-test */
+		if (IPpreTest(cell)) {
+			cell->incumbEst = cell->candidEst;
 			return true;
 		}
 	}
@@ -77,6 +93,15 @@ bool preTest(cellType *cell) {
 	}
 	else
 		cell->optFlag = (cell->candidEst > (1 + config.PRE_EPSILON) * cell->incumbEst);
+
+	return cell->optFlag;
+
+}//END preTest()
+
+bool IPpreTest(cellType *cell) {
+
+	//printf("candiadate: %0.4f  -  incumbernt: %0.4f", cell->candidEst, cell->incumbEst);
+	cell->optFlag = (cell->candidEst >= cell->incumbEst);
 
 	return cell->optFlag;
 
