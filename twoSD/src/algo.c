@@ -521,10 +521,10 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 	if (isCandidInt(cell->candidX, prob[0]->num->cols))
 	{
-		//if (IPoptimal(prob, cell))
-		//{
-		//	(*breakLoop) = true; return 0;
-		//}
+		if (IPoptimal(prob, cell))
+		{
+			(*breakLoop) = true; return 0;
+		}
 
 		/******* 1. Generate new observations, and add it to the set of observations *******/
 		cell->sampleSize += config.SAMPLE_INCREMENT;
@@ -570,10 +570,10 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	else
 	{
 		///******* 6. Optimality tests *******/
-		//if (LPoptimal(prob, cell))
-		//{
-		//	(*breakLoop) = true; return 0;
-		//}
+		if (LPoptimal(prob, cell))
+		{
+			(*breakLoop) = true; return 0;
+		}
 
 		/******* 1. Generate new observations, and add it to the set of observations *******/
 		cell->sampleSize += config.SAMPLE_INCREMENT;
