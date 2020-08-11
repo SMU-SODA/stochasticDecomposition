@@ -132,6 +132,14 @@ typedef struct {
 }runTime;
 
 typedef struct {
+	int nodeNum;
+	dVector sol;
+	double LB;
+	double UB;
+	bool   inInt;
+}nodeInfo;
+
+typedef struct {
 	int         k;                  /* number of iterations */
 	int         gk;                  /* number of GMI cuts */
 	int         mk;                  /* number of MIR cuts */
@@ -192,6 +200,7 @@ typedef struct {
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
 	sampleType	*sample;
+	nodeInfo    *nodeSol;			/* solution of nodes that are discovered in B&B */
 
 	runTime		time;				/* Run time structure */
 }cellType;
