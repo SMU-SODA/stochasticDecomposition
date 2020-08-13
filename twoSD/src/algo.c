@@ -521,6 +521,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 	if (isCandidInt(cell->candidX, prob[0]->num->cols))
 	{
+
 		if (IPoptimal(prob, cell))
 		{
 			(*breakLoop) = true; return 0;
@@ -543,7 +544,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 1)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			return 0;
+			return 1;
 		}
 
 		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
@@ -551,7 +552,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				return 0;
+				return 1;
 			}
 			cell->iCutUpdt = cell->k;
 		}
@@ -564,16 +565,14 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		/******* 5. Solve the master problem to obtain the new candidate solution */
 		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
 			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-			return 0;
+			return 1;
 		}
+
+
 	}
 	else
 	{
-		///******* 6. Optimality tests *******/
-		if (LPoptimal(prob, cell))
-		{
-			(*breakLoop) = true; return 0;
-		}
+
 
 		/******* 1. Generate new observations, and add it to the set of observations *******/
 		cell->sampleSize += config.SAMPLE_INCREMENT;
@@ -592,7 +591,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 1)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			return 0;
+			return 1;
 		}
 
 		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
@@ -600,7 +599,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				return 0;
+				return 1;
 			}
 			cell->iCutUpdt = cell->k;
 		}
@@ -613,8 +612,15 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		/******* 5. Solve the master problem to obtain the new candidate solution */
 		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
 			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-			return 0;
+			return 1;
 		}
+
+		///******* 6. Optimality tests *******/
+		if (LPoptimal(prob, cell))
+		{
+			(*breakLoop) = true; return 0;
+		}
+
 	}
 
 
@@ -1025,6 +1031,27 @@ int solveIntCell(stocType *stoc, probType **prob, cellType *cell) {
 TERMINATE:
 	return 1;
 }//END solveCell()
+
+void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt)
+{
+	printf("\n --------------- Printing the node solutions Info: \n");
+	printf("\n number of nodes: %i \n", Nodecnt);
+	for (int i = 0; i < Nodecnt; i++)
+	{
+		printf("\n ----- ------- ----- \n");
+		printf("\n call: %i \n", nodeSol[i].nodeNum);
+		printVector(nodeSol[i].sol, nodeSol[i].sol_size, NULL);
+		printf("\n Estimate: %0.4f", nodeSol[i].LB);
+		if (nodeSol[i].isInt)
+		{
+			printf("\n integer solution!\n");
+		}
+		printf("\n dual of the master for this node: \n");
+		printVector(nodeSol[i].piM, nodeSol[i].mar, NULL);
+		printf("\n ----- ------- ----- \n");
+	}
+	printf("\n ---------------------------------------------------\n");
+}
 
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header) {
 

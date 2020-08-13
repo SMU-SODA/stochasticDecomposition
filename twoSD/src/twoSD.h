@@ -90,6 +90,7 @@ typedef struct{
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
 	int 	SMIP;
+	int     NodeNum;
 	int 	ALGO;
 	double 	SMIP_OPTGAP;
 	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
@@ -133,10 +134,14 @@ typedef struct {
 
 typedef struct {
 	int nodeNum;
-	dVector sol;
+	int sol_size;
+	dVector sol;					/* candidate solution of node */
 	double LB;
 	double UB;
-	bool   inInt;
+	bool   isInt;					/* is the candid solution integer */
+	dVector 	piM;				/* master dual information */
+	dVector     djM;                /* master reduced cost dVector */
+	int    mar;
 }nodeInfo;
 
 typedef struct {
@@ -175,6 +180,7 @@ typedef struct {
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	int      	maxMIPCuts;         /* maximum number of MIP cuts to be used*/
+	int         etaIdx;             /* Index of eta column after starting the B&B*/
 	cutsType    *cuts;              /* optimality cuts */
 	cutsType    *MIRcuts;           /* MIP feasibility cuts */
 	cutsType    *GMIcuts;           /* MIP feasibility cuts */
@@ -230,6 +236,7 @@ void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellTyp
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
+void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt);
 
 /* setup.c */
 int readConfig(cString path2config, cString inputDir);
@@ -303,7 +310,6 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 /* callback.c */
-int bendersCallback(probType **prob, cellType *cell);
-int callbackNodeSummary(void *cbdata, int wherefrom, LPptr lp);
+
 
 #endif /* TWOSD_H_ */

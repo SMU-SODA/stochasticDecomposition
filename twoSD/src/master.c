@@ -94,7 +94,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if (changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts)) {
+	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -274,7 +274,7 @@ int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScal
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
-int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts) {
+int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts) {
 	double	coef[1];
 	int 	c;
 
@@ -282,7 +282,7 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
 		coef[0] = (double) (currSampleSize) / (double) SDcuts->vals[c]->numSamples;         // coefficient k/j of eta column
 
-		if ( changeCol(lp, numCols, coef, SDcuts->vals[c]->rowNum, SDcuts->vals[c]->rowNum+1) ) {
+		if ( changeCol(lp, etaIdx, coef, SDcuts->vals[c]->rowNum, SDcuts->vals[c]->rowNum+1) ) {
 			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
 			return 1;
 		}
@@ -294,8 +294,8 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
 			coef[0] = (double)(currSampleSize) / (double)MIRcuts->vals[c]->numSamples;         // coefficient k/j of eta column
 
-			if (changeCol(lp, numCols, coef, MIRcuts->vals[c]->rowNum, MIRcuts->vals[c]->rowNum + 1)) {
-				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+			if (changeCol(lp, etaIdx, coef, MIRcuts->vals[c]->rowNum, MIRcuts->vals[c]->rowNum + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column of MIR cuts in the stage problem", 0);
 				return 1;
 			}
 		}
@@ -307,8 +307,8 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
 			coef[0] = ceil((double)(currSampleSize) / (double)GMIcuts->vals[c]->numSamples);         // coefficient k/j of eta column
 
-			if (changeCol(lp, numCols, coef, GMIcuts->vals[c]->rowNum, GMIcuts->vals[c]->rowNum + 1)) {
-				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+			if (changeCol(lp, etaIdx, coef, GMIcuts->vals[c]->rowNum, GMIcuts->vals[c]->rowNum + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column of GMI cuts in the stage problem", 0);
 				return 1;
 			}
 		}

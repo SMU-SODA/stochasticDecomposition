@@ -50,6 +50,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.MASTER_TYPE);
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
+		else if (!(strcmp(line, "NodeNum")))
+			fscanf(fptr, "%d", &config.NodeNum);
 		else if (!(strcmp(line, "TAU")))
 			fscanf(fptr, "%d", &config.TAU);
 		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
@@ -296,6 +298,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* lower bounding approximations held in cuts structure */
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->maxMIPCuts = 1000;
+	cell->etaIdx = prob[0]->num->cols;
 	cell->cuts 	  = newCuts(cell->maxCuts);
 	cell->MIRcuts = newCuts(cell->maxMIPCuts);
 	cell->GMIcuts = newCuts(cell->maxMIPCuts);
@@ -305,6 +308,10 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 		errMsg("allocation", "newCell", "cell->di", 0);
 	if ( !(cell->piM = (dVector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newCell", "cell->piM", 0);
+
+	/* node info of B&B solutions */
+	if (!(cell->nodeSol = (nodeInfo*)arr_alloc(config.NodeNum, nodeInfo)))
+		errMsg("allocation", "newCell", "cell->nodeInfo", 0);
 
 	/* stochastic elements: we need more room to store basis information when the cost coefficients are random. */
 	if ( prob[1]->num->rvdOmCnt > 0 )

@@ -11,6 +11,8 @@
 
 #include "twoSD.h"
 
+extern cString outputDir;
+
 //ENVptr	env;
 typedef struct {
 	int	call;
@@ -24,6 +26,16 @@ typedef struct {
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
+int setsolvecallbackfunc(ENVptr envCallback, void *solvecallback, void *cbhandle);
+int callbackNodeSummary(const ENVptr envCallback, void *cbdata, int wherefrom, LPptr lp);
+int getcallbacknodelp(const ENVptr envCallback, void * cbdata, int wherefrom, CPXLPptr *nodelp);
+int getcallbackinfo(ENVptr envCallback, void * cbdata, int wherefrom, int whichinfo, void * result_p);
+int getCallbackPrimal(ENVptr envCallback, void * cbdata, int wherefrom, dVector X, int length);
+int setIntCallbackParam(ENVptr envCallback, int paramName, int paramValue);
+int setDoubleCallbackParam(ENVptr envCallback, int paramName, double paramVal);
+int solveCallbackProblem(const ENVptr envCallback, LPptr lp, cString pname, int type, double mipGap);
+int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
+int writeProblemCallback(const ENVptr envCallback, LPptr lp, cString filename);
 
 
 extern configType config;
@@ -89,6 +101,16 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	writeProblem(cell->master->lp, fname);
 #endif // defined(CALLBACK_WRITE_LP)
 
+	cell->nodeSol[0].sol = duplicVector(cell->candidX, prob[0]->num->cols);
+	cell->nodeSol[0].sol_size = prob[0]->num->cols;
+	cell->nodeSol[0].nodeNum = 0;
+	cell->nodeSol[0].LB = cell->candidEst;
+	cell->nodeSol[0].piM = duplicVector(cell->piM, cell->master->mar);
+	cell->nodeSol[0].djM = duplicVector(cell->djM, cell->master->mar);
+	cell->nodeSol[0].mar = cell->master->mar;
+	cell->nodeSol[0].isInt = isInteger(cell->candidX, prob[0]->num->cols,
+		                               0, prob[0]->num->cols - 1, config.INT_TOLERANCE);
+
 	/* Launch the solver in callback mode to solve the master problem */
 	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
 		&status, config.SMIP_OPTGAP)) {
@@ -99,7 +121,7 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	/*Print the summary of callbacks*/
 	printf("\ncallback summary:\n");
 	printf("\# of callbacks calls:%i  - # of OPT cuts:%i - # of MIP cuts:%i\n", cbhandle->call, cbhandle->OPTcuts, cbhandle->MIPcuts);
-
+	printNodeInfo(cell->nodeSol, cbhandle->call);
 	copyVector(cell->candidX, cell->incumbX, prob[0]->num->cols, 1);
 	cell->callback = false;
 	mem_free(cbhandle);
@@ -146,12 +168,12 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	writeProblem(args->cell->master->lp, fname);
 #endif // defined(CALLBACK_WRITE_LP)
 
-	if ( solveProblem(args->cell->master->lp, args->cell->master->name, PROB_LP, args->cell->master->mar, args->cell->master->mac,
-			&status, config.SMIP_OPTGAP) ) {
-		writeProblem(args->cell->master->lp, "error.lp");
-		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
-		return 1;
-	}
+	//if ( solveProblem(args->cell->master->lp, args->cell->master->name, PROB_LP, args->cell->master->mar, args->cell->master->mac,
+	//		&status, config.SMIP_OPTGAP) ) {
+	//	writeProblem(args->cell->master->lp, "error.lp");
+	//	errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
+	//	return 1;
+	//}
 
 	getCallbackPrimal(cbdata, wherefrom, args->cell->candidX, args->prob[0]->num->cols);
 
@@ -194,39 +216,23 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 			break;
 	}
 
+	if (args->call < config.NodeNum)
+	{
+		args->cell->nodeSol[args->call].sol = duplicVector(args->cell->candidX, args->prob[0]->num->cols);
+		args->cell->nodeSol[args->call].sol_size = args->prob[0]->num->cols;
+		args->cell->nodeSol[args->call].nodeNum = args->call;
+		args->cell->nodeSol[args->call].LB = args->cell->candidEst;
+		args->cell->nodeSol[args->call].piM = duplicVector(args->cell->piM, args->cell->master->mar);
+		args->cell->nodeSol[args->call].djM = duplicVector(args->cell->djM, args->cell->master->mar);
+		args->cell->nodeSol[args->call].mar = args->cell->master->mar;
+		args->cell->nodeSol[args->call].isInt = isInteger(args->cell->candidX, args->prob[0]->num->cols,
+			0, args->prob[0]->num->cols - 1, config.INT_TOLERANCE);
+	}
+
 	args->cell->master->lp = NULL;
 	args->cell->master->lp = nodelp;
 	mem_free(candidCuts);
 
 	return 0;
 } /* END usersolve */
-
-int callbackNodeSummary(void *cbdata, int wherefrom, LPptr lp) {
-
-	int temp; double val;
-	/* Find out what node is being processed */
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_BEST_INTEGER, &val) ) { return 1; }
-	printf ("\tObj. value of best integer solution    = %lf\n", val);
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_BEST_REMAINING, &val) ) { return 1; }
-	printf ("\tObj. value of best remaining nodes     = %lf\n", val);
-
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_NODE_COUNT, &temp) ) { return 1; }
-	printf ("\tTotal number of nodes solved           = %d\n", temp);
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_NODES_LEFT, &temp) ) { return 1; }
-	printf ("\tNumber of nodes remain to be processed = %d\n", temp);
-
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_MIP_ITERATIONS, &temp) ) { return 1; }
-	printf ("\tTotal number of MIP iterations         = %d\n", temp);
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_MY_THREAD_NUM, &temp) ) { return 1; }
-	printf ("\tNumber of the calling thread           = %d\n", temp);
-
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_FRACCUT_COUNT, &temp) ) { return 1; }
-	printf ("\tNumber of mixed-integer cuts added     = %d\n", temp);
-	if ( getcallbackinfo (cbdata, wherefrom, CPX_CALLBACK_INFO_MIRCUT_COUNT, &temp) ) { return 1; }
-	printf ("\tNumber of Gomory fractions cuts added  = %d\n", temp);
-
-	return 0;
-}//END callbackNodeSummary();
-
-
 
