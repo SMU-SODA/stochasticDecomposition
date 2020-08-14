@@ -26,16 +26,7 @@ typedef struct {
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
-int setsolvecallbackfunc(ENVptr envCallback, void *solvecallback, void *cbhandle);
-int callbackNodeSummary(const ENVptr envCallback, void *cbdata, int wherefrom, LPptr lp);
-int getcallbacknodelp(const ENVptr envCallback, void * cbdata, int wherefrom, CPXLPptr *nodelp);
-int getcallbackinfo(ENVptr envCallback, void * cbdata, int wherefrom, int whichinfo, void * result_p);
-int getCallbackPrimal(ENVptr envCallback, void * cbdata, int wherefrom, dVector X, int length);
-int setIntCallbackParam(ENVptr envCallback, int paramName, int paramValue);
-int setDoubleCallbackParam(ENVptr envCallback, int paramName, double paramVal);
-int solveCallbackProblem(const ENVptr envCallback, LPptr lp, cString pname, int type, double mipGap);
-int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
-int writeProblemCallback(const ENVptr envCallback, LPptr lp, cString filename);
+
 
 
 extern configType config;
@@ -150,6 +141,45 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	/* Get pointer to LP subproblem */
 	if ( getcallbacknodelp (cbdata, wherefrom, &temp) ) { return 1; }
 	args->cell->master->lp = temp;
+
+	/* Get the number of column because if the a variable is deleted
+	   the index of \eta variable should be updated */
+	int numCol = getNumCols(nodelp);
+	if (numCol < args->prob[0]->num->cols)
+	{
+		bool flag = true;
+		int col = 0;
+		cString colname;
+		if (!(colname = (cString)arr_alloc(NAMESIZE, char)))
+			errMsg("allocation", "newProb", "stage problem name", 0);
+		cString *colnamearr;
+		if (!(colnamearr = (cString*)arr_alloc(numCol, cString)))
+			errMsg("allocation", "newProb", "stage problem name", 0);
+		int status = getColName(nodelp, 0, numCol-1 , colnamearr, colname, NAMESIZE);
+		
+		if (status)
+		{
+			while (flag && col < numCol)
+			{
+				if (args->cell->master->cname[args->cell->master->mac] == colnamearr[col])
+				{
+					args->cell->etaIdx = col;
+					printf("callback - eta index is updated!");
+					flag = false;
+					break;
+				}
+				else
+				{
+					col++;
+				}
+			}
+		}
+		else
+		{
+			printf("callback - failed to obtain the column indexes!");
+		}
+
+	}
 
 	/*Update couns of callback calls*/
 	args->call++;
