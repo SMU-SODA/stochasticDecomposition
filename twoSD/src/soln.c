@@ -69,10 +69,9 @@ int checkImprovement_callback(probType *prob, cellType *cell, int candidCut) {
 #endif
 
 	/* when we find an improvement, then we need to replace the incumbent x with candidate x */
-	if (replaceIncumbent(prob, cell, candidEst)) {
-		errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
-		return 1;
-	}
+	/* replace the incumbent solution with the candidate solution */
+	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
+	cell->incumbEst = candidEst;
 	cell->iCutIdx = candidCut;
 	cell->incumbChg = false;
 	printf("+"); fflush(stdout);

@@ -133,11 +133,14 @@ typedef struct {
 }runTime;
 
 typedef struct {
+	int seqid;                      /* sequence id of the node in the B&B tree work with CPXgetcallbackseqinfo*/
+	int nodeidx;                    /* index of the node when the callback is called with CPXgetcallbacknodeinfo*/
 	int nodeNum;
 	int sol_size;
 	dVector sol;					/* candidate solution of node */
 	double LB;
 	double UB;
+	int    omegaSize;               /* Store the sample size associate with this node */
 	bool   isInt;					/* is the candid solution integer */
 	dVector 	piM;				/* master dual information */
 	dVector     djM;                /* master reduced cost dVector */
@@ -280,6 +283,7 @@ double calc_var(double *x, double *mean_value, double *stdev_value, int batch_si
 
 /* soln.c */
 int checkImprovement(probType *prob, cellType *cell, int candidCut);
+int checkImprovement_callback(probType *prob, cellType *cell, int candidCut);
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst);
 double maxCutHeight(cutsType *cuts, int currIter, dVector xk, int betaLen, double lb);
 double cutHeight(oneCut *cut, int currIter, dVector xk, int betaLen, double lb);

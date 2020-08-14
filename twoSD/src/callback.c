@@ -144,8 +144,8 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 	/* Get the number of column because if the a variable is deleted
 	   the index of \eta variable should be updated */
-	int numCol = getNumCols(nodelp);
-	if (numCol < args->prob[0]->num->cols)
+	int numCol = getNumCols(temp);
+	if (numCol < args->prob[0]->num->cols+1)
 	{
 		bool flag = true;
 		int col = 0;
@@ -155,24 +155,11 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 		cString *colnamearr;
 		if (!(colnamearr = (cString*)arr_alloc(numCol, cString)))
 			errMsg("allocation", "newProb", "stage problem name", 0);
-		int status = getColName(nodelp, 0, numCol-1 , colnamearr, colname, NAMESIZE);
-		
+		int status = getColName(temp, 0, numCol-1 , colnamearr, colname, NAMESIZE);
+
 		if (status)
 		{
-			while (flag && col < numCol)
-			{
-				if (args->cell->master->cname[args->cell->master->mac] == colnamearr[col])
-				{
-					args->cell->etaIdx = col;
-					printf("callback - eta index is updated!");
-					flag = false;
-					break;
-				}
-				else
-				{
-					col++;
-				}
-			}
+			args->cell->etaIdx = numCol - 1;
 		}
 		else
 		{

@@ -510,7 +510,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		printf("\nIteration-%4d: ", cell->k);
 	}
 #endif
-
+	
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 
 #if defined(LPMIP_PRINT)
