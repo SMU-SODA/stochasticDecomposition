@@ -184,6 +184,7 @@ typedef struct {
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	int      	maxMIPCuts;         /* maximum number of MIP cuts to be used*/
 	int         etaIdx;             /* Index of eta column after starting the B&B*/
+
 	cutsType    *cuts;              /* optimality cuts */
 	cutsType    *MIRcuts;           /* MIP feasibility cuts */
 	cutsType    *GMIcuts;           /* MIP feasibility cuts */

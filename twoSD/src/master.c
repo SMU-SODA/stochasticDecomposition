@@ -93,12 +93,12 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
-
+	//writeProblem(cell->master->lp, "callLPMastersolve1.lp");
 	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
-
+	//writeProblem(cell->master->lp, "callLPMastersolve2.lp");
 	if (cell->lbType == NONTRIVIAL) {
 		/* update the right-hand side of cuts to reflect the non-trivial lower bound */
 		if (updateRHS(cell->master->lp, cell->cuts, cell->k, cell->lb)) {
@@ -106,7 +106,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 			return 1;
 		}
 	}
-
+	//writeProblem(cell->master->lp, "callLPMastersolve3.lp");
 #ifdef ALGO_CHECK
 	writeProblem(cell->master->lp, "cellMaster.lp");
 #endif
@@ -114,8 +114,8 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	//changeLPSolverType(ALG_CONCURRENT);
-	writeProblem(cell->master->lp, "callLPMastersolve.lp");
-	if (solveProblem(cell->master->lp, cell->master->name, 0, cell->master->mar, cell->master->mac, &status, config.TOLERANCE)) {
+	//writeProblem(cell->master->lp, "callLPMastersolve.lp");
+	if (solveProblem(cell->master->lp, cell->master->name, 0, cell->master->mar, cell->master->Xcols+1, &status, config.TOLERANCE)) {
 		if (status == STAT_INFEASIBLE) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
@@ -129,15 +129,14 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	cell->time.masterIter = ((double)(clock() - tic)) / CLOCKS_PER_SEC;
 
 	/* Get the most recent optimal solution to master program */
-	if (getPrimal(cell->master->lp, cell->candidX, num->cols)) {
+	if (getPrimal(cell->master->lp, cell->candidX, cell->master->Xcols)) {
 		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
 	}
 
 	/* add the incumbent back to change from \Delta X to X */
-	for (i = 1; i <= num->cols; i++)
+	for (i = 1; i <= cell->master->Xcols; i++)
 		d2 += cell->candidX[i] * cell->candidX[i];
-	addVectors(cell->candidX, cell->incumbX, NULL, num->cols);
 
 	/* update d_norm_k in soln_type. */
 	if (cell->k == 1)
@@ -150,7 +149,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 		return 1;
 	}
 
-	if (getDualSlacks(cell->master->lp, cell->djM, num->cols)) {
+	if (getDualSlacks(cell->master->lp, cell->djM, cell->master->Xcols)) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
 	}

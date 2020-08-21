@@ -34,6 +34,10 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, &lb) )
 		goto TERMINATE;
 
+	/* Initializing the extra structs for the case that master problem changes */
+	cell->master->dBar_changed = copysparseVector(prob[0]->dBar);
+	cell->master->Xcols = prob[0]->num->cols;
+
 #if defined(LPMIP_PRINT)
 	writeProblem(orig->lp, "meanvalueprob.lp");
 #endif
@@ -610,7 +614,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 			checkImprovement_callback(prob[0], cell, candidCut);
 
 		/******* 5. Solve the master problem to obtain the new candidate solution */
-		if (solveLPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+		if (solveLPMaster(prob[0]->num, cell->master->dBar_changed, cell, prob[0]->lb)) {
 			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 			return 1;
 		}
@@ -810,6 +814,10 @@ int copyCell(cellType *cell, cellType *clone_cell)
 {
 	*clone_cell = *cell;
 	clone_cell->master->type = MILP;
+	*clone_cell->master = *cell->master;
+	*clone_cell->master->dBar_changed = *cell->master->dBar_changed;
+	*clone_cell->master->dBar_changed->col = *cell->master->dBar_changed->col;
+	*clone_cell->master->dBar_changed->val = *cell->master->dBar_changed->val;
 	LPptr masterLP;
 
 	/* Copy the master problem as a SMIP into another LPptr associated with the new environment. */

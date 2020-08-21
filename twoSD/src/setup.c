@@ -252,6 +252,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 		errMsg("setup", "newCell", "failed to setup the master problem", 0);
 		return NULL;
 	}
+	
 	/* setup the subproblem */
 	cell->subprob = newSubprob(prob[1]->sp);
 	
