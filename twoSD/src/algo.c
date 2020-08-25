@@ -34,6 +34,9 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, &lb) )
 		goto TERMINATE;
 
+	cell->meanVal = orig->objective;
+	
+
 	/* Initializing the extra structs for the case that master problem changes */
 	cell->master->dBar_changed = copysparseVector(prob[0]->dBar);
 	cell->master->Xcols = prob[0]->num->cols;
@@ -336,7 +339,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	/* Clone the current cell to create an LP cell problem */
 
 	/* Copy the cell to the cloned cell. */
-	if (copyCell(cell,clone_cell)) {
+	if (copyCell(cell,clone_cell, prob[0])) {
 		errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
 		return 1;
 	}
@@ -687,10 +690,10 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 	else
 	{
 		/*********00. Set sigma to 0 *********/
-		if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
-			errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
-			return 1;
-		}
+		//if (changeQPproximal(cell->master->lp, prob[0]->num->cols, 0.0)) {
+		//	errMsg("algorithm", "SolveIntCell", "failed to change the proximal term", 0);
+		//	return 1;
+		//}
 
 		/*********01. Update the right hand sides of master *********/
 		if (revchangeQPrhs(prob[0], cell, cell->incumbX)) {
@@ -810,8 +813,13 @@ int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
 Copy the cell to a cloned cell
 Siavash Tabrizian July 20
 */
-int copyCell(cellType *cell, cellType *clone_cell)
+int copyCell(cellType *cell, cellType *clone_cell, probType *prob)
 {
+	iVector 	indices;
+	dVector 	coeffs;
+	int cnt;
+	int lenX = clone_cell->master->mac;
+	
 	*clone_cell = *cell;
 	clone_cell->master->type = MILP;
 	*clone_cell->master = *cell->master;
@@ -827,6 +835,26 @@ int copyCell(cellType *cell, cellType *clone_cell)
 	}
 
 	clone_cell->master->lp = masterLP;
+
+	/* Set up indices */
+	if (!(indices = (iVector)arr_alloc(lenX, int)))
+		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	if (!(coeffs = (dVector)arr_alloc(lenX, double)))
+		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	indices[0] = lenX-1;
+	coeffs[0] = 1.0;
+	for (cnt = 1; cnt < lenX; cnt++)
+	{
+		indices[cnt] = prob->dBar->col[cnt]-1;
+		coeffs[cnt] = prob->dBar->val[cnt];
+		//printf("idx %i - val: %04f", indices[cnt], coeffs[cnt]);
+	}
+
+	/* add the cut to the cell cuts structure as well as on the solver */
+	if (addRow(clone_cell->master->lp, clone_cell->master->mac, cell->meanVal, GE, 0, indices, coeffs, "MeanVal")) {
+		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
+		return 1;
+	}
 
 
 	return 0;

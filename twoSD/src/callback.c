@@ -11,6 +11,8 @@
 
 #include "twoSD.h"
 
+int addExtraRow(cellType * cell, probType * prob);
+
 extern cString outputDir;
 
 //ENVptr	env;
@@ -148,6 +150,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	int cur_colnamespace;
 	char          **cur_colname = NULL;
 	char          *cur_colnamestore = NULL;
+
 	if (numCol < args->cell->master->Xcols+1)
 	{
 		int           surplus;
@@ -294,4 +297,5 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 	return 0;
 } /* END usersolve */
+
 

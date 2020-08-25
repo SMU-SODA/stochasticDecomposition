@@ -156,6 +156,7 @@ typedef struct {
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
 	bool		callback;			/* flag to indicate if the cell is being solved in callback phase (true) */
+	double      meanVal;            /* optimal objective of the mean value problem */
 
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
@@ -241,6 +242,7 @@ void cleanupAlgo(probType **prob, cellType *cell, int T);
 int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
 void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt);
+int copyCell(cellType *cell, cellType *clone_cell, probType *prob);
 
 /* setup.c */
 int readConfig(cString path2config, cString inputDir);
