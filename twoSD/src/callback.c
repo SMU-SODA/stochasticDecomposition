@@ -11,8 +11,6 @@
 
 #include "twoSD.h"
 
-int addExtraRow(cellType * cell, probType * prob);
-
 extern cString outputDir;
 
 //ENVptr	env;
@@ -28,8 +26,6 @@ typedef struct {
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
-
-
 
 extern configType config;
 
@@ -129,6 +125,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	int status;
 
 	observ = (dVector)arr_alloc(args->stoc->numOmega + 1, double);
+	args->cell->ki++;
 
 	//if ( config.MULTICUT)
 	if (false)

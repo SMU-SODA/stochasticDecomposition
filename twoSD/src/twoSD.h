@@ -149,6 +149,7 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
+	int         ki;                  /* number of iterations after callback*/
 	int         gk;                  /* number of GMI cuts */
 	int         mk;                  /* number of MIR cuts */
 	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
@@ -258,7 +259,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
 int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
-int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts);
+int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, dVector xk);

@@ -350,6 +350,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	if (config.SMIP != MILP) {
 		/* Turn the clone problem to LP */
 		QPtoLP(stoc, prob, clone_cell, 1);
+		cell->ki = 1;
 
 		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
 		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
@@ -851,7 +852,7 @@ int copyCell(cellType *cell, cellType *clone_cell, probType *prob)
 	}
 
 	/* add the cut to the cell cuts structure as well as on the solver */
-	if (addRow(clone_cell->master->lp, clone_cell->master->mac, cell->meanVal, GE, 0, indices, coeffs, "MeanVal")) {
+	if (addRow(clone_cell->master->lp, clone_cell->master->mac, cell->candidEst, GE, 0, indices, coeffs, "MeanVal")) {
 		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
 		return 1;
 	}

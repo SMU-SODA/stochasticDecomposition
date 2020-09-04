@@ -19,7 +19,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts,cell->MIRcuts,cell->GMIcuts) ) {
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts,cell->MIRcuts,cell->GMIcuts,cell->k) ) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -94,7 +94,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 	//writeProblem(cell->master->lp, "callLPMastersolve1.lp");
-	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts)) {
+	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->k)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -274,17 +274,68 @@ int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScal
 
 /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
-int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts) {
+int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter) {
 	double	coef[1];
 	int 	c;
+	int numRow = getNumRows(lp);
+	int cur_rownamespace;
+	char          **cur_rowname = NULL;
+	char          *cur_rownamestore = NULL;
+	int           surplus;
+	int			  status;
 
-	for (c = 0; c < SDcuts->cnt; c++){
-		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-		coef[0] = (double) (currSampleSize) / (double) SDcuts->vals[c]->numSamples;         // coefficient k/j of eta column
+	status = getRowName(lp, 0, numRow, NULL, NULL, 0, &surplus);
 
-		if ( changeCol(lp, etaIdx, coef, SDcuts->vals[c]->rowNum, SDcuts->vals[c]->rowNum+1) ) {
-			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
-			return 1;
+	if ((status != CPXERR_NEGATIVE_SURPLUS) &&
+		(status != 0)) {
+		fprintf(stderr,
+			"Could not determine amount of space for row names.\n");
+	}
+
+	cur_rownamespace = -surplus;
+	if (cur_rownamespace > 0) {
+		cur_rowname = (char **)malloc(sizeof(char *)*numRow);
+		cur_rownamestore = (char *)malloc(cur_rownamespace);
+		if (cur_rowname == NULL ||
+			cur_rownamestore == NULL) {
+			fprintf(stderr, "Failed to get memory for row names.\n");
+			status = -1;
+		}
+		status = getRowName(lp, 0, numRow, cur_rowname, cur_rownamestore, cur_rownamespace, &surplus);
+		if (status) {
+			fprintf(stderr, "CPXgetcolname failed.\n");
+		}
+	}
+	else {
+		printf("No names associated with problem.  Using Fake names.\n");
+	}
+
+	int SDcount = 0;
+	for (c = 0; c < numRow; c++){
+		
+		if (strstr(cur_rowname[c], "cut") != NULL) {
+
+			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+			coef[0] = (double)(currSampleSize) / (double)SDcuts->vals[SDcount]->numSamples;         // coefficient k/j of eta column
+
+			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+				return 1;
+			}
+			SDcount++;
+
+		}
+		if (strstr(cur_rowname[c], "Mean") != NULL) {
+
+			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+			coef[0] = (double)(currSampleSize) / (double)SDcuts->vals[SDcount]->numSamples;
+
+			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+				return 1;
+			}
+			SDcount++;
+
 		}
 	}
 
