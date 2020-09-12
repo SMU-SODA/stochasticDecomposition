@@ -139,6 +139,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 					piCbarX, Xvect, omega->vals[obs], obs, numSamples, true, &argmaxNew, true);
 
 			argmax = maximum(argmaxOld, argmaxNew);
+			printf("\nargmax val: %0.4f", argmax);
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
 
 			cummOld += maximum(argmaxOld-lb, 0)*omega->weights[obs];

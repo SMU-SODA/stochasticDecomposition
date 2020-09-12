@@ -94,7 +94,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 	//writeProblem(cell->master->lp, "callLPMastersolve1.lp");
-	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->k)) {
+	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->ki)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -154,6 +154,8 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 		return 1;
 	}
 
+	double c1 = vXvSparse(cell->candidX, dBar);
+	double c2 = maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
 	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
 
@@ -310,7 +312,10 @@ int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType
 		printf("No names associated with problem.  Using Fake names.\n");
 	}
 
+
 	int SDcount = 0;
+	int MIRcount = 0;
+	int GMIcount = 0;
 	for (c = 0; c < numRow; c++){
 		
 		if (strstr(cur_rowname[c], "cut") != NULL) {
@@ -327,14 +332,40 @@ int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType
 		}
 		if (strstr(cur_rowname[c], "Mean") != NULL) {
 
+			//for (int r = 0; r < numRow; r++) {
+			//	printf("\nr %i: %s ", r, cur_rowname[r]);
+			//}
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-			coef[0] = (double)(currSampleSize) / (double)SDcuts->vals[SDcount]->numSamples;
+			coef[0] = (double)max(2.0,iter);
 
 			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
 				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
 				return 1;
 			}
-			SDcount++;
+
+		}
+		if (strstr(cur_rowname[c], "MIR") != NULL) {
+
+			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+			coef[0] = (double)(currSampleSize) / (double)SDcuts->vals[MIRcount]->numSamples;         // coefficient k/j of eta column
+
+			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+				return 1;
+			}
+			MIRcount++;
+
+		}
+		if (strstr(cur_rowname[c], "GMI") != NULL) {
+
+			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+			coef[0] = (double)(currSampleSize) / (double)SDcuts->vals[GMIcount]->numSamples;         // coefficient k/j of eta column
+
+			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+				return 1;
+			}
+			GMIcount++;
 
 		}
 	}

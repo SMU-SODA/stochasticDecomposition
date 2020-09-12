@@ -350,7 +350,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	if (config.SMIP != MILP) {
 		/* Turn the clone problem to LP */
 		QPtoLP(stoc, prob, clone_cell, 1);
-		cell->ki = 1;
+		clone_cell->ki = 1;
 
 		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
 		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
@@ -518,7 +518,9 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		printf("\nIteration-%4d: ", cell->k);
 	}
 #endif
-	
+	double c1 = vXvSparse(cell->candidX, prob[0]->dBar);
+	double c2 = maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 
 #if defined(LPMIP_PRINT)
@@ -547,6 +549,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
 			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+			cell->ki++;
 		}
 
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
@@ -556,14 +559,12 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		}
 
 		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
-		//REmove condition
-		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
-			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
-				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				return 1;
-			}
-			cell->iCutUpdt = cell->k;
+		//Remove condition
+		if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
+			errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
+			return 1;
 		}
+		cell->iCutUpdt = cell->k;
 
 		/******* 4. Check improvement in predicted values at candidate solution *******/
 		if (true)
@@ -594,6 +595,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 
 			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
 			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+			cell->ki++;
 		}
 
 		/******* 2. Solve the subproblem with candidate solution, form and update the candidate cut *******/
@@ -603,7 +605,7 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 		}
 
 		/******* 3. Solve subproblem with incumbent solution, and form an incumbent cut *******/
-		//REmove condition
+		//Remove condition
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 1)) < 0) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
@@ -612,10 +614,6 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 			cell->iCutUpdt = cell->k;
 		}
 
-		/******* 4. Check improvement in predicted values at candidate solution *******/
-		if (true)
-			/* If the incumbent has not changed in the current iteration */
-			checkImprovement_callback(prob[0], cell, candidCut);
 
 		/******* 5. Solve the master problem to obtain the new candidate solution */
 		if (solveLPMaster(prob[0]->num, cell->master->dBar_changed, cell, prob[0]->lb)) {
@@ -838,24 +836,24 @@ int copyCell(cellType *cell, cellType *clone_cell, probType *prob)
 	clone_cell->master->lp = masterLP;
 
 	/* Set up indices */
-	if (!(indices = (iVector)arr_alloc(lenX, int)))
-		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
-	if (!(coeffs = (dVector)arr_alloc(lenX, double)))
-		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
-	indices[0] = lenX-1;
-	coeffs[0] = 1.0;
-	for (cnt = 1; cnt < lenX; cnt++)
-	{
-		indices[cnt] = prob->dBar->col[cnt]-1;
-		coeffs[cnt] = prob->dBar->val[cnt];
-		//printf("idx %i - val: %04f", indices[cnt], coeffs[cnt]);
-	}
+	//if (!(indices = (iVector)arr_alloc(lenX, int)))
+	//	errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	//if (!(coeffs = (dVector)arr_alloc(lenX, double)))
+	//	errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	//indices[0] = lenX-1;
+	//coeffs[0] = 2.0;
+	//for (cnt = 1; cnt < lenX; cnt++)
+	//{
+	//	indices[cnt] = prob->dBar->col[cnt]-1;
+	//	coeffs[cnt] = prob->dBar->val[cnt];
+	//	//printf("\nidx %i - val: %04f", indices[cnt], coeffs[cnt]);
+	//}
 
-	/* add the cut to the cell cuts structure as well as on the solver */
-	if (addRow(clone_cell->master->lp, clone_cell->master->mac, cell->candidEst, GE, 0, indices, coeffs, "MeanVal")) {
-		errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
-		return 1;
-	}
+	///* add the cut to the cell cuts structure as well as on the solver */
+	//if (addRow(clone_cell->master->lp, clone_cell->master->mac, cell->candidEst, GE, 0, indices, coeffs, "MeanVal")) {
+	//	errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
+	//	return 1;
+	//}
 
 
 	return 0;

@@ -55,7 +55,9 @@ int bendersCallback(stocType *stoc, probType **prob, cellType *cell) {
 	config.MAX_ITER += config.MAX_ITER;
 
 
-	setIntParam(CPXPARAM_Preprocessing_Linear, 0);		/* Assure linear mappings between the presolved and original models */
+	setIntParam(CPXPARAM_Preprocessing_Linear, CPX_OFF);		/* Assure linear mappings between the presolved and original models */
+	setIntParam(CPXPARAM_Preprocessing_Presolve, CPX_OFF);		/* Assure linear mappings between the presolved and original models */
+	setIntParam(CPX_PARAM_DEPIND, CPX_OFF);				     	/* redundancy checker */
 	setIntParam(CPXPARAM_MIP_Strategy_CallbackReducedLP, CPX_OFF);			/* Let MIP callbacks work on the original model */
 	setIntParam(CPXPARAM_MIP_Interval, 1);									/* Set MIP log interval to 1 */
 	setIntParam(CPXPARAM_MIP_Strategy_Search, CPX_MIPSEARCH_TRADITIONAL);	/* Turn on traditional search for use with control callbacks */
@@ -124,6 +126,12 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	clock_t	tic;
 	int status;
 
+//#if defined(CALLBACK_WRITE_LP)
+//	char fname[80];
+//	sprintf(fname, "%s_%d.lp", "clbk_beforelp", args->call);
+//	writeProblem(args->cell->master->lp, fname);
+//#endif // defined(CALLBACK_WRITE_LP)
+
 	observ = (dVector)arr_alloc(args->stoc->numOmega + 1, double);
 	args->cell->ki++;
 
@@ -133,6 +141,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	else
 		candidCuts = (iVector) arr_alloc(1, int);
 
+	//int numCol = getNumCols(args->cell->master->lp);
 	/* Save the LP pointer from the original master problem. */
 	LPptr nodelp = args->cell->master->lp; LPptr temp;
 	args->cell->master->lp = NULL;
@@ -141,6 +150,12 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	if ( getcallbacknodelp (cbdata, wherefrom, &temp) ) { return 1; }
 	args->cell->master->lp = temp;
 
+#if defined(CALLBACK_WRITE_LP)
+	char fname[80];
+	sprintf(fname, "%s_%d.lp", "clbk_afterlp", args->call);
+	writeProblem(args->cell->master->lp, fname);
+#endif // defined(CALLBACK_WRITE_LP)
+
 	/* Get the number of column because if the a variable is deleted
 	   the index of \eta variable should be updated */
 	int numCol = getNumCols(temp);
@@ -148,7 +163,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	char          **cur_colname = NULL;
 	char          *cur_colnamestore = NULL;
 
-	if (numCol < args->cell->master->Xcols+1)
+	if (numCol < args->cell->master->mac)
 	{
 		int           surplus;
 		int status = getColName(temp, 0, numCol, NULL, NULL, 0, &surplus);
@@ -221,18 +236,13 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	callbackNodeSummary(cbdata, wherefrom, args->cell->master->lp);
 #endif
 
-#if defined(CALLBACK_WRITE_LP)
-	char fname[NAMESIZE];
-	sprintf(fname, "%s_%d.lp", "callback", args->call);
-	writeProblem(args->cell->master->lp, fname);
-#endif // defined(CALLBACK_WRITE_LP)
 
-	//if ( solveProblem(args->cell->master->lp, args->cell->master->name, PROB_LP, args->cell->master->mar, args->cell->master->mac,
-	//		&status, config.SMIP_OPTGAP) ) {
-	//	writeProblem(args->cell->master->lp, "error.lp");
-	//	errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
-	//	return 1;
-	//}
+	if ( solveProblem(args->cell->master->lp, args->cell->master->name, PROB_LP, args->cell->master->mar, args->cell->master->mac,
+			&status, config.SMIP_OPTGAP) ) {
+		writeProblem(args->cell->master->lp, "error.lp");
+		errMsg("algorithm", "solveMaster", "failed to solve the master problem", 0);
+		return 1;
+	}
 
 	getCallbackPrimal(cbdata, wherefrom, args->cell->candidX, args->prob[0]->num->cols);
 
@@ -259,10 +269,6 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 			return 1;
 		}
 
-		//if (changeEtaCol(args->cell->master->lp, args->prob[0]->num->rows, args->prob[0]->num->cols, args->cell->sampleSize, args->cell->cuts, args->cell->MIRcuts, args->cell->GMIcuts)) {
-		//	errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
-		//	return 1;
-		//}
 
 		args->cell->time.masterAccumTime += args->cell->time.masterIter; args->cell->time.subprobAccumTime += args->cell->time.subprobIter;
 		args->cell->time.argmaxAccumTime += args->cell->time.argmaxIter; args->cell->time.optTestAccumTime += args->cell->time.optTestIter;
