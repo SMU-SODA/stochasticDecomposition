@@ -522,6 +522,8 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	double c2 = maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	cell->isinBnB = true;
+	getRowNameMaster(cell);
 
 #if defined(LPMIP_PRINT)
 	printf("\ninside callback before SD\n");
@@ -806,6 +808,49 @@ int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(indices);
 
 
+}
+
+/*
+Getting the row names in the bnb after cuts are added 
+Siavash Tabrizian Sep 20
+*/
+void getRowNameMaster(cellType *cell)
+{
+	int numRow = getNumRows(cell->master->lp);
+	int cur_rownamespace;
+	char          **cur_rowname = NULL;
+	char          *cur_rownamestore = NULL;
+	int           surplus;
+	int			  status;
+	cell->rownum = numRow;
+
+	status = getRowName(cell->master->lp, 0, numRow, NULL, NULL, 0, &surplus);
+
+	if ((status != CPXERR_NEGATIVE_SURPLUS) &&
+		(status != 0)) {
+		fprintf(stderr,
+			"Could not determine amount of space for row names.\n");
+	}
+
+	cur_rownamespace = -surplus;
+	if (cur_rownamespace > 0) {
+		cur_rowname = (char **)malloc(sizeof(char *)*numRow);
+		cur_rownamestore = (char *)malloc(cur_rownamespace);
+		if (cur_rowname == NULL ||
+			cur_rownamestore == NULL) {
+			fprintf(stderr, "Failed to get memory for row names.\n");
+			status = -1;
+		}
+		status = getRowName(cell->master->lp, 0, numRow, cur_rowname, cur_rownamestore, cur_rownamespace, &surplus);
+		if (status) {
+			fprintf(stderr, "CPXgetcolname failed.\n");
+		}
+	}
+	else {
+		printf("No names associated with problem.  Using Fake names.\n");
+	}
+
+	cell->cur_rowname = cur_rowname;
 }
 
 /*

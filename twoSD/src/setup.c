@@ -256,6 +256,9 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* setup the subproblem */
 	cell->subprob = newSubprob(prob[1]->sp);
 	
+	/* setup the BnB part of the cell */
+	cell->cur_rowname = NULL;
+	cell->isinBnB = false;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;

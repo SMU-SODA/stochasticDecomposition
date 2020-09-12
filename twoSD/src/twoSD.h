@@ -211,10 +211,15 @@ typedef struct {
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
+	runTime		time;				/* Run time structure */
+
+	///// B&B paramters
+	bool isinBnB;
+	int rownum;
 	sampleType	*sample;
 	nodeInfo    *nodeSol;			/* solution of nodes that are discovered in B&B */
+	char        **cur_rowname;		/* row names in BnB */
 
-	runTime		time;				/* Run time structure */
 }cellType;
 
 typedef struct {
@@ -244,6 +249,7 @@ int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
 void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt);
 int copyCell(cellType *cell, cellType *clone_cell, probType *prob);
+void getRowNameMaster(cellType *cell);
 
 /* setup.c */
 int readConfig(cString path2config, cString inputDir);
@@ -259,7 +265,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
 int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
-int changeEtaColMIP(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter);
+int changeEtaColMIP(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter, char **cur_rowname);
 int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *cuts);
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb);
 int changeQPproximal(LPptr lp, int numCols, double sigma);
