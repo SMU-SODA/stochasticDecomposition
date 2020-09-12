@@ -19,7 +19,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts,cell->MIRcuts,cell->GMIcuts,cell->k) ) {
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts) ) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -94,7 +94,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 	//writeProblem(cell->master->lp, "callLPMastersolve1.lp");
-	if (changeEtaCol(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->ki)) {
+	if (changeEtaColMIP(cell->master->lp, num->rows, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->ki)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
@@ -274,9 +274,28 @@ int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScal
 	return 0;
 }//END constructQP()
 
-/* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
+ /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
  * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
-int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter) {
+int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *cuts) {
+	double	coef[1];
+	int 	c;
+
+	for (c = 0; c < cuts->cnt; c++) {
+		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+		coef[0] = (double)(currSampleSize) / (double)cuts->vals[c]->numSamples;         // coefficient k/j of eta column
+
+		if (changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum + 1)) {
+			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+			return 1;
+		}
+	}
+
+	return 0;
+}//END changeEtaCol()
+
+ /* This function performs the updates on all the coefficients of eta in the master problem constraint matrix.  During every iteration,
+ * each of the coefficients on eta are increased, so that the effect of the cut on the objective function is decreased. */
+int changeEtaColMIP(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter) {
 	double	coef[1];
 	int 	c;
 	int numRow = getNumRows(lp);
@@ -316,8 +335,8 @@ int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType
 	int SDcount = 0;
 	int MIRcount = 0;
 	int GMIcount = 0;
-	for (c = 0; c < numRow; c++){
-		
+	for (c = 0; c < numRow; c++) {
+
 		if (strstr(cur_rowname[c], "cut") != NULL) {
 
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
@@ -336,7 +355,7 @@ int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType
 			//	printf("\nr %i: %s ", r, cur_rowname[r]);
 			//}
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-			coef[0] = (double)max(2.0,iter);
+			coef[0] = (double)max(2.0, iter);
 
 			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
 				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
@@ -397,7 +416,7 @@ int changeEtaCol(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsType
 	}
 
 	return 0;
-}//END changeEtaCol()
+}//END changeEtaColMIP()
 
 int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 	int 	cnt;

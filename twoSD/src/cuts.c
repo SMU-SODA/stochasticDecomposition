@@ -11,6 +11,8 @@
 
 #include "twoSD.h"
 
+#undef Disp_argmax  
+
 extern configType config;
 
 int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx);
@@ -139,7 +141,11 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 					piCbarX, Xvect, omega->vals[obs], obs, numSamples, true, &argmaxNew, true);
 
 			argmax = maximum(argmaxOld, argmaxNew);
-			printf("\nargmax val: %0.4f", argmax);
+
+#if defined(Disp_argmax)
+	printf("\nargmax val: %0.4f", argmax);
+#endif // define(Disp_argmax)
+			
 			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
 
 			cummOld += maximum(argmaxOld-lb, 0)*omega->weights[obs];
