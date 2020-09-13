@@ -766,7 +766,22 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 int dropCut(cellType *cell, int cutIdx) {
 	int idx, deletedRow;
 
-	deletedRow = cell->cuts->vals[cutIdx]->rowNum;
+	if (cell->isinBnB == true)
+	{
+		for (int rw = 0; rw < cell->rownum; rw++)
+		{
+			if (cell->cur_rowname[rw] == cell->cuts->vals[cutIdx]->name)
+			{
+				deletedRow = rw;
+				break;
+			}
+		}
+	}
+	else
+	{
+		deletedRow = cell->cuts->vals[cutIdx]->rowNum;
+	}
+	
 	/* Get rid of the indexed cut on the solver */
 	if (  removeRow(cell->master->lp, deletedRow, deletedRow) ) {
 		printf("stopped at %d",cell->k);
