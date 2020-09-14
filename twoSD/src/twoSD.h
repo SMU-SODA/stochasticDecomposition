@@ -65,6 +65,7 @@ typedef struct{
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
+	int		MAX_ITER_CLBK;		/* maximum number of iterations inside the callback */
 	int		MASTER_TYPE;		/* type of master problem */
 	int		TAU;				/* Frequency at which the incumbent is updated */
 	double	MIN_QUAD_SCALAR;	/* Minimum value for regularizing parameter */
@@ -149,7 +150,8 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	int         ki;                  /* number of iterations after callback*/
+	int         ki;                  /* number of iterations cumulatively after callback*/
+	int         kii;                  /* number of iterations after callback*/
 	int         gk;                  /* number of GMI cuts */
 	int         mk;                  /* number of MIR cuts */
 	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
@@ -243,6 +245,7 @@ int LPtoMILP(stocType *stoc, probType **prob, cellType *cell);
 int solveIntCell(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
+int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);

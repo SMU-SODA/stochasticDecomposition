@@ -134,6 +134,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 	observ = (dVector)arr_alloc(args->stoc->numOmega + 1, double);
 	args->cell->ki++;
+	args->cell->kii = 1;
 
 	//if ( config.MULTICUT)
 	if (false)
@@ -159,71 +160,6 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	/* Get the number of column because if the a variable is deleted
 	   the index of \eta variable should be updated */
 	int numCol = getNumCols(temp);
-	int cur_colnamespace;
-	char          **cur_colname = NULL;
-	char          *cur_colnamestore = NULL;
-
-	if (numCol < args->cell->master->mac)
-	{
-		int           surplus;
-		int status = getColName(temp, 0, numCol, NULL, NULL, 0, &surplus);
-
-		if ((status != CPXERR_NEGATIVE_SURPLUS) &&
-			(status != 0)) {
-			fprintf(stderr,
-				"Could not determine amount of space for column names.\n");
-		}
-
-		cur_colnamespace = -surplus;
-		if (cur_colnamespace > 0) {
-			cur_colname = (char **)malloc(sizeof(char *)*numCol);
-			cur_colnamestore = (char *)malloc(cur_colnamespace);
-			if (cur_colname == NULL ||
-				cur_colnamestore == NULL) {
-				fprintf(stderr, "Failed to get memory for column names.\n");
-				status = -1;
-			}
-			status = getColName(temp, 0, numCol, cur_colname, cur_colnamestore, cur_colnamespace , &surplus);
-			if (status) {
-				fprintf(stderr, "CPXgetcolname failed.\n");
-			}
-		}
-		else {
-			printf("No names associated with problem.  Using Fake names.\n");
-		}
-
-		int idx1 = 0;
-		int idx2 = 0;
-		bool flag = true;
-		while(flag)
-		{
-			//printf("\ncol %i: %s - %s",i, cur_colname[i], args->cell->master->cname[i]);
-			if (args->cell->master->cname[idx1] != cur_colname[idx2])
-			{
-				args->cell->master->Xcols--;
-				args->cell->etaIdx--;
-				//printf("col %i: %0.04f",idx1,args->cell->master->dBar_changed->val[idx1]);
-				for (int i = idx1; i < args->cell->master->mac; i++)
-				{
-					args->cell->master->dBar_changed->col[idx1+1] = args->prob[0]->dBar->col[idx1 + 2];
-					args->cell->master->dBar_changed->val[idx1+1] = args->prob[0]->dBar->val[idx1 + 2];
-				}
-				idx1++;
-
-			}
-			else
-			{
-				idx1++;
-				idx2++;
-			}
-			if (idx2 == numCol - 1)
-			{
-				flag = false;
-				break;
-			}
-		}
-
-	}
 
 	/*Update couns of callback calls*/
 	args->call++;
@@ -260,9 +196,11 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	args->MIPcuts += getNumRows(args->cell->master->lp) - args->OPTcuts;
 
 	/* Invoke the main loop of the L-shaped method */
-	while (args->cell->k < config.MAX_ITER) {
+	while (args->cell->kii < config.MAX_ITER_CLBK) {
 		tic = clock();
 		args->OPTcuts++;
+
+		printf("%i - %i", args->cell->kii, config.MAX_ITER_CLBK);
 
 		if (mainloopSDCell_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);

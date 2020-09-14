@@ -11,7 +11,7 @@
 
 #include "twoSD.h"
 
-#undef Disp_argmax  
+#define Disp_argmax  
 
 extern configType config;
 
@@ -766,12 +766,14 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 int dropCut(cellType *cell, int cutIdx) {
 	int idx, deletedRow;
 
+	deletedRow = cell->rownum-1;
 	if (cell->isinBnB == true)
 	{
 		for (int rw = 0; rw < cell->rownum; rw++)
 		{
 			if (cell->cur_rowname[rw] == cell->cuts->vals[cutIdx]->name)
 			{
+				printf("\n%s - %s",cell->cur_rowname[rw], cell->cuts->vals[cutIdx]->name);
 				deletedRow = rw;
 				break;
 			}

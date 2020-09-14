@@ -7,6 +7,9 @@ MIN_ITER 1
 // Maximum number of iterations
 MAX_ITER   5000
 
+// Maximum number of iterations
+MAX_ITER_CLBK   50
+
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
