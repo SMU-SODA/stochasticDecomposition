@@ -202,7 +202,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 		printf("%i - %i", args->cell->kii, config.MAX_ITER_CLBK);
 
-		if (mainloopSDCell_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
+		if (mainloopSDCellQP_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			return 1;
 		}
