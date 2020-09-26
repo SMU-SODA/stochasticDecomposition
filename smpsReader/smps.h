@@ -118,8 +118,10 @@ int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, 
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE);
-int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV, int *numSamples);
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs, iVector weights,
+		int *numSamples, int desiredSampleSize, double TOLERANCE);
+int readSimData(cString fname, dVector *simObservVals, int numRV, int *numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
+void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats);
 
 #endif /* SMPS_H_ */

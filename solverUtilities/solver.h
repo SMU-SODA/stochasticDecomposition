@@ -58,7 +58,7 @@
 
 #define 	THREADS			CPXPARAM_Threads
 
-int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap);
+int solveProblem(LPptr lp, cString pname, int type, int *status);
 int getProbType(LPptr lp);
 double getObjective(LPptr lp, int type);
 int getPrimal(LPptr lp, dVector X, int length);
@@ -77,6 +77,7 @@ int changeProbType(LPptr lp, int type);
 int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, iVector rmatind, dVector rmatval, cString rowname);
 int addCol(LPptr lp, int nzcnt, double objx, int cmatbeg, iVector cmatind, dVector cmatval, double bdu, double bdl, cString colname);
 int removeRow(LPptr lp, int begin, int end);
+int removeColumn(LPptr lp, int begin, int end);
 
 int createProblem(char *probname, LPptr *lp);
 int readProblem(char *probpath, LPptr lp);
