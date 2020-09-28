@@ -13,6 +13,7 @@
 
 extern cString outputDir;
 
+
 //ENVptr	env;
 typedef struct {
 	int	call;
@@ -26,6 +27,7 @@ typedef struct {
 
 int bendersCallback(stocType *stoc, probType **prob, cellType *cell);
 static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, callbackArgs *args);
+double updateEstimate(numType *num, sparseVector *dBar, cellType *cell, dVector candidX, double lb);
 
 extern configType config;
 
@@ -132,6 +134,13 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 //	writeProblem(args->cell->master->lp, fname);
 //#endif // defined(CALLBACK_WRITE_LP)
 
+	//Update the lower bound for the previous nodes stored 
+	for (int cl = 0; cl < args->call; cl++)
+	{
+		args->cell->nodeSol[cl].LB = updateEstimate(args->prob[0]->num, args->cell->master->dBar_changed, args->cell,
+			args->cell->nodeSol[cl].sol, args->prob[0]->lb);
+	}
+
 	observ = (dVector)arr_alloc(args->stoc->numOmega + 1, double);
 	args->cell->ki++;
 	args->cell->kii = 1;
@@ -202,7 +211,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 
 		printf("%i - %i", args->cell->kii, config.MAX_ITER_CLBK);
 
-		if (mainloopSDCellQP_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
+		if (mainloopSDCell_callback(args->stoc, args->prob, args->cell, &breakLoop, observ) ) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			return 1;
 		}
@@ -232,6 +241,7 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 			0, args->prob[0]->num->cols - 1, config.INT_TOLERANCE);
 	}
 
+
 	args->cell->master->lp = NULL;
 	args->cell->master->lp = nodelp;
 	mem_free(candidCuts);
@@ -239,4 +249,14 @@ static int CPXPUBLIC usersolve (CPXCENVptr env, void *cbdata, int wherefrom, cal
 	return 0;
 } /* END usersolve */
 
+double updateEstimate(numType *num, sparseVector *dBar, cellType *cell, dVector candidX, double lb)
+{
+	double updatedEstimate = 0.0;
+	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
+	updatedEstimate = vXvSparse(candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, candidX, num->cols, lb);
 
+	return updatedEstimate;
+}
+
+
+//solveLPMaster(prob[0]->num, cell->master->dBar_changed, cell, prob[0]->lb)
