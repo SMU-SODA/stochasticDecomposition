@@ -24,6 +24,12 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
+enum spSamplingType {
+	Full,
+	New,
+	Binomial
+};
+
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
@@ -58,7 +64,9 @@ typedef struct{
 	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
-	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
+	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample in each iteration */
+	int		SP_SAMPLING; 		/* Subproblem sampling: 0-Off, 1-New observations only, and 2-fraction */
+	double	SP_FRACTION;		/* Probability for selecting subproblem for solving, applicable only when SP_SAMPLING = 2 */
 }configType;
 
 typedef struct {
@@ -95,7 +103,6 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
@@ -184,8 +191,7 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
+oneCut *SDCut(numType *num, coordType *coord, omegaType *omega, basisType *basis, sigmaType *sigma, deltaType *delta, iVector istar);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);

@@ -102,7 +102,7 @@ bool fullTest(probType **prob, cellType *cell) {
 	/* (b) calculate empirical distribution of omegas */
 	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt+1, int)) )
 		errMsg("allocation", "fullTest", "failed to allocate memory to cdf",0);
-	if ( !(observ = (iVector) arr_alloc(cell->sampleSize, int)))
+	if ( !(observ = (iVector) arr_alloc(cell->omega->sampleSize, int)))
 		errMsg("allocation", "fullTest", "resampled observations", 0);
 
 	empiricalDistribution(cell->omega, cdf);
@@ -110,11 +110,11 @@ bool fullTest(probType **prob, cellType *cell) {
 	for (rep = 0; rep < config.BOOTSTRAP_REP; rep++) {
 		/* (c) resample from the set of observations.
 		 * Since sample size is already updated, we need to resample from (k-1)*N samples. */
-		resampleOmega(cdf, observ, cell->sampleSize);
+		resampleOmega(cdf, observ, cell->omega->sampleSize);
 
 		/* (d) reform the good cuts by plugging in the omegas */
 		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord,
-				gCuts, observ, cell->sampleSize, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+				gCuts, observ, cell->omega->sampleSize, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = -INF;
@@ -145,7 +145,7 @@ bool fullTest(probType **prob, cellType *cell) {
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
 		else {
-			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts);
+			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->omega->sampleSize, cell->quadScalar, gCuts);
 		}
 
 #if defined(OPT_CHECK)
