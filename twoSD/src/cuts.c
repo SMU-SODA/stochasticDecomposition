@@ -24,7 +24,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	dVector piCbarX;
 	iVector istar;
 	int    	cutIdx;
-	bool 	solveSP, piEvalFlag;
+	bool 	solveSP;
 
 	istar = (iVector) arr_alloc(cell->omega->cnt, int);
 	/* Pre-compute pi x bBar - pi x Cbar x x as it is independent of observations */
@@ -32,12 +32,16 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	for (int cnt = 0; cnt < cell->sigma->cnt; cnt++)
 		piCbarX[cnt] = cell->sigma->vals[cnt].pib - vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->CCols, prob[1]->num->cntCcols);
 
-	/* Check if dual stability check can be conducted. */
-	if (config.DUAL_STABILITY && cell->k > config.PI_EVAL_START && !(cell->k % config.PI_CYCLE))
-		piEvalFlag = true;
-
 	for ( int obs = 0; obs < cell->omega->cnt; obs++ ) {
 		solveSP = false;
+
+		/* Check to see if the observation belongs to the current branch. */
+		int cnt = 0;
+		while ( cnt < cell->sample->cnt ) {
+			if ( obs == cell->sample->omegaIdx[cnt] )
+				break;
+			cnt++;
+		}
 
 		/* A. Determine whether a subproblem will be solved for the observation or the argmax procedure used. */
 		switch ( config.SP_SAMPLING ) {
@@ -56,12 +60,6 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 		}
 		default:
 		{
-			int cnt = 0;
-			while ( cnt < cell->sample->cnt ) {
-				if ( obs == cell->sample->omegaIdx[cnt] )
-					break;
-				cnt++;
-			}
 			if ( cnt < cell->sample->cnt ) {
 				solveSP = true;
 			}
@@ -72,8 +70,8 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 			/* Option 1: Solve a subproblem */
 			/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 			if ( (istar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
-					config.MAX_ITER, cell->omega, obs, &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-					&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+					config.MAX_ITER, cell->omega, obs, &cell->sample->newOmegaFlag[cnt], cell->k, config.TOLERANCE,
+					&cell->spFeasFlag, &cell->sample->newBasisFlag[cnt], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
 				errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 				return -1;
 			}
@@ -100,7 +98,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 		else {
 			/* Option 2: Use the argmax procedure */
 			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, piCbarX, Xvect,
-					cell->omega->vals[obs], obs, 0, cell);
+					cell->omega->vals[obs], obs, 0, cell->basis->cnt);
 		}
 	}
 
@@ -110,17 +108,19 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #if defined(STOCH_CHECK)
+	bool newOmegaFlag = false;
+	printf("------\n");
 	/* Solve the subproblem to verify if the argmax operation yields a lower bound */
 	for ( int cnt = 0; cnt < cell->omega->cnt; cnt++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
+				cell->omega, cnt, &newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
 				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
-		printf("Subproblem solve for omega-%d = %lf\n", cnt, getObjective(cell->subprob->lp, PROB_LP));
 	}
+	printf("------\n");
 #endif
 
 	/* C. Add cut to the structure and master problem  */

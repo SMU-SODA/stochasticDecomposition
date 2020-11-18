@@ -68,7 +68,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 		}
 
 		changeLPSolverType(ALG_AUTOMATIC);
-		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status, 0.0) ) {
+		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
 				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
