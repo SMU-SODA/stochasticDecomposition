@@ -19,7 +19,7 @@ extern configType config;
  ** between the candidate and incumbent x than the previous approximation
  ** gave, then the incumbent x is updated to the candidate x, and the
  ** reference to the incumbent cut is updated as well.  The function returns
- ** TRUE if the incumbent was updated; FALSE otherwise.
+ ** true if the incumbent was updated; false otherwise.
  \***********************************************************************/
 int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	double  candidEst;
@@ -40,12 +40,12 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			return 1;
 		}
 		cell->iCutIdx = candidCut;
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 		printf("+"); fflush(stdout);
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */
-		cell->quadScalar = min(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
+		cell->quadScalar = fmin(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
 		cell->normDk_1 = cell->normDk;
 	}
 
@@ -67,8 +67,8 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	if ( cell->normDk > config.TOLERANCE )
 		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
 			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
-			cell->quadScalar  = min(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = max(config.MIN_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar  = fmin(config.MAX_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar = fmax(config.MIN_QUAD_SCALAR, cell->quadScalar);
 		}
 
 	/* update the right-hand side and the bounds with new incumbent solution */
@@ -79,12 +79,12 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
 	/* update the candidate cut as the new incumbent cut */
 	cell->iCutUpdt = cell->k;
-	cell->incumbChg = TRUE;
+	cell->incumbChg = true;
 
 	/* keep the two norm of solution*/
 	cell->normDk_1 = cell->normDk;
 	/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
-	cell->infeasIncumb = FALSE;
+	cell->infeasIncumb = false;
 	/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
 	cell->gamma = 0.0;
 

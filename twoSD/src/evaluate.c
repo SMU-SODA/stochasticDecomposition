@@ -13,13 +13,13 @@
 
 extern configType config;
 
-int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, vector Xvect) {
-	vector 	observ, rhs, cost, costTemp;
-	intvec   objxIdx;
+int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect) {
+	dVector 	observ, rhs, cost, costTemp;
+	iVector   objxIdx;
 	double 	obj, mean, variance, stdev, temp;
 	int		cnt, status, m;
 
-	if ( !(observ = (vector) arr_alloc(stoc->numOmega + 1, double)) )
+	if ( !(observ = (dVector) arr_alloc(stoc->numOmega + 1, double)) )
 		errMsg("allocation", "evaluate", "observ", 0);
 
 	printf("\nStarting evaluation.\n");
@@ -28,13 +28,13 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, v
 	cnt = 0.0; mean = 0.0; variance = 0.0; stdev = INFBOUND; cnt = 0;
 
 	/* right-hand side */
-	if (!(rhs =(vector) arr_alloc(prob[1]->num->rows+1, double)))
+	if (!(rhs =(dVector) arr_alloc(prob[1]->num->rows+1, double)))
 		errMsg("Allocation", "evaluate", "rhs",0);
 
 	/* cost coefficients */
-	if ( !(cost = (vector) arr_alloc(prob[1]->num->rvdOmCnt+1, double)) )
+	if ( !(cost = (dVector) arr_alloc(prob[1]->num->rvdOmCnt+1, double)) )
 		errMsg("allocation", "evaluate", "cost", 0);
-	if ( !(objxIdx = (intvec) arr_alloc(prob[1]->num->cols+1, int)) )
+	if ( !(objxIdx = (iVector) arr_alloc(prob[1]->num->cols+1, int)) )
 		errMsg("allocation", "evaluate", "objxIdx", 0);
 	costTemp = expandVector(prob[1]->dBar->val, prob[1]->dBar->col, prob[1]->dBar->cnt, prob[1]->num->cols);
 	for (m = 1; m <= prob[1]->num->rvdOmCnt; m++ ) {
@@ -48,7 +48,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, v
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0]);
+		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */

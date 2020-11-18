@@ -14,8 +14,8 @@
 extern configType config;
 
 int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
-	vector	coef, qsepvec;
-	intvec	indices;
+	dVector	coef, qsepvec;
+	iVector	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
 	char 	*q, tempName[NAMESIZE], batchNameSuffix[NAMESIZE];
 
@@ -35,22 +35,22 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	batch->sp->cstorsz  += prob->sp->cstorsz + strlen(batchNameSuffix) * batch->sp->macsz;
 	batch->sp->rstorsz  += prob->sp->rstorsz + strlen(batchNameSuffix) * batch->sp->marsz;
 
-	batch->sp->rhsx 	= (vector) mem_realloc(batch->sp->rhsx, batch->sp->marsz*sizeof(double));
-	batch->sp->senx		= (string) mem_realloc(batch->sp->senx, batch->sp->marsz*sizeof(char));
-	batch->sp->rstore 	= (string) mem_realloc(batch->sp->rstore, (batch->sp->rstorsz+prob->sp->marsz*NAMESIZE)*sizeof(char));
-	batch->sp->rname 	= (string *) mem_realloc(batch->sp->rname, batch->sp->marsz*sizeof(string));
-	batch->sp->cstore 	= (string) mem_realloc(batch->sp->cstore, (batch->sp->cstorsz+prob->sp->macsz*NAMESIZE)*sizeof(char));
-	batch->sp->cname 	= (string *) mem_realloc(batch->sp->cname, batch->sp->macsz*sizeof(string));
+	batch->sp->rhsx 	= (dVector) mem_realloc(batch->sp->rhsx, batch->sp->marsz*sizeof(double));
+	batch->sp->senx		= (cString) mem_realloc(batch->sp->senx, batch->sp->marsz*sizeof(char));
+	batch->sp->rstore 	= (cString) mem_realloc(batch->sp->rstore, (batch->sp->rstorsz+prob->sp->marsz*NAMESIZE)*sizeof(char));
+	batch->sp->rname 	= (cString *) mem_realloc(batch->sp->rname, batch->sp->marsz*sizeof(cString));
+	batch->sp->cstore 	= (cString) mem_realloc(batch->sp->cstore, (batch->sp->cstorsz+prob->sp->macsz*NAMESIZE)*sizeof(char));
+	batch->sp->cname 	= (cString *) mem_realloc(batch->sp->cname, batch->sp->macsz*sizeof(cString));
 
-	batch->sp->objx 	= (vector) mem_realloc(batch->sp->objx, batch->sp->macsz*sizeof(double));
-	batch->sp->ctype 	= (string) mem_realloc(batch->sp->ctype, batch->sp->macsz*sizeof(char));
-	batch->sp->matval 	= (vector) mem_realloc(batch->sp->matval, batch->sp->matsz*sizeof(double));
-	batch->sp->bdl 		= (vector) mem_realloc(batch->sp->bdl, batch->sp->macsz*sizeof(double));
-	batch->sp->bdu 		= (vector) mem_realloc(batch->sp->bdu, batch->sp->macsz*sizeof(double));
+	batch->sp->objx 	= (dVector) mem_realloc(batch->sp->objx, batch->sp->macsz*sizeof(double));
+	batch->sp->ctype 	= (cString) mem_realloc(batch->sp->ctype, batch->sp->macsz*sizeof(char));
+	batch->sp->matval 	= (dVector) mem_realloc(batch->sp->matval, batch->sp->matsz*sizeof(double));
+	batch->sp->bdl 		= (dVector) mem_realloc(batch->sp->bdl, batch->sp->macsz*sizeof(double));
+	batch->sp->bdu 		= (dVector) mem_realloc(batch->sp->bdu, batch->sp->macsz*sizeof(double));
 
-	batch->sp->matbeg 	= (intvec) mem_realloc(batch->sp->matbeg, batch->sp->macsz*sizeof(int));
-	batch->sp->matcnt 	= (intvec) mem_realloc(batch->sp->matcnt, batch->sp->macsz*sizeof(int));
-	batch->sp->matind 	= (intvec) mem_realloc(batch->sp->matind, batch->sp->matsz*sizeof(int));
+	batch->sp->matbeg 	= (iVector) mem_realloc(batch->sp->matbeg, batch->sp->macsz*sizeof(int));
+	batch->sp->matcnt 	= (iVector) mem_realloc(batch->sp->matcnt, batch->sp->macsz*sizeof(int));
+	batch->sp->matind 	= (iVector) mem_realloc(batch->sp->matind, batch->sp->matsz*sizeof(int));
 
 	/* Copy/append problem's column names */
 	cnt = batch->sp->cstorsz; cOffset = idx = batch->sp->mac;
@@ -163,8 +163,8 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* b. Change the right-hand side with the incumbent solution of the current batch */
-	indices = (intvec) arr_alloc(max(prob->num->cols,prob->num->rows)+1, int);
-	coef = (vector) arr_alloc(prob->num->rows+1, double);
+	indices = (iVector) arr_alloc(fmax(prob->num->cols,prob->num->rows)+1, int);
+	coef = (dVector) arr_alloc(prob->num->rows+1, double);
 	for (i = 0; i < prob->num->rows; i++) {
 		coef[i+1]  = prob->sp->rhsx[i];
 		indices[i] = i+rOffset1;\
@@ -180,7 +180,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* c. Add the cuts in the problem */
-	for ( i = 0; i < max(prob->num->cols,prob->num->rows); i++ )
+	for ( i = 0; i < fmax(prob->num->cols,prob->num->rows); i++ )
 		indices[i+1] = i+cOffset;
 	indices[0] = idx;
 
@@ -217,7 +217,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	for ( i = 0; i < batch->cnt; i++ )
 		batch->quadScalar = ((batch->cnt-1)*batch->quadScalar + cell->quadScalar)/batch->cnt;
 
-	qsepvec = (vector) arr_alloc(batch->sp->mac, double); idx = 0;
+	qsepvec = (dVector) arr_alloc(batch->sp->mac, double); idx = 0;
 	for ( cnt = 0; cnt < batch->cnt; cnt++ ) {
 		for (i = 0; i < prob->num->cols; i++)
 			qsepvec[idx++] = 0.5 * batch->quadScalar;
@@ -264,13 +264,13 @@ int solveCompromise(probType *prob, batchSummary *batch) {
 	}
 
 	/* Get the primal solution to the compromise problem */
-	batch->compromiseX = (vector) arr_alloc(prob->num->cols+1, double);
+	batch->compromiseX = (dVector) arr_alloc(prob->num->cols+1, double);
 	getPrimal(batch->sp->lp, batch->compromiseX, prob->num->cols);
 	for ( j = 1; j <= prob->num->cols; j++ )
 		batch->compromiseX[j] += batch->incumbX[0][j];
 
 	/* Evaluate the average solution */
-	batch->avgX = (vector) arr_alloc(prob->num->cols+1, double);
+	batch->avgX = (dVector) arr_alloc(prob->num->cols+1, double);
 	for (j = 1; j <= prob->num->cols; j++) {
 		batch->avgX[j] = 0.0;
 		for ( b = 0; b < batch->cnt; b++) {
@@ -315,10 +315,10 @@ batchSummary *newBatchSummary(probType *prob, int numBatch) {
 
 	/* Setup batch summary structure */
 	batch = (batchSummary *) mem_malloc(sizeof(batchSummary));
-	batch->ck = (intvec) arr_alloc(numBatch, int);
-	batch->objLB = (vector) arr_alloc(numBatch, double);
-	batch->objUB = (vector) arr_alloc(numBatch, double);
-	batch->incumbX = (vector *) arr_alloc(numBatch, vector);
+	batch->ck = (iVector) arr_alloc(numBatch, int);
+	batch->objLB = (dVector) arr_alloc(numBatch, double);
+	batch->objUB = (dVector) arr_alloc(numBatch, double);
+	batch->incumbX = (dVector *) arr_alloc(numBatch, dVector);
 	batch->cnt = 0;
 	batch->quadScalar = config.MIN_QUAD_SCALAR;
 	batch->avgX = batch->compromiseX = NULL;
@@ -332,25 +332,25 @@ batchSummary *newBatchSummary(probType *prob, int numBatch) {
 	batch->sp->mar = batch->sp->numInt = batch->sp->numnz =  batch->sp->mac = 0;
 	batch->sp->matsz = batch->sp->marsz = batch->sp->rstorsz = batch->sp->macsz = batch->sp->cstorsz = 0;
 
-	batch->sp->name 	= (string) arr_alloc(NAMESIZE, char);	strcpy(batch->sp->name, "batchProblem");
-	batch->sp->objname 	= (string) arr_alloc(NAMESIZE, char);	strcpy(batch->sp->objname, prob->sp->objname);
+	batch->sp->name 	= (cString) arr_alloc(NAMESIZE, char);	strcpy(batch->sp->name, "batchProblem");
+	batch->sp->objname 	= (cString) arr_alloc(NAMESIZE, char);	strcpy(batch->sp->objname, prob->sp->objname);
 
-	batch->sp->rhsx 	= (vector) arr_alloc(1, double);
-	batch->sp->senx		= (string) arr_alloc(1, char);
-	batch->sp->rname 	= (string *) arr_alloc(1, string);
-	batch->sp->rstore 	= (string) arr_alloc(1, char);
-	batch->sp->cname 	= (string *) arr_alloc(1, string);
-	batch->sp->cstore 	= (string) arr_alloc(1, char);
+	batch->sp->rhsx 	= (dVector) arr_alloc(1, double);
+	batch->sp->senx		= (cString) arr_alloc(1, char);
+	batch->sp->rname 	= (cString *) arr_alloc(1, cString);
+	batch->sp->rstore 	= (cString) arr_alloc(1, char);
+	batch->sp->cname 	= (cString *) arr_alloc(1, cString);
+	batch->sp->cstore 	= (cString) arr_alloc(1, char);
 
-	batch->sp->objx 	= (vector) arr_alloc(1, double);
-	batch->sp->ctype 	= (string) arr_alloc(1, char);
-	batch->sp->matval 	= (vector) arr_alloc(1, double);
-	batch->sp->bdl 		= (vector) arr_alloc(1, double);
-	batch->sp->bdu 		= (vector) arr_alloc(1, double);
+	batch->sp->objx 	= (dVector) arr_alloc(1, double);
+	batch->sp->ctype 	= (cString) arr_alloc(1, char);
+	batch->sp->matval 	= (dVector) arr_alloc(1, double);
+	batch->sp->bdl 		= (dVector) arr_alloc(1, double);
+	batch->sp->bdu 		= (dVector) arr_alloc(1, double);
 
-	batch->sp->matbeg 	= (intvec) arr_alloc(1, int);
-	batch->sp->matcnt 	= (intvec) arr_alloc(1, int);
-	batch->sp->matind 	= (intvec) arr_alloc(1, int);
+	batch->sp->matbeg 	= (iVector) arr_alloc(1, int);
+	batch->sp->matcnt 	= (iVector) arr_alloc(1, int);
+	batch->sp->matind 	= (iVector) arr_alloc(1, int);
 
 	return batch;
 }//END newBatchSummary()

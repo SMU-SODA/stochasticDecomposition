@@ -13,8 +13,8 @@
 
 extern configType config;
 
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, vector *meanSol) {
-	vector	lb = NULL;
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, dVector *meanSol) {
+	dVector	lb = NULL;
 	int 	t;
 
 	/* setup mean value problem which will act as reference for all future computations */
@@ -56,15 +56,15 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		return 1;
 	}
 
-	if ( config.NUM_REPS > 1 )
-		(*batch)  = newBatchSummary((*prob)[0], config.NUM_REPS);
+	if ( config.MULTIPLE_REP > 1 )
+		(*batch)  = newBatchSummary((*prob)[0], config.MULTIPLE_REP);
 
 	mem_free(lb);
 	return 0;
 }//END setupAlgo()
 
 /* This function is used to create cells used in the algorithm */
-cellType *newCell(stocType *stoc, probType **prob, vector xk) {
+cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cellType    *cell = NULL;
 	int			length;
 
@@ -108,7 +108,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
 		cell->iCutUpdt  = 0;
-		cell->incumbChg = TRUE;
+		cell->incumbChg = true;
 	}
 	else {
 		cell->incumbX   = NULL;
@@ -116,7 +116,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 		cell->quadScalar= 0.0;
 		cell->iCutIdx   = -1;
 		cell->iCutUpdt  = -1;
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 	}
 	cell->gamma 			= 0.0;
 	cell->normDk_1 			= 0.0;
@@ -127,9 +127,9 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->cuts 	  = newCuts(cell->maxCuts);
 
 	/* solution parts of the cell */
-	if ( !(cell->djM = (vector) arr_alloc(prob[0]->num->cols + 2, double)) )
+	if ( !(cell->djM = (dVector) arr_alloc(prob[0]->num->cols + 2, double)) )
 		errMsg("allocation", "newCell", "cell->di", 0);
-	if ( !(cell->piM = (vector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
+	if ( !(cell->piM = (dVector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newCell", "cell->piM", 0);
 
 	/* stochastic elements: we need more room to store basis information when the cost coefficients are random. */
@@ -143,24 +143,24 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 	cell->delta  = newDelta(length);
 	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
 
-	cell->optFlag 			= FALSE;
+	cell->optFlag 			= false;
 
 	/* Dual stability test is disabled DUAL_STABILITY is false. */
 	if ( !config.DUAL_STABILITY ) {
-		cell->dualStableFlag = TRUE;
+		cell->dualStableFlag = true;
 		cell->pi_ratio = NULL;
 	}
 	else {
-		cell->dualStableFlag 	= FALSE;
-		if ( !(cell->pi_ratio = (vector) arr_alloc(config.SCAN_LEN, double)) )
+		cell->dualStableFlag 	= false;
+		if ( !(cell->pi_ratio = (dVector) arr_alloc(config.SCAN_LEN, double)) )
 			errMsg("allocation", "newCell", "cell->pi_ratio", 0);
 	}
 
-	cell->spFeasFlag = TRUE;
+	cell->spFeasFlag = true;
 	cell->fcuts		= newCuts(cell->maxCuts);
 	cell->fcutsPool = newCuts(cell->maxCuts);
 	cell->feasCnt 		= 0;
-	cell->infeasIncumb 	= FALSE;
+	cell->infeasIncumb 	= false;
 	cell->fUpdt[0] = cell->fUpdt[1] = 0;
 
 	cell->time.repTime = cell->time.iterTime = cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
@@ -173,7 +173,7 @@ cellType *newCell(stocType *stoc, probType **prob, vector xk) {
 			return NULL;
 		}
 
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 #if defined(SETUP_CHECK)
 		if ( writeProblem(cell->aster->lp, "newQPMaster.lp") ) {
 			errMsg("write problem", "new_master", "failed to write master problem to file",0);
@@ -192,27 +192,27 @@ void freeConfig() {
 
 }//END freeConfig()
 
-int cleanCellType(cellType *cell, probType *prob, vector xk) {
+int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	int cnt;
 
 	/* constants and arrays */
 	cell->k = 0;
 	cell->LPcnt = 0;
-	cell->optFlag 		 = FALSE;
-	cell->spFeasFlag 	 = TRUE;
+	cell->optFlag 		 = false;
+	cell->spFeasFlag 	 = true;
 	if ( config.DUAL_STABILITY )
-		cell->dualStableFlag 	= FALSE;
+		cell->dualStableFlag 	= false;
 
-	copyVector(xk, cell->candidX, prob->num->cols, TRUE);
+	copyVector(xk, cell->candidX, prob->num->cols, true);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
 	if (config.MASTER_TYPE == PROB_QP) {
-		copyVector(xk, cell->incumbX, prob->num->cols, TRUE);
+		copyVector(xk, cell->incumbX, prob->num->cols, true);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;
 		cell->iCutUpdt  = 0;
-		cell->incumbChg = TRUE;
+		cell->incumbChg = true;
 	}
 	cell->gamma 	= 0.0;
 	cell->normDk_1 	= 0.0;
@@ -231,19 +231,19 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 	}
 
 	/* cuts */
-	if (cell->cuts) freeCutsType(cell->cuts, TRUE);
-	if (cell->fcuts) freeCutsType(cell->fcuts, TRUE);
-	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, TRUE);
+	if (cell->cuts) freeCutsType(cell->cuts, true);
+	if (cell->fcuts) freeCutsType(cell->fcuts, true);
+	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, true);
 	cell->feasCnt 		= 0;
-	cell->infeasIncumb 	= FALSE;
+	cell->infeasIncumb 	= false;
 	cell->fUpdt[0] = cell->fUpdt[1] = 0;
 
 	/* stochastic components */
-	if (cell->basis) freeBasisType(cell->basis, TRUE);
-	if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, TRUE);
-	if (cell->lambda) freeLambdaType(cell->lambda, TRUE);
-	if (cell->sigma) freeSigmaType(cell->sigma, TRUE);
-	if (cell->omega) freeOmegaType(cell->omega, TRUE);
+	if (cell->basis) freeBasisType(cell->basis, true);
+	if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, true);
+	if (cell->lambda) freeLambdaType(cell->lambda, true);
+	if (cell->sigma) freeSigmaType(cell->sigma, true);
+	if (cell->omega) freeOmegaType(cell->omega, true);
 
 	/* reset all the clocks */
 	cell->time.repTime = cell->time.iterTime = cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
@@ -255,7 +255,7 @@ int cleanCellType(cellType *cell, probType *prob, vector xk) {
 			return 1;
 		}
 
-		cell->incumbChg = FALSE;
+		cell->incumbChg = false;
 #if defined(SETUP_CHECK)
 		if ( writeProblem(cell->aster->lp, "cleanedQPMaster.lp") ) {
 			errMsg("write problem", "new_master", "failed to write master problem to file",0);
@@ -276,14 +276,14 @@ void freeCellType(cellType *cell) {
 		if (cell->incumbX) mem_free(cell->incumbX);
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
-		if (cell->cuts) freeCutsType(cell->cuts, FALSE);
-		if (cell->fcuts) freeCutsType(cell->fcuts, FALSE);
-		if (cell->fcutsPool) freeCutsType(cell->fcutsPool, FALSE);
-		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, FALSE);
-		if (cell->omega) freeOmegaType(cell->omega, FALSE);
-		if (cell->lambda) freeLambdaType(cell->lambda, FALSE);
-		if (cell->sigma) freeSigmaType(cell->sigma, FALSE);
-		if (cell->basis) freeBasisType(cell->basis, FALSE);
+		if (cell->cuts) freeCutsType(cell->cuts, false);
+		if (cell->fcuts) freeCutsType(cell->fcuts, false);
+		if (cell->fcutsPool) freeCutsType(cell->fcutsPool, false);
+		if (cell->delta) freeDeltaType(cell->delta, cell->lambda->cnt, cell->omega->cnt, false);
+		if (cell->omega) freeOmegaType(cell->omega, false);
+		if (cell->lambda) freeLambdaType(cell->lambda, false);
+		if (cell->sigma) freeSigmaType(cell->sigma, false);
+		if (cell->basis) freeBasisType(cell->basis, false);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
 		mem_free(cell);
 	}
