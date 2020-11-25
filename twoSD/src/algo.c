@@ -150,8 +150,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 			for ( m = 0; m < stoc->numOmega; m++ )
 				observ[m] -= stoc->mean[m];
 
-			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
+			/* (c) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs],
+					config.TOLERANCE);
 		}
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
@@ -193,6 +194,3 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(observ);
 	return 1;
 }//END solveCell()
-
-
-
