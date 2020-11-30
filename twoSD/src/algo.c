@@ -74,11 +74,13 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		}
 
 		clock_t tic = clock();
+
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if ( solveCell(stoc, prob, cell,clone_prob,clone_cell) ) {
+		if (branchbound(stoc, prob, cell, -INFINITY, INFINITY)) {
 			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 			goto TERMINATE;
 		}
+
 		cell->time.repTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
 
 		/* Write solution statistics for optimization process */
@@ -147,146 +149,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	return 1;
 }//END algo()
 
-int intalgo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
-	dVector	 meanSol = NULL;
-	probType **prob = NULL;
-	cellType *cell = NULL;
-	probType **clone_prob = NULL;
-	cellType *clone_cell = NULL;
-	dVector	lb = NULL;
-	batchSummary *batch = NULL;
-	FILE 	*sFile = NULL, *iFile = NULL;
-
-	/* open solver environment */
-	openSolver();
-
-	/* complete necessary initialization for the algorithm */
-	if (setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, lb))
-		goto TERMINATE;
-
-	/* create clone problems */
-	if (setupClone(orig, stoc, tim, &clone_prob, &clone_cell, &batch, &meanSol,&lb))
-		goto TERMINATE;
-
-	printf("Starting two-stage stochastic decomposition.\n");
-	sFile = openFile(outputDir, "results.dat", "w");
-	iFile = openFile(outputDir, "incumb.dat", "w");
-	printDecomposeSummary(sFile, probName, tim, prob);
-	printDecomposeSummary(stdout, probName, tim, prob);
-
-	for (int rep = 0; rep < config.NUM_REPS; rep++) {
-		fprintf(sFile, "\n====================================================================================================================================\n");
-		fprintf(sFile, "Replication-%d\n", rep + 1);
-		fprintf(stdout, "\n====================================================================================================================================\n");
-		fprintf(stdout, "Replication-%d\n", rep + 1);
-
-		/* setup the seed to be used in the current iteration */
-		config.RUN_SEED[0] = config.RUN_SEED[rep + 1];
-		config.EVAL_SEED[0] = config.EVAL_SEED[rep + 1];
-
-		if (rep != 0) {
-			/* clean up the cell for the next replication */
-			if (cleanCellType(cell, prob[0], meanSol)) {
-				errMsg("algorithm", "algo", "failed clean the problem cell", 0);
-				goto TERMINATE;
-			}
-		}
-
-		if (changeQPSolverType(1))
-		{
-			errMsg("algorithm", "algo", "failed to set primal algorithm for QP", 0);
-			goto TERMINATE;
-		}
-
-		clock_t tic = clock();
-		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if (solveCell(stoc, prob, cell, clone_prob, clone_cell)) {
-			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
-			goto TERMINATE;
-		}
-		printf("\nProblem type before: %i \n", getProbType(cell->master->lp));
-		printf("objective before: %4.6lf \n", getObjective(cell->master->lp, 5));
-		//set sigma = 0 which is in master.c
-		//changerihgthand side for changing the alpha incumbents master.c (changeQPRHS)
-
-		printf("\n");
-		printVector(cell->candidX, prob[0]->num->cols, stdout);
-
-		fprintf(sFile, "\nAdding GMI and MIR cuts\n\n");
-		fprintf(stdout, "\nAdding GMI and MIR cuts \n\n");
-
-		/* Use GMI and MIR cutting planes to solve the SD-optimized problem */
-		if (solveIntCell(stoc, prob, cell)) {
-			errMsg("algorithm", "algo", "failed to solve the cell using GMI and MIR algorithm", 0);
-			goto TERMINATE;
-		}
-		fprintf(sFile, "\n %i GMI and %i MIR cuts are added \n\n", cell->GMIcuts->cnt, cell->MIRcuts->cnt);
-		fprintf(stdout, "\n %i GMI and %i MIR are added \n\n",cell->GMIcuts->cnt, cell->MIRcuts->cnt);
-		printf("\n");
-		printVector(cell->candidX, prob[0]->num->cols, stdout);
-
-		cell->time.repTime = ((double)clock() - tic) / CLOCKS_PER_SEC;
-
-		/* Write solution statistics for optimization process */
-		if (rep == 0) {
-			writeOptimizationSummary(sFile, iFile, prob, cell, true);
-			writeOptimizationSummary(stdout, NULL, prob, cell, true);
-		}
-		else {
-			writeOptimizationSummary(sFile, iFile, prob, cell, false);
-			writeOptimizationSummary(stdout, NULL, prob, cell, false);
-		}
-
-		/* evaluate the optimal solution*/
-		if (config.EVAL_FLAG == 1)
-			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
-
-		/* Save the batch details and build the compromise problem. */
-		if (config.COMPROMISE_PROB) {
-			buildCompromise(prob[0], cell, batch);
-		}
-	}
-
-	if (config.COMPROMISE_PROB) {
-		/* Solve the compromise problem. */
-		if (solveCompromise(prob[0], batch)) {
-			errMsg("algorithm", "algo", "failed to solve the compromise problem", 0);
-			goto TERMINATE;
-		}
-
-		fprintf(sFile, "\n====================================================================================================================================\n");
-		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
-		fprintf(sFile, "\n====================================================================================================================================\n");
-		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
-		/* Evaluate the compromise solution */
-		evaluate(sFile, stoc, prob, cell->subprob, batch->compromiseX);
-
-		fprintf(sFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
-		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
-		/* Evaluate the average solution */
-		evaluate(sFile, stoc, prob, cell->subprob, batch->avgX);
-	}
-
-	fclose(sFile); fclose(iFile);
-	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
-
-	/* free up memory before leaving */
-	if (meanSol) mem_free(meanSol);
-	freeBatchType(batch);
-	freeCellType(cell);
-	freeProbType(prob, 2);
-	return 0;
-
-TERMINATE:
-	if (meanSol) mem_free(meanSol);
-	freeBatchType(batch);
-	freeCellType(cell);
-	freeProbType(prob, 2);
-	mem_free(lb);
-	return 1;
-}//END algo()
-
-int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_prob, cellType *clone_cell) {
+int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	dVector 	observ;
 	clock_t		tic;
 	bool breakLoop = false;
@@ -310,7 +173,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
-		printf("*"); fflush(stdout);
+		//printf("*"); fflush(stdout);
 
 		if (breakLoop)
 			break;
@@ -334,44 +197,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell, probType **clone_
 	}
 #endif // defined(PHASE1ANLYS)
 
-	//2a - change master to MILP solve using callback 
-
-	/* Clone the current cell to create an LP cell problem */
-
-	/* Copy the cell to the cloned cell. */
-	if (copyCell(cell,clone_cell, prob[0])) {
-		errMsg("algo", "copyCell", "failed to create a copy of the cell", 0);
-		return 1;
-	}
-	clone_cell->incumbEst = prob[0]->lb;
-	clone_cell->candidEst = prob[0]->lb;
-	clone_cell->incumbX = roundX(clone_cell->candidX, prob[0]->num->cols);
-
-	if (config.SMIP != MILP) {
-		/* Turn the clone problem to LP */
-		QPtoLP(stoc, prob, clone_cell, 1);
-		clone_cell->ki = 1;
-
-		/* Phase-1 has completed, we have an approximation obtained by solving the relaxed problem.
-		* Phase-2 be used to impose integrality through costom procedures or the callback.  */
-		clone_cell->optFlag = false;
-		if (bendersCallback(stoc, prob, clone_cell)) {
-			errMsg("algorithm", "solverCell", "failed to run the Benders-callback routine", 0);
-			goto TERMINATE;
-		}
-		/* Update the incumbent estimate */
-		clone_cell->incumbEst = vXvSparse(clone_cell->incumbX, prob[0]->dBar) + maxCutHeight(clone_cell->cuts, clone_cell->sampleSize, clone_cell->incumbX, prob[0]->num->cols, clone_cell->lb);
-
-	}
-
-#if defined(LPMIP_PRINT)
-	printVector(clone_cell->incumbX, clone_cell->master->mac - 1, NULL);
-	printf("\nEstimate %0.4f", clone_cell->incumbEst);
-#endif // defined(LPMIP_PRINT)
-
-	cell->incumbEst = clone_cell->incumbEst;
-	*cell->incumbX = *clone_cell->incumbX;
-
 	mem_free(observ);
 	return 0;
 
@@ -388,9 +213,9 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 	printf("\nIteration-%d :: \n", cell->k);
 #else
-	if ((cell->k - 1) % 100 == 0) {
-		printf("\nIteration-%4d: ", cell->k);
-	}
+	//if ((cell->k - 1) % 100 == 0) {
+	//	printf("\nIteration-%4d: ", cell->k);
+	//}
 #endif
 
 
@@ -612,6 +437,7 @@ int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, b
 {
 	int			m, candidCut, obs;
 	cString lu; cString uu;
+	dVector RHScurr;
 	iVector indices;
 	int status = 0;
 
@@ -628,7 +454,18 @@ int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, b
 		printf("\nIteration-%4d: ", cell->k);
 	}
 #endif
+
 	/******* Get the new bounds of variables inside the callback *******/
+	int rownum = getNumRows(cell->master->lp);
+	printf("\nnumber of rows %d", rownum);
+	if (!(RHScurr = (dVector)arr_alloc(rownum, double)))
+		errMsg("allocation", "bendersCallback", "indices", 0);
+	if (getRhsx(cell->master->lp, 0, rownum, RHScurr)) {
+		errMsg("LB", "SDloopcallback", "failed to find the lowerbound", 0);
+		return 1;
+	}
+	for (int r = 0; r < rownum; r++)
+		printf("\nrow%d: %0.4f", r, RHScurr[r]);
 	if (getLb(cell->master->lp, 0, cell->master->mac, cell->master->bdl)) {
 		errMsg("LB", "SDloopcallback", "failed to find the lowerbound", 0);
 		return 1;

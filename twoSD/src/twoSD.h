@@ -24,7 +24,7 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
-#define LPMIP_PRINT
+#undef LPMIP_PRINT
 #undef PHASE1ANLYS
 
 #undef CALLBACK_CHECK
@@ -237,6 +237,37 @@ typedef struct {
 	dVector		avgX;				/* average solution across batches */
 }batchSummary;
 
+/// BnC structures 
+/* A data structure which holds on the node informations in the branch and bound tree */
+struct BnCnodeType {
+	int		key;			             /* key id of the node. */
+	int		parentkey;			         /* parent key id of the node. */
+	int		depth;			             /* depth of the node on the tree. */
+	int     varId;                       /* index of the variable that is disjuncted in this node */
+	int     stInt;                       /* index of the first integer variable */
+	int     edInt;                       /* index of the last integer variable */
+	double  fracVal;                     /* disjuncted fractional value for the varId */
+	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
+	dVector  * disjncsVal;               /* list of distjuctive cuts values on variables - it has upper and lower limits */
+	int numVar;                          /* number of variables */
+	int numRows;
+	double LB;                           /* lower bounds and upper bounds at this node */
+	double UB;                           /* lower bounds and upper bounds at this node */
+	double objval;                       /* objective value of the node problem  */
+	dVector vars;                        /* the values of variables */
+	dVector duals;                       /* the values of the duals of the node problem */
+	bool   isInt;                        /* is the solution obtained from the node integer */
+	bool   isActive;                     /* the node is active or not */
+	bool   isfathomed;                   /* the node is fathomed or not */
+	bool   isleft;                       /* the node is in the left of its parent */
+	struct BnCnodeType *left, *right;    /* pointer to the left and right children. */
+	struct BnCnodeType *nextnode;        /* next node in the queue. */
+	struct BnCnodeType *prevnode;        /* next node in the queue. */
+};
+
+
+
+////// Subroutines
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
@@ -327,7 +358,21 @@ void freeBatchType(batchSummary *batch);
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
-/* callback.c */
-
+/* bnc.c */
+int sumintVec(iVector a, int len);
+struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
+struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
+int addBnCDisjnct(LPptr lp, dVector  *disjncsVal, int numCols);
+double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
+int          freeNodes(struct BnCnodeType *root);
+int 	     freeNode(struct BnCnodeType *node);
+struct BnCnodeType *nextNode(struct BnCnodeType *node);
+struct BnCnodeType     *successorNode(struct BnCnodeType *node);
+struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *activenode);
+int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB);
+int branchVar(struct BnCnodeType *node, int strategy);
+int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode);
+int getfirstLeaf(int depth);
+int getnodeIdx(int depth, int key, int isleft);
 
 #endif /* TWOSD_H_ */
