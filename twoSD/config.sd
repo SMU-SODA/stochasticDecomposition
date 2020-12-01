@@ -2,7 +2,7 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 1
+MIN_ITER 256
 
 // Maximum number of iterations
 MAX_ITER   5000

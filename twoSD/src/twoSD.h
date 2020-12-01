@@ -47,9 +47,11 @@ typedef struct{
 	double	R1;
 	double	R2;
 	double	R3;
+
 	int		DUAL_STABILITY;		/* Determine whether dual stability is to be checked. */
 	int		PI_EVAL_START;		/* The minimum number of samples before dual stability test is conducted. */
 	int		PI_CYCLE;			/* Frequency of updating the dual stability ratio */
+
 	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/

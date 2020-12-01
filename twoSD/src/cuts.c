@@ -12,6 +12,7 @@
 #include "twoSD.h"
 
 extern configType config;
+extern cString outputDir;
 
 int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx);
 int formFeasCut(probType *prob, cellType *cell);
@@ -26,9 +27,10 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	/* A subproblem is solved for every new observation */
 	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
-				config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-				&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+		cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
+						config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
+						&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter);
+		if ( (cell->sample->basisIdx[obs] < 0) ){
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
@@ -98,6 +100,10 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	bool    pi_eval_flag = false;
 
+	FILE *bFile;
+	bFile = openFile(outputDir, "basisIDs.csv", "a");
+	fprintf(bFile, "%d\t", sample->omegaIdx[0]);
+
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
 
@@ -114,8 +120,28 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
 		pi_eval_flag = true;
 
-	/* Test for omega issues */
+	/* Loop through all the observations to identify the best basis. */
 	for (obs = 0; obs < omega->cnt; obs++) {
+
+		/* Check to see if obs is in the latest batch */
+		int cnt = 0;
+		while ( cnt < sample->cnt ) {
+			if ( obs == cnt ) {
+				break;
+			}
+			cnt++;
+		}
+		if ( cnt < sample->cnt ) {
+			/* We have solved a subproblem for this observation, so we have the istar. */
+			istar = sample->basisIdx[cnt];
+		}
+		else {
+			/* Use the argmax procedure to identify the istar. */
+			istar = computeIstar(num, coord, basis, sigma, delta, sample,
+								piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
+		}
+
+#if 0
 		/* For each observation, find the Pi/basis that generates the Pi which maximizes height at X. */
 		if (pi_eval_flag == true) {
 			istarOld = computeIstar(num, coord, basis, sigma, delta, sample,
@@ -134,6 +160,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			istar = computeIstar(num, coord, basis, sigma, delta, sample,
 					piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
 		}
+#endif
 
 		if (istar < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
@@ -168,8 +195,15 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			for (c = 1; c <= num->rvCOmCnt; c++)
 				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
 		}
-	}
 
+		if ( obs < omega->cnt - 1 )
+			fprintf(bFile, "%d\t", istar);
+		else
+			fprintf(bFile, "%d\n", istar);
+	}
+	fclose(bFile);
+
+#if 0
 	if (pi_eval_flag == true) {
 		pi_ratio[numIter % config.SCAN_LEN] = cummOld / cummAll;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
@@ -182,6 +216,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		else
 			*dualStableFlag = true;
 	}
+#endif
 
 	cut->alpha = alpha / numSamples;
 
