@@ -125,6 +125,7 @@ PRE_EPSILON 0.01
 
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
+<<<<<<< HEAD
 EPSILON 0.01
 SCAN_LEN 128
 
@@ -133,3 +134,24 @@ MULTIPLE_REP 1
 
 // Create compromise problem
 COMPROMISE_PROB	0
+=======
+// Suggested tolerance(EPSILON, SCAN_LEN) = loose (0.01, 128), nomimal (0.001, 256) and tight (0.0001, 512).
+EPSILON 0.001
+SCAN_LEN 256
+
+// Number of replications
+MULTIPLE_REP 1
+
+// Create compromise problem
+COMPROMISE_PROB	0
+
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%% New features %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// Number of observations added to the sample in each iteration (default is 1)
+SAMPLE_INCREMENT	1
+
+// Subproblem sampling: 0-Off, 1-New observations (default), and 2-fraction
+SP_SAMPLING 1
+
+// Probability for selecting subproblem for solving, applicable only when SP_SAMPLING = 2
+SP_FRACTION 0
+>>>>>>> branch 'master' of https://github.com/SMU-SODA/stochasticDecomposition.git
