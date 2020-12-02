@@ -27,10 +27,9 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	/* A subproblem is solved for every new observation */
 	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-		cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
+		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
 						config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-						&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter);
-		if ( (cell->sample->basisIdx[obs] < 0) ){
+						&cell->spFeasFlag, &cell->time.subprobIter, &cell->time.argmaxIter) ) {
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
@@ -92,17 +91,13 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega,
+		sampleType *sample, dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
 	oneCut *cut;
 	dVector 	piCbarX, beta;
 	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
-	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	int	 	istarOld, istarNew, idx, c, obs, sigmaIdx, lambdaIdx;
 	bool    pi_eval_flag = false;
-
-	FILE *bFile;
-	bFile = openFile(outputDir, "basisIDs.csv", "a");
-	fprintf(bFile, "%d\t", sample->omegaIdx[0]);
 
 	/* allocate memory to hold a new cut */
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
@@ -113,17 +108,16 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	for (c = 0; c < sigma->cnt; c++)
 		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
-	if ( !(beta = (dVector) arr_alloc(num->prevCols + 1, double)) )
-		errMsg("Allocation", "SDCut", "beta", 0);
+	beta = (dVector) arr_alloc(num->prevCols + 1, double);
 
 	/* Calculate pi_eval_flag to determine the way of computing argmax */
-	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
+	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START)
 		pi_eval_flag = true;
 
 	/* Loop through all the observations to identify the best basis. */
 	for (obs = 0; obs < omega->cnt; obs++) {
 
-		/* Check to see if obs is in the latest batch */
+		/* Check to see if observation is in the latest batch */
 		int cnt = 0;
 		while ( cnt < sample->cnt ) {
 			if ( obs == cnt ) {
@@ -132,12 +126,13 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			cnt++;
 		}
 		if ( cnt < sample->cnt ) {
-			/* We have solved a subproblem for this observation, so we have the istar. */
-			istar = sample->basisIdx[cnt];
+			/* A subproblem has been solved for the current observation */
+
+
 		}
 		else {
 			/* Use the argmax procedure to identify the istar. */
-			istar = computeIstar(num, coord, basis, sigma, delta, sample,
+			omega->istar[obs] = computeIstar(num, coord, basis, sigma, delta, sample,
 								piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
 		}
 
@@ -162,20 +157,20 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 		}
 #endif
 
-		if (istar < 0) {
+		if (omega->istar < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
 			return NULL;
 		}
-		cut->iStar[obs] = istar;
+		cut->iStar[obs] = omega->istar[obs];
 
 		if ( num->rvdOmCnt > 0 ) {
-			for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
-				sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+			for ( idx = 0; idx <= basis->vals[omega->istar[obs]]->phiLength; idx++ ) {
+				sigmaIdx = basis->vals[omega->istar[obs]]->sigmaIdx[idx];
 				lambdaIdx = sigma->lambdaIdx[sigmaIdx];
 				if ( idx == 0 )
 					multiplier = 1.0;
 				else
-					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
+					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[omega->istar[obs]]->omegaIdx[idx]];
 
 				/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
 				alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
@@ -187,21 +182,15 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 			}
 		}
 		else {
-			alpha += sigma->vals[istar].pib * omega->weights[obs];
-			alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
+			alpha += sigma->vals[omega->istar[obs]].pib * omega->weights[obs];
+			alpha += delta->vals[sigma->lambdaIdx[omega->istar[obs]]][obs].pib * omega->weights[obs];
 
 			for (c = 1; c <= num->cntCcols; c++)
-				beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
+				beta[coord->CCols[c]] += sigma->vals[omega->istar[obs]].piC[c] * omega->weights[obs];
 			for (c = 1; c <= num->rvCOmCnt; c++)
-				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
+				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[omega->istar[obs]]][obs].piC[c] * omega->weights[obs];
 		}
-
-		if ( obs < omega->cnt - 1 )
-			fprintf(bFile, "%d\t", istar);
-		else
-			fprintf(bFile, "%d\n", istar);
 	}
-	fclose(bFile);
 
 #if 0
 	if (pi_eval_flag == true) {
@@ -226,6 +215,17 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 	mem_free(piCbarX);
 	mem_free(beta);
+
+#if 0
+	FILE *bFile;
+	bFile = openFile(outputDir, "basisIDs.csv", "a");
+	fprintf(bFile, "%d\t", sample->omegaIdx[0]);
+	for ( obs = 0; obs < omega->cnt-1; obs++ ) {
+		fprintf(bFile, "%d\t", omega->istar[obs]);
+	}
+	fprintf(bFile, "%d\n", omega->istar[obs]);
+	fclose(bFile);
+#endif
 
 	return cut;
 }//END SDCut
@@ -463,7 +463,7 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 		cell->feasCnt++;
 
 		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag,
 				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
 			return 1;

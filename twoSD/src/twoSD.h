@@ -50,7 +50,7 @@ typedef struct{
 
 	int		DUAL_STABILITY;		/* Determine whether dual stability is to be checked. */
 	int		PI_EVAL_START;		/* The minimum number of samples before dual stability test is conducted. */
-	int		PI_CYCLE;			/* Frequency of updating the dual stability ratio */
+	double	PI_WINDOW;			/* Frequency of updating the dual stability ratio */
 
 	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */

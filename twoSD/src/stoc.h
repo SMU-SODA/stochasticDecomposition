@@ -36,6 +36,10 @@ typedef struct {
 	iVector	weights;                 /* number of times that an omega is observed */
 	dVector	probs;
 	dVector	*vals;
+
+	dVector objVal;					/* The objective function value */
+	dVector ratio;					/* The pi ratio */
+	iVector istar;					/* The index to the basis */
 } omegaType;
 
 /* The lambda structure stores some of the dual variable values from every distinct dual dVector obtained during the program.  Each dVector contains
@@ -76,8 +80,8 @@ typedef struct {
 	int		cnt;
 	iVector	omegaIdx;				/* Observation index in omegaType */
 	bool 	*newOmegaFlag;  		/* Flag indicates if the observation is encountered for the first time. */
-	iVector basisIdx;	    		/* Basis index in basisType */
-	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
+//	iVector basisIdx;	    		/* Basis index in basisType */
+//	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
 }sampleType;
 
 typedef struct {
@@ -109,7 +113,7 @@ typedef struct {
 
 /* subprob.c */
 int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag, bool *newBasisFlag,
+		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag,
 		double *subprobTime, double *argmaxTime);
 int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector obs);
 int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, dVector observ);
@@ -119,8 +123,8 @@ int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, dVector cost, iVect
 oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
-int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
+int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
 		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);

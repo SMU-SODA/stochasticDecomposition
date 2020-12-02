@@ -12,7 +12,7 @@
 #include "stoc.h"
 
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag) {
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag) {
 	oneBasis *B;
 	sparseVector dOmega;
 	int 	cnt, lambdaIdx;
@@ -43,7 +43,6 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 				/* The basis is the same as one encountered before */
 				freeOneBasis(B);
 				basis->vals[cnt]->weight++;
-				(*newBasisFlag) = false;
 #if defined (STOCH_CHECK)
 				printf("An old basis encountered :: %d\n", cnt);
 #endif
@@ -106,7 +105,6 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 					/* The basis was encountered before */
 					freeOneBasis(B);
 					basis->vals[cnt]->weight++;
-					(*newBasisFlag) = false;
 					return cnt;
 				}
 			}
@@ -139,12 +137,14 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
  * containing two indices.  (While both indices point to pieces of the dual dVectors, sigma and delta may not be in sync with one
  * another due to elimination of non-distinct or redundant dVectors. */
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
-		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew) {
+		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, double *argmax, bool isNew) {
 	double 	arg, multiplier = 1.0;
 	int 	cnt, maxCnt, c, basisUp, basisLow, sigmaIdx, lambdaIdx;
 
-	if (pi_eval == true)
-		numSamples -= (int) (0.1*numSamples + 1);
+	/* Calculate pi_eval_flag to determine the way of computing argmax */
+	if ( config.DUAL_STABILITY && numSamples > config.PI_EVAL_START ) {
+		numSamples -= (int) (1 - config.PI_WINDOW)*numSamples + 1;
+	}
 
 	/* Establish the range of iterations over which the istar calculations are conducted. Only bases discovered
 	 * in this iteration range are used. */
@@ -488,12 +488,15 @@ deltaType *newDelta(int numIter) {
 omegaType *newOmega(int numOmega, int numIter) {
 	omegaType *omega;
 
-	if ( !(omega = (omegaType *) mem_malloc(sizeof(omegaType))) )
-		errMsg("allocation","newOmega", "omega", 0);
-	if ( !(omega->weights = (iVector) arr_alloc(numIter, int)) )
-		errMsg("allocation", "newOmega", "omega->weights", 0);
-	if ( !(omega->vals = (dVector *) arr_alloc(numIter, dVector)) )
-		errMsg("allocation", "newOmega", "omega->vals", 0);
+	omega = (omegaType *) mem_malloc(sizeof(omegaType));
+
+	omega->weights = (iVector) arr_alloc(numIter, int);
+	omega->vals = (dVector *) arr_alloc(numIter, dVector);
+
+	omega->ratio = (dVector *) arr_alloc(numIter, dVector);
+	omega->objVal = (dVector *) arr_alloc(numIter, dVector);
+	omega->istar = (iVector *) arr_alloc(numIter, dVector);
+
 	omega->numRV = numOmega;
 	omega->cnt = 0;
 
@@ -508,10 +511,6 @@ sampleType *newSample(int sampleSize) {
 	if ( !(sample->omegaIdx = (iVector) arr_alloc(sampleSize, int)) )
 		errMsg("allocation", "newSample", "sample->omegaIdx", 0);
 	if ( !(sample->newOmegaFlag = (bool *) arr_alloc(sampleSize, bool)) )
-		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
-	if ( !(sample->basisIdx = (iVector) arr_alloc(sampleSize, int)) )
-		errMsg("allocation", "newSample", "sample->basisIdx", 0);
-	if ( !(sample->newBasisFlag = (bool *) arr_alloc(sampleSize, bool)) )
 		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
 	sample->cnt = sampleSize;
 
@@ -531,6 +530,10 @@ void freeOmegaType(omegaType *omega, bool partial) {
 		mem_free(omega->vals);
 	}
 	if ( omega->weights ) mem_free(omega->weights);
+	if ( omega->objVal) mem_free(omega->objVal);
+	if ( omega->istar) mem_free(omega->istar);
+	if ( omega->ratio) mem_free(omega->ratio);
+
 	mem_free(omega);
 
 }//END freeOmegaType()
@@ -597,9 +600,7 @@ void freeSampleType(sampleType *sample) {
 
 	if ( sample ) {
 		if ( sample->omegaIdx ) mem_free(sample->omegaIdx);
-		if ( sample->basisIdx ) mem_free(sample->basisIdx);
 		if ( sample->newOmegaFlag) mem_free(sample->newOmegaFlag);
-		if ( sample->newBasisFlag) mem_free(sample->newBasisFlag);
 		mem_free(sample);
 	}
 

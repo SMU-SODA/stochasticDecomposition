@@ -15,10 +15,11 @@
  * observation of omega, and some X dVector of primal variables from the master problem.  Generally, the latest observation is used.  When
  * forming a normal cut, the candidate x should be used, while the incumbent x should be used for updating the incumbent cut. */
 int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag, bool *newBasisFlag,
+		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag,
 		double *subprobTime, double *argmaxTime) {
 	int  	status;
 	clock_t tic;
+	bool newBasisFlag;
 
 	/* (a) compute and change the right-hand side using current observation and first-stage solution */
 	if ( computeRHS(subproblem->lp, prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, omega->vals[omegaIdx]) ) {
@@ -58,29 +59,27 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 	setIntParam(PARAM_PREIND, ON);
 	(*subprobTime) += ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
-#ifdef STOCH_CHECK
-	double obj;
-	obj = getObjective(subproblem->lp, PROB_LP);
-	printf("Objective value of Subproblem  = %lf\n", obj);
-#endif
-
-	if ( newBasisFlag!= NULL ) {
-		tic = clock();
-		/* (d) update the stochastic elements in the problem */
-		status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
-				omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag, (*subFeasFlag));
-		(*newOmegaFlag) = false;
-		(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
+	omega->objVal[omegaIdx] = getObjective(subproblem->lp, PROB_LP);
 
 #ifdef STOCH_CHECK
-		obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->CCols, prob->num->cntCcols);
-		obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
-				omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
-		printf("Objective function estimate    = %lf\n", obj);
+	printf("Objective value of Subproblem  = %lf\n", omega->objVal);
 #endif
-	}
 
-	return status;
+	tic = clock();
+	/* (d) update the stochastic elements in the problem */
+	omega->istar[omegaIdx] = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
+			omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE ,newBasisFlag, (*subFeasFlag));
+	(*newOmegaFlag) = false;
+	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
+
+#ifdef STOCH_CHECK
+	obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->CCols, prob->num->cntCcols);
+	obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
+			omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
+	printf("Objective function estimate    = %lf\n", obj);
+#endif
+
+	return 0;
 }// END solveSubprob()
 
 /* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.
