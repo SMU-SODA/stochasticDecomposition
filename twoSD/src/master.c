@@ -12,6 +12,7 @@
 #include "twoSD.h"
 
 extern configType config;
+#undef printInfeas
 
 /* This function is the regularized QP version of master problem. The master problem is solved after the newest cut is added to master problem,
  the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
@@ -40,14 +41,16 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status, config.TOLERANCE) ) {
-		if ( status == STAT_INFEASIBLE ) {
-			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
+#if defined(printInfeas)
+		if (status == STAT_INFEASIBLE) {
+			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
-		}
+	}
 		else {
 			writeProblem(cell->master->lp, "errorM.lp");
 			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
 		}
+#endif // defined(printInfeas)
 		return 1;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
@@ -266,7 +269,7 @@ int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScal
 		return 1;
 	}
 
-	if ( changeQPbds(cell->master->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, incumbX, 0) ) {
+	if ( changeQPbds(cell->master->lp, prob->num->cols, cell->master->bdl, cell->master->bdu, incumbX, 0) ) {
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}

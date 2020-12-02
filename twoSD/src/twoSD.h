@@ -362,7 +362,7 @@ void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 int sumintVec(iVector a, int len);
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
-int addBnCDisjnct(LPptr lp, dVector  *disjncsVal, int numCols);
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node);
 double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int          freeNodes(struct BnCnodeType *root);
 int 	     freeNode(struct BnCnodeType *node);

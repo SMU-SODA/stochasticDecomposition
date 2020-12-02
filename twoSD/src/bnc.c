@@ -26,6 +26,7 @@ struct BnCnodeType *bestNode; // best node that is found so far
 #define testBnC
 #define printBranch
 #undef depthtest
+#undef printSol
 
 int sumintVec(iVector a, int len)
 {
@@ -67,6 +68,8 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
+	for (int v = 0; v < temp->numVar + 1; v++)
+		temp->vars[v] = 0.0;
 	for (i = 0; i < temp->numVar; i++)
 	{
 		temp->disjncsVal[i][0] = orig->bdl[i];
@@ -132,61 +135,55 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 
+	for (int v = 0; v < temp->numVar + 1; v++)
+		temp->vars[v] = parent->vars[v];
+
 	return temp;
 
 }//End newNode()
 
  /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
-int addBnCDisjnct(LPptr lp, dVector  *disjncsVal, int numCols)
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node)
 {
 	int 	status = 0, cnt;
 	dVector	lbounds, ubounds;
-	iVector	lindices, uindices;
-	char 	*llu, *ulu;
+
 
 	if (!(lbounds = arr_alloc(numCols, double)))
 		errMsg("Allocation", "addDisjnct", "lbounds", 0);
-	if (!(lindices = arr_alloc(numCols, int)))
-		errMsg("Allocation", "addDisjnct", "lindices", 0);
-	if (!(llu = arr_alloc(numCols, char)))
-		errMsg("Allocation", "addDisjnct", "llu", 0);
 
 	if (!(ubounds = arr_alloc(numCols, double)))
 		errMsg("Allocation", "addDisjnct", "ubounds", 0);
-	if (!(uindices = arr_alloc(numCols, int)))
-		errMsg("Allocation", "addDisjnct", "uindices", 0);
-	if (!(ulu = arr_alloc(numCols, char)))
-		errMsg("Allocation", "addDisjnct", "ulu", 0);
 
 	/* Change the Upper Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		ubounds[cnt] = disjncsVal[cnt][1];
-		uindices[cnt] = cnt;
-		ulu[cnt] = 'U';
-	}
-
-	status = changeBDS(lp, numCols, uindices, ulu, ubounds);
-	if (status) {
-		errMsg("BnCcut", "addDisjnct", "failed to change the upper bound in the solver", 0);
-		return 1;
+		cell->master->bdu[cnt] = disjncsVal[cnt][1];
 	}
 
 	/* Change the Lower Bound */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		lbounds[cnt] = disjncsVal[cnt][0];
-		lindices[cnt] = cnt;
-		llu[cnt] = 'L';
+		cell->master->bdl[cnt] = disjncsVal[cnt][0];
 	}
 
-	status = changeBDS(lp, numCols, lindices, llu, lbounds);
-	if (status) {
-		errMsg("BnCcut", "addDisjnct", "failed to change the lower bound in the solver", 0);
+	if (node->isleft)
+	{
+		node->vars[node->varId] = disjncsVal[node->varId][1];
+	}
+	else {
+		node->vars[node->varId] = disjncsVal[node->varId][0];
+	}
+
+	
+	if (changeQPbds(cell->master->lp, numCols, lbounds, ubounds, node->vars, 0)) {
+		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}
 
-	mem_free(lbounds); mem_free(lindices); mem_free(llu);
-	mem_free(ubounds); mem_free(uindices); mem_free(ulu);
+	mem_free(lbounds); 
+	mem_free(ubounds);
 
 	return 0;
 }
@@ -197,20 +194,62 @@ int addBnCDisjnct(LPptr lp, dVector  *disjncsVal, int numCols)
 double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname)
 {
 	int 	status;
+	cell->ki = 0;
 
 	if (node->prevnode != NULL)
-		if (addBnCDisjnct(cell->master->lp, node->disjncsVal, node->numVar))
+	{
+		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node))
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 
+		//Initializing candidX, candidEst, incumbEst and IncumbX
+		copyVector(node->vars, cell->incumbX, node->edInt, true);
+		copyVector(cell->incumbX, cell->candidX, node->edInt, true);
+		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+		cell->incumbEst = cell->candidEst;
+
+		// Setup the QP master problem 
+		if (changeQPproximal(cell->master->lp, node->edInt, cell->quadScalar)) {
+			errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
+			return 1;
+		}
+
+		if (changeQPrhs(prob[0], cell, node->vars)) {
+			errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
+			return 1;
+		}
+
+		if (cell->normDk >= config.R3 * cell->normDk_1) {
+			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1 / cell->normDk;
+			cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
+		}
+
+		/* update the candidate cut as the new incumbent cut */
+		cell->iCutUpdt = cell->k;
+		cell->incumbChg = true;
+
+		/* keep the two norm of solution*/
+		cell->normDk_1 = cell->normDk;
+		/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
+		cell->infeasIncumb = false;
+		/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
+		cell->gamma = 0.0;
+	}
+
+	
 	/* Use two-stage stochastic decomposition algorithm to solve the problem */
 	if (solveCell(stoc, prob, cell)) {
 		return 1;
 	}
 
-	node->vars = cell->incumbX;
+	copyVector(cell->incumbX, node->vars, node->edInt, true);
 	node->objval = cell->incumbEst;
 
 	cell->optFlag = false;
+
+#if defined(printSol)
+	printVector(node->vars, node->edInt, NULL);
+#endif // defined(printSol)
 
 	printf("-end of solveCell\n");
 
@@ -277,14 +316,14 @@ int freeNode(struct BnCnodeType *node)
 	// Return 1 when the tree is empty
 	if (node == NULL) return 1;
 
-	if (node)
-		if (node->disjncs) mem_free(node->disjncs);
-	if (node->disjncsVal)  mem_free(node->disjncsVal);
-	if (node->vars)  mem_free(node->vars);
-	if (node->duals)  mem_free(node->duals);
 	if (node->prevnode) node->prevnode->nextnode = NULL;
 	if (node->nextnode) node->nextnode->prevnode = NULL;
-	free(node);
+	node->prevnode = NULL; node->nextnode = NULL;
+	if (node->disjncs) mem_free(node->disjncs);
+	if (node->disjncsVal)  mem_free(node->disjncsVal);
+	if (node->vars)  mem_free(node->vars);
+	//if (node->duals)  mem_free(node->duals);
+	mem_free(node);
 
 
 	return 0;
@@ -327,7 +366,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 	printf("\n\n");
 	printLine();
-	printf("%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%\n", "node id", "parent", "depth", "k", "fval", "UB", "feasible", "integer");
+	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%\n", "node id", "parent", "depth", "k", "\|x\|","fval", "UB", "feasible", "integer");
 	printLine();
 #endif // defined(printBranch)
 
@@ -468,11 +507,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 		if (node->key > 0)
 		{
-			printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k,0.0, 0.0, "False", "False");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False");
 		}
 		else
 		{
-			printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k,0.0, 0.0, "False", "False");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False");
 		}
 #endif // defined(printBranch)
 
@@ -511,11 +550,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 		if (node->key > 0)
 		{
-			printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, node->LB, GlobeUB, "True", "True");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),node->LB, GlobeUB, "True", "True");
 		}
 		else
 		{
-			printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, node->LB, GlobeUB, "True", "True");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt),node->LB, GlobeUB, "True", "True");
 		}
 #endif // defined(printBranch)
 
@@ -525,11 +564,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 	if (node->key > 0)
 	{
-		printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, node->LB, GlobeUB, "True", "False");
+		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False");
 	}
 	else
 	{
-		printf("%-10d%-10d%-10d%-10d%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, node->LB, GlobeUB, "True", "False");
+		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False");
 	}
 #endif // defined(printBranch)
 

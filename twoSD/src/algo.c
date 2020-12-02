@@ -14,6 +14,7 @@
 extern cString outputDir;
 extern configType config;
 
+
 dVector roundX(dVector a, int len);
 int isCandidInt(dVector candidate, int size);
 
@@ -160,12 +161,12 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	observ = (dVector) arr_alloc(stoc->numOmega + 1, double);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
-	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
+	while (cell->optFlag == false && cell->ki < config.MAX_ITER_CLBK && cell->k < config.MAX_ITER) {
 		
 		tic = clock();
 
 		if (mainloopSDCell(stoc, prob, cell, &breakLoop, observ)) {
-			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
+			//errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			goto TERMINATE;
 		}
 
@@ -173,7 +174,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
-		//printf("*"); fflush(stdout);
+		if(cell->k % 100 == 0) printf("-"); fflush(stdout);
 
 		if (breakLoop)
 			break;
@@ -210,6 +211,7 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 	int			m, candidCut, obs;
 	
 	cell->k++;
+	cell->ki++;
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 	printf("\nIteration-%d :: \n", cell->k);
 #else
@@ -218,8 +220,7 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 	//}
 #endif
 
-
-
+	if(cell->ki > 1)
 	/******* 1. Optimality tests *******/
 	if (optimal(prob, cell))
 	{
@@ -256,15 +257,16 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 	}
 
 	/******* 5. Check improvement in predicted values at candidate solution *******/
-	if (!(cell->incumbChg) && cell->k > 1)
+	if (cell->ki > 1)
 		/* If the incumbent has not changed in the current iteration */
 		checkImprovement(prob[0], cell, candidCut);
 
 	/******* 6. Solve the master problem to obtain the new candidate solution */
 	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		//errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 		return 1;
 	}
+
 
 	return 0;
 
