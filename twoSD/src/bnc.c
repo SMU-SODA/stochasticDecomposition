@@ -170,10 +170,10 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 
 	if (node->isleft)
 	{
-		node->vars[node->varId] = disjncsVal[node->varId][1];
+		node->vars[node->varId+1] = disjncsVal[node->varId][1];
 	}
 	else {
-		node->vars[node->varId] = disjncsVal[node->varId][0];
+		node->vars[node->varId+1] = disjncsVal[node->varId][0];
 	}
 
 	
@@ -251,7 +251,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 
-	printf("-end of solveCell\n");
+	printf("-SD ends\n");
 
 	return 0;
 }
