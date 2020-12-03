@@ -273,16 +273,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
 int LPtoMILP(stocType *stoc, probType **prob, cellType *cell);
-int solveIntCell(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
-void cleanupAlgo(probType **prob, cellType *cell, int T);
-int copyMasterSMIP(ENVptr envCallback, LPptr *lp, cellType *cell, int numCols);
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
 void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt);
-int copyCell(cellType *cell, cellType *clone_cell, probType *prob);
 void getRowNameMaster(cellType *cell);
 
 /* setup.c */

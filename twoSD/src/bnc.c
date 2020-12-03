@@ -14,6 +14,7 @@
 #include "twoSD.h"
 
 extern configType config;
+#define maxdnodes   1000
 
 #undef writeprob
 
@@ -22,6 +23,8 @@ int currDepth;
 double GlobeUB;             // Global upper bound
 oneProblem      *original;  // Info of the original problem 
 struct BnCnodeType *bestNode; // best node that is found so far
+struct BnCnodeType **nodearr; // array of deactivated leaf nodes
+int dnodes;                   /* number of deactivated nodes */
 #define printBest
 #define testBnC
 #define printBranch
@@ -350,6 +353,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	int i, j;
 
+	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
+		errMsg("allocation", "branchbound", "nodearr", 0);
+	dnodes = -1;
+
 	/* set of LB and UB */
 	GlobeUB = UB;
 
@@ -579,6 +586,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	if (node->objval > GlobeUB)
 	{
 		node->isActive = false;
+		if (dnodes < maxdnodes) nodearr[dnodes++] = node;
 		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
 		currDepth = (*activeNode)->depth;
 		return 0;
