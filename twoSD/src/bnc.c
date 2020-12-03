@@ -372,9 +372,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printf("Email: stabrizian@smu.edu\n");
 	printLine();
 	printf("\n\n");
-	printLine();
+	printLongLine();
 	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%\n", "node id", "parent", "depth", "k", "\|x\|","fval", "UB", "feasible", "integer");
-	printLine();
+	printLongLine();
 #endif // defined(printBranch)
 
 	int totdepth = original->mac;
@@ -412,6 +412,15 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		if (activeNode->prevnode == NULL) break;
 
 		currentNode = activeNode;
+
+		for (int cnt = 0; cnt < dnodes; cnt++)
+		{
+			double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+			if (est < cell->incumbEst)
+			{
+				nodearr[cnt]->isActive = true;
+			}
+		}
 	}
 
 #if defined(printBest)

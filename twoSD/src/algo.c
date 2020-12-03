@@ -15,9 +15,6 @@ extern cString outputDir;
 extern configType config;
 
 
-dVector roundX(dVector a, int len);
-int isCandidInt(dVector candidate, int size);
-
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName) {
 	dVector	 meanSol = NULL;
 	probType **prob = NULL;
@@ -399,19 +396,13 @@ int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, boo
 	}
 
 	///******* 6. Optimality tests *******/
-	if (isCandidInt(cell->candidX, prob[0]->num->cols))
+	if (IPoptimal(prob, cell))
 	{
-
-		if (IPoptimal(prob, cell))
-		{
-			(*breakLoop) = true; return 0;
-		}
-
-		/* If the incumbent has not changed in the current iteration */
-		checkImprovement_callback(prob[0], cell, candidCut);
-
+		(*breakLoop) = true; return 0;
 	}
 
+	/* If the incumbent has not changed in the current iteration */
+	checkImprovement_callback(prob[0], cell, candidCut);
 
 #if defined(LPMIP_PRINT)
 	printf("\ninside callback after SD \n");
@@ -484,17 +475,10 @@ int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, b
 
 	constructQP(prob[0], cell, cell->incumbX, cell->quadScalar);
 
-	if (isCandidInt(cell->candidX, prob[0]->num->cols))
+	if (optimal(prob, cell))
 	{
-
-		if (optimal(prob, cell))
-		{
-			(*breakLoop) = true; return 0;
-		}
-
-
+		(*breakLoop) = true; return 0;
 	}
-
 
 #if defined(LPMIP_PRINT)
 	printf("\ninside callback before SD\n");
@@ -555,14 +539,9 @@ int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, b
 	checkImprovement_callback(prob[0], cell, candidCut);
 
 	///******* 6. Optimality tests *******/
-	if (isCandidInt(cell->candidX, prob[0]->num->cols))
+	if (IPoptimal(prob, cell))
 	{
-
-		if (IPoptimal(prob, cell))
-		{
-			(*breakLoop) = true; return 0;
-		}
-
+		(*breakLoop) = true; return 0;
 	}
 
 	QPtoLP(stoc, prob, cell, 0);
