@@ -209,6 +209,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		copyVector(cell->incumbX, cell->candidX, node->edInt, true);
 		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 		cell->incumbEst = cell->candidEst;
+		node->objval = cell->incumbEst;
 
 		// Setup the QP master problem 
 		if (changeQPproximal(cell->master->lp, node->edInt, cell->quadScalar)) {
@@ -239,22 +240,33 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		cell->gamma = 0.0;
 	}
 
+#if defined(printSol)
+	printVector(node->vars, node->edInt, NULL);
+#endif // defined(printSol)
 	
-	/* Use two-stage stochastic decomposition algorithm to solve the problem */
-	if (solveCell(stoc, prob, cell)) {
-		return 1;
+	if (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))
+	{
+		/* Use two-stage stochastic decomposition algorithm to solve the problem */
+		if (solveCell(stoc, prob, cell)) {
+			return 1;
+		}
+
+		copyVector(cell->incumbX, node->vars, node->edInt, true);
+		node->objval = cell->incumbEst;
+		cell->optFlag = false;
 	}
+	else
+	{
+		printf("-SD ends (dnodes=%d)\n", dnodes + 1);
 
-	copyVector(cell->incumbX, node->vars, node->edInt, true);
-	node->objval = cell->incumbEst;
-
-	cell->optFlag = false;
+		return 0;
+	}
 
 #if defined(printSol)
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 
-	printf("-SD ends\n");
+	printf("-SD ends (dnodes=%d)\n",dnodes+1);
 
 	return 0;
 }
@@ -411,6 +423,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 		if (activeNode->prevnode == NULL) break;
 
+		if (cell->k == config.MAX_ITER) break;
+
 		currentNode = activeNode;
 
 		for (int cnt = 0; cnt < dnodes; cnt++)
@@ -419,6 +433,12 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			if (est < cell->incumbEst)
 			{
 				nodearr[cnt]->isActive = true;
+				for (int n = cnt; n < dnodes-1; n++)
+				{
+					nodearr[n] = nodearr[n + 1];
+				}
+				nodearr[dnodes] = NULL;
+				dnodes -= 1;
 			}
 		}
 	}
@@ -554,25 +574,31 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	// Check if the obtained solution from the solveNode is integer 
 	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
 	{
+#if defined(printBranch)
+		if (node->key > 0)
+		{
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True");
+		}
+		else
+		{
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True");
+		}
+#endif // defined(printBranch)		
+		
+		if (node->prevnode == NULL) return 0;
 		node->isActive = false;
 		if (node->objval < GlobeUB)
 		{
 			GlobeUB = node->objval;
 			bestNode = node;
 		}
+		else
+		{
+			if (dnodes < maxdnodes) nodearr[dnodes++] = node;
+		}
 		node->UB = node->objval;
 		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
 		currDepth = (*activeNode)->depth;
-#if defined(printBranch)
-		if (node->key > 0)
-		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),node->LB, GlobeUB, "True", "True");
-		}
-		else
-		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt),node->LB, GlobeUB, "True", "True");
-		}
-#endif // defined(printBranch)
 
 		return 0;
 	}
