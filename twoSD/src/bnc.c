@@ -460,6 +460,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		}
 	}
 
+	//Replace the best node to the incumbent for the out of sample testing
+	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
+
 #if defined(printBest)
 	printLine();
 	printLine();
