@@ -42,7 +42,7 @@ int main (int argc, char *argv[]) {
 	}
 	
 	/* set up output directory: using the outputDir in config file and the input problem name */
-	createOutputDir(outputDir, "twoSD", probName);
+	createOutputDir(outputDir, "twoSD-integer", probName);
 	
 	/* launch the algorithm */
 	status = algo(orig, tim, stoc, inputDir, probName);

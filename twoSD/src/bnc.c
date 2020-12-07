@@ -223,10 +223,20 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		}
 
 		if (cell->normDk >= config.R3 * cell->normDk_1) {
-			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1 / cell->normDk;
-			cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
+			if (cell->normDk == 0.0)
+			{
+				cell->quadScalar = config.MIN_QUAD_SCALAR;
+			}
+			else
+			{
+				//printf("sigma = %0.2f - %f - %f - %f - %f", cell->quadScalar, config.R2, config.R3, cell->normDk_1, cell->normDk);
+				cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1 / cell->normDk;
+				cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
+				cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
+				//printf("sigma = %0.2f", cell->quadScalar);
+			}
 		}
+		
 
 		/* update the candidate cut as the new incumbent cut */
 		cell->iCutUpdt = cell->k;
