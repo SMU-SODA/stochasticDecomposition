@@ -15,6 +15,7 @@
 
 extern configType config;
 #define maxdnodes   1000
+#define IterStop
 
 #undef writeprob
 
@@ -254,7 +255,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 	
-	if (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))
+	if (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))))
 	{
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
@@ -374,6 +375,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 {
 
 	int i, j;
+	int nodecnt = 0;
 
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "nodearr", 0);
@@ -433,9 +435,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 		if (activeNode->prevnode == NULL) break;
 
+#if defined(IterStop)
 		if (cell->k == config.MAX_ITER) break;
+#endif // defined(StopIter)
+
+		if (nodecnt > config.MAX_NODES) break;
 
 		currentNode = activeNode;
+		nodecnt++;
 
 		for (int cnt = 0; cnt < dnodes; cnt++)
 		{
