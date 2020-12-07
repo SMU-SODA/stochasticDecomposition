@@ -257,7 +257,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	}
 	else
 	{
-		printf("-SD ends (dnodes=%d)\n", dnodes + 1);
+		printf("SD ends (iters = %d - dnodes=%d - sigma size = %d - lambda size = %d - omega size = %d)\n", cell->ki, dnodes + 1,cell->sigma->cnt,cell->lambda->cnt, cell->omega->cnt);
 
 		return 0;
 	}
@@ -266,7 +266,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 
-	printf("-SD ends (dnodes=%d)\n",dnodes+1);
+	printf("SD ends (iters = %d - dnodes=%d - sigma size = %d - lambda size = %d - omega size = %d)\n", cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
 
 	return 0;
 }
