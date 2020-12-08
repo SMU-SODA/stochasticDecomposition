@@ -223,32 +223,17 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			return 1;
 		}
 
-		if (cell->normDk >= config.R3 * cell->normDk_1) {
-			if (cell->normDk == 0.0)
-			{
-				cell->quadScalar = config.MIN_QUAD_SCALAR;
-			}
-			else
-			{
-				//printf("sigma = %0.2f - %f - %f - %f - %f", cell->quadScalar, config.R2, config.R3, cell->normDk_1, cell->normDk);
-				cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1 / cell->normDk;
-				cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
-				cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
-				//printf("sigma = %0.2f", cell->quadScalar);
-			}
-		}
+		cell->quadScalar = config.MIN_QUAD_SCALAR;
+		cell->gamma = 0.0;
+		cell->normDk_1 = 0.0;
+		cell->normDk = 0.0;
 		
 
 		/* update the candidate cut as the new incumbent cut */
 		cell->iCutUpdt = cell->k;
 		cell->incumbChg = true;
-
-		/* keep the two norm of solution*/
-		cell->normDk_1 = cell->normDk;
-		/* Since incumbent solution is now replaced by a candidate, we assume it is feasible now */
 		cell->infeasIncumb = false;
-		/* gamma needs to be reset to 0 since there's no difference between candidate and incumbent*/
-		cell->gamma = 0.0;
+
 	}
 
 #if defined(printSol)
@@ -462,6 +447,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	//Replace the best node to the incumbent for the out of sample testing
 	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
+	cell->incumbEst = bestNode->objval;
 
 #if defined(printBest)
 	printLine();
