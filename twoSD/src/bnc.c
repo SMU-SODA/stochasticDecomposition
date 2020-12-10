@@ -16,7 +16,7 @@
 extern configType config;
 #define maxdnodes   1000
 #define IterStop
-#undef useRound   //Use the rounding heuristic 
+#define useRound   //Use the rounding heuristic 
 
 #undef writeprob
 
@@ -218,12 +218,15 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 		cell->master->bdl[cnt] = disjncsVal[cnt][0];
 	}
 
-	if (node->isleft)
+	if (!node->ishrstic && node->depth != 0)
 	{
-		node->vars[node->varId+1] = disjncsVal[node->varId][1];
-	}
-	else {
-		node->vars[node->varId+1] = disjncsVal[node->varId][0];
+		if (node->isleft)
+		{
+			node->vars[node->varId + 1] = disjncsVal[node->varId][1];
+		}
+		else {
+			node->vars[node->varId + 1] = disjncsVal[node->varId][0];
+		}
 	}
 
 	
@@ -246,7 +249,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	int 	status;
 	cell->ki = 0;
 
-	if (node->prevnode != NULL && node->depth != 0)
+	if (true)
 	{
 
 		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node))
