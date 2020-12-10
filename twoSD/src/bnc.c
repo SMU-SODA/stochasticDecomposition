@@ -392,6 +392,54 @@ int branchVar(struct BnCnodeType *node, int strategy)
 	{
 		return node->depth;
 	}
+	else if (strategy == 1)// strategy based on the larger fractional value
+	{
+		double larger = -1;  /* maximum fractional value */
+		int maxidx = node->depth;
+
+		for (int i = 0; i < node->edInt; i++)
+		{
+			if (node->disjncsVal[i][0]!= node->disjncsVal[i][1] && larger < node->vars[i])
+			{
+				larger = node->vars[i];
+				maxidx = i;
+			}
+		}
+
+		return maxidx;
+	}
+	else if (strategy == 2)// strategy based on the smaller fractional value
+	{
+		double smaller = INFINITY;  /* minimum fractional value */
+		int minidx = node->depth;
+
+		for (int i = 0; i < node->edInt; i++)
+		{
+			if (node->disjncsVal[i][0] != node->disjncsVal[i][1] && smaller > node->vars[i])
+			{
+				smaller = node->vars[i];
+				minidx = i;
+			}
+		}
+
+		return minidx;
+	}
+	else if (strategy == 3)// strategy based on the value closer to 0.5
+	{
+		double avg = INFINITY;  /* avg fractional value */
+		int idx = node->depth;
+
+		for (int i = 0; i < node->edInt; i++)
+		{
+			if (node->disjncsVal[i][0] != node->disjncsVal[i][1] && abs(0.5 - node->vars[i]) < avg)
+			{
+				avg = abs(0.5 - node->vars[i]);
+				idx = i;
+			}
+		}
+
+		return idx;
+	}
 
 }
 
@@ -692,7 +740,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	currDepth = (*activeNode)->depth;
 
 	//Select the variable index for branching 
-	int vaIdx = branchVar(node, 0);
+	int vaIdx = branchVar(node, config.VAR_STR);
 
 #if  defined(depthtest)
 	if (node->depth == node->edInt)

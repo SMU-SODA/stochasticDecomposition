@@ -52,6 +52,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.MAX_NODES);
 		else if (!(strcmp(line, "MASTER_TYPE")))
 			fscanf(fptr, "%d", &config.MASTER_TYPE);
+		else if (!(strcmp(line, "VAR_STR")))
+			fscanf(fptr, "%d", &config.VAR_STR);
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
 		else if (!(strcmp(line, "NodeNum")))

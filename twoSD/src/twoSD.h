@@ -66,6 +66,7 @@ typedef struct{
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
 	int     MAX_NODES;          /* Maximum number of visited nodes */
+	int     VAR_STR;            /* variable selection strategy */
 	int		MAX_ITER_CLBK;		/* maximum number of iterations inside the callback */
 	int		MASTER_TYPE;		/* type of master problem */
 	int		TAU;				/* Frequency at which the incumbent is updated */
