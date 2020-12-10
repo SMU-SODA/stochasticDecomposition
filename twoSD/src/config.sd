@@ -2,16 +2,16 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 1
+MIN_ITER 10
 
 // Maximum number of iterations
-MAX_ITER   10000
+MAX_ITER   100000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   2000
+MAX_ITER_CLBK   1000
 
 // Maximum number of visited nodes 
-MAX_NODES   100
+MAX_NODES   1000
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
@@ -125,6 +125,9 @@ R2 0.95
 // For updating the scaling factor.
 R3 2
 
+// Minimum incumbent change for incumbent update
+MIN_X  0.3
+
 // Switch for dual stability test 
 DUAL_STABILITY	1
 
@@ -146,8 +149,8 @@ PRE_EPSILON 0.01
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
 // Suggested tolerance(EPSILON, SCAN_LEN) = loose (0.01, 128), nomimal (0.001, 256) and tight (0.0001, 512).
-EPSILON 0.001
-SCAN_LEN 256
+EPSILON 0.01
+SCAN_LEN 128
 
 // Number of replications
 MULTIPLE_REP 0

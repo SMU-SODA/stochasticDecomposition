@@ -80,6 +80,7 @@ typedef struct{
 
 	int		CUT_MULT;			/* Determines the number of cuts to be used for approximate */
 	double 	MAX_QUAD_SCALAR;	/* Maximum value for regularizing parameter */
+	double 	MIN_X;	            /* Mimimum X norm difference for incumbent update */
 	double	R1;
 	double	R2;
 	double	R3;
@@ -288,6 +289,7 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***cloneprob, cellType **clonecell, dVector *meanSol, dVector lb);
 cellType *newCell(stocType *stoc, probType **prob, dVector xk);
 int cleanCellType(cellType *cell, probType *prob, dVector xk);
+int cleanBnCCellType(cellType *cell, probType *prob, dVector xk);
 void freeCellType(cellType *cell);
 
 /* master.c */

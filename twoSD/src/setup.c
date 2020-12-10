@@ -82,6 +82,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.PI_CYCLE);
 		else if (!(strcmp(line, "PERCENT_PASS")))
 			fscanf(fptr, "%lf", &config.PERCENT_PASS);
+		else if (!(strcmp(line, "MIN_X")))
+			fscanf(fptr, "%lf", &config.MIN_X);
 		else if (!(strcmp(line, "SCAN_LEN")))
 			fscanf(fptr, "%d", &config.SCAN_LEN);
 		else if (!(strcmp(line, "EVAL_FLAG")))
@@ -460,6 +462,76 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	return 0;
 }//END cleanCellType()
+
+int cleanBnCCellType(cellType *cell, probType *prob, dVector xk) {
+	int cnt;
+
+	/* constants and arrays */
+	cell->LPcnt = 0;
+	cell->optFlag = false;
+	cell->spFeasFlag = true;
+	if (config.DUAL_STABILITY)
+		cell->dualStableFlag = false;
+
+	copyVector(xk, cell->candidX, prob->num->cols, true);
+	cell->candidEst = prob->lb + vXvSparse(cell->candidX, prob->dBar);
+
+	if (config.MASTER_TYPE == PROB_QP) {
+		copyVector(xk, cell->incumbX, prob->num->cols, true);
+		cell->incumbEst = cell->candidEst;
+		cell->quadScalar = config.MIN_QUAD_SCALAR;
+		cell->iCutIdx = 0;
+		cell->iCutUpdt = 0;
+		cell->incumbChg = true;
+	}
+	cell->gamma = 0.0;
+	cell->normDk_1 = 0.0;
+	cell->normDk = 0.0;
+
+	/* oneProblem structures and solver elements */
+	for (cnt = prob->num->rows + cell->cuts->cnt + cell->fcuts->cnt - 1; cnt >= prob->num->rows; cnt--)
+		if (removeRow(cell->master->lp, cnt, cnt)) {
+			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+			return 1;
+		}
+	cell->master->mar = prob->num->rows;
+	if (changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
+		errMsg("algorithm", "cleanCellType", "failed to change the proximal term", 0);
+		return 1;
+	}
+
+	/* cuts */
+	if (cell->cuts) freeCutsType(cell->cuts, true);
+	if (cell->MIRcuts) freeCutsType(cell->MIRcuts, true);
+	if (cell->GMIcuts) freeCutsType(cell->GMIcuts, true);
+	if (cell->fcuts) freeCutsType(cell->fcuts, true);
+	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, true);
+	cell->feasCnt = 0;
+	cell->infeasIncumb = false;
+	cell->fUpdt[0] = cell->fUpdt[1] = 0;
+
+
+	/* reset all the clocks */
+	cell->time.repTime = cell->time.iterTime = cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
+	cell->time.iterAccumTime = cell->time.masterAccumTime = cell->time.subprobAccumTime = cell->time.optTestAccumTime = cell->time.argmaxAccumTime = 0.0;
+
+	if (config.MASTER_TYPE == PROB_QP) {
+		if (constructQP(prob, cell, cell->incumbX, cell->quadScalar)) {
+			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
+			return 1;
+		}
+
+		cell->incumbChg = false;
+#if defined(SETUP_CHECK)
+		if (writeProblem(cell->aster->lp, "cleanedQPMaster.lp")) {
+			errMsg("write problem", "new_master", "failed to write master problem to file", 0);
+			return 1;
+		}
+#endif
+	}
+
+	return 0;
+}//END cleanBnCCellType()
 
 
 void freeCellType(cellType *cell) {

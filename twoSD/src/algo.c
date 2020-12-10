@@ -164,10 +164,12 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
-		if(cell->k % 100 == 0) printf("-"); fflush(stdout);
+		if(cell->ki > 500 && cell->ki % 100 == 0) printf("."); fflush(stdout);
 
 		if (breakLoop)
+		{
 			break;
+		}
 
 	}//END while loop
 
@@ -212,7 +214,7 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 	if(cell->ki > 1)
 	/******* 1. Optimality tests *******/
-	if (optimal(prob, cell))
+	if (IPoptimal(prob, cell))
 	{
 		(*breakLoop) = true; return 0;
 	}

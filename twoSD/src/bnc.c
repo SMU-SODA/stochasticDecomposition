@@ -202,10 +202,14 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 	if (node->prevnode != NULL)
 	{
+		
+		//if(cleanBnCCellType(cell, prob[0], node->vars))
+			//errMsg("!cleanCellType", "solveNode", "cleaning the cell failed!", 0);
+		
 		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node))
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 
-		//Initializing candidX, candidEst, incumbEst and IncumbX
+		////Initializing candidX, candidEst, incumbEst and IncumbX
 		copyVector(node->vars, cell->incumbX, node->edInt, true);
 		copyVector(cell->incumbX, cell->candidX, node->edInt, true);
 		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
@@ -223,16 +227,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			return 1;
 		}
 
-		cell->quadScalar = config.MIN_QUAD_SCALAR;
-		cell->gamma = 0.0;
-		cell->normDk_1 = 0.0;
-		cell->normDk = 0.0;
-		
-
-		/* update the candidate cut as the new incumbent cut */
-		cell->iCutUpdt = cell->k;
-		cell->incumbChg = true;
-		cell->infeasIncumb = false;
 
 	}
 
@@ -253,7 +247,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	}
 	else
 	{
-		printf("SD ends (iters = %d - dnodes=%d - sigma size = %d - lambda size = %d - omega size = %d)\n", cell->ki, dnodes + 1,cell->sigma->cnt,cell->lambda->cnt, cell->omega->cnt);
+		printf("SD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n", cell->ki, dnodes + 1,cell->sigma->cnt,cell->lambda->cnt, cell->omega->cnt);
 
 		return 0;
 	}
@@ -262,7 +256,8 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 
-	printf("SD ends (iters = %d - dnodes=%d - sigma size = %d - lambda size = %d - omega size = %d)\n", cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
+	if (cell->ki > 600) printf("\n");;
+	printf("SD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n", cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
 
 	return 0;
 }

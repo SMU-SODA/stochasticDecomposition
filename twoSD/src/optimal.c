@@ -70,10 +70,9 @@ bool LPoptimal(probType **prob, cellType *cell) {
 bool IPoptimal(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
-	if (cell->k > config.MIN_ITER) {
+	if (cell->ki > config.MIN_ITER) {
 		/* perform the pre-test */
-		if (IPpreTest(cell)) {
-			cell->incumbEst = cell->candidEst;
+		if (preTest(cell)) {
 			return true;
 		}
 	}
