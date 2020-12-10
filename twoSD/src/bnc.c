@@ -16,6 +16,7 @@
 extern configType config;
 #define maxdnodes   1000
 #define IterStop
+#undef useRound   //Use the rounding heuristic 
 
 #undef writeprob
 
@@ -54,6 +55,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->isleft = false;
 	temp->fracVal = -1;
 	temp->varId = -1;
+	temp->ishrstic = false;
 	temp->left = temp->right = NULL;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = numVar;
@@ -80,6 +82,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 		temp->disjncsVal[i][1] = orig->bdu[i];
 		temp->disjncs[i] = 0;
 	}
+
 	return temp;
 
 }//End newrootNode()
@@ -97,6 +100,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->isleft = isleft;
 	temp->fracVal = fracVal;
 	temp->varId = varId;
+	temp->ishrstic = false;
 	temp->left = temp->right = NULL;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = parent->numVar;
@@ -145,6 +149,48 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	return temp;
 
 }//End newNode()
+
+struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
+{
+	int i; int j;
+	struct BnCnodeType *temp = (struct BnCnodeType *)malloc(sizeof(struct BnCnodeType));
+
+	temp->key = node->key;
+	temp->parentkey = node->parentkey;
+	temp->depth = node->depth;
+	temp->isleft = node->isleft;
+	temp->fracVal = node->fracVal;
+	temp->ishrstic = true;
+	temp->varId = node->varId;
+	temp->left = temp->right = NULL;
+	temp->nextnode = temp->prevnode = NULL;
+	temp->numVar = node->numVar;
+	temp->stInt = node->stInt;
+	temp->edInt = node->edInt;
+	temp->LB = node->LB;
+	temp->UB = node->UB;
+	temp->isActive = true;
+	temp->isfathomed = false;
+	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
+		errMsg("allocation", "newNode", "temp->disjncs", 0);
+	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
+		errMsg("allocation", "newNode", "temp->disjncs", 0);
+	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	for (i = 0; i < node->numVar; i++)
+	{
+		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
+			errMsg("allocation", "newNode", "temp->disjncs", 0);
+		double val = 0.0;
+		if (node->vars[i] > thresh) val = ceil(node->vars[i]); else val = floor(node->vars[i]);
+		temp->disjncs[i] = 1;
+		temp->disjncsVal[i][0] = val;
+		temp->disjncsVal[i][1] = val;
+		temp->vars[i] = val;
+	}
+	
+	return temp;
+}//End copyNode()
 
  /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
@@ -200,12 +246,9 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	int 	status;
 	cell->ki = 0;
 
-	if (node->prevnode != NULL)
+	if (node->prevnode != NULL && node->depth != 0)
 	{
-		
-		//if(cleanBnCCellType(cell, prob[0], node->vars))
-			//errMsg("!cleanCellType", "solveNode", "cleaning the cell failed!", 0);
-		
+
 		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node))
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 
@@ -234,7 +277,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(node->vars, node->edInt, NULL);
 #endif // defined(printSol)
 	
-	if (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))))
+	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
 	{
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
@@ -385,6 +428,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	double totnodes = pow(2, totdepth);
 
 	rootNode = newrootNode(original->mac, LB, UB, original);
+
+
 	for (i = 0; i < rootNode->numVar; i++)
 	{
 		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
@@ -404,16 +449,28 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			rootNode->edInt++;
 		}
 	}
+	for (i = 0; i < prob[0]->num->cols; i++)
+		rootNode->vars[i] = cell->incumbX[i+1];
 	activeNode = rootNode;
 	currentNode = rootNode;
 	currDepth = -1;
+
+#if defined(useRound)
+	struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
+	hrsticNode = copyNode(rootNode, 0.1);
+	rootNode->nextnode = hrsticNode;
+	hrsticNode->prevnode = rootNode;
+	activeNode = hrsticNode;
+	currentNode = hrsticNode;
+#endif // defined(useRound)
 
 	while (activeNode != NULL)
 	{
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
-		if (activeNode->prevnode == NULL) break;
+		if (activeNode == NULL) break;
+		if (activeNode->prevnode == NULL && nodecnt > 1) break;
 
 #if defined(IterStop)
 		if (cell->k == config.MAX_ITER) break;
@@ -598,7 +655,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 			if (dnodes < maxdnodes) nodearr[dnodes++] = node;
 		}
 		node->UB = node->objval;
-		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
+		*activeNode = nextNode(node);
 		currDepth = (*activeNode)->depth;
 
 		return 0;

@@ -262,6 +262,7 @@ struct BnCnodeType {
 	bool   isActive;                     /* the node is active or not */
 	bool   isfathomed;                   /* the node is fathomed or not */
 	bool   isleft;                       /* the node is in the left of its parent */
+	bool   ishrstic;                     /* the node is a heuristic node */
 	struct BnCnodeType *left, *right;    /* pointer to the left and right children. */
 	struct BnCnodeType *nextnode;        /* next node in the queue. */
 	struct BnCnodeType *prevnode;        /* next node in the queue. */
@@ -365,6 +366,7 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int          freeNodes(struct BnCnodeType *root);
 int 	     freeNode(struct BnCnodeType *node);
+struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);
 struct BnCnodeType *nextNode(struct BnCnodeType *node);
 struct BnCnodeType     *successorNode(struct BnCnodeType *node);
 struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *activenode);
