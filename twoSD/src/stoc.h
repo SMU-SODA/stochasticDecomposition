@@ -113,7 +113,7 @@ typedef struct {
 
 /* subprob.c */
 int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag, bool *newBasisFlag,
+		omegaType *omega, int omegaIdx, bool *newOmegaFlag, int currentIter, double TOLERANCE, bool *subFeasFlag,
 		double *subprobTime, double *argmaxTime);
 int computeRHS(LPptr lp, numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *Cbar, dVector X, dVector obs);
 int computeCostCoeff(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, dVector observ);
@@ -123,8 +123,8 @@ int chgObjxwObserv(LPptr lp, numType *num, coordType *coord, dVector cost, iVect
 oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
-int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
+int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
 		dVector piCbarX, dVector Xvect, dVector observ, int obs, int oldWindow, double *piRatio, bool checkOldOnly);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);

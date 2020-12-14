@@ -29,7 +29,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		cell->sample->iStar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
 				config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-				&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter);
+				&cell->spFeasFlag, &cell->time.subprobIter, &cell->time.argmaxIter);
 		if ( (cell->sample->iStar[obs] < 0) ){
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
@@ -139,13 +139,12 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	for (c = 0; c < sigma->cnt; c++)
 		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
-	if ( !(beta = (dVector) arr_alloc(num->prevCols + 1, double)) )
-		errMsg("Allocation", "SDCut", "beta", 0);
+	beta = (dVector) arr_alloc(num->prevCols + 1, double);
 
 	/* Loop through all the observations to identify the best basis. */
 	for (obs = 0; obs < omega->cnt; obs++) {
 
-		/* Check to see if obs is in the latest batch */
+		/* Check to see if observation is in the latest batch */
 		int cnt = 0;
 		while ( cnt < sample->cnt ) {
 			if ( sample->omegaIdx[cnt] == obs ) {
@@ -218,6 +217,17 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 	mem_free(piCbarX);
 	mem_free(beta);
+
+#if 0
+	FILE *bFile;
+	bFile = openFile(outputDir, "basisIDs.csv", "a");
+	fprintf(bFile, "%d\t", sample->omegaIdx[0]);
+	for ( obs = 0; obs < omega->cnt-1; obs++ ) {
+		fprintf(bFile, "%d\t", omega->istar[obs]);
+	}
+	fprintf(bFile, "%d\n", omega->istar[obs]);
+	fclose(bFile);
+#endif
 
 	return cut;
 }//END SDCut
@@ -455,7 +465,7 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 		cell->feasCnt++;
 
 		if ( solveSubprob(prob[1], cell->subprob->lp, cell->candidX, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, &newBasisFlag,
+				cell->omega, omegaIdx, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag,
 				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "resolveInfeasibility", "failed to solve the subproblem", 0);
 			return 1;

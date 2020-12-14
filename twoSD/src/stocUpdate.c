@@ -12,7 +12,7 @@
 #include "stoc.h"
 
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag) {
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag) {
 	oneBasis *B;
 	sparseVector dOmega;
 	int 	cnt, lambdaIdx;
@@ -43,7 +43,6 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 				/* The basis is the same as one encountered before */
 				freeOneBasis(B);
 				basis->vals[cnt]->weight++;
-				(*newBasisFlag) = false;
 #if defined (STOCH_CHECK)
 				printf("An old basis encountered :: %d\n", cnt);
 #endif
@@ -106,7 +105,6 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 					/* The basis was encountered before */
 					freeOneBasis(B);
 					basis->vals[cnt]->weight++;
-					(*newBasisFlag) = false;
 					return cnt;
 				}
 			}
@@ -473,7 +471,6 @@ sampleType *newSample(int sampleSize) {
 	sample = (sampleType *) mem_malloc(sizeof(sampleType));
 	sample->omegaIdx = (iVector) arr_alloc(sampleSize, int);
 	sample->newOmegaFlag = (bool *) arr_alloc(sampleSize, bool);
-	sample->newBasisFlag = (bool *) arr_alloc(sampleSize, bool);
 	sample->iStar = (iVector) arr_alloc(sampleSize, int);
 	sample->cnt = sampleSize;
 
