@@ -14,7 +14,12 @@ MAX_ITER_CLBK   1000
 MAX_NODES   1000
 
 // Variable selection strategy
-// 0: index based - 1: maximimum fractional val - 2: minimum fractional val - 3: fractional val closer to 0.5
+// 0: index based - 1: maximimum fractional val
+// strategies >= 1 currently tested for biary variables
+BRN_STR   1
+
+// Branching strategies
+// 0: regular - 1: closest integer first - 2: minimum fractional val - 3: fractional val closer to 0.5
 // strategies >= 1 currently tested for biary variables
 VAR_STR   1
 

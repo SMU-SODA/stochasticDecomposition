@@ -679,9 +679,9 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
-
+	int maxcut = config.CUT_MULT * numX + 3;
 	if ( numIstar > 0 ) {
-		if (!(cut->iStar = arr_alloc(numIstar, int)))
+		if (!(cut->iStar = arr_alloc(maxcut*config.MAX_ITER, int)))
 			errMsg("allocation", "new_cut", "iStar", 0);
 	}
 	else
