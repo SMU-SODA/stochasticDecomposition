@@ -5,7 +5,12 @@
  *      Author: Harsha Gangammanavar
  * Institution: Southern Methodist University
  *  
- * Please send you comments or bug report to harsha (at) smu (dot) edu
+ *
+ *   Edited on: Aug 1, 2020 as part of the SD-integer project
+ *      Author: Siavash Tabrizian
+ * Institution: Southern Methodist University
+ *
+ * Please send you comments or bug report to stabrizian (at) smu (dot) edu
  *
  */
 
