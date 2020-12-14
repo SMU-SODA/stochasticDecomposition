@@ -44,6 +44,20 @@ int sumintVec(iVector a, int len)
 	return output;
 }
 
+/* check if an integer is in an iVector */
+bool isInVec(iVector vec, int len, int val)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		if (vec[i] == val)
+		{
+			return true;
+		}
+
+	return false;
+}
+
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig)
 {
 	int i; int j;
@@ -61,6 +75,13 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->numVar = numVar;
 	temp->LB = LB;
 	temp->UB = UB;
+	temp->parentnumSamp = 0;
+	temp->numSamp = 0;
+	temp->partightPi = 0;
+	temp->parLambdasize = 0;
+	temp->tightPi = 0;
+	temp->Lambdasize = 0;
+	temp->fracPi = 0.0;
 	temp->isActive = true;
 	temp->isfathomed = false;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, double)))
@@ -73,6 +94,9 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 			errMsg("allocation", "newNode", "temp->disjncs", 0);
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	int maxcut = config.CUT_MULT * orig->mac + 3;
+	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	for (int v = 0; v < temp->numVar + 1; v++)
 		temp->vars[v] = 0.0;
@@ -108,12 +132,28 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->edInt = parent->edInt;
 	temp->LB = parent->LB;
 	temp->UB = parent->UB;
+	temp->parentnumSamp = parent->numSamp;
+	temp->numSamp = 0;
+	temp->partightPi = parent->tightPi;
+	temp->parLambdasize = parent->Lambdasize;
+	temp->tightPi = 0;
+	temp->Lambdasize = 0;
+	temp->fracPi = 0.0;
 	temp->isActive = true;
 	temp->isfathomed = false;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
+	int maxcut = config.CUT_MULT * parent->numVar + 3;
+	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	for (i = 0; i < parent->partightPi; i++)
+	{
+		temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
+	}
 	for (i = 0; i < parent->numVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
@@ -169,6 +209,13 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	temp->edInt = node->edInt;
 	temp->LB = node->LB;
 	temp->UB = node->UB;
+	temp->parentnumSamp = node->parentnumSamp;
+	temp->numSamp = node->numSamp;
+	temp->partightPi = node->partightPi;
+	temp->parLambdasize = node->parLambdasize;
+	temp->tightPi = node->tightPi;
+	temp->Lambdasize = node->Lambdasize;
+	temp->fracPi = node->fracPi;
 	temp->isActive = true;
 	temp->isfathomed = false;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
@@ -177,6 +224,19 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
+	int maxcut = config.CUT_MULT * node->numVar + 3;
+	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	for (i = 0; i < node->partightPi; i++)
+	{
+		temp->ParIncumbiStar[i] = node->ParIncumbiStar[i];
+	}
+	for (i = 0; i < node->tightPi; i++)
+	{
+		temp->IncumbiStar[i] = node->IncumbiStar[i];
+	}
 	for (i = 0; i < node->numVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
@@ -471,7 +531,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 	printf("\n\n");
 	printLongLine();
-	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%\n", "node id", "parent", "depth", "k", "\|x\|","fval", "UB", "feasible", "integer");
+	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%-12s\n", "node id", "parent", "depth", "k", "\|x\|","fval", "UB", "feasible", "integer","Lamfrac");
 	printLongLine();
 #endif // defined(printBranch)
 
@@ -639,6 +699,35 @@ int getnodeIdx(int depth, int key, int isleft)
 	return out;
 }
 
+/* this function returns the fraction of lamda values are used from the earlier iterations or
+from the tight lambdas of the parent and new lamdas discovered in the current node */
+void fracLamda(cellType *cell, struct BnCnodeType *node)
+{
+	int i, j, k, notnewLambda, totLambda;
+
+	node->Lambdasize = cell->lambda->cnt;
+	notnewLambda = 0;
+	totLambda = 0;
+
+	for (i = 0; i < cell->cuts->cnt; i++)
+	{
+		for (j = 0; j < cell->cuts->vals[i]->numSamples; j++)
+		{
+			node->IncumbiStar[j] = cell->cuts->vals[i]->iStar[j];
+			totLambda += 1;
+			if (node->IncumbiStar[j] < node->parLambdasize)
+			{
+				if(!isInVec(node->ParIncumbiStar,node->parentnumSamp, node->ParIncumbiStar[j]))
+												notnewLambda += 1;
+			}
+		}
+	}
+
+	node->tightPi = totLambda;
+	node->fracPi = ((double)notnewLambda) / ((double)totLambda);
+
+}
+
 /* given a node problem this subroutine branch on the selected variable
 it returns 0 if no branching is needed (solution of the node problem is integer)
 or 1 when the node problem is fractional */
@@ -652,11 +741,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 		if (node->key > 0)
 		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False", "NaN");
 		}
 		else
 		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False", "NaN");
 		}
 #endif // defined(printBranch)
 
@@ -678,7 +767,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	}
 
 	node->LB = node->objval;
-
+	node->numSamp = cell->k;
+	if (node->prevnode != NULL) fracLamda(cell, node);
 
 	// Check if the obtained solution from the solveNode is integer 
 	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
@@ -686,11 +776,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 		if (node->key > 0)
 		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.3f\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True",node->fracPi);
 		}
 		else
 		{
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True", "NaN");
 		}
 #endif // defined(printBranch)		
 		
@@ -715,11 +805,11 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #if defined(printBranch)
 	if (node->key > 0)
 	{
-		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False");
+		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.3f\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False",node->fracPi);
 	}
 	else
 	{
-		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False");
+		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False","NaN");
 	}
 #endif // defined(printBranch)
 

@@ -106,7 +106,7 @@ typedef struct{
 
 typedef struct {
 	double  alpha;                  /* scalar value for the righ-hand side */
-	dVector  beta;                   /* coefficients of the master problems's primal variables */
+	dVector  beta;                  /* coefficients of the master problems's primal variables */
 	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	iVector	iStar;					/* indices of maximal pi for each distint observation */
@@ -249,9 +249,18 @@ struct BnCnodeType {
 	int     varId;                       /* index of the variable that is disjuncted in this node */
 	int     stInt;                       /* index of the first integer variable */
 	int     edInt;                       /* index of the last integer variable */
+	int     parentnumSamp;               /* sample size of the parent */
+	int     numSamp;                     /* sample size of the current node */
+	double  fracPi;                      /* (\tilde(Pi)_{n-1} + \Delta\Pi_{n})/\Pi_{n} */
+	int     tightPi;                     /* number of pis used in tight cuts */
+	int     Lambdasize;                  /* total lamda size */
+	int     partightPi;                  /* number of pis used in tight cuts of th parent node */
+	int     parLambdasize;               /* total lamda size the parent node */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
 	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
 	dVector  * disjncsVal;               /* list of distjuctive cuts values on variables - it has upper and lower limits */
+	iVector	IncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts */
+	iVector	ParIncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts of the parent */
 	int numVar;                          /* number of variables */
 	int numRows;
 	double LB;                           /* lower bounds and upper bounds at this node */
@@ -361,6 +370,7 @@ void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 /* bnc.c */
 int sumintVec(iVector a, int len);
+bool isInVec(iVector vec, int len, int val);
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
 int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node);
@@ -376,5 +386,6 @@ int branchVar(struct BnCnodeType *node, int strategy);
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode);
 int getfirstLeaf(int depth);
 int getnodeIdx(int depth, int key, int isleft);
+void fracLamda(cellType *cell, struct BnCnodeType *node);
 
 #endif /* TWOSD_H_ */
