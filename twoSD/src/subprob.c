@@ -58,9 +58,9 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 	setIntParam(PARAM_PREIND, ON);
 	(*subprobTime) += ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
+	omega->obj[omegaIdx] = getObjective(subproblem->lp, PROB_LP);
+
 #ifdef STOCH_CHECK
-	double obj;
-	obj = getObjective(subproblem->lp, PROB_LP);
 	printf("Objective value of Subproblem  = %lf\n", obj);
 #endif
 

@@ -33,9 +33,12 @@ typedef struct{
 typedef struct {
 	int		numRV;
 	int 	cnt;
-	iVector	weights;                 /* number of times that an omega is observed */
+	iVector	weights;                 /* number of times that an _omega_ is observed */
 	dVector	probs;
 	dVector	*vals;
+
+	dVector piRatio;
+	dVector obj;
 } omegaType;
 
 /* The lambda structure stores some of the dual variable values from every distinct dual dVector obtained during the program.  Each dVector contains
@@ -76,8 +79,9 @@ typedef struct {
 	int		cnt;
 	iVector	omegaIdx;				/* Observation index in omegaType */
 	bool 	*newOmegaFlag;  		/* Flag indicates if the observation is encountered for the first time. */
-	iVector basisIdx;	    		/* Basis index in basisType */
+
 	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
+	iVector iStar;
 }sampleType;
 
 typedef struct {
@@ -122,7 +126,7 @@ oneProblem *newSubprob(oneProblem *sp);
 int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
-		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
+		dVector piCbarX, dVector Xvect, dVector observ, int obs, int oldWindow, double *piRatio, bool checkOldOnly);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,

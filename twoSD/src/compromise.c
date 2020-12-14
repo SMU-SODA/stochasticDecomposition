@@ -17,7 +17,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	dVector	coef, qsepvec;
 	iVector	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
-	char 	*q, tempName[NAMESIZE], batchNameSuffix[NAMESIZE];
+	char 	*q, tempName[2*NAMESIZE], batchNameSuffix[NAMESIZE];
 
 	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
 

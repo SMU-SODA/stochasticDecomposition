@@ -61,12 +61,16 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%lf", &config.R2);
 		else if (!(strcmp(line, "R3")))
 			fscanf(fptr, "%lf", &config.R3);
-		else if (!(strcmp(line, "DUAL_STABILITY")))
-			fscanf(fptr, "%d", &config.DUAL_STABILITY);
-		else if (!(strcmp(line, "PI_EVAL_START")))
-			fscanf(fptr, "%d", &config.PI_EVAL_START);
-		else if (!(strcmp(line, "PI_CYCLE")))
-			fscanf(fptr, "%d", &config.PI_CYCLE);
+
+		else if (!(strcmp(line, "CHECK_DUAL_STABILITY")))
+			fscanf(fptr, "%d", &config.CHECK_DUAL_STABILITY);
+		else if (!(strcmp(line, "DUAL_EVAL_START")))
+			fscanf(fptr, "%d", &config.DUAL_EVAL_START);
+		else if (!(strcmp(line, "PI_RATIO")))
+			fscanf(fptr, "%lf", &config.PI_RATIO);
+		else if (!(strcmp(line, "DUAL_WINDOW")))
+			fscanf(fptr, "%lf", &config.DUAL_WINDOW);
+
 		else if (!(strcmp(line, "PERCENT_PASS")))
 			fscanf(fptr, "%lf", &config.PERCENT_PASS);
 		else if (!(strcmp(line, "SCAN_LEN")))
@@ -258,8 +262,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->optFlag 			= false;
 
 	/* Dual stability test is disabled DUAL_STABILITY is false. */
-	if ( !config.DUAL_STABILITY ) {
-		cell->dualStableFlag = true;
+	if ( !config.CHECK_DUAL_STABILITY ) {
+		cell->dualStableFlag = false;
 		cell->pi_ratio = NULL;
 	}
 	else {
@@ -313,7 +317,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;
-	if ( config.DUAL_STABILITY )
+	if ( config.CHECK_DUAL_STABILITY )
 		cell->dualStableFlag 	= false;
 
 	copyVector(xk, cell->candidX, prob->num->cols, true);

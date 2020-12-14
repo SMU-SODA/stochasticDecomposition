@@ -48,9 +48,10 @@ typedef struct{
 	double	R2;
 	double	R3;
 
-	int		DUAL_STABILITY;		/* Determine whether dual stability is to be checked. */
-	int		PI_EVAL_START;		/* The minimum number of samples before dual stability test is conducted. */
-	int		PI_CYCLE;			/* Frequency of updating the dual stability ratio */
+	int		CHECK_DUAL_STABILITY;	/* Determine whether dual stability is to be checked. */
+	int		DUAL_EVAL_START;		/* The minimum number of samples before dual stability test is conducted. */
+	double	PI_RATIO;				/* Frequency of updating the dual stability ratio */
+	double  DUAL_WINDOW;
 
 	int		BOOTSTRAP_REP;		/* Number of boot-strap replications in full optimality test */
 	double	PERCENT_PASS;		/* percentage of bootstrap replications need to be satisfied */
@@ -185,9 +186,9 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
+		dVector Xvect, int numSamples, bool calcPiRatio, dVector pi_ratio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);

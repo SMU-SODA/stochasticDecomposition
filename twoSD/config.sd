@@ -2,7 +2,7 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 256
+MIN_ITER 1
 
 // Maximum number of iterations
 MAX_ITER   5000
@@ -105,15 +105,6 @@ R2 0.95
 // For updating the scaling factor.
 R3 2
 
-// Switch for dual stability test 
-DUAL_STABILITY	1
-
-// Number of iterations before checking new pis impact
-PI_EVAL_START 0
-
-// Number of iterations between evaluation of the impact of new dual vertex
-PI_CYCLE 1
-
 // Number of resampling to take when checking optimality.
 BOOTSTRAP_REP 50 
 
@@ -126,8 +117,8 @@ PRE_EPSILON 0.01
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
 // Suggested tolerance(EPSILON, SCAN_LEN) = loose (0.01, 128), nomimal (0.001, 256) and tight (0.0001, 512).
-EPSILON 0.001
-SCAN_LEN 256
+EPSILON 0.01
+SCAN_LEN 128
 
 // Number of replications
 MULTIPLE_REP 1
@@ -137,3 +128,16 @@ COMPROMISE_PROB	0
 
 // Number of observations added to the sample in each iteration (default is 1)
 SAMPLE_INCREMENT	1
+
+// ******* Dual stability ********
+// Switch for dual stability test 
+CHECK_DUAL_STABILITY	1
+
+// Number of iterations before checking new pis impact
+DUAL_EVAL_START 0
+
+// Ratio for establishing dual stability 
+PI_RATIO 0.95
+
+// Stability assessment window (e.g., first 90% of iterations vs. all iterations)
+DUAL_WINDOW 0.9

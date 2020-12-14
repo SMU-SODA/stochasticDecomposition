@@ -98,7 +98,7 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 				break;
 			}
 			case 'd': {
-				config.DUAL_STABILITY = atoi(argv[++i]);
+				config.CHECK_DUAL_STABILITY = atoi(argv[++i]);
 				break;
 			}
 			case 't': {
