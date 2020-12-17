@@ -16,7 +16,7 @@
 extern configType config;
 #define maxdnodes   1000
 #define IterStop
-#define useRound     //Use the rounding heuristic 
+#undef useRound     //Use the rounding heuristic 
 #undef  checkIncfrac //Check the fraction of old pis
 
 #undef writeprob
@@ -82,6 +82,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->parLambdasize = 0;
 	temp->tightPi = 0;
 	temp->Lambdasize = 0;
+	temp->parparinit = 0;
 	temp->fracPi = 0.0;
 	temp->isActive = true;
 	temp->isfathomed = false;
@@ -148,6 +149,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->parLambdasize = parent->Lambdasize;
 	temp->tightPi = 0;
 	temp->Lambdasize = 0;
+	temp->parparinit = parent->parLambdasize;
 	temp->fracPi = 0.0;
 	temp->isActive = true;
 	temp->isfathomed = false;
@@ -264,6 +266,7 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	temp->parLambdasize = node->parLambdasize;
 	temp->tightPi = node->tightPi;
 	temp->Lambdasize = node->Lambdasize;
+	temp->parparinit = node->parparinit;
 	temp->fracPi = node->fracPi;
 	temp->isActive = true;
 	temp->isfathomed = false;
@@ -306,7 +309,6 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 {
 	int 	status = 0, cnt;
 	dVector	lbounds, ubounds;
-
 
 	if (!(lbounds = arr_alloc(numCols, double)))
 		errMsg("Allocation", "addDisjnct", "lbounds", 0);
@@ -617,6 +619,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useRound)
 	struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
 	hrsticNode = copyNode(rootNode, 0.1);
+	hrsticNode->ishrstic = 1;
 	rootNode->nextnode = hrsticNode;
 	hrsticNode->prevnode = rootNode;
 	activeNode = hrsticNode;
@@ -757,6 +760,7 @@ void fracLamda(cellType *cell, struct BnCnodeType *node)
 	notnewLambda = 0;
 	totLambda = 0;
 
+#if defined(checkIncfrac)
 	for (i = 0; i < cell->cuts->cnt; i++)
 	{
 		for (j = 0; j < cell->cuts->vals[i]->numSamples; j++)
@@ -776,6 +780,7 @@ void fracLamda(cellType *cell, struct BnCnodeType *node)
 
 	node->tightPi = totLambda;
 	node->fracPi = ((double)notnewLambda) / ((double)totLambda);
+#endif // defined(checkIncfrac)
 
 }
 
@@ -785,6 +790,9 @@ or 1 when the node problem is fractional */
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode)
 {
 
+	//Adjust the basis init if the pi eval flag is on
+	if (node->key > 1 && config.Pi_EVAL_FLAG == 1)
+		cell->basis->init = max(0, node->parparinit - 1); else cell->basis->init = 0;
 
 	// Solve the node problem and obtain the solutions
 	if (solveNode(stoc,prob,cell, node, original->name)) {
@@ -819,10 +827,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	node->LB = node->objval;
 	node->numSamp = cell->k;
-#if defined(checkIncfrac)
-	if (node->key > 0) fracLamda(cell, node);
-#endif // defined(checkIncfrac)
-
+	fracLamda(cell, node);
 	// Check if the obtained solution from the solveNode is integer 
 	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
 	{
@@ -875,7 +880,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		node->isActive = false;
 		if (dnodes < maxdnodes) nodearr[dnodes++] = node;
 		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
-		currDepth = (*activeNode)->depth;
+		if (node->prevnode->depth == 0) currDepth = 0; else currDepth = (*activeNode)->depth;
 		return 0;
 	}
 

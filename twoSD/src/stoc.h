@@ -101,6 +101,7 @@ typedef struct {
 typedef struct {
 	int			basisDim;	/* The dimension of the basis matrix */
 	int			cnt;		/* Number of unique basis encountered by the algorithm */
+	int         init;       /* first index for evaluating the basis structure in the argmax */
 	int			rCodeLen;	/* Length of encoded row status */
 	int			cCodeLen;	/* Length of encoded column status */
 	bool		**obsFeasible;

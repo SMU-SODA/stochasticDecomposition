@@ -160,10 +160,10 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	int         ki;                  /* number of iterations cumulatively after callback*/
-	int         kii;                  /* number of iterations after callback*/
-	int         gk;                  /* number of GMI cuts */
-	int         mk;                  /* number of MIR cuts */
+	int         ki;                 /* number of iterations cumulatively after callback*/
+	int         kii;                /* number of iterations after callback*/
+	int         gk;                 /* number of GMI cuts */
+	int         mk;                 /* number of MIR cuts */
 	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
@@ -263,6 +263,7 @@ struct BnCnodeType {
 	int     Lambdasize;                  /* total lamda size */
 	int     partightPi;                  /* number of pis used in tight cuts of th parent node */
 	int     parLambdasize;               /* total lamda size the parent node */
+	int     parparinit;                  /* initial lambda loop for the next iterations from parent of the parent */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
 	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
 	dVector  * disjncsVal;               /* list of distjuctive cuts values on variables - it has upper and lower limits */

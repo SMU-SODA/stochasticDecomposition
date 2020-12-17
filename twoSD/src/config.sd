@@ -13,15 +13,15 @@ MAX_ITER_CLBK   1000
 // Maximum number of visited nodes 
 MAX_NODES   1000
 
-// Variable selection strategy
+// Branching strategies
 // 0: index based - 1: maximimum fractional val
 // strategies >= 1 currently tested for biary variables
-BRN_STR   1
+BRN_STR   0
 
-// Branching strategies
+// Variable selection strategy
 // 0: regular - 1: closest integer first - 2: minimum fractional val - 3: fractional val closer to 0.5
 // strategies >= 1 currently tested for biary variables
-VAR_STR   1
+VAR_STR   0
 
 // This flag is for evaluating the dual values in the argmax subroutine
 // If it is on only the recent duals from the parent node and new obs are 
