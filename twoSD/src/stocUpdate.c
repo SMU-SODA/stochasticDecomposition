@@ -189,7 +189,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 
 	*argmax = -DBL_MAX; maxCnt = 0;
 	/* Run through the list of basis to choose the one which provides the best lower bound */
-	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
+	for ( cnt = 0; cnt < basis->cnt; cnt++ ) { //create  a subset for current node
 		if ( basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
 			if ( basis->obsFeasible[cnt][obs] ) {
 				arg = 0.0;

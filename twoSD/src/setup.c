@@ -56,6 +56,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.VAR_STR);
 		else if (!(strcmp(line, "BRN_STR")))
 			fscanf(fptr, "%d", &config.BRN_STR);
+		else if (!(strcmp(line, "Pi_EVAL_FLAG")))
+			fscanf(fptr, "%d", &config.Pi_EVAL_FLAG);
 		else if (!(strcmp(line, "CUT_MULT")))
 			fscanf(fptr, "%d", &config.CUT_MULT);
 		else if (!(strcmp(line, "NodeNum")))

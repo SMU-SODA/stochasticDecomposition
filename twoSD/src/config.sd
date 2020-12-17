@@ -23,6 +23,11 @@ BRN_STR   1
 // strategies >= 1 currently tested for biary variables
 VAR_STR   1
 
+// This flag is for evaluating the dual values in the argmax subroutine
+// If it is on only the recent duals from the parent node and new obs are 
+// used for the argmax subroutine
+Pi_EVAL_FLAG  1
+
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 
@@ -139,7 +144,7 @@ R3 2
 MIN_X  0.3
 
 // Switch for dual stability test 
-DUAL_STABILITY	1
+DUAL_STABILITY	0
 
 // Number of iterations before checking new pis impact
 PI_EVAL_START 0
