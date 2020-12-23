@@ -11,6 +11,21 @@
 
 #include "stoc.h"
 
+ /* check if an integer is in an iVector */
+bool isInVec(iVector vec, int len, int val)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		if (vec[i] == -1) break;
+		if (vec[i] == val)
+		{
+			return true;
+		}
+
+	return false;
+}
+
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag) {
 	oneBasis *B;
@@ -188,27 +203,62 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
-	/* Run through the list of basis to choose the one which provides the best lower bound */
-	for ( cnt = 0; cnt < basis->cnt; cnt++ ) { //create  a subset for current node
-		if ( basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
-			if ( basis->obsFeasible[cnt][obs] ) {
-				arg = 0.0;
-				for ( c = 0; c <= basis->vals[cnt]->phiLength; c++ ) {
-					sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
-					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
-					if ( c == 0 )
-						multiplier = 1.0;
-					else
-						multiplier = observ[coord->rvOffset[2] + basis->vals[cnt]->omegaIdx[c]];
+	if (basis->basisEval == 1)
+	{
+		/* Run through the list of basis to choose the one which provides the best lower bound */
+		/* argmax procedure using the pi evaluation procedure */
+		for (cnt = 0; cnt < basis->cnt; cnt++) { //create  a subset for current node
+			if (basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp) {
+				if (basis->obsFeasible[cnt][obs]) {
+					arg = 0.0;
+					for (c = 0; c <= basis->vals[cnt]->phiLength; c++) {
+						sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
+						lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+						if (c == 0)
+							multiplier = 1.0;
+						else
+							multiplier = observ[coord->rvOffset[2] + basis->vals[cnt]->omegaIdx[c]];
 
-					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
-					arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+						/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+						arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
+						arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+					}
+
+					if (arg > (*argmax)) {
+						*argmax = arg;
+						maxCnt = cnt;
+					}
 				}
+			}
+		}
+	}
+	else
+	{
+		/* Run through the list of basis to choose the one which provides the best lower bound */
+		for (cnt = 0; cnt < basis->cnt; cnt++) { //create  a subset for current node
+			if (cnt > basis->init || isInVec(basis->iStar, basis->incumPicnt, cnt))
+			{
+				if (basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp) {
+					if (basis->obsFeasible[cnt][obs]) {
+						arg = 0.0;
+						for (c = 0; c <= basis->vals[cnt]->phiLength; c++) {
+							sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
+							lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+							if (c == 0)
+								multiplier = 1.0;
+							else
+								multiplier = observ[coord->rvOffset[2] + basis->vals[cnt]->omegaIdx[c]];
 
-				if (arg > (*argmax)) {
-					*argmax = arg;
-					maxCnt = cnt;
+							/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+							arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
+							arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+						}
+
+						if (arg > (*argmax)) {
+							*argmax = arg;
+							maxCnt = cnt;
+						}
+					}
 				}
 			}
 		}

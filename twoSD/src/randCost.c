@@ -276,6 +276,7 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 		errMsg("allocation", "newBasisType", "iStar", 0);
 	basis->cnt = 0;
 	basis->init = 0;
+	basis->basisEval = 0;
 	basis->basisDim = minimum(numRows, numCols);
 	basis->cCodeLen = ceil((double) numBits*numCols/ (double) wordLength);
 	basis->rCodeLen = ceil((double) numBits*numRows/(double) wordLength);

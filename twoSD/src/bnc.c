@@ -559,6 +559,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	int i, j;
 	int nodecnt = 0;
 	int maxcut = config.CUT_MULT * cell->master->mac + 3;
+	cell->basis->incumPicnt = maxcut;
+	cell->basis->basisEval = config.Pi_EVAL_FLAG;
 
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "nodearr", 0);

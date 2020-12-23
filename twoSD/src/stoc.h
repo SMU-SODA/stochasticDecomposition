@@ -107,6 +107,7 @@ typedef struct {
 	int			rCodeLen;	/* Length of encoded row status */
 	int			cCodeLen;	/* Length of encoded column status */
 	bool		**obsFeasible;
+	int         basisEval;  /* on if algo uses the basis evaluation */
 	oneBasis	**vals;		/* a structure for each basis */
 }basisType;
 
