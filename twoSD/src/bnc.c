@@ -28,6 +28,7 @@ oneProblem      *original;  // Info of the original problem
 struct BnCnodeType *bestNode; // best node that is found so far
 struct BnCnodeType **nodearr; // array of deactivated leaf nodes
 int dnodes;                   /* number of deactivated nodes */
+int maxcut;
 #define printBest
 #define testBnC
 #define printBranch
@@ -97,12 +98,11 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-	int maxcut = config.CUT_MULT * orig->mac + 3;
+#if defined(checkIncfrac)
 	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-#if defined(checkIncfrac)
 	for (i = 0; i < maxcut*config.MAX_ITER; i++)
 	{
 		temp->IncumbiStar[i] = -1;
@@ -157,12 +157,11 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
-	int maxcut = config.CUT_MULT * parent->numVar + 3;
+#if defined(checkIncfrac)
 	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-#if defined(checkIncfrac)
 	for (i = 0; i < maxcut*config.MAX_ITER; i++)
 	{
 		temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
@@ -276,12 +275,11 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-	int maxcut = config.CUT_MULT * node->numVar + 3;
+#if defined(checkIncfrac)
 	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-#if defined(checkIncfrac)
 	for (i = 0; i < maxcut*config.MAX_ITER; i++)
 	{
 		temp->ParIncumbiStar[i] = node->ParIncumbiStar[i];
@@ -560,6 +558,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	int i, j;
 	int nodecnt = 0;
+	int maxcut = config.CUT_MULT * cell->master->mac + 3;
 
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "nodearr", 0);
@@ -761,20 +760,17 @@ void fracLamda(cellType *cell, struct BnCnodeType *node)
 	totLambda = 0;
 
 #if defined(checkIncfrac)
-	for (i = 0; i < cell->cuts->cnt; i++)
+	for (j = 0; j < cell->cuts->vals[cell->iCutIdx]->numSamples; j++)
 	{
-		for (j = 0; j < cell->cuts->vals[i]->numSamples; j++)
+		if (cell->cuts->vals[iCutIdx]->iStar[j] != -1)
 		{
-			if (cell->cuts->vals[i]->iStar[j] != -1)
+			node->IncumbiStar[totLambda] = cell->cuts->vals[i]->iStar[j];
+			if (node->IncumbiStar[totLambda] < node->parLambdasize)
 			{
-				node->IncumbiStar[totLambda] = cell->cuts->vals[i]->iStar[j];
-				if (node->IncumbiStar[totLambda] < node->parLambdasize)
-				{
-					if (!isInVec(node->ParIncumbiStar, node->parentnumSamp, node->ParIncumbiStar[j]))
-						notnewLambda += 1;
-				}
-				totLambda += 1;
+				if (!isInVec(node->ParIncumbiStar, node->parentnumSamp, node->ParIncumbiStar[j]))
+					notnewLambda += 1;
 			}
+			totLambda += 1;
 		}
 	}
 

@@ -16,6 +16,8 @@
 extern cString outputDir;
 #endif
 
+extern configType config;
+
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim) {
 	dVector	basicCost, costVector, tempPsiRow;
 	iVector 	basisHead, phiHead;
@@ -269,6 +271,9 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
 	if ( !(basis->obsFeasible = (bool **) arr_alloc(numIter, bool *)))
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
+	int maxcut = config.CUT_MULT * numCols + 3;
+	if (!(basis->iStar = arr_alloc(maxcut*config.MAX_ITER, int)))
+		errMsg("allocation", "newBasisType", "iStar", 0);
 	basis->cnt = 0;
 	basis->init = 0;
 	basis->basisDim = minimum(numRows, numCols);
