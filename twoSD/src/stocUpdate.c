@@ -203,7 +203,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
-	if (basis->basisEval == 1)
+	if (basis->basisEval == 0)
 	{
 		/* Run through the list of basis to choose the one which provides the best lower bound */
 		/* argmax procedure using the pi evaluation procedure */

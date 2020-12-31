@@ -357,6 +357,21 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	int 	status;
 	cell->ki = 0;
 
+	// If the pi evaluation is active the iStar data structure of the basis should be updated 
+	// by the incumbent of the parent of the current node
+	if (config.Pi_EVAL_FLAG == 1)
+	{
+		for (int i = 0; i < cell->basis->incumPicnt; i++)
+		{
+			cell->basis->iStar[i] = -1;
+		}
+		cell->basis->incumPicnt = node->partightPi;
+		for (int i = 0; i < cell->basis->incumPicnt; i++)
+		{
+			cell->basis->iStar[i] = node->ParIncumbiStar[i];
+		}
+	}
+
 	if (true)
 	{
 
@@ -761,24 +776,23 @@ void fracLamda(cellType *cell, struct BnCnodeType *node)
 	notnewLambda = 0;
 	totLambda = 0;
 
-#if defined(checkIncfrac)
-	for (j = 0; j < cell->cuts->vals[cell->iCutIdx]->numSamples; j++)
+	if (cell->basis->basisEval == 1)
 	{
-		if (cell->cuts->vals[iCutIdx]->iStar[j] != -1)
+		for (j = 0; j < cell->cuts->vals[cell->iCutIdx]->numSamples; j++)
 		{
-			node->IncumbiStar[totLambda] = cell->cuts->vals[i]->iStar[j];
-			if (node->IncumbiStar[totLambda] < node->parLambdasize)
+			if (cell->cuts->vals[cell->iCutIdx]->iStar[j] != -1)
 			{
-				if (!isInVec(node->ParIncumbiStar, node->parentnumSamp, node->ParIncumbiStar[j]))
-					notnewLambda += 1;
+				node->IncumbiStar[totLambda] = cell->cuts->vals[cell->iCutIdx]->iStar[j];
+				totLambda += 1;
+				notnewLambda += 1;
 			}
-			totLambda += 1;
 		}
 	}
 
+
 	node->tightPi = totLambda;
 	node->fracPi = ((double)notnewLambda) / ((double)totLambda);
-#endif // defined(checkIncfrac)
+
 
 }
 
@@ -826,6 +840,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	node->LB = node->objval;
 	node->numSamp = cell->k;
 	fracLamda(cell, node);
+
 	// Check if the obtained solution from the solveNode is integer 
 	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
 	{
