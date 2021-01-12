@@ -23,11 +23,13 @@ extern configType config;
 
 int currKey;
 int currDepth;
-double GlobeUB;             // Global upper bound
-oneProblem      *original;  // Info of the original problem 
+double GlobeUB;               // Global upper bound
+oneProblem      *original;    // Info of the original problem 
 struct BnCnodeType *bestNode; // best node that is found so far
 struct BnCnodeType **nodearr; // array of deactivated leaf nodes
-int dnodes;                   /* number of deactivated nodes */
+struct BnCnodeType **inodearr;// array of integer feasible leaf nodes
+int dnodes;                   // number of deactivated nodes 
+int inodes;                   // number of integer feasible nodes 
 int maxcut;
 #define printBest
 #define testBnC
@@ -301,6 +303,7 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	return temp;
 }//End copyNode()
 
+
  /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
 int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node)
@@ -566,7 +569,6 @@ int branchVar(struct BnCnodeType *node, int strategy)
 
 }
 
-
 /* branch and bound algorithm */
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB)
 {
@@ -579,7 +581,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "nodearr", 0);
+	if (!(inodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
+		errMsg("allocation", "branchbound", "inodearr", 0);
 	dnodes = -1;
+	inodes = -1;
 
 	/* set of LB and UB */
 	GlobeUB = UB;
@@ -659,20 +664,48 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		currentNode = activeNode;
 		nodecnt++;
 
-		for (int cnt = 0; cnt < dnodes; cnt++)
+		/*
+		Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better
+		*/
+		if (dnodes > 0)
 		{
-			double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
-			if (est < cell->incumbEst)
+			for (int cnt = 0; cnt < dnodes; cnt++)
 			{
-				nodearr[cnt]->isActive = true;
-				for (int n = cnt; n < dnodes-1; n++)
+				double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, nodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
+				if (est < cell->incumbEst)
 				{
-					nodearr[n] = nodearr[n + 1];
+					nodearr[cnt]->isActive = true;
+					for (int n = cnt; n < dnodes - 1; n++)
+					{
+						nodearr[n] = nodearr[n + 1];
+					}
+					nodearr[dnodes] = NULL;
+					dnodes -= 1;
 				}
-				nodearr[dnodes] = NULL;
-				dnodes -= 1;
 			}
 		}
+
+
+		/*
+		Loop for revisiting the integer feasible nodes to update the current best
+		*/
+		if (inodes > 0)
+		{
+			double NewUB = INFINITY;
+			int    newUBidx = 0;
+			for (int cnt = 0; cnt < inodes; cnt++)
+			{
+				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
+				if (est < NewUB)
+				{
+					NewUB = est;
+					newUBidx = cnt;
+				}
+			}
+			GlobeUB = NewUB;
+			bestNode = inodearr[newUBidx];
+		}
+
 	}
 
 	//Replace the best node to the incumbent for the out of sample testing
@@ -765,6 +798,7 @@ int getnodeIdx(int depth, int key, int isleft)
 
 	return out;
 }
+
 
 /* this function returns the fraction of lamda values are used from the earlier iterations or
 from the tight lambdas of the parent and new lamdas discovered in the current node */
@@ -864,7 +898,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 		else
 		{
-			if (dnodes < maxdnodes) nodearr[dnodes++] = node;
+			if (inodes < maxdnodes) inodearr[inodes++] = node;
 		}
 		node->UB = node->objval;
 		*activeNode = nextNode(node);

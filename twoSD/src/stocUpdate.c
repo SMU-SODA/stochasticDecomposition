@@ -132,6 +132,7 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	return basis->cnt++;
 }//End stochasticUpdates()
 
+
 /*This function loops through all the dual dVectors found so far and returns the index of the one which satisfies the expression:
  * 				argmax { Pi x (R - T x X) | all Pi }
  * where X, R, and T are given.  It is calculated in this form:

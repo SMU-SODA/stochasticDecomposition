@@ -23,7 +23,7 @@
 #include "prob.h"
 #include "stoc.h"
 
-#define experiment
+#undef experiment
 
 #define TRIVIAL 0
 #define NONTRIVIAL 1
@@ -289,7 +289,6 @@ struct BnCnodeType {
 };
 
 
-
 ////// Subroutines
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
@@ -297,8 +296,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
 int LPtoMILP(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
-int mainloopSDCell_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
-int mainloopSDCellQP_callback(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell);
 void printNodeInfo(nodeInfo    *nodeSol, int Nodecnt);
