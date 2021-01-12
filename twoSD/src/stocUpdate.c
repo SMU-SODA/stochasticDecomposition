@@ -11,20 +11,6 @@
 
 #include "stoc.h"
 
- /* check if an integer is in an iVector */
-bool isInVec(iVector vec, int len, int val)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		if (vec[i] == -1) break;
-		if (vec[i] == val)
-		{
-			return true;
-		}
-
-	return false;
-}
 
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag) {

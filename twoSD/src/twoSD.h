@@ -23,6 +23,8 @@
 #include "prob.h"
 #include "stoc.h"
 
+#define experiment
+
 #define TRIVIAL 0
 #define NONTRIVIAL 1
 

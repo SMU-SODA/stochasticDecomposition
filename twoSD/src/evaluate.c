@@ -80,6 +80,12 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 			}
 		}
 
+#if defined(experiment)
+		char fname[NAMESIZE];
+		sprintf(fname, "%s_%d.lp", "Eval", cnt);
+		writeProblem(subprob->lp, fname);
+#endif // defined(experiment)
+
 		/* use subproblem objective and compute evaluation statistics */
 		obj = getObjective(subprob->lp, PROB_LP);
 

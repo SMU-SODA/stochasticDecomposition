@@ -26,7 +26,7 @@ VAR_STR   0
 // This flag is for evaluating the dual values in the argmax subroutine
 // If it is on only the recent duals from the parent node and new obs are 
 // used for the argmax subroutine
-Pi_EVAL_FLAG  1
+Pi_EVAL_FLAG  0
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
@@ -46,7 +46,7 @@ MIN_QUAD_SCALAR 0.001
 SMIP_SOLVER 2
 
 // Number of nodes to save sol info 
-NodeNum 500
+NodeNum 100
 
 // Type of algoithm to be employed 0 - Lshped and 1 - scenario decomposition
 SMIP_ALGO 0
@@ -90,10 +90,10 @@ RUN_SEED    3735836402047426
 EVAL_FLAG 1
 
 // Solution tolerance for deciding the usage of mean solution.
-EVAL_MIN_ITER 250
+EVAL_MIN_ITER 100
 
 // Obj. eval. is accurate to within this much, w/95% confidence
-EVAL_ERROR 0.01
+EVAL_ERROR 2.0
 
 // Random number seed for resampling omegas during evaluation
 EVAL_SEED	4317459304174907
