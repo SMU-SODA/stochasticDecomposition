@@ -13,6 +13,7 @@
 
 #include "twoSD.h"
 
+
 extern configType config;
 #define maxdnodes   1000
 #define IterStop
@@ -35,7 +36,7 @@ int maxcut;
 #define testBnC
 #define printBranch
 #undef depthtest
-#undef printSol
+
 
 int sumintVec(iVector a, int len)
 {
@@ -340,6 +341,13 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 		}
 	}
 
+#if defined(BNC_CHECK)
+	printf("\nlower bounds:\n");
+	printVector(cell->master->bdl, numCols, NULL);
+	printf("\nupper bounds:\n");
+	printVector(cell->master->bdu, numCols, NULL);
+#endif // defined(BNC_CHECK)
+
 	
 	if (changeQPbds(cell->master->lp, numCols, lbounds, ubounds, node->vars, 0)) {
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
@@ -359,6 +367,14 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 {
 	int 	status;
 	cell->ki = 0;
+	
+#if defined(BNC_CHECK)
+	printf("\nbefore SD: %-10s%-5d%-10s%-5d%-5s%-5d%-10s%-5d%-10s%-5d","node id:",
+		node->key,"node depth:",node->depth,"numVar:",node->numVar,"node->edInt:",node->edInt,"master->mac:",cell->master->mac);
+	printf("\ndisjuction:\n");
+	printIntvec(node->disjncs, node->numVar-1, NULL);
+#endif // defined(BNC_CHECK)
+
 
 	// If the pi evaluation is active the iStar data structure of the basis should be updated 
 	// by the incumbent of the parent of the current node
@@ -382,8 +398,8 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 
 		////Initializing candidX, candidEst, incumbEst and IncumbX
-		copyVector(node->vars, cell->incumbX, node->edInt, true);
-		copyVector(cell->incumbX, cell->candidX, node->edInt, true);
+		copyVector(node->vars, cell->incumbX, node->numVar, true);
+		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
 		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 		cell->incumbEst = cell->candidEst;
 		node->objval = cell->incumbEst;
@@ -402,9 +418,12 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 	}
 
-#if defined(printSol)
-	printVector(node->vars, node->edInt, NULL);
-#endif // defined(printSol)
+#if defined(BNC_CHECK)
+	printf("\ninit var:\n");
+	printVector(node->vars, node->numVar, NULL);
+	printf("\ninit incumbX:\n");
+	printVector(cell->incumbX, node->numVar, NULL);
+#endif // defined(BNC_CHECK)
 	
 	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
 	{
@@ -413,9 +432,27 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			return 1;
 		}
 
-		copyVector(cell->incumbX, node->vars, node->edInt, true);
+#if defined(BNC_CHECK)
+		printf("\nafter SD:%-10s%-10.4f%-10s%-10.4f","incumbEst:",cell->incumbEst,"candidEst:",cell->candidEst);
+		printf("\nincumbX SD:\n");
+		printVector(cell->incumbX, cell->master->mac, NULL);
+		printf("\ncandidX SD:\n");
+		printVector(cell->candidX, cell->master->mac, NULL);
+#endif // defined(BNC_CHECK)
+
+		copyVector(cell->incumbX, node->vars, node->numVar, true);
 		node->objval = cell->incumbEst;
 		cell->optFlag = false;
+
+#if defined(BNC_CHECK)
+		cString nullString = NULL;
+		printf("\nafter SD var:\n");
+		printVector(node->vars, node->numVar, NULL);
+		/*nullString = (cString)arr_alloc(2 * BLOCKSIZE, char);
+		printf(">>>press a key to continue...");
+		scanf("%s", (*nullString));*/
+#endif // defined(BNC_CHECK)
+
 	}
 	else
 	{
@@ -423,10 +460,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 		return 0;
 	}
-
-#if defined(printSol)
-	printVector(node->vars, node->edInt, NULL);
-#endif // defined(printSol)
 
 	if (cell->ki > 600) printf("\n");;
 	printf("SD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n", cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
