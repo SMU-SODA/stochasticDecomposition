@@ -84,6 +84,7 @@ typedef struct{
 
 	int		EVAL_FLAG;
 	int		Pi_EVAL_FLAG;       /* If this flag is on only the recent duals will be evaluated in the B&B tree */
+	int     HEURST_FLAG;        /* using heuristic in bnc */
 	int		NUM_EVALS;
 	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;

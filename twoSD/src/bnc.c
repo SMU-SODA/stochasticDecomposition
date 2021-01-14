@@ -672,15 +672,16 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	currentNode = rootNode;
 	currDepth = -1;
 
-#if defined(useRound)
-	struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
-	hrsticNode = copyNode(rootNode, 0.1);
-	hrsticNode->ishrstic = 1;
-	rootNode->nextnode = hrsticNode;
-	hrsticNode->prevnode = rootNode;
-	activeNode = hrsticNode;
-	currentNode = hrsticNode;
-#endif // defined(useRound)
+	if (config.HEURST_FLAG == 1)
+	{
+		struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
+		hrsticNode = copyNode(rootNode, 0.1);
+		hrsticNode->ishrstic = 1;
+		rootNode->nextnode = hrsticNode;
+		hrsticNode->prevnode = rootNode;
+		activeNode = hrsticNode;
+		currentNode = hrsticNode;
+	}
 
 	while (activeNode != NULL)
 	{

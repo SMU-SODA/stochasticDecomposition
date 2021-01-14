@@ -28,6 +28,9 @@ VAR_STR   0
 // used for the argmax subroutine
 Pi_EVAL_FLAG  0
 
+// Flag of using heuristic for the intial upper bound estimate in bnc
+HEURST_FLAG  0
+
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
 MASTER_TYPE 5
 

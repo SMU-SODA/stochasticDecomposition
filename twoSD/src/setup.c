@@ -54,6 +54,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.MASTER_TYPE);
 		else if (!(strcmp(line, "VAR_STR")))
 			fscanf(fptr, "%d", &config.VAR_STR);
+		else if (!(strcmp(line, "HEURST_FLAG")))
+			fscanf(fptr, "%d", &config.HEURST_FLAG);
 		else if (!(strcmp(line, "BRN_STR")))
 			fscanf(fptr, "%d", &config.BRN_STR);
 		else if (!(strcmp(line, "Pi_EVAL_FLAG")))
