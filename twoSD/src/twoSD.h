@@ -29,7 +29,7 @@
 #define NONTRIVIAL 1
 
 #undef ALGO_CHECK
-#define BNC_CHECK
+#undef BNC_CHECK
 #undef BATCH_CHECK
 
 #undef LPMIP_PRINT

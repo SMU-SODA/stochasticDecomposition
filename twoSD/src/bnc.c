@@ -18,7 +18,6 @@ extern configType config;
 #define maxdnodes   1000
 #define IterStop
 #undef useRound     //Use the rounding heuristic 
-#undef  checkIncfrac //Check the fraction of old pis
 
 #undef writeprob
 
@@ -101,17 +100,18 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-#if defined(checkIncfrac)
-	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	for (i = 0; i < maxcut*config.MAX_ITER; i++)
+	if (config.Pi_EVAL_FLAG == 1)
 	{
-		temp->IncumbiStar[i] = -1;
-		temp->ParIncumbiStar[i] = -1;
+		if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		for (i = 0; i < maxcut*config.MAX_ITER; i++)
+		{
+			temp->IncumbiStar[i] = -1;
+			temp->ParIncumbiStar[i] = -1;
+		}
 	}
-#endif // defined(checkIncfrac)
 	for (int v = 0; v < temp->numVar + 1; v++)
 		temp->vars[v] = 0.0;
 	for (i = 0; i < temp->numVar; i++)
@@ -160,17 +160,18 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
-#if defined(checkIncfrac)
-	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	for (i = 0; i < maxcut*config.MAX_ITER; i++)
+	if (config.Pi_EVAL_FLAG == 1)
 	{
-		temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
-		temp->IncumbiStar[i] = -1;
+		if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		for (i = 0; i < maxcut*config.MAX_ITER; i++)
+		{
+			temp->IncumbiStar[i] = -1;
+			temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
+		}
 	}
-#endif // defined(checkIncfrac)
 	for (i = 0; i < parent->numVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
@@ -278,17 +279,18 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-#if defined(checkIncfrac)
-	if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newNode", "temp->vars", 0);
-	for (i = 0; i < maxcut*config.MAX_ITER; i++)
+	if (config.Pi_EVAL_FLAG == 1)
 	{
-		temp->ParIncumbiStar[i] = node->ParIncumbiStar[i];
-		temp->IncumbiStar[i] = node->IncumbiStar[i];
+		if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+			errMsg("allocation", "newNode", "temp->vars", 0);
+		for (i = 0; i < maxcut*config.MAX_ITER; i++)
+		{
+			temp->ParIncumbiStar[i] = node->ParIncumbiStar[i];
+			temp->IncumbiStar[i] = node->IncumbiStar[i];
+		}
 	}
-#endif // defined(checkIncfrac)
 	for (i = 0; i < node->numVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
@@ -858,7 +860,7 @@ void fracLamda(cellType *cell, struct BnCnodeType *node)
 
 
 	node->tightPi = totLambda;
-	node->fracPi = ((double)notnewLambda) / ((double)totLambda);
+	node->fracPi = ((double)totLambda) / ((double)node->Lambdasize);
 
 
 }
@@ -871,7 +873,20 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	//Adjust the basis init if the pi eval flag is on
 	if (node->key > 1 && config.Pi_EVAL_FLAG == 1)
-		cell->basis->init = max(0, node->parparinit - 1); else cell->basis->init = 0;
+	{
+		cell->basis->init = cell->basis->cnt;
+		for (int b = 0; b < maxcut*config.MAX_ITER; b++)
+		{
+			if (b < node->partightPi)
+			{
+				cell->basis->iStar = node->ParIncumbiStar[b];
+			}
+			else
+			{
+				cell->basis->iStar[b] = -1;
+			}
+		}
+	}
 
 	// Solve the node problem and obtain the solutions
 	if (solveNode(stoc,prob,cell, node, original->name)) {
