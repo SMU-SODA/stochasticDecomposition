@@ -163,6 +163,23 @@ typedef struct {
 }nodeInfo;
 
 typedef struct {
+	cString probName;                /* problem name */
+									 /* EXperiment results */
+	int         ssize;
+	double      ssize_var;
+	double      ssize_stdev;
+	double      LBest;
+	double      LBstdev;
+	double      LBvar;
+	double      UBest;
+	double      UBstdev;
+	double      UBvar;
+	double      tot_time;
+	double      tot_time_var;
+	double      tot_time_stdev;
+}expSummary;
+
+typedef struct {
 	int         k;                  /* number of iterations */
 	int         ki;                 /* number of iterations cumulatively after callback*/
 	int         kii;                /* number of iterations after callback*/
@@ -374,8 +391,14 @@ batchSummary *newBatchSummary(probType *prob, int numBatch);
 void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
-int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
+int evaluate(FILE *solnSumm,FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+
+/* inout.c */
+void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
+void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
+void printOptimizationSummary(cellType *cell);
+void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 /* bnc.c */
 int sumintVec(iVector a, int len);

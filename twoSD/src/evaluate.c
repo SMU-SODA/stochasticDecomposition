@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect) {
+int evaluate(FILE *solnSumm, FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect) {
 	dVector 	observ, rhs, cost, costTemp;
 	iVector   objxIdx;
 	double 	obj, mean, variance, stdev, temp;
@@ -112,6 +112,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 	if(soln)
 	writeEvaluationSummary(soln, mean, stdev, cnt);
 	writeEvaluationSummary(stdout, mean, stdev, cnt);
+	if(solnSumm != NULL) writeEvaluationStatistics(solnSumm, mean, stdev, cnt);
 
 	mem_free(observ); mem_free(rhs);  mem_free(objxIdx); mem_free(cost);
 	return 0;

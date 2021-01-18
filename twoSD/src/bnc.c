@@ -16,8 +16,9 @@
 
 extern configType config;
 #define maxdnodes   1000
-#define IterStop
-#undef useRound     //Use the rounding heuristic 
+#define useDNODE 
+#define useINODE
+
 
 #undef writeprob
 
@@ -378,21 +379,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 #endif // defined(BNC_CHECK)
 
 
-	// If the pi evaluation is active the iStar data structure of the basis should be updated 
-	// by the incumbent of the parent of the current node
-	if (config.Pi_EVAL_FLAG == 1)
-	{
-		for (int i = 0; i < cell->basis->incumPicnt; i++)
-		{
-			cell->basis->iStar[i] = -1;
-		}
-		cell->basis->incumPicnt = node->partightPi;
-		for (int i = 0; i < cell->basis->incumPicnt; i++)
-		{
-			cell->basis->iStar[i] = node->ParIncumbiStar[i];
-		}
-	}
-
 	if (true)
 	{
 
@@ -402,8 +388,10 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		////Initializing candidX, candidEst, incumbEst and IncumbX
 		copyVector(node->vars, cell->incumbX, node->numVar, true);
 		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
-		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
-		cell->incumbEst = cell->candidEst;
+		//cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+		//cell->incumbEst = cell->candidEst;
+		cell->candidEst = INFINITY;
+		cell->incumbEst = INFINITY;
 		node->objval = cell->incumbEst;
 
 		// Setup the QP master problem 
@@ -427,7 +415,8 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(cell->incumbX, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 	
-	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
+	//if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
+	if (true)
 	{
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
@@ -614,10 +603,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	cell->basis->incumPicnt = maxcut;
 	cell->basis->basisEval = config.Pi_EVAL_FLAG;
 
+#if defined(useDNODE)
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "nodearr", 0);
+#endif // defined(useDNODE)
+#if defined(useINODE)
 	if (!(inodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
 		errMsg("allocation", "branchbound", "inodearr", 0);
+#endif // defined(useDNODE)
 	dnodes = -1;
 	inodes = -1;
 
@@ -691,10 +684,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		if (activeNode == NULL) break;
 		if (activeNode->prevnode == NULL && nodecnt > 1) break;
 
-#if defined(IterStop)
-		if (cell->k == config.MAX_ITER) break;
-#endif // defined(StopIter)
-
+		//if (cell->k == config.MAX_ITER) break;
 		if (nodecnt > config.MAX_NODES) break;
 
 		currentNode = activeNode;
@@ -703,6 +693,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		/*
 		Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better
 		*/
+#if defined(useDNODE)
 		if (dnodes > 0)
 		{
 			for (int cnt = 0; cnt < dnodes; cnt++)
@@ -720,11 +711,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 				}
 			}
 		}
+#endif // defined(useDNODE)
+
 
 
 		/*
 		Loop for revisiting the integer feasible nodes to update the current best
 		*/
+#if defined(useINODE)
 		if (inodes > 0)
 		{
 			double NewUB = INFINITY;
@@ -732,7 +726,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			for (int cnt = 0; cnt < inodes; cnt++)
 			{
 				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est < NewUB)
+				if (est < NewUB && est > GlobeUB - abs(GlobeUB))
 				{
 					NewUB = est;
 					newUBidx = cnt;
@@ -741,6 +735,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			GlobeUB = NewUB;
 			bestNode = inodearr[newUBidx];
 		}
+#endif // defined(useINODE)
+
 
 	}
 
@@ -759,12 +755,12 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBest)
 
-	freeOneProblem(original);
+	//freeOneProblem(original);
 	freeNodes(rootNode);
 	return 0;
 
 TERMINATE:
-	freeOneProblem(original);
+	//freeOneProblem(original);
 	freeNodes(rootNode);
 	return 1;
 }
@@ -772,6 +768,7 @@ TERMINATE:
 /* Return the previous active node */
 struct BnCnodeType *nextNode(struct BnCnodeType *node)
 {
+
 	struct BnCnodeType *temp = NULL;
 	temp = node;
 	bool contin = true;
@@ -947,10 +944,12 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 		else
 		{
+#if defined(useINODE)
 			if (inodes < maxdnodes) inodearr[inodes++] = node;
+#endif // defined(useINODE)
 		}
 		node->UB = node->objval;
-		*activeNode = nextNode(node);
+		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
 		currDepth = (*activeNode)->depth;
 
 		return 0;
@@ -974,7 +973,9 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	if (node->objval > GlobeUB)
 	{
 		node->isActive = false;
+#if defined(useDNODE)
 		if (dnodes < maxdnodes) nodearr[dnodes++] = node;
+#endif // defined(useINODE)
 		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
 		if (node->prevnode->depth == 0) currDepth = 0; else currDepth = (*activeNode)->depth;
 		return 0;

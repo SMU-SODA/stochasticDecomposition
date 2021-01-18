@@ -26,7 +26,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	cellType *cell = NULL;
 	dVector	lb = NULL;
 	batchSummary *batch = NULL;
-	FILE 	*sFile = NULL, *iFile = NULL;
+	FILE 	*sFile = NULL, *iFile = NULL, *dFile = NULL;
 
 	/* open solver environment */
 	openSolver();
@@ -48,6 +48,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 
 
 	printf("Starting two-stage stochastic decomposition.\n");
+	dFile = openFile(outputDir, "detailedResults.csv", "w");
 	sFile = openFile(outputDir, "results.dat", "w");
 	iFile = openFile(outputDir, "incumb.dat", "w");
 	printDecomposeSummary(sFile, probName, tim, prob);
@@ -93,10 +94,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		if (rep == 0 ) {
 			writeOptimizationSummary(sFile, iFile, prob, cell, true);
 			writeOptimizationSummary(stdout, NULL, prob, cell, true);
+			writeOptimizationStatistics(sFile, iFile, prob, cell, rep);
 		}
 		else {
 			writeOptimizationSummary(sFile, iFile, prob, cell, false);
 			writeOptimizationSummary(stdout, NULL, prob, cell, false);
+			writeOptimizationStatistics(sFile, iFile, prob, cell, rep);
 		}
 
 		/* evaluate the optimal solution*/
@@ -104,7 +107,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		{
 			//LB estimate: CTx (dot product) + height of the cut(subroutine: )
 			//cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
-			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
+			evaluate(dFile, sFile, stoc, prob, cell->subprob, cell->incumbX);
 		}
 			
 
@@ -126,12 +129,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		fprintf(sFile, "\n====================================================================================================================================\n");
 		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
 		/* Evaluate the compromise solution */
-		evaluate(sFile, stoc, prob, cell->subprob, batch->compromiseX);
+		evaluate(NULL, sFile, stoc, prob, cell->subprob, batch->compromiseX);
 
 		fprintf(sFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		/* Evaluate the average solution */
-		evaluate(sFile, stoc, prob, cell->subprob, batch->avgX);
+		evaluate(NULL,NULL, stoc, prob, cell->subprob, batch->avgX);
 	}
 
 	fclose(sFile); fclose(iFile);
@@ -285,7 +288,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	//0b - xLP is phase1 solution -> evaluate xLP (UB) 
 	/* Evaluate the compromise solution */
 	printf("LB estimate: %0.4f\n", cell->incumbEst);
-	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
+	evaluate(NULL,NULL, stoc, prob, cell->subprob, cell->candidX);
 	
 
 	//1a - Change the master to MILP no callback solve to optimality - > xIP (LB)
@@ -309,7 +312,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 	printf("\n\nLP estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
-	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
+	evaluate(NULL,NULL, stoc, prob, cell->subprob, cell->candidX);
 
 	/* Turn the clone problem to MILP */
 	LPtoMILP(stoc, prob, cell);
@@ -329,7 +332,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 	printf("\n\nMILP estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
-	evaluate(NULL, stoc, prob, cell->subprob, cell->candidX);
+	evaluate(NULL,NULL, stoc, prob, cell->subprob, cell->candidX);
 
 	//summary for the second one 
 

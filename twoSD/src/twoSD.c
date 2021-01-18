@@ -23,6 +23,8 @@ int main (int argc, char *argv[]) {
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
+	expSummary * summary = NULL;
+	FILE 	*resFile = NULL;
 	
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
@@ -30,6 +32,7 @@ int main (int argc, char *argv[]) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
+
 
 	/* read problem information */
 	parseCmdLine(argc, argv, &probName, &inputDir);

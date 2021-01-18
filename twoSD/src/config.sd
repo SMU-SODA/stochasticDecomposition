@@ -2,16 +2,16 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 10
+MIN_ITER 5
 
 // Maximum number of iterations
-MAX_ITER   100000
+MAX_ITER   2000
 
 // Maximum number of iterations in each node
 MAX_ITER_CLBK   1000
 
 // Maximum number of visited nodes 
-MAX_NODES   1000
+MAX_NODES   50
 
 // Branching strategies
 // 0: index based - 1: maximimum fractional val
@@ -171,7 +171,7 @@ EPSILON 0.01
 SCAN_LEN 128
 
 // Number of replications
-MULTIPLE_REP 0
+MULTIPLE_REP 30
 
 // Create compromise problem
 COMPROMISE_PROB	0
