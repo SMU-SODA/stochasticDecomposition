@@ -94,13 +94,12 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		if (rep == 0 ) {
 			writeOptimizationSummary(sFile, iFile, prob, cell, true);
 			writeOptimizationSummary(stdout, NULL, prob, cell, true);
-			writeOptimizationStatistics(sFile, iFile, prob, cell, rep);
 		}
 		else {
 			writeOptimizationSummary(sFile, iFile, prob, cell, false);
 			writeOptimizationSummary(stdout, NULL, prob, cell, false);
-			writeOptimizationStatistics(sFile, iFile, prob, cell, rep);
 		}
+		writeOptimizationStatistics(dFile, iFile, prob, cell, rep);
 
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
@@ -109,6 +108,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			//cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
 			evaluate(dFile, sFile, stoc, prob, cell->subprob, cell->incumbX);
 		}
+		else
+			fprintf(dFile, "\n");
 			
 
 		/* Save the batch details and build the compromise problem. */
@@ -137,7 +138,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		evaluate(NULL,NULL, stoc, prob, cell->subprob, batch->avgX);
 	}
 
-	fclose(sFile); fclose(iFile);
+	fclose(sFile); fclose(iFile); fclose(dFile);
 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */

@@ -17,11 +17,11 @@ void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cell
 
 	/* Print header for the first replication*/
 	if ( rep == 0)
-		fprintf(soln, "Replication\tIterations\tLB estimate\tTotal time\tMaster time\t Subproblem time\t Optimality time\tArgmax time\t "
+		fprintf(soln, "Replication\tIterations\tLB estimate\tTotal time\tMaster time\t Subproblem time\t Optimality time\tArgmax time\t Reduce time\t"
 				"UB Estimate\tError\tCI-L\tCI-U\tOutcomes\n");
 
-	fprintf(soln, "%d\t%d\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf", rep+1, cell->k, cell->incumbEst,cell->time.repTime, cell->time.masterAccumTime,
-			cell->time.subprobAccumTime, cell->time.optTestAccumTime, cell->time.argmaxAccumTime);
+	fprintf(soln, "%d\t%d\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf", rep+1, cell->k, cell->incumbEst,cell->time.repTime, cell->time.masterAccumTime,
+			cell->time.subprobAccumTime, cell->time.optTestAccumTime, cell->time.argmaxAccumTime, 0.0);
 
 	printVector(cell->incumbX, prob[0]->num->cols, incumb);
 
