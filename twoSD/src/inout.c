@@ -33,6 +33,32 @@ void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt) {
 
 }//END writeEvaluationSummary()
 
+
+void writeOmegaHist(FILE *soln, cellType *cell, int rep) {
+
+	/* Print header for the first replication*/
+	if (rep == 0)
+	{
+		fprintf(soln, "Frequency table:\n");
+		fprintf(soln, "Sen: %-5s"," ");
+		for (int o = 0; o < cell->omega->cnt; o++)
+		{
+			fprintf(soln, "\t%-5d", o+1);
+		}
+		fprintf(soln, "\n     %-5s", "-");
+		for (int o = 0; o < cell->omega->cnt; o++)
+		{
+			fprintf(soln, "\t%-5s", "---");
+		}
+	}
+	fprintf(soln, "\nrep: %-5d|",rep+1);
+	for (int o = 0; o < cell->omega->cnt; o++)
+	{
+		fprintf(soln, "\t%-5d", cell->omega->weights[o]);
+	}
+
+}//END writeOmegaHist()
+
 /* Prints summary statistics to the console output. */
 //void printOptimizationSummary(cellType *cell) {
 //

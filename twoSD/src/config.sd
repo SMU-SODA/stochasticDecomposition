@@ -2,13 +2,13 @@
 TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 5
+MIN_ITER 10
 
 // Maximum number of iterations
-MAX_ITER   2000
+MAX_ITER   50000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   1000
+MAX_ITER_CLBK   20
 
 // Maximum number of visited nodes 
 MAX_NODES   50

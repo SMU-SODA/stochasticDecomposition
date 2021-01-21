@@ -26,7 +26,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	cellType *cell = NULL;
 	dVector	lb = NULL;
 	batchSummary *batch = NULL;
-	FILE 	*sFile = NULL, *iFile = NULL, *dFile = NULL;
+	FILE 	*sFile = NULL, *iFile = NULL, *dFile = NULL, *oFile = NULL;
 
 	/* open solver environment */
 	openSolver();
@@ -51,6 +51,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	dFile = openFile(outputDir, "detailedResults.csv", "w");
 	sFile = openFile(outputDir, "results.dat", "w");
 	iFile = openFile(outputDir, "incumb.dat", "w");
+	oFile = openFile(outputDir, "omega.dat", "w");
 	printDecomposeSummary(sFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
@@ -111,6 +112,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		else
 			fprintf(dFile, "\n");
 			
+		/* print the omega structure */
+		writeOmegaHist(oFile, cell, rep);
 
 		/* Save the batch details and build the compromise problem. */
 		if ( config.COMPROMISE_PROB) {

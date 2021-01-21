@@ -28,7 +28,7 @@
 #define TRIVIAL 0
 #define NONTRIVIAL 1
 
-#undef ALGO_CHECK
+#define ALGO_CHECK
 #undef BNC_CHECK
 #undef BATCH_CHECK
 
@@ -286,6 +286,7 @@ struct BnCnodeType {
 	int     parLambdasize;               /* total lamda size the parent node */
 	int     parparinit;                  /* initial lambda loop for the next iterations from parent of the parent */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
+	double  parobjVal;                   /* objective value of the parent node */
 	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
 	dVector  * disjncsVal;               /* list of distjuctive cuts values on variables - it has upper and lower limits */
 	iVector	IncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts */
@@ -397,6 +398,7 @@ void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 /* inout.c */
 void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
 void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
+void writeOmegaHist(FILE *soln, cellType *cell, int rep);
 void printOptimizationSummary(cellType *cell);
 void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 

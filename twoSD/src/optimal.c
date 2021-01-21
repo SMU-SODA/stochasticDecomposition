@@ -70,10 +70,18 @@ bool LPoptimal(probType **prob, cellType *cell) {
 bool IPoptimal(probType **prob, cellType *cell) {
 
 	/* ensure that the minimum number of iterations have been completed */
-	if (cell->ki > config.MIN_ITER) {
+	if (cell->k > config.MIN_ITER && cell->dualStableFlag) {
 		/* perform the pre-test */
 		if (preTest(cell)) {
-			return true;
+			if ((cell->optFlag = fullTest(prob, cell)) == true) {
+				/* full test satisfied */
+				//printf (">"); fflush(stdout);
+				return true;
+			}
+			else {
+				//printf(">"); fflush(stdout);
+			}
+
 		}
 	}
 
