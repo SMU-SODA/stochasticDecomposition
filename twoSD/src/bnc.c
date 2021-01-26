@@ -20,6 +20,7 @@ extern configType config;
 #define useINODE
 
 
+
 #undef writeprob
 
 int currKey;
@@ -34,7 +35,6 @@ int inodes;                   // number of integer feasible nodes
 int maxcut;
 double meanVal;               // Global lower bound 
 #define printBest
-#define testBnC
 #define printBranch
 #undef depthtest
 
@@ -92,6 +92,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->isActive = true;
 	temp->isfathomed = false;
 	temp->parobjVal = INFINITY;
+	temp->isSPopt = true;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, double)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -160,6 +161,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->isActive = true;
 	temp->isfathomed = false;
 	temp->parobjVal = parent->objval;
+	temp->isSPopt = true;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -278,6 +280,7 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	temp->isActive = true;
 	temp->isfathomed = false;
 	temp->parobjVal = node->parobjVal;
+	temp->isSPopt = node->isSPopt;
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -382,6 +385,38 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printIntvec(node->disjncs, node->numVar-1, NULL);
 #endif // defined(BNC_CHECK)
 
+#if defined(clean_master)
+	if (node->depth > 0)
+	{
+		/* Get the total number of rows */
+		int row_num = getNumRows(cell->master->lp);
+
+
+		if (row_num > prob[0]->num->rows)
+		{
+			/* Get rid of the indexed cut on the solver */
+			/* oneProblem structures and solver elements */
+			if (prob[0]->num->rows < row_num)
+			{
+				for (int cnt = row_num - 1; cnt >= prob[0]->num->rows; cnt--)
+					if (removeRow(cell->master->lp, cnt, cnt)) {
+						printf("row Num %d - tot rows %d - orig rows %d", cnt, row_num, prob[0]->num->rows);
+						errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+						return 1;
+					}
+			}
+		}
+
+		/* deactivate the current cuts */
+		for (int c = 0; c < cell->cuts->cnt; c++)
+		{
+			cell->cuts->vals[c]->isAvctive = false;
+		}
+
+		cell->master->mar = prob[0]->num->rows-1;
+	}
+#endif // defined(clean_master)
+
 
 	if (true)
 	{
@@ -421,12 +456,15 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printVector(cell->incumbX, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 	
+	int k_before = cell->k;
 	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
 	{
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
 			return 1;
 		}
+		int k_after = cell->k;
+		int k_diff = k_after - k_before;
 
 #if defined(BNC_CHECK)
 		printf("\nafter SD:%-10s%-10.4f%-10s%-10.4f", "incumbEst:", cell->incumbEst, "candidEst:", cell->candidEst);
@@ -438,21 +476,15 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 		copyVector(cell->incumbX, node->vars, node->numVar, true);
 		//writeProblem(cell->master->lp, "master_test");
-		//if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
-		//{
-		//	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
-		//	{
-		//		node->objval = INFINITY;
-		//	}
-		//	else
-		//	{
-		//		node->objval = node->parobjVal;
-		//	}
-		//}
-		//else
-		//{
-		//	node->objval = cell->incumbEst;
-		//}
+		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
+		{
+			node->objval = -INFINITY;
+			node->isSPopt = false;
+		}
+		else
+		{
+			node->objval = cell->incumbEst;
+		}
 		cell->optFlag = false;
 
 #if defined(BNC_CHECK)
@@ -468,22 +500,15 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	else
 	{
 		
-		//if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
-		//{
-		//	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
-		//	{
-		//		node->objval = INFINITY;
-		//	}
-		//	else
-		//	{
-		//		node->objval = node->parobjVal;
-		//	}
-		//}
-		//else
-		//{
-		//	node->objval = cell->incumbEst;
-		//}
-		
+		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
+		{
+			node->objval = -INFINITY;
+			node->isSPopt = false;
+		}
+		else
+		{
+			node->objval = cell->incumbEst;
+		}
 		printf("SD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n", cell->ki, dnodes + 1,cell->sigma->cnt,cell->lambda->cnt, cell->omega->cnt);
 
 		return 0;
@@ -975,7 +1000,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		
 		if (node->prevnode == NULL) return 0;
 		node->isActive = false;
-		if (node->objval < GlobeUB)
+		if (node->objval < GlobeUB && node->isSPopt == true)
 		{
 			GlobeUB = node->objval;
 			bestNode = node;

@@ -284,12 +284,15 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 	int 	c;
 
 	for (c = 0; c < cuts->cnt; c++) {
-		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-		coef[0] = (double)(currSampleSize) / (double)cuts->vals[c]->numSamples;         // coefficient k/j of eta column
+		if (cuts->vals[c]->isAvctive)
+		{
+			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+			coef[0] = (double)(currSampleSize) / (double)cuts->vals[c]->numSamples;         // coefficient k/j of eta column
 
-		if (changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum + 1)) {
-			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
-			return 1;
+			if (changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum + 1)) {
+				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+				return 1;
+			}
 		}
 	}
 
@@ -399,8 +402,11 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 		errMsg("allocation", "updateRHS", "indices", 0);
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double) numIter / (double) cuts->vals[cnt]->numSamples - 1) * lb;
-		indices[cnt] = cuts->vals[cnt]->rowNum;
+		if (cuts->vals[cnt]->isAvctive)
+		{
+			rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double)numIter / (double)cuts->vals[cnt]->numSamples - 1) * lb;
+			indices[cnt] = cuts->vals[cnt]->rowNum;
+		}
 	}
 
 	/* Now we change the right-hand of the master problem. */
@@ -469,6 +475,19 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk) {
 
 	/* b - A * xbar */
 	rhs = MSparsexvSub(prob->Dbar, xk, rhs);
+
+#if defined(clean_master)
+	/* Now we change the right-hand of the master problem. */
+	status = changeRHS(cell->master->lp, prob->num->rows, indices, rhs + 1);
+	if (status) {
+		errMsg("solver", "changeQPrhs", "failed to change the right-hand side in the solver", 0);
+		return 1;
+	}
+
+	mem_free(rhs);
+	mem_free(indices);
+	return 0;
+#endif // defined(clean_master)
 
 	/*** new rhs = alpha - beta * xbar (benders cuts)***/
 	for (cnt = 0; cnt < cell->cuts->cnt; cnt++) {

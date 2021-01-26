@@ -1,5 +1,5 @@
 // Tolerance level used to differentiate floating point numbers */
-TOLERANCE    0.001
+TOLERANCE    0.01
 
 // Minimum iterations
 MIN_ITER 10

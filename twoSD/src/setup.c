@@ -420,12 +420,20 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->normDk_1 	= 0.0;
 	cell->normDk 	= 0.0;
 
+	/* Get the total number of rows */
+	int row_num = getNumRows(cell->master->lp);
+
 	/* oneProblem structures and solver elements */
-	for ( cnt = prob->num->rows+cell->cuts->cnt+cell->fcuts->cnt-1; cnt >= prob->num->rows; cnt-- )
-		if (  removeRow(cell->master->lp, cnt, cnt) ) {
-			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
-			return 1;
-		}
+	if (prob->num->rows < row_num)
+	{
+		for (cnt = row_num - 1; cnt >= prob->num->rows; cnt--)
+			if (removeRow(cell->master->lp, cnt, cnt)) {
+				printf("row Num %d - tot rows %d - orig rows %d", cnt, row_num, prob->num->rows);
+				errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+				return 1;
+			}
+	}
+
 	cell->master->mar = prob->num->rows;
 	if( changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
 		errMsg("algorithm", "cleanCellType", "failed to change the proximal term", 0);

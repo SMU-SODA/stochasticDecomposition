@@ -28,9 +28,10 @@
 #define TRIVIAL 0
 #define NONTRIVIAL 1
 
-#define ALGO_CHECK
+#undef ALGO_CHECK
 #undef BNC_CHECK
 #undef BATCH_CHECK
+#define clean_master /* clean the master problem at the begining of each node */
 
 #undef LPMIP_PRINT
 #undef PHASE1ANLYS
@@ -116,6 +117,7 @@ typedef struct{
 }configType;
 
 typedef struct {
+	bool    isAvctive;				/* is the cut active in the master problem */
 	double  alpha;                  /* scalar value for the righ-hand side */
 	dVector  beta;                  /* coefficients of the master problems's primal variables */
 	int 	numSamples;				/* number of samples on which the given cut was based */
@@ -300,6 +302,7 @@ struct BnCnodeType {
 	dVector duals;                       /* the values of the duals of the node problem */
 	bool   isInt;                        /* is the solution obtained from the node integer */
 	bool   isActive;                     /* the node is active or not */
+	bool   isSPopt;                      /* the estimation of the node completed */
 	bool   isfathomed;                   /* the node is fathomed or not */
 	bool   isleft;                       /* the node is in the left of its parent */
 	bool   ishrstic;                     /* the node is a heuristic node */
@@ -378,7 +381,7 @@ bool fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
 		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
-double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts);
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts, dVector bl, dVector bu);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(iVector cdf, iVector observ, int numSamples);
 bool IPoptimal(probType **prob, cellType *cell);

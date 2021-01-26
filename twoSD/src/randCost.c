@@ -267,9 +267,9 @@ basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 	int maxcut = config.CUT_MULT * numCols + 3;
 	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
 		errMsg("allocation", "newBasisType", "basis", 0);
-	if ( !(basis->vals = (oneBasis **) arr_alloc(2*config.MAX_ITER, oneBasis *)))
+	if ( !(basis->vals = (oneBasis **) arr_alloc(maxcut*config.MAX_ITER, oneBasis *)))
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
-	if ( !(basis->obsFeasible = (bool **) arr_alloc(2*config.MAX_ITER, bool *)))
+	if ( !(basis->obsFeasible = (bool **) arr_alloc(maxcut*config.MAX_ITER, bool *)))
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
 	if (!(basis->iStar = arr_alloc(maxcut*config.MAX_ITER, int)))
 		errMsg("allocation", "newBasisType", "iStar", 0);
