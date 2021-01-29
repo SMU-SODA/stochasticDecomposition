@@ -439,7 +439,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		int row_num = getNumRows(cell->master->lp);
 
 #if defined(writemaster)
-		writeProblem(cell->master->lp, "master_test_beforeclean");
+		writeProblem(cell->master->lp, "master_test_beforeclean.lp");
 #endif // defined(writemaster)
 
 
@@ -467,7 +467,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		cell->master->mar = prob[0]->num->rows-1;
 
 #if defined(writemaster)
-		writeProblem(cell->master->lp, "master_test_afterclean");
+		writeProblem(cell->master->lp, "master_test_afterclean.lp");
 #endif // defined(writemaster)
 
 	}
@@ -514,6 +514,10 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	int k_before = cell->k;
 	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
 	{
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test_beforesolve.lp");
+#endif // defined(writemaster)
+
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if (solveCell(stoc, prob, cell)) {
 			return 1;
@@ -533,7 +537,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
 
 #if defined(writemaster)
-		writeProblem(cell->master->lp, "master_test");
+		writeProblem(cell->master->lp, "master_test_aftersolve.lp");
 #endif // defined(writemaster)
 
 		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
