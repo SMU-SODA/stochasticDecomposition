@@ -37,6 +37,7 @@ double meanVal;               // Global lower bound
 #define printBest
 #define printBranch
 #undef depthtest
+#define writemaster
 
 
 int sumintVec(iVector a, int len)
@@ -133,8 +134,6 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft)
 {
 	int i; int j;
-	if (fabs(fracVal - round(fracVal)) < 0.00001)
-		fracVal = fracVal - 2 * config.TOLERANCE;
 	struct BnCnodeType *temp = (struct BnCnodeType *)malloc(sizeof(struct BnCnodeType));
 	temp->key = key;
 	temp->parentkey = parent->key;
@@ -178,19 +177,27 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 			temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
 		}
 	}
+
+#if defined(BNC_CHECK)
+	printf("\nfrac val: %0.4f\n",fracVal);
+#endif // defined(BNC_CHECK)
+
 	for (i = 0; i < parent->numVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
 			errMsg("allocation", "newNode", "temp->disjncs", 0);
 		if (i == varId)
 		{
-			if (temp->isleft)
+			if (temp->isleft == true)
 			{
 				if (config.BRN_STR == 0)
 				{
 					temp->disjncs[i] = 1;
 					temp->disjncsVal[i][0] = parent->disjncsVal[i][0];
 					temp->disjncsVal[i][1] = floor(fracVal);
+#if defined(BNC_CHECK)
+					printf("\nis left: %d - var id: %d - ub: %0.4f\n", temp->isleft, i, floor(fracVal));
+#endif // defined(BNC_CHECK)
 				}
 				else if (config.BRN_STR == 1)
 				{
@@ -215,6 +222,9 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 					temp->disjncs[i] = 1;
 					temp->disjncsVal[i][0] = ceil(fracVal);
 					temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
+#if defined(BNC_CHECK)
+					printf("\nis left: %d - var id: %d - lb: %0.4f\n", temp->isleft, i, ceil(fracVal));
+#endif // defined(BNC_CHECK)
 				}
 				else if (config.BRN_STR == 1)
 				{
@@ -364,12 +374,37 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 		return 1;
 	}
 
+#if defined(BNC_CHECK)
+	printf("\nafter changeQPbds");
+	if (getLb(cell->master->lp, 0, numCols, lbounds)) {
+		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
+		return 1;
+    }
+	if (getUb(cell->master->lp, 0, numCols, ubounds)) {
+		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
+		return 1;
+	}
+	printf("\nlower bounds:\n");
+	printVector(lbounds, numCols, NULL);
+	printf("\nupper bounds:\n");
+	printVector(ubounds, numCols, NULL);
+#endif // defined(BNC_CHECK)
+
 	mem_free(lbounds); 
 	mem_free(ubounds);
 
 	return 0;
 }
 
+// Truncate the var from SD based on the lower bounds and upper bounds of the original problem
+void truncate(dVector var, dVector lb, dVector ub, int cnt)
+{
+	for (int v = 0; v < cnt; v++)
+	{
+		if (var[v+1] < lb[v]) var[v+1] = lb[v];
+		if (var[v+1] > ub[v]) var[v+1] = ub[v];
+	}
+}
 
  // Subroutine for Solving the node problem given the lp pointer and 
  // node information
@@ -390,6 +425,10 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	{
 		/* Get the total number of rows */
 		int row_num = getNumRows(cell->master->lp);
+
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test_beforeclean");
+#endif // defined(writemaster)
 
 
 		if (row_num > prob[0]->num->rows)
@@ -414,6 +453,11 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		}
 
 		cell->master->mar = prob[0]->num->rows-1;
+
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test_afterclean");
+#endif // defined(writemaster)
+
 	}
 #endif // defined(clean_master)
 
@@ -425,12 +469,11 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 
 		////Initializing candidX, candidEst, incumbEst and IncumbX
+		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
 		copyVector(node->vars, cell->incumbX, node->numVar, true);
 		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
 		cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 		cell->incumbEst = cell->candidEst;
-		//cell->candidEst = INFINITY;
-		//cell->incumbEst = INFINITY;
 		node->objval = cell->incumbEst;
 
 		
@@ -475,7 +518,12 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 #endif // defined(BNC_CHECK)
 
 		copyVector(cell->incumbX, node->vars, node->numVar, true);
-		//writeProblem(cell->master->lp, "master_test");
+		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
+
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test");
+#endif // defined(writemaster)
+
 		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
 		{
 			node->objval = -INFINITY;
@@ -499,7 +547,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	}
 	else
 	{
-		
+		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
 		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
 		{
 			node->objval = -INFINITY;
@@ -784,19 +832,15 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useINODE)
 		if (inodes > 0)
 		{
-			double NewUB = INFINITY;
-			int    newUBidx = 0;
 			for (int cnt = 0; cnt < inodes; cnt++)
 			{
 				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est < NewUB && est > GlobeUB - abs(GlobeUB) && est > meanVal)
+				if (est < GlobeUB && est > meanVal)
 				{
-					NewUB = est;
-					newUBidx = cnt;
+					GlobeUB = est;
+					bestNode = inodearr[cnt];
 				}
 			}
-			GlobeUB = NewUB;
-			bestNode = inodearr[newUBidx];
 		}
 #endif // defined(useINODE)
 
@@ -1000,7 +1044,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		
 		if (node->prevnode == NULL) return 0;
 		node->isActive = false;
-		if (node->objval < GlobeUB && node->isSPopt == true)
+		if (node->isSPopt == true && node->objval < GlobeUB )
 		{
 			GlobeUB = node->objval;
 			bestNode = node;
@@ -1067,6 +1111,10 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	node->isActive = false;
 	if (node->depth < node->edInt)
 	{
+#if defined(BNC_CHECK)
+		printf("\nbefore branching - varIdx %d:\n",vaIdx+1);
+		printVector(node->vars, node->numVar, NULL);
+#endif // defined(BNC_CHECK)
 		node->right = newNode(getnodeIdx(node->depth + 1, node->key, 0), node, node->vars[vaIdx + 1], vaIdx, false);
 		node->left = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
 		node->right->prevnode = node;

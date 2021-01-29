@@ -29,7 +29,7 @@
 #define NONTRIVIAL 1
 
 #undef ALGO_CHECK
-#undef BNC_CHECK
+#define BNC_CHECK
 #undef BATCH_CHECK
 #define clean_master /* clean the master problem at the begining of each node */
 
@@ -424,5 +424,6 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 int getfirstLeaf(int depth);
 int getnodeIdx(int depth, int key, int isleft);
 void fracLamda(cellType *cell, struct BnCnodeType *node);
+void truncate(dVector var, dVector lb, dVector ub, int cnt);
 
 #endif /* TWOSD_H_ */
