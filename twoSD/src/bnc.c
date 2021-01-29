@@ -134,6 +134,18 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft)
 {
 	int i; int j;
+	if (fabs(fracVal - round(fracVal)) == 0)
+	{
+		if (round(fracVal) == parent->disjncsVal[varId][0]) {
+			fracVal += 0.001;
+		}
+		else if (round(fracVal) == parent->disjncsVal[varId][1]) {
+			fracVal -= 0.001;
+		}
+		else {
+			fracVal += 0.001;
+		}
+	}
 	struct BnCnodeType *temp = (struct BnCnodeType *)malloc(sizeof(struct BnCnodeType));
 	temp->key = key;
 	temp->parentkey = parent->key;
