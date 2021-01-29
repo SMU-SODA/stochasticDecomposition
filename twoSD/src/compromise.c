@@ -208,7 +208,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* d. Change the bounds on the batch variables */
-	if (changeQPbds(batch->sp->lp, prob->num->cols, prob->sp->bdl, prob->sp->bdu, cell->incumbX, cOffset) ) {
+	if (changeQPbds(batch->sp->lp, prob->num->cols, cell->master->bdl, cell->master->bdu, cell->incumbX, cOffset) ) {
 		errMsg("algorithm", "buildCompromise", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}

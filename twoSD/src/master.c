@@ -91,6 +91,30 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	return 0;
 }//END solveQPMaster()
 
+/* if the incumbent solution is limited, build the incumbent and candidate using this subroutine */
+int recoverX(dVector sol, dVector incumb, dVector candid, iVector disjnct, dVector vals, int cnt)
+{
+
+	int count = 0;
+
+	for (int v = 0; v < cnt; v++)
+	{
+		if (disjnct[v] == 1)
+		{
+			incumb[v] = vals[v];
+			candid[v] = vals[v];
+		}
+		else
+		{
+			incumb[v] = sol[count];
+			candid[v] = sol[count];
+			count++;
+		}
+	}
+
+	return 0;
+}
+
  /* This function is the LP version of master problem. The master problem is solved after the newest cut is added to master problem,
  the incumbent cut is updated if necessary. Here the coefficients on all the cuts are updated, and finally master problem is solved. */
 int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {

@@ -164,6 +164,12 @@ typedef struct {
 	int    mar;
 }nodeInfo;
 
+// info that can be passed from the bnc
+typedef struct {
+	iVector disjnct;				/* shows which variables are disjuncted */
+	dVector vals;                   /* value of variables including those are disjuncted */
+}bncInfoSummary;
+
 typedef struct {
 	cString probName;                /* problem name */
 									 /* EXperiment results */
@@ -249,6 +255,7 @@ typedef struct {
 	runTime		time;				/* Run time structure */
 
 	///// B&B paramters
+	bncInfoSummary *bncInfo;
 	bool isinBnB;
 	int rownum;
 	sampleType	*sample;
@@ -269,6 +276,7 @@ typedef struct {
 	dVector		compromiseX;		/* compromise solution */
 	dVector		avgX;				/* average solution across batches */
 }batchSummary;
+
 
 /// BnC structures 
 /* A data structure which holds on the node informations in the branch and bound tree */
@@ -347,6 +355,7 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk);
 int revchangeQPrhs(probType *prob, cellType *cell, dVector xk);
 int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int offset);
 oneProblem *newMaster(oneProblem *orig, double lb);
+int recoverX(dVector sol, dVector incumb, dVector candid, iVector disjnct, dVector vals, int cnt);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inCallback);

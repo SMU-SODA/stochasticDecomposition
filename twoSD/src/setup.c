@@ -244,6 +244,21 @@ int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob
 	return 0;
 }//END setupAlgo()
 
+ /* creating info summary from bnc */
+bncInfoSummary *setupBncInfo(int cnt)
+{
+	bncInfoSummary *info = NULL;
+
+	if (!(info = (bncInfoSummary *)mem_malloc(sizeof(bncInfoSummary))))
+		errMsg("Memory allocation", "newCell", "failed to allocate memory to bncInfo", 0);
+	if (!(info->disjnct = (iVector)arr_alloc(cnt, int)))
+		errMsg("allocation", "setupBncInfo", "info->disjnct", 0);
+	if (!(info->vals = (dVector)arr_alloc(cnt, double)))
+		errMsg("allocation", "setupBncInfo", "info->vals", 0);
+
+	return info;
+}//END setupBncInfo()
+
 /* This function is used to create cells used in the algorithm */
 cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cellType    *cell = NULL;
@@ -330,6 +345,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	/* node info of B&B solutions */
 	if (!(cell->nodeSol = (nodeInfo*)arr_alloc(config.NodeNum, nodeInfo)))
 		errMsg("allocation", "newCell", "cell->nodeInfo", 0);
+	cell->bncInfo = setupBncInfo(prob[0]->num->cols);
 
 	/* stochastic elements: we need more room to store basis information when the cost coefficients are random. */
 	if ( prob[1]->num->rvdOmCnt > 0 )
