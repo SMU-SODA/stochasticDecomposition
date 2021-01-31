@@ -11,7 +11,7 @@
 
 #include "twoSD.h"
 
-#undef OPT_CHECK
+#define OPT_CHECK
 
 extern configType config;
 
@@ -392,8 +392,15 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	MSparsexvSub(A_Trans, lambda, A_Trans_lambda);
 
 	/* 2c. Calculate -A_trans * lambda - c */
-	for (i = 0; i < prob->num->cols; i++)
-		A_Trans_lambda[i + 1] += djM[i + 1]*bl[i] + djM[i + 1] * bu[i];
+	for (i = 0; i < prob->num->cols; i++) {
+		if (bl[i] == prob->sp->bdl[i])
+		{
+			A_Trans_lambda[i + 1] += djM[i + 1] * bl[i];
+		}
+		else if (bu[i] == prob->sp->bdu[i]) {
+			A_Trans_lambda[i + 1] += djM[i + 1] * bu[i];
+		}
+	}
 
 	Vk_theta = 0.0;
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {

@@ -37,7 +37,7 @@ double meanVal;               // Global lower bound
 #define printBest
 #define printBranch
 #undef depthtest
-#define writemaster
+#undef writemaster
 
 
 int sumintVec(iVector a, int len)
@@ -542,7 +542,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
 		{
-			node->objval = -INFINITY;
+			node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
 			node->isSPopt = false;
 		}
 		else
@@ -566,7 +566,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
 		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal)
 		{
-			node->objval = -INFINITY;
+			node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
 			node->isSPopt = false;
 		}
 		else
