@@ -350,18 +350,15 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 	if (!(ubounds = arr_alloc(numCols, double)))
 		errMsg("Allocation", "addDisjnct", "ubounds", 0);
 
-	/* Change the Upper Bound */
+	/* Change the Bounds */
 	for (cnt = 0; cnt < numCols; cnt++) {
-		ubounds[cnt] = disjncsVal[cnt][1];
-		cell->master->bdu[cnt] = disjncsVal[cnt][1];
+		lbounds[cnt] = disjncsVal[cnt][0] - config.TOLERANCE;
+		cell->master->bdl[cnt] = lbounds[cnt];
+		ubounds[cnt] = disjncsVal[cnt][1] + config.TOLERANCE;
+		cell->master->bdu[cnt] = ubounds[cnt];
 	}
 
-	/* Change the Lower Bound */
-	for (cnt = 0; cnt < numCols; cnt++) {
-		lbounds[cnt] = disjncsVal[cnt][0];
-		cell->master->bdl[cnt] = disjncsVal[cnt][0];
-	}
-
+	/* Adjust the initial incumbent of the node based on the disjunctions */
 	if (!node->ishrstic && node->depth != 0)
 	{
 		if (node->isleft)
@@ -417,6 +414,56 @@ void truncate(dVector var, dVector lb, dVector ub, int cnt)
 		if (var[v+1] > ub[v]) var[v+1] = ub[v];
 	}
 }
+
+// Build separate disjunctives 
+void disjunctCut(oneProblem  *master, probType *prob)
+{
+	cString name;
+	dVector beta;
+	iVector indices;
+	double alpha; int cnt; int v;
+	int lenX = master->mac;
+	
+	if (!(beta = arr_alloc(lenX + 1, double)))
+		errMsg("allocation", "new_cut", "beta", 0);
+	alpha = 0.0;
+	name = (cString)arr_alloc(NAMESIZE, char);
+	for (v = 0; v < lenX + 1; v++) beta[v] = 0.0;
+	/* Set up indices */
+	if (!(indices = (iVector)arr_alloc(lenX + 1, int)))
+		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+	for (cnt = 1; cnt <= lenX; cnt++)
+		indices[cnt] = cnt - 1;
+	indices[0] = lenX;
+	
+	for (v = 0; v < lenX; v++)
+	{
+		if (master->bdl[v] != prob->sp->bdl[v])
+		{
+			alpha = master->bdl[v];
+			beta[v] = 1;
+			/* add the cut to the cell cuts structure as well as on the solver */
+			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
+				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
+				return 1;
+			}
+			beta[v] = 0;
+		}
+		if (master->bdu[v] != prob->sp->bdu[v])
+		{
+			/* add the cut to the cell cuts structure as well as on the solver */
+			alpha = master->bdu[v];
+			beta[v] = 1;
+			/* add the cut to the cell cuts structure as well as on the solver */
+			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
+				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
+				return 1;
+			}
+			beta[v] = 0;
+		}
+	}
+}
+
 
  // Subroutine for Solving the node problem given the lp pointer and 
  // node information

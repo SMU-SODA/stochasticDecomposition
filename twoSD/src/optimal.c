@@ -11,7 +11,7 @@
 
 #include "twoSD.h"
 
-#define OPT_CHECK
+#undef OPT_CHECK
 
 extern configType config;
 

@@ -28,7 +28,7 @@
 #define TRIVIAL 0
 #define NONTRIVIAL 1
 
-#define ALGO_CHECK
+#undef ALGO_CHECK
 #undef BNC_CHECK
 #undef BATCH_CHECK
 #define clean_master /* clean the master problem at the begining of each node */
