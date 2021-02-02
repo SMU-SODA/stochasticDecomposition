@@ -17,7 +17,7 @@
 extern configType config;
 #define maxdnodes   1000
 #define useDNODE 
-#define useINODE
+#undef useINODE
 
 
 
@@ -914,6 +914,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
 	cell->incumbEst = bestNode->objval;
 
+	//Remove the tolerance from the best solution
+	for (int v = 0; v < bestNode->edInt; v++) bestNode->vars[v] = round(bestNode->vars[v]);
+
 #if defined(printBest)
 	printLine();
 	printLine();
@@ -1092,7 +1095,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	fracLamda(cell, node);
 
 	// Check if the obtained solution from the solveNode is integer 
-	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))
+	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE) || node->depth == node->numVar)
 	{
 #if defined(printBranch)
 		if (node->key > 0)
