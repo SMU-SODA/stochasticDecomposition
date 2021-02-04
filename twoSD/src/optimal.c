@@ -125,6 +125,7 @@ bool IPpreTest(cellType *cell) {
 bool fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	iVector  cdf, observ;
+	iVector 	cstat, rstat;
 	double  est, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
@@ -134,6 +135,18 @@ bool fullTest(probType **prob, cellType *cell) {
 	if ( gCuts->cnt == 0 ) {
 		freeCutsType(gCuts, false);
 		return false;
+	}
+
+	/* Allocate memory. */
+	if (!(cstat = (iVector)arr_alloc(prob[0]->num->cols + 1, int)))
+		errMsg("allocation", "stochasticUpdates", "cstat", 0);
+	if (!(rstat = (iVector)arr_alloc(prob[0]->num->cols + 1, int)))
+		errMsg("allocation", "stochasticUpdates", "rstat", 0);
+
+	/* Obtain the status of columns and rows in the basis. */
+	if (getBasis(cell->master->lp, cstat, rstat)) {
+		errMsg("algorithm", "fullTest", "failed to get the basis column and row status", 0);
+		return NULL;
 	}
 
 #if defined(OPT_CHECK)
@@ -197,7 +210,7 @@ bool fullTest(probType **prob, cellType *cell) {
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
 		else {
-			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts,cell->master->bdl,cell->master->bdu);
+			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts,cell->master->bdl,cell->master->bdu, cstat);
 		}
 
 #if defined(OPT_CHECK)
@@ -330,7 +343,7 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 /* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c
  * in the case of regularized approach. */
-double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts, dVector bl, dVector bu) {
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts, dVector bl, dVector bu, iVector cstat) {
 	double *bk; 			/* dVector: b - A*incumb_x. */
 	double *lambda; 		/* dVector: the dual of the primal constraints. */
 	double bk_lambda; 		/* scalar: bk*lambda. */
@@ -392,13 +405,16 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	MSparsexvSub(A_Trans, lambda, A_Trans_lambda);
 
 	/* 2c. Calculate -A_trans * lambda - c */
-	for (i = 0; i < prob->num->cols; i++) {
-		if (bl[i] == prob->sp->bdl[i])
-		{
-			A_Trans_lambda[i + 1] += djM[i + 1] * bl[i];
-		}
-		else if (bu[i] == prob->sp->bdu[i]) {
-			A_Trans_lambda[i + 1] += djM[i + 1] * bu[i];
+	for (int n = 0; n < prob->num->cols; n++) {
+		switch (cstat[n+1]) {
+		case AT_LOWER:
+			A_Trans_lambda[n + 1] += djM[n + 1] * bl[n];
+			break;
+		case AT_UPPER:
+			A_Trans_lambda[n + 1] += djM[n + 1] * bu[n];
+			break;
+		default:
+			break;
 		}
 	}
 

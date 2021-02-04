@@ -17,7 +17,7 @@
 extern configType config;
 #define maxdnodes   1000
 #define useDNODE 
-#undef useINODE
+#define useINODE
 
 
 
@@ -898,7 +898,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			for (int cnt = 0; cnt < inodes; cnt++)
 			{
 				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est < GlobeUB && est > meanVal)
+				if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal)
 				{
 					GlobeUB = est;
 					bestNode = inodearr[cnt];

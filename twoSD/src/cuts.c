@@ -647,9 +647,12 @@ double maxCutHeight(cutsType *cuts, int currSampleSize, dVector xk, int betaLen,
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		ht = cutHeight(cuts->vals[cnt], currSampleSize, xk, betaLen, lb);
-		if (Sm < ht) {
-			Sm = ht;
+		if (cuts->vals[cnt])
+		{
+			ht = cutHeight(cuts->vals[cnt], currSampleSize, xk, betaLen, lb);
+			if (Sm < ht) {
+				Sm = ht;
+			}
 		}
 	}
 
