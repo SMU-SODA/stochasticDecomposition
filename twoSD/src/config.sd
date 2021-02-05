@@ -8,10 +8,10 @@ MIN_ITER 10
 MAX_ITER   5000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   500
+MAX_ITER_CLBK   100
 
 // Maximum number of visited nodes 
-MAX_NODES   50
+MAX_NODES   20
 
 // Branching strategies
 // 0: index based - 1: maximimum fractional val

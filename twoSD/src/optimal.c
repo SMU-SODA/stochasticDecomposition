@@ -125,7 +125,7 @@ bool IPpreTest(cellType *cell) {
 bool fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	iVector  cdf, observ;
-	iVector 	cstat, rstat;
+	iVector 	cstat;
 	double  est, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
@@ -140,11 +140,9 @@ bool fullTest(probType **prob, cellType *cell) {
 	/* Allocate memory. */
 	if (!(cstat = (iVector)arr_alloc(prob[0]->num->cols + 1, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
-	if (!(rstat = (iVector)arr_alloc(prob[0]->num->cols + 1, int)))
-		errMsg("allocation", "stochasticUpdates", "rstat", 0);
 
-	/* Obtain the status of columns and rows in the basis. */
-	if (getBasis(cell->master->lp, cstat, rstat)) {
+	///* Obtain the status of columns and rows in the basis. */
+	if (getBasis(cell->master->lp, cstat, NULL)) {
 		errMsg("algorithm", "fullTest", "failed to get the basis column and row status", 0);
 		return NULL;
 	}
