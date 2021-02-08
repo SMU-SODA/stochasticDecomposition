@@ -94,7 +94,14 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->isfathomed = false;
 	temp->parobjVal = INFINITY;
 	temp->isSPopt = true;
-	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, double)))
+	temp->partightCuts = 0;
+	if (!(temp->tcuts = (iVector)arr_alloc(maxcut, int)))
+		errMsg("allocation", "newNode", "temp->tcuts", 0);
+	for (int c = 0; c < maxcut; c++)
+	{
+		temp->tcuts[c] = -1;
+	}
+	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
@@ -173,6 +180,16 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->isfathomed = false;
 	temp->parobjVal = parent->objval;
 	temp->isSPopt = true;
+	temp->partightCuts = parent->tightCuts;
+	if (!(temp->tcuts = (iVector)arr_alloc(maxcut, int)))
+		errMsg("allocation", "newNode", "temp->tcuts", 0);
+	if (!(temp->partcuts = (iVector)arr_alloc(maxcut, int)))
+		errMsg("allocation", "newNode", "temp->partcuts", 0);
+	for (int c = 0; c < maxcut; c++)
+	{
+		temp->partcuts[c] = parent->tcuts[c];
+		temp->tcuts[c] = -1;
+	}
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -336,6 +353,41 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	return temp;
 }//End copyNode()
 
+
+/* finding the tight cuts and keep them in the node structure */
+void tightCuts(cutsType *cuts, dVector pi, int start, struct BnCnodeType * node) {
+	int cnt, cuts;
+
+	cnt = 0;
+
+#if defined(BNC_CHECK)
+	printf("\n -----  ----  ---- tight cuts:\n");
+#endif // defined(BNC_CHECK)
+
+	for (cuts = 0; cuts < cuts->cnt; cuts++) {
+		if (cuts->vals[cnt]->isAvctive)
+		{
+#if defined(BNC_CHECK)
+			printf("\nactive cut %d:\n", cuts);
+#endif // defined(BNC_CHECK)
+			if (pi[cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
+#if defined(BNC_CHECK)
+				printf("\npi value %0.4f:\n", pi[cuts->vals[cnt]->rowNum + 1]);
+#endif // defined(BNC_CHECK)
+				node->tcuts[cnt] = cuts;
+
+				cnt++;
+			}
+		}
+	}
+
+#if defined(BNC_CHECK)
+	printf("\n ----   ----   ----  ---- \n");
+#endif // defined(BNC_CHECK)
+
+	node->tightCuts = cnt;
+
+}//END tightCuts
 
  /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */

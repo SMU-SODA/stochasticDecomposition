@@ -295,6 +295,10 @@ struct BnCnodeType {
 	int     partightPi;                  /* number of pis used in tight cuts of th parent node */
 	int     parLambdasize;               /* total lamda size the parent node */
 	int     parparinit;                  /* initial lambda loop for the next iterations from parent of the parent */
+	int     tightCuts;					 /* number of tight cuts after finally after finishing the solveCell */
+	int     partightCuts;				 /* number of tight parent cuts after finally after finishing the solveCell */
+	iVector tcuts;						 /* collection of cuts indexes from cell->cuts are tight in this node */
+	iVector partcuts;					 /* collection of parent cuts indexes from cell->cuts are tight in parent node */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
 	double  parobjVal;                   /* objective value of the parent node */
 	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
