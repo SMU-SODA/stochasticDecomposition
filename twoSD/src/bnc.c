@@ -570,6 +570,46 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 #endif // defined(writemaster)
 
 	}
+#else
+	if (node->depth > 0)
+	{
+		/* Get the total number of rows */
+		int row_num = getNumRows(cell->master->lp);
+
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test_beforeclean.lp");
+#endif // defined(writemaster)
+
+
+		if (row_num > prob[0]->num->rows)
+		{
+			/* Get rid of the indexed cut on the solver */
+			/* oneProblem structures and solver elements */
+			if (prob[0]->num->rows < row_num)
+			{
+				for (int cnt = row_num - 1; cnt >= prob[0]->num->rows; cnt--)
+					if (isInVec(node->partcuts, node->partightCuts, cnt) && )
+						if (removeRow(cell->master->lp, cnt, cnt)) {
+							printf("row Num %d - tot rows %d - orig rows %d", cnt, row_num, prob[0]->num->rows);
+							errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+							return 1;
+						}
+			}
+		}
+
+		/* deactivate the current cuts */
+		for (int c = 0; c < cell->cuts->cnt; c++)
+		{
+			cell->cuts->vals[c]->isAvctive = false;
+		}
+
+		cell->master->mar = prob[0]->num->rows - 1;
+
+#if defined(writemaster)
+		writeProblem(cell->master->lp, "master_test_afterclean.lp");
+#endif // defined(writemaster)
+
+	}
 #endif // defined(clean_master)
 
 
