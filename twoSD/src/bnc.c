@@ -563,8 +563,8 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			cell->cuts->vals[c]->isAvctive = false;
 		}
 
-		cell->master->mar = prob[0]->num->rows-1;
-
+		cell->master->mar = prob[0]->sp->mar;
+	
 #if defined(writemaster)
 		writeProblem(cell->master->lp, "master_test_afterclean.lp");
 #endif // defined(writemaster)
@@ -573,6 +573,17 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 #else
 	if (node->depth > 0)
 	{
+		iVector 	indices;
+		int 	cnt;
+		static int cummCutNum = 0;
+
+		/* Set up indices */
+		if (!(indices = (iVector)arr_alloc(node->edInt + 1, int)))
+			errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
+		for (cnt = 1; cnt <= node->edInt; cnt++)
+			indices[cnt] = cnt - 1;
+		indices[0] = node->edInt;
+		
 		/* Get the total number of rows */
 		int row_num = getNumRows(cell->master->lp);
 
@@ -588,22 +599,39 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			if (prob[0]->num->rows < row_num)
 			{
 				for (int cnt = row_num - 1; cnt >= prob[0]->num->rows; cnt--)
-					if (isInVec(node->partcuts, node->partightCuts, cnt) && )
-						if (removeRow(cell->master->lp, cnt, cnt)) {
-							printf("row Num %d - tot rows %d - orig rows %d", cnt, row_num, prob[0]->num->rows);
-							errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
-							return 1;
-						}
+					if (removeRow(cell->master->lp, cnt, cnt)) {
+						printf("row Num %d - tot rows %d - orig rows %d", cnt, row_num, prob[0]->num->rows);
+						errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+						return 1;
+					}
 			}
 		}
+
+		//change the row number 
+		cell->master->mar = prob[0]->sp->mar;
 
 		/* deactivate the current cuts */
 		for (int c = 0; c < cell->cuts->cnt; c++)
 		{
-			cell->cuts->vals[c]->isAvctive = false;
+			if (isInVec(node->partcuts, node->partightCuts, c))
+			{
+				cell->cuts->vals[c]->isAvctive = true;
+
+				/* Set up the cut name */
+				sprintf(cell->cuts->vals[c]->name, "cut_%04d", cummCutNum++);
+
+				/* add the cut to the cell cuts structure as well as on the solver */
+				if (addRow(master->lp, node->edInt + 1, cell->cuts->vals[c]->alpha, GE, 0, indices, cell->cuts->vals[c]->beta, cell->cuts->vals[c]->name)) {
+					errMsg("solver", "addcut2Master", "failed to add new row to problem in solver", 0);
+					return 1;
+				}
+				cell->cuts->vals[c]->rowNum = master->mar++;
+			}
+			else {
+				cell->cuts->vals[c]->isAvctive = false;
+			}
 		}
 
-		cell->master->mar = prob[0]->num->rows - 1;
 
 #if defined(writemaster)
 		writeProblem(cell->master->lp, "master_test_afterclean.lp");
@@ -642,6 +670,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 
 
 	}
+
 
 #if defined(BNC_CHECK)
 	printf("\ninit var:\n");
