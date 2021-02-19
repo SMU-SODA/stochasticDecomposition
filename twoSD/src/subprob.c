@@ -42,7 +42,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 	tic = clock();
 	setIntParam(PARAM_PREIND, OFF);
 	changeLPSolverType(ALG_PRIMAL);
-	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, subproblem->mar, subproblem->mac, &status, 0.000001) ) {
+	if ( solveProblem(subproblem->lp, subproblem->name, subproblem->type, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			/* Set the subproblem feasibility flag to false and proceed to complete stochastic updates. These updates are
 			 * used to generate the feasibility cuts later. */

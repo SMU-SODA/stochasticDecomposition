@@ -394,7 +394,8 @@ bool fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
 		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
-double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts, dVector bl, dVector bu);
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts,
+		dVector bl, dVector bu, iVector cstat);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(iVector cdf, iVector observ, int numSamples);
 bool IPoptimal(probType **prob, cellType *cell);

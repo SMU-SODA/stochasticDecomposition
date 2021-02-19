@@ -1,15 +1,15 @@
 /*
-* bnc.c
-*
-*  Created on: Nov 30, 2020
-*      Author: Siavash Tabrizian 
-* Institution: Southern Methodist University
-*
-* Please send you comments or bug report to stabrizian (at) smu (dot) edu
-*
-* This is part of the SD-integer project which handels the branch and bound tree
-*
-*/
+ * bnc.c
+ *
+ *  Created on: Nov 30, 2020
+ *      Author: Siavash Tabrizian
+ * Institution: Southern Methodist University
+ *
+ * Please send you comments or bug report to stabrizian (at) smu (dot) edu
+ *
+ * This is part of the SD-integer project which handels the branch and bound tree
+ *
+ */
 
 #include "twoSD.h"
 
@@ -65,9 +65,8 @@ bool isInVec(iVector vec, int len, int val)
 	return false;
 }
 
-struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig)
-{
-	int i; int j;
+struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig) {
+	int i;
 
 	struct BnCnodeType *temp = (struct BnCnodeType *)malloc(sizeof(struct BnCnodeType));
 	temp->key = 0;
@@ -140,7 +139,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft)
 {
-	int i; int j;
+	int i;
 	if (fabs(fracVal - round(fracVal)) == 0)
 	{
 		if (round(fracVal) == parent->disjncsVal[varId][0]) {
@@ -291,7 +290,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 {
-	int i; int j;
+	int i;
 	struct BnCnodeType *temp = (struct BnCnodeType *)malloc(sizeof(struct BnCnodeType));
 
 	temp->key = node->key;
@@ -349,14 +348,14 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 		temp->disjncsVal[i][1] = val;
 		temp->vars[i] = val;
 	}
-	
+
 	return temp;
 }//End copyNode()
 
 
 /* finding the tight cuts and keep them in the node structure */
 void tightCuts(cutsType *cuts, dVector pi, int start, struct BnCnodeType * node) {
-	int cnt, cuts;
+	int cnt;
 
 	cnt = 0;
 
@@ -364,18 +363,18 @@ void tightCuts(cutsType *cuts, dVector pi, int start, struct BnCnodeType * node)
 	printf("\n -----  ----  ---- tight cuts:\n");
 #endif // defined(BNC_CHECK)
 
-	for (cuts = 0; cuts < cuts->cnt; cuts++) {
+	for (int n = 0; n < cuts->cnt; n++) {
 		if (cuts->vals[cnt]->isAvctive)
 		{
 #if defined(BNC_CHECK)
-			printf("\nactive cut %d:\n", cuts);
+			printf("\nactive cut %d:\n", n);
 #endif // defined(BNC_CHECK)
 			if (pi[cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
 #if defined(BNC_CHECK)
 				printf("\npi value %0.4f:\n", pi[cuts->vals[cnt]->rowNum + 1]);
 #endif // defined(BNC_CHECK)
-				node->tcuts[cnt] = cuts;
 
+				node->tcuts[cnt] = n;
 				cnt++;
 			}
 		}
@@ -389,11 +388,11 @@ void tightCuts(cutsType *cuts, dVector pi, int start, struct BnCnodeType * node)
 
 }//END tightCuts
 
- /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
+/* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
 int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node)
 {
-	int 	status = 0, cnt;
+	int 	cnt;
 	dVector	lbounds, ubounds;
 
 	if (!(lbounds = arr_alloc(numCols, double)))
@@ -429,7 +428,7 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 	printVector(cell->master->bdu, numCols, NULL);
 #endif // defined(BNC_CHECK)
 
-	
+
 	if (changeQPbds(cell->master->lp, numCols, lbounds, ubounds, node->vars, 0)) {
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
@@ -440,7 +439,7 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 	if (getLb(cell->master->lp, 0, numCols, lbounds)) {
 		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
 		return 1;
-    }
+	}
 	if (getUb(cell->master->lp, 0, numCols, ubounds)) {
 		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
 		return 1;
@@ -468,14 +467,13 @@ void truncate(dVector var, dVector lb, dVector ub, int cnt)
 }
 
 // Build separate disjunctives 
-void disjunctCut(oneProblem  *master, probType *prob)
-{
+void disjunctCut(oneProblem  *master, probType *prob) {
 	cString name;
 	dVector beta;
 	iVector indices;
 	double alpha; int cnt; int v;
 	int lenX = master->mac;
-	
+
 	if (!(beta = arr_alloc(lenX + 1, double)))
 		errMsg("allocation", "new_cut", "beta", 0);
 	alpha = 0.0;
@@ -487,7 +485,7 @@ void disjunctCut(oneProblem  *master, probType *prob)
 	for (cnt = 1; cnt <= lenX; cnt++)
 		indices[cnt] = cnt - 1;
 	indices[0] = lenX;
-	
+
 	for (v = 0; v < lenX; v++)
 	{
 		if (master->bdl[v] != prob->sp->bdl[v])
@@ -497,7 +495,7 @@ void disjunctCut(oneProblem  *master, probType *prob)
 			/* add the cut to the cell cuts structure as well as on the solver */
 			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
 				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
-				return 1;
+				return;
 			}
 			beta[v] = 0;
 		}
@@ -509,7 +507,7 @@ void disjunctCut(oneProblem  *master, probType *prob)
 			/* add the cut to the cell cuts structure as well as on the solver */
 			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
 				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
-				return 1;
+				return;
 			}
 			beta[v] = 0;
 		}
@@ -517,16 +515,15 @@ void disjunctCut(oneProblem  *master, probType *prob)
 }
 
 
- // Subroutine for Solving the node problem given the lp pointer and 
- // node information
+// Subroutine for Solving the node problem given the lp pointer and
+// node information
 double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname)
 {
-	int 	status;
 	cell->ki = 0;
-	
+
 #if defined(BNC_CHECK)
 	printf("\nbefore SD: %-10s%-5d%-10s%-5d%-5s%-5d%-10s%-5d%-10s%-5d","node id:",
-		node->key,"node depth:",node->depth,"numVar:",node->numVar,"node->edInt:",node->edInt,"master->mac:",cell->master->mac);
+			node->key,"node depth:",node->depth,"numVar:",node->numVar,"node->edInt:",node->edInt,"master->mac:",cell->master->mac);
 	printf("\ndisjuction:\n");
 	printIntvec(node->disjncs, node->numVar-1, NULL);
 #endif // defined(BNC_CHECK)
@@ -564,7 +561,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		}
 
 		cell->master->mar = prob[0]->sp->mar;
-	
+
 #if defined(writemaster)
 		writeProblem(cell->master->lp, "master_test_afterclean.lp");
 #endif // defined(writemaster)
@@ -583,7 +580,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		for (cnt = 1; cnt <= node->edInt; cnt++)
 			indices[cnt] = cnt - 1;
 		indices[0] = node->edInt;
-		
+
 		/* Get the total number of rows */
 		int row_num = getNumRows(cell->master->lp);
 
@@ -655,8 +652,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		cell->incumbEst = cell->candidEst;
 		node->objval = cell->incumbEst;
 
-		
-		double testval = maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 		// Setup the QP master problem 
 		if (changeQPproximal(cell->master->lp, node->edInt, cell->quadScalar)) {
 			errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
@@ -667,8 +662,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 			errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
 			return 1;
 		}
-
-
 	}
 
 
@@ -678,8 +671,7 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	printf("\ninit incumbX:\n");
 	printVector(cell->incumbX, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
-	
-	int k_before = cell->k;
+
 	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL || (node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))
 	{
 #if defined(writemaster)
@@ -690,8 +682,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		if (solveCell(stoc, prob, cell)) {
 			return 1;
 		}
-		int k_after = cell->k;
-		int k_diff = k_after - k_before;
 
 #if defined(BNC_CHECK)
 		printf("\nafter SD:%-10s%-10.4f%-10s%-10.4f", "incumbEst:", cell->incumbEst, "candidEst:", cell->candidEst);
@@ -827,16 +817,11 @@ int freeNode(struct BnCnodeType *node)
 }//End freeNode()
 
 
- /* given a node problem which is solved decide which variable should be selected
+/* given a node problem which is solved decide which variable should be selected
  for branching  */
-int branchVar(struct BnCnodeType *node, int strategy)
-{
+int branchVar(struct BnCnodeType *node, int strategy) {
 
-	if (strategy == 0) // strategy based on the least index of the fractional variable 
-	{
-		return node->depth;
-	}
-	else if (strategy == 1)// strategy based on the larger fractional value
+	if (strategy == 1)// strategy based on the larger fractional value
 	{
 		double larger = -1;  /* maximum fractional value */
 		int maxidx = node->depth;
@@ -885,13 +870,14 @@ int branchVar(struct BnCnodeType *node, int strategy)
 		return idx;
 	}
 
-}
+	return node->depth;
+}//END branchVar()
 
 /* branch and bound algorithm */
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB)
 {
 
-	int i, j;
+	int i;
 	int nodecnt = 0;
 	int maxcut = config.CUT_MULT * cell->master->mac + 3;
 	cell->basis->incumPicnt = maxcut;
@@ -924,12 +910,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 	printf("\n\n");
 	printLongLine();
-	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%-12s\n", "node id", "parent", "depth", "k", "\|x\|","fval", "UB", "feasible", "integer","Lamfrac");
+	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%-12s\n", "node id", "parent", "depth", "k", "\\|x\\|","fval", "UB", "feasible", "integer","Lamfrac");
 	printLongLine();
 #endif // defined(printBranch)
-
-	int totdepth = original->mac;
-	double totnodes = pow(2, totdepth);
 
 	rootNode = newrootNode(original->mac, LB, UB, original);
 	rootNode->parobjVal = cell->meanVal;
@@ -987,7 +970,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 		/*
 		Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better
-		*/
+		 */
 #if defined(useDNODE)
 		if (dnodes > 0)
 		{
@@ -1012,7 +995,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 		/*
 		Loop for revisiting the integer feasible nodes to update the current best
-		*/
+		 */
 #if defined(useINODE)
 		if (inodes > 0)
 		{
@@ -1052,11 +1035,6 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	//freeOneProblem(original);
 	freeNodes(rootNode);
 	return 0;
-
-TERMINATE:
-	//freeOneProblem(original);
-	freeNodes(rootNode);
-	return 1;
 }
 
 /* Return the previous active node */
@@ -1131,7 +1109,7 @@ int getnodeIdx(int depth, int key, int isleft)
 from the tight lambdas of the parent and new lamdas discovered in the current node */
 void fracLamda(cellType *cell, struct BnCnodeType *node)
 {
-	int i, j, k, notnewLambda, totLambda;
+	int j, notnewLambda, totLambda;
 
 	node->Lambdasize = cell->lambda->cnt;
 	notnewLambda = 0;
@@ -1171,7 +1149,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		{
 			if (b < node->partightPi)
 			{
-				cell->basis->iStar = node->ParIncumbiStar[b];
+				cell->basis->iStar[b] = node->ParIncumbiStar[b];
 			}
 			else
 			{
@@ -1184,12 +1162,10 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	if (solveNode(stoc,prob,cell, node, original->name)) {
 
 #if defined(printBranch)
-		if (node->key > 0)
-		{
+		if (node->key > 0) {
 			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False", "NaN");
 		}
-		else
-		{
+		else {
 			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False", "NaN");
 		}
 #endif // defined(printBranch)
@@ -1228,7 +1204,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True", "NaN");
 		}
 #endif // defined(printBranch)		
-		
+
 		if (node->prevnode == NULL) return 0;
 		node->isActive = false;
 		if (node->isSPopt == true && node->objval < GlobeUB )
@@ -1288,7 +1264,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		for (int v = 0; v < node->edInt; v++)
 		{
 			printf("var%d:  val:  %0.04fl - LB: %0.04fl - UB: %0.04fl - distjnct: %d\n"
-				, v, node->vars[v + 1], node->disjncsVal[v][0], node->disjncsVal[v][1], node->disjncs[v]);
+					, v, node->vars[v + 1], node->disjncsVal[v][0], node->disjncsVal[v][1], node->disjncs[v]);
 		}
 	}
 #endif //  defined(depthtest)

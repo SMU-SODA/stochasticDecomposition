@@ -32,15 +32,10 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	openSolver();
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, &lb) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, lb) )
 		goto TERMINATE;
 
 	cell->meanVal = orig->objective;
-	
-
-	/* Initializing the extra structs for the case that master problem changes */
-	cell->master->dBar_changed = copysparseVector(prob[0]->dBar);
-	cell->master->Xcols = prob[0]->num->cols;
 
 #if defined(LPMIP_PRINT)
 	writeProblem(orig->lp, "meanvalueprob.lp");
@@ -176,7 +171,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		tic = clock();
 
 		if (mainloopSDCell(stoc, prob, cell, &breakLoop, observ)) {
-			//errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
+			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			goto TERMINATE;
 		}
 
@@ -184,7 +179,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
 		cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 		cell->time.iterTime = ((double) clock() - tic)/CLOCKS_PER_SEC; cell->time.iterAccumTime += cell->time.iterTime;
-		if(cell->ki > 500 && cell->ki % 100 == 0) printf("."); fflush(stdout);
+		if (cell->ki > 500 && cell->ki % 100 == 0) {
+			printf("."); fflush(stdout);
+		}
 
 		if (breakLoop)
 		{
@@ -275,7 +272,7 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 
 	/******* 6. Solve the master problem to obtain the new candidate solution */
 	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
-		//errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
+		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
 		return 1;
 	}
 
@@ -300,9 +297,9 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	//1c - Evaluate the solution (xIP) using evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX); -> (UB)
 	/* Turn the clone problem to LP */
 	QPtoLP(stoc, prob, cell, 0);
+
 	/* Launch the solver to solve the MIP master problem */
-	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
-		&status, config.SMIP_OPTGAP)) {
+	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
 		errMsg("algorithm", "algo-after-phase1", "failed to solve the master problem", 0);
 		return 1;
 	}
@@ -321,8 +318,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell)
 	/* Turn the clone problem to MILP */
 	LPtoMILP(stoc, prob, cell);
 	/* Launch the solver to solve the MIP master problem */
-	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, cell->master->mar, cell->master->mac,
-		&status, config.SMIP_OPTGAP)) {
+	if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
 		errMsg("algorithm", "algo-after-phase1", "failed to solve the master problem", 0);
 		return 1;
 	}
@@ -413,7 +409,7 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 		if (changeProbType(cell->master->lp, PROB_MILP)) {
 			errMsg("Problem Setup", "bendersCallback", "master", 0);
-			return 0;
+			return 1;
 		}
 
 		/*********02. Change LP solver to B&B *********/
@@ -464,7 +460,7 @@ int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP) {
 
 	mem_free(indices);
 
-
+	return 0;
 }
 
 /*
@@ -472,11 +468,8 @@ Turn the LP master problem to MILP
 Siavash Tabrizian July 20
 */
 int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
-
-	cString lu; cString uu;
 	iVector indices;
 	int numCols = prob[0]->num->cols;
-	int status = 0;
 
 	if (!(indices = (iVector)arr_alloc(numCols, int)))
 		errMsg("allocation", "bendersCallback", "indices", 0);
@@ -492,7 +485,7 @@ int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
 
 	if (changeProbType(cell->master->lp, PROB_MILP)) {
 		errMsg("Problem Setup", "bendersCallback", "master", 0);
-		return 0;
+		return 1;
 	}
 
 	/*********02. Change LP solver to B&B *********/
@@ -508,9 +501,8 @@ int LPtoMILP(stocType *stoc, probType **prob, cellType *cell) {
 #endif
 
 	mem_free(indices);
-
-
-}
+	return 0;
+}//END LPtoMILP();
 
 /*
 Getting the row names in the bnb after cuts are added 

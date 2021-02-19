@@ -208,7 +208,8 @@ bool fullTest(probType **prob, cellType *cell) {
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
 		else {
-			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts,cell->master->bdl,cell->master->bdu, cstat);
+			LB = calcBootstrpLB(prob[0], cell->incumbX, cell->piM, cell->djM, cell->sampleSize, cell->quadScalar, gCuts,
+					cell->master->bdl, cell->master->bdu, cstat);
 		}
 
 #if defined(OPT_CHECK)
@@ -341,7 +342,8 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 
 /* This function is to calculate the lower bound on the optimal value which is used in stopping rule in full_test() in optimal.c
  * in the case of regularized approach. */
-double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts, dVector bl, dVector bu, iVector cstat) {
+double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int sampleSize, double quadScalar, cutsType *cuts, dVector bl,
+		dVector bu, iVector cstat) {
 	double *bk; 			/* dVector: b - A*incumb_x. */
 	double *lambda; 		/* dVector: the dual of the primal constraints. */
 	double bk_lambda; 		/* scalar: bk*lambda. */

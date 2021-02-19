@@ -40,7 +40,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
-	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, cell->master->mar, cell->master->mac, &status, config.TOLERANCE) ) {
+	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 #if defined(printInfeas)
 		if (status == STAT_INFEASIBLE) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
@@ -142,7 +142,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	clock_t tic = clock();
 	//changeLPSolverType(ALG_CONCURRENT);
 	//writeProblem(cell->master->lp, "callLPMastersolve.lp");
-	if (solveProblem(cell->master->lp, cell->master->name, 0, cell->master->mar, cell->master->Xcols+1, &status, config.TOLERANCE)) {
+	if (solveProblem(cell->master->lp, cell->master->name, 0, &status)) {
 		if (status == STAT_INFEASIBLE) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
 			writeProblem(cell->master->lp, "infeasibleM.lp");
@@ -156,13 +156,13 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	cell->time.masterIter = ((double)(clock() - tic)) / CLOCKS_PER_SEC;
 
 	/* Get the most recent optimal solution to master program */
-	if (getPrimal(cell->master->lp, cell->candidX, cell->master->Xcols)) {
+	if (getPrimal(cell->master->lp, cell->candidX, num->cols)) {
 		errMsg("algorithm", "solveQPMaster", "failed to obtain the primal solution for master", 0);
 		return 1;
 	}
 
 	/* add the incumbent back to change from \Delta X to X */
-	for (i = 1; i <= cell->master->Xcols; i++)
+	for (i = 1; i <= num->cols; i++)
 		d2 += cell->candidX[i] * cell->candidX[i];
 
 	/* update d_norm_k in soln_type. */
@@ -176,13 +176,11 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 		return 1;
 	}
 
-	if (getDualSlacks(cell->master->lp, cell->djM, cell->master->Xcols)) {
+	if (getDualSlacks(cell->master->lp, cell->djM, num->cols)) {
 		errMsg("solver", "solveQPMaster", "failed to obtain dual slacks for master", 0);
 		return 1;
 	}
 
-	double c1 = vXvSparse(cell->candidX, dBar);
-	double c2 = maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
 	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
 
@@ -352,7 +350,7 @@ int changeEtaColMIP(LPptr lp, int numRows, int etaIdx, int currSampleSize, cutsT
 			//	printf("\nr %i: %s ", r, cur_rowname[r]);
 			//}
 			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-			coef[0] = (double)max(2.0, iter);
+			coef[0] = (double) maximum(2.0, iter);
 
 			if (changeCol(lp, etaIdx, coef, c, c + 1)) {
 				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);

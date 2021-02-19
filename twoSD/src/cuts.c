@@ -18,7 +18,7 @@
 
 #undef Disp_argmax  
 
-#define remove_cut
+#undef remove_cut
 
 extern configType config;
 
@@ -236,7 +236,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	**cut;
-	int    	cutIdx, obs;
+	int    	cutIdx;
 
 
 	/* (b) create a GMI cut */
@@ -274,7 +274,7 @@ int formGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
 int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	**cut;
-	int    	cutIdx, obs;
+	int    	cutIdx;
 
 
 	/* (b) create a MIR cut */
@@ -319,26 +319,15 @@ int formMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
  */
 oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-
-
 	oneCut 	*cut;
 	oneCut 	**cutarr;
-	int    	cutNum;
-	int    	cutIdx;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
+	int 	k;
 
-	numRows = prob[0]->num->rows;
-
-	if (!(cutarr = (oneCut*)arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut)))
+	if (!(cutarr = (oneCut **) arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut *)))
 		errMsg("allocation", "formMIRcut", "cutarr", 0);
 
 
-	startID = cell->MIRcuts->cnt;
 	int cutnum = 0;
-
-
 	//// Creating MIR for benders cuts
 	for (k = 0; k < cell->cuts->cnt; k++) {
 
@@ -360,7 +349,7 @@ oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 			double beta1 = afloor * f0 + fj;
 			double beta2 = aceil * f0;
 
-			cut->beta[v] = min(beta1, beta2);
+			cut->beta[v] = minimum(beta1, beta2);
 
 		}
 
@@ -466,25 +455,14 @@ oneCut **pureMIRCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 
  */
 oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double lb) {
-
-
 	oneCut 	*cut;
 	oneCut 	**cutarr;
-	int    	cutNum;
-	int    	cutIdx;
-	double	bhat, ahat, a, b, abar, r;
-	int 	status, k, i, j, cnt, startID, endID, numRows;
-	a = b = r = 0;
+	int 	k;
 
-	numRows = prob[0]->num->rows;
-
-	if (!(cutarr = (oneCut*)arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut)))
+	if (!(cutarr = (oneCut **) arr_alloc(cell->cuts->cnt + cell->cuts->cnt*cell->cuts->cnt / 2, oneCut *)))
 		errMsg("allocation", "formMIRcut", "cutarr", 0);
 
-
-	startID = cell->GMIcuts->cnt;
 	int cutnum = 0;
-	//double alpha_coeff[4] = { 0.5,1.0,1.5,2.0 };
 	double alpha_coeff[1] = { 1.0 };
 
 	//// Creating frac GMI for benders cuts
@@ -546,7 +524,7 @@ oneCut **purefracGMICut(probType **prob, cellType *cell, dVector Xvect, double l
 			}
 
 			bool repeatFlag = false;
-			if (cell->GMIcuts->vals == !NULL)
+			if ( cell->GMIcuts->vals )
 			{
 				for (int pc = 0; pc < cell->GMIcuts->cnt; pc++)
 				{
@@ -1154,7 +1132,6 @@ int addCut2Pool(cellType *cell, int mar, oneCut *cut, int lenX, double lb, bool 
  
  */
 int addMIPCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool GMI) {
-	int	cnt;
 
 	if (GMI) {
 		if (cell->GMIcuts->cnt <= cell->maxMIPCuts)
