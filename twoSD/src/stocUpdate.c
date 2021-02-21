@@ -9,10 +9,13 @@
  *
  */
 
+#include "twoSD.h"
 #include "stoc.h"
 
+extern configType config;
+
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag) {
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, bool subFeasFlag) {
 	oneBasis *B;
 	sparseVector dOmega;
 	int 	cnt, lambdaIdx;
@@ -27,7 +30,7 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 		/* Establish feasibility of basis with respect to current observations */
 		dOmega.val = prob->coord->rvOffset[2]+omega->vals[omegaIdx];
 		for ( cnt = 0; cnt < basis->cnt; cnt++ )
-			basis->obsFeasible[cnt][omegaIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
+			basis->obsFeasible[cnt][omegaIdx] = checkBasisFeasibility(basis->vals[cnt], dOmega, prob->sp->senx, prob->num->cols, prob->num->rows);
 	}
 
 	if ( (B = newBasis(lp, prob->num->cols, prob->num->rows, currentIter, subFeasFlag)) == NULL ) {
@@ -74,11 +77,11 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	}
 
 	/* Elements of deterministic component of dual solution corresponding to rows with random elements in them */
-	lambdaIdx = calcLambda(prob->num, prob->coord, B->piDet, lambda, &newLambdaFlag, TOLERANCE);
+	lambdaIdx = calcLambda(prob->num, prob->coord, B->piDet, lambda, &newLambdaFlag);
 
 	/* Elements of deterministic component of dual solution with deterministic (mean value) right-hand side and transfer matrix. */
 	B->sigmaIdx[0] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, B->piDet, B->mubBar,
-			lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+			lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag);
 
 	if ( newLambdaFlag )
 		calcDelta(prob->num, prob->coord, lambda, delta, deltaRowLength, omega, false, lambdaIdx);
@@ -86,11 +89,11 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 	retainBasis = newSigmaFlag;
 	for (cnt = 0; cnt < B->phiLength; cnt++ ) {
 		/* Elements of basis column corresponding to rows with random elements in them */
-		lambdaIdx = calcLambda(prob->num, prob->coord, B->phi[cnt], lambda, &newLambdaFlag, TOLERANCE);
+		lambdaIdx = calcLambda(prob->num, prob->coord, B->phi[cnt], lambda, &newLambdaFlag);
 
 		/* Compute the product of basis column with deterministic (mean value) right-hand side and transfer matrix. */
 		B->sigmaIdx[cnt+1] = calcSigma(prob->num, prob->coord, prob->bBar, prob->Cbar, B->phi[cnt], 0,
-				lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag, TOLERANCE);
+				lambdaIdx, newLambdaFlag, currentIter, sigma, &newSigmaFlag);
 
 		if ( newLambdaFlag )
 			calcDelta(prob->num, prob->coord, lambda, delta, deltaRowLength, omega, false, lambdaIdx);
@@ -120,7 +123,7 @@ int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *la
 			errMsg("allocation", "stochasticUpdates", "basis->obsFeasibility[n]", 0);
 		for ( cnt = 0; cnt < omega->cnt; cnt++ ) {
 			dOmega.val = prob->coord->rvOffset[2]+omega->vals[cnt];
-			basis->obsFeasible[basis->cnt][cnt] = checkBasisFeasibility(B, dOmega, prob->sp->senx, prob->num->cols, prob->num->rows, TOLERANCE);
+			basis->obsFeasible[basis->cnt][cnt] = checkBasisFeasibility(B, dOmega, prob->sp->senx, prob->num->cols, prob->num->rows);
 		}
 	}
 	else
@@ -171,12 +174,14 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		}
 	}
 
-	if ( checkOldOnly ) {
-		(*piRatio) *= argOld;
-	}
-	else {
-		(*piRatio) = argOld/argAll;
-	}
+	double Dm = checkOldOnly? (*piRatio):argAll;
+	double Nm = argOld;
+
+	if ( Dm != 0 )
+		(*piRatio) = Nm/Dm;
+	else
+		/* Set ratio to 1.0 if the Nm is close to denominator. */
+		(*piRatio) = (Nm < config.EPSILON) ? 1.0: 0.0;
 
 	if ( argAll == -DBL_MAX )
 		return -1;
@@ -256,7 +261,7 @@ int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *del
  * This dVector is then compared with all previous lambda_pi dVectors, searching for a duplication. If a duplicate is found, the dVector is not added
  * to the structure, and the function returns the index of the duplicate dVector. Otherwise, it adds the dVector to the end of the structure,
  *and returns an index to the last element in lambda. */
-int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE) {
+int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag) {
 	int 	pi_idx;
 	dVector	lambda_pi;
 
@@ -265,7 +270,7 @@ int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, b
 
 	/* Compare resulting lambda_pi with all previous dVectors */
 	for (pi_idx = 0; pi_idx < lambda->cnt; pi_idx++)
-		if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, TOLERANCE)) {
+		if (equalVector(lambda_pi, lambda->vals[pi_idx], num->rvRowCnt, config.TOLERANCE)) {
 			mem_free(lambda_pi);
 			*newLambdaFlag = false;
 			return pi_idx;
@@ -279,7 +284,7 @@ int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, b
 }//END calcLambda
 
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,
-		int idxLambda, bool newLambdaFlag, int currentIter, sigmaType *sigma, bool *newSigmaFlag, double TOLERANCE) {
+		int idxLambda, bool newLambdaFlag, int currentIter, sigmaType *sigma, bool *newSigmaFlag) {
 	dVector	piCBar, temp;
 	double 	pibBar;
 	int 	cnt;
@@ -293,8 +298,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
 
 	if (!newLambdaFlag){
 		for (cnt = 0; cnt < sigma->cnt; cnt++) {
-			if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= TOLERANCE) {
-				if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, TOLERANCE))
+			if (DBL_ABS(pibBar - sigma->vals[cnt].pib) <= config.TOLERANCE) {
+				if (equalVector(piCBar, sigma->vals[cnt].piC, num->cntCcols, config.TOLERANCE))
 					if(sigma->lambdaIdx[cnt]== idxLambda){
 						mem_free(piCBar);
 						(*newSigmaFlag) = false;
@@ -560,7 +565,6 @@ void freeSampleType(sampleType *sample) {
 	if ( sample ) {
 		if ( sample->omegaIdx ) mem_free(sample->omegaIdx);
 		if ( sample->newOmegaFlag) mem_free(sample->newOmegaFlag);
-		if ( sample->newBasisFlag) mem_free(sample->newBasisFlag);
 		if ( sample->iStar ) mem_free(sample->iStar);
 		mem_free(sample);
 	}

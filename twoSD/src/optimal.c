@@ -73,7 +73,7 @@ bool preTest(cellType *cell) {
 bool fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	iVector  cdf, observ;
-	double  est, ht, LB = prob[0]->lb;
+	double  UB = 0, ht, LB = prob[0]->lb;
 	int 	numPass = 0, rep, j;
 
 	clock_t tic = clock();
@@ -117,7 +117,7 @@ bool fullTest(probType **prob, cellType *cell) {
 				gCuts, observ, cell->sampleSize, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
-		est = -INF;
+		UB = -INF;
 #if defined(OPT_CHECK)
 		printf("-------------------------------------------------------------------------------------------\n");
 		printf("Reform-%02d::\n", rep);
@@ -129,8 +129,8 @@ bool fullTest(probType **prob, cellType *cell) {
 			printCut(gCuts->vals[0], prob[0]->num->cols);
 			printf("Estimate: %lf\n", incumb_cx + ht);
 #endif
-			if ( est < ht)
-				est = ht;
+			if ( UB < ht)
+				UB = ht;
 		}
 #if defined(OPT_CHECK)
 		printf("-------------------------------------------------------------------------------------------\n");
@@ -140,7 +140,7 @@ bool fullTest(probType **prob, cellType *cell) {
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lower bound. In QP approach,
 		 * we don't include the incumb_x * c in estimate */
 		if (config.MASTER_TYPE == PROB_LP) {
-			est += vXvSparse(cell->incumbX, prob[0]->dBar);
+			UB += vXvSparse(cell->incumbX, prob[0]->dBar);
 			// TODO: solve a temporary master problem
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);
 		}
@@ -153,7 +153,7 @@ bool fullTest(probType **prob, cellType *cell) {
 #endif
 		/* (g) compare the normalized difference between estimate and the lower bound. If the problem is a QP problem, we don't need
 		 * add the constant term c^T x \hat{x} */
-		if (DBL_ABS((est - LB) / cell->incumbEst) <= config.EPSILON)
+		if (DBL_ABS((UB - LB) / cell->incumbEst) <= config.EPSILON)
 			numPass++;
 
 		/* (h) check No. of fails. skip out of the loop if there's no hope of meeting the condition */
@@ -336,10 +336,10 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 		A_Trans->col[cnt] = prob->Dbar->row[cnt];
 	}
 
-	/* 2b. Calculate - A_Trans * lambda. */
+	/* 2b. Calculate: A_Trans * lambda. */
 	MSparsexvSub(A_Trans, lambda, A_Trans_lambda);
 
-	/* 2c. Calculate -A_trans * lambda - c */
+	/* 2c. Calculate: A_trans * lambda + c */
 	for (i = 0; i < prob->num->cols; i++)
 		A_Trans_lambda[i + 1] += djM[i + 1];
 
@@ -363,7 +363,7 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	q_term = vXv(q_vec, q_vec, NULL, prob->num->cols);
 
 	/* 5. Calculate the lower bound*/
-	Lm = Vk_theta + bk_lambda - q_term / quadScalar / 2.0;
+	Lm = Vk_theta - bk_lambda - q_term / quadScalar / 2.0;
 
 	mem_free(bk);
 	mem_free(lambda);
@@ -376,5 +376,5 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	mem_free(q_vec);
 
 	return Lm;
-}//END calcBootstrpLB
+}//END calcBootstrpLB()
 

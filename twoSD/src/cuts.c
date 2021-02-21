@@ -58,7 +58,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
 	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
-			Xvect, cell->sampleSize, (cell->k >= config.DUAL_EVAL_START), cell->pi_ratio, cell->k, cell->lb);
+			Xvect, cell->sampleSize, (cell->k >= config.DUAL_EVAL_START), cell->k, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -73,7 +73,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 		cell->pi_ratio[cell->k % config.SCAN_LEN] = tempRatio/(double) cell->sampleSize;
 
 		double variance = calcVariance(cell->pi_ratio, NULL, NULL, 0);
-		if (DBL_ABS(variance) >= .000002 || cell->pi_ratio[cell->k % config.SCAN_LEN] < 0.95 )
+		if ( DBL_ABS(variance) > .000001 || fabs(cell->pi_ratio[cell->k % config.SCAN_LEN] - 1) > 0.05 )
 			cell->dualStableFlag = false;
 		else
 			cell->dualStableFlag = true;
@@ -97,11 +97,12 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 
 
 #if defined(STOCH_CHECK)
+	bool newOmegaFlag;
 	/* Solve the subproblem to verify if the argmax operation yields a lower bound */
 	for ( int cnt = 0; cnt < cell->omega->cnt; cnt++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
+				cell->omega, cnt, &newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag,
 				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
@@ -124,7 +125,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 }//END formCut()
 
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool calcPiRatio, dVector pi_ratio, int currentIter, double lb) {
+		dVector Xvect, int numSamples, bool calcPiRatio, int currentIter, double lb) {
 	oneCut *cut;
 	dVector 	piCbarX, beta;
 	double  alpha = 0.0, multiplier;
@@ -134,8 +135,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	cut = newCut(num->prevCols, omega->cnt, numSamples);
 
 	/* Pre-compute pi x Cbar x x as it is independent of observations */
-	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
-		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	piCbarX= arr_alloc(sigma->cnt, double);
 	for (c = 0; c < sigma->cnt; c++)
 		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
@@ -162,16 +162,16 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 				}
 				else {
 					/* Estimate the value using first config.DUAL_WINDOW iterations */
-					omega->piRatio[obs] = (double) 1/omega->obj[obs];
+					omega->piRatio[obs] = omega->obj[obs];
 					computeIstar(num, coord, basis, sigma, delta, sample,
-							piCbarX, Xvect, omega->vals[obs], obs, config.DUAL_WINDOW*numSamples, &omega->piRatio[obs], true);
+							piCbarX, Xvect, omega->vals[obs], obs, config.DUAL_WINDOW*currentIter, &omega->piRatio[obs], true);
 				}
 			}
 		}
 		else {
 			/* Use the argmax procedure to identify the istar. */
 			istar = computeIstar(num, coord, basis, sigma, delta, sample,
-					piCbarX, Xvect, omega->vals[obs], obs, config.DUAL_WINDOW*numSamples, &omega->piRatio[obs], false);
+					piCbarX, Xvect, omega->vals[obs], obs, config.DUAL_WINDOW*currentIter, &omega->piRatio[obs], false);
 		}
 
 		if (istar < 0) {
@@ -230,7 +230,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 #endif
 
 	return cut;
-}//END SDCut
+}//END SDCut()
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
 double maxCutHeight(cutsType *cuts, int currSampleSize, dVector xk, int betaLen, double lb) {
@@ -439,7 +439,6 @@ double calcVariance(double *x, double *mean_value, double *stdev_value, int batc
 /* This function takes the SD code into Feasibility mode (solve_cell() take the SD into Optimality mode). The SD will not return to optimality mode
  until the candidate and incumbent solution are both feasible. */
 int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, int omegaIdx) {
-	bool newBasisFlag;
 
 	/* QP master will be solved in feasibility mode */
 	cell->optMode = false;

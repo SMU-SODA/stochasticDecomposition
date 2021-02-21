@@ -13,7 +13,7 @@
 #define TWOSD_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
@@ -29,6 +29,7 @@
 typedef struct{
 	int		NUM_SEEDS;			/* Number of seeds read */
 	long long *RUN_SEED;		/* seed used during optimization */
+
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
@@ -188,7 +189,7 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool calcPiRatio, dVector pi_ratio, int numIter, double lb);
+		dVector Xvect, int numSamples, bool calcPiRatio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);

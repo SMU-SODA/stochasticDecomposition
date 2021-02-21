@@ -267,6 +267,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 		cell->pi_ratio = NULL;
 	}
 	else {
+		/* Align the scan length used for dual stability test with the sample increment. */
+		config.SCAN_LEN = config.SCAN_LEN/(double) config.SAMPLE_INCREMENT;
 		cell->dualStableFlag 	= false;
 		if ( !(cell->pi_ratio = (dVector) arr_alloc(config.SCAN_LEN, double)) )
 			errMsg("allocation", "newCell", "cell->pi_ratio", 0);
@@ -318,7 +320,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;
 	if ( config.CHECK_DUAL_STABILITY )
-		cell->dualStableFlag 	= false;
+		cell->dualStableFlag	= false;
 
 	copyVector(xk, cell->candidX, prob->num->cols, true);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);

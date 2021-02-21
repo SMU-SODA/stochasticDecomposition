@@ -9,7 +9,7 @@
 #define STOC_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 
@@ -79,8 +79,6 @@ typedef struct {
 	int		cnt;
 	iVector	omegaIdx;				/* Observation index in omegaType */
 	bool 	*newOmegaFlag;  		/* Flag indicates if the observation is encountered for the first time. */
-
-	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
 	iVector iStar;
 }sampleType;
 
@@ -124,13 +122,13 @@ oneProblem *newSubprob(oneProblem *sp);
 
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr lp, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
-		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool subFeasFlag);
+		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, bool subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
 		dVector piCbarX, dVector Xvect, dVector observ, int obs, int oldWindow, double *piRatio, bool checkOldOnly);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);
-int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE);
+int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,
-              int idxLambda, bool newLambdaFlag, int currentIter, sigmaType *sigma, bool *newSigmaFlag, double TOLERANCE);
+              int idxLambda, bool newLambdaFlag, int currentIter, sigmaType *sigma, bool *newSigmaFlag);
 int calcOmega(dVector observ, int begin, int end, omegaType *omega, bool *newOmegaFlag, double TOLERANCE);
 int computeMU(LPptr lp, iVector cstat, int numCols, double *mubBar);
 lambdaType *newLambda(int num_iter, int numLambda, int numRVrows);
@@ -146,7 +144,7 @@ void freeDeltaType (deltaType *delta, int lambdaCnt, int omegaCnt, bool partial)
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim);
 int decomposeDualSolution(LPptr spLP, oneBasis *B, dVector omegaVals, int numRows);
 oneBasis *newBasis(LPptr lp, int numCols, int numRows, int currentIter, bool subFeasFlag);
-bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int numCols, int numRows, double TOLERANCE);
+bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int numCols, int numRows);
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
 void freeOneBasis(oneBasis *B);
 void freeBasisType(basisType *basis, bool partial);

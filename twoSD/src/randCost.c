@@ -12,6 +12,8 @@
 #include "twoSD.h"
 #include "stoc.h"
 
+extern configType config;
+
 #if defined(BASIS_CHECK)
 extern cString outputDir;
 #endif
@@ -199,7 +201,7 @@ int decomposeDualSolution(LPptr lp, oneBasis *B, dVector omegaVals, int numRows)
 }//END decomposeDualSolution()
 
 /* This subroutine determines the feasibility of a basis. */
-bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int numCols, int numRows, double TOLERANCE) {
+bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int numCols, int numRows) {
 	dVector 	reducedCost, theta = NULL;
 	iVector	cstat;
 	int 	n, c;
@@ -214,7 +216,7 @@ bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int n
 			for ( c = 1; c <= numRows; c++ ) {
 				for ( n = 0; n < B->phiLength; n++ )
 					theta[c] += B->phi[n][c]*dOmega.val[B->omegaIdx[n+1]];
-				if ( (B->piDet[c] + theta[c] < -TOLERANCE && senx[c-1] == 'G') || (B->piDet[c] + theta[c] > TOLERANCE && senx[c-1] == 'L')) {
+				if ( (B->piDet[c] + theta[c] < -config.TOLERANCE && senx[c-1] == 'G') || (B->piDet[c] + theta[c] > config.TOLERANCE && senx[c-1] == 'L')) {
 					mem_free(theta);
 					return false;
 				}
@@ -244,7 +246,7 @@ bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int n
 		cstat = decodeIntvec(B->cCode, numCols, WORDLENGTH, 3);
 		c = 1;
 		while ( c <= numCols ) {
-			if ( reducedCost[c] < -TOLERANCE && cstat[c] != AT_UPPER ) {
+			if ( reducedCost[c] < -config.TOLERANCE && cstat[c] != AT_UPPER ) {
 				mem_free(reducedCost); mem_free(cstat);
 				return false;
 			}

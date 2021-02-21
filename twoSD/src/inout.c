@@ -48,6 +48,7 @@ void printOptimizationSummary(cellType *cell) {
 		fprintf(stdout, "*\n");
 	else
 		fprintf(stdout, "\n");
+	fprintf(stdout, "Number of observations             : %d\n", cell->omega->cnt);
 	fprintf(stdout, "Lower bound estimate               : %f\n", cell->incumbEst);
 	fprintf(stdout, "Total time                         : %f\n", cell->time.repTime);
 	fprintf(stdout, "Total time to solve master         : %f\n", cell->time.masterAccumTime);

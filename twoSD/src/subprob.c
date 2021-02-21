@@ -19,7 +19,6 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 		double *subprobTime, double *argmaxTime) {
 	int  	status;
 	clock_t tic;
-	bool newBasisFlag;
 
 	/* (a) compute and change the right-hand side using current observation and first-stage solution */
 	if ( computeRHS(subproblem->lp, prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, omega->vals[omegaIdx]) ) {
@@ -35,7 +34,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 		}
 	}
 
-#if defined(ALGO_CHECK)
+#if (defined(ALGO_CHECK) || defined(STOCH_CHECK) )
 	writeProblem(subproblem->lp, "subproblem.lp");
 #endif
 
@@ -68,11 +67,12 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 	tic = clock();
 	/* (d) update the stochastic elements in the problem */
 	status = stochasticUpdates(prob, subproblem->lp, basis, lambda, sigma, delta, deltaRowLength,
-			omega, omegaIdx, (*newOmegaFlag), currentIter, TOLERANCE , (*subFeasFlag));
+			omega, omegaIdx, (*newOmegaFlag), currentIter, (*subFeasFlag));
 	(*newOmegaFlag) = false;
 	(*argmaxTime) += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #ifdef STOCH_CHECK
+	double obj;
 	obj = sigma->vals[status].pib - vXv(sigma->vals[status].piC, Xvect, prob->coord->CCols, prob->num->cntCcols);
 	obj += delta->vals[sigma->lambdaIdx[status]][omegaIdx].pib - vXv(delta->vals[sigma->lambdaIdx[status]][omegaIdx].piC,
 			omega->vals[omegaIdx], prob->coord->rvCOmCols, prob->num->rvCOmCnt);
