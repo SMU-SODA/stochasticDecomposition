@@ -37,7 +37,6 @@ typedef		int					*iVector;
 #define 	mem_calloc(n,size) 	log_alloc("calloc : " #n " : " #size, calloc((n),(size)), ((n) * size))
 #define		arr_alloc(n,type)	(type *) mem_calloc((n),sizeof(type))
 #define 	mem_realloc(ptr, n) log_realloc("realloc : " #ptr " : " #n,(ptr), realloc((ptr),(n)), (n))
-#define 	mem_free(ptr) 		free(ptr)
 #define 	minimum(X, Y) 		((X) <= (Y) ? (X) : (Y))
 #define 	maximum(X, Y) 		((X) >= (Y) ? (X) : (Y))
 #define		DBL_ABS(x)			((x) > 0.0 ? (x) : -(x))
@@ -66,6 +65,7 @@ int removeSpaces (char *field);
 
 void *log_alloc(char *cString, void *return_ptr, int size);
 void *log_realloc(char *cString, void *free_ptr, void *alloc_ptr, int size);
+void mem_free ( void *ptr );
 
 double str2float(char *cString);
 int str2int(char *cString);

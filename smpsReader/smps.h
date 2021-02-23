@@ -85,6 +85,7 @@ typedef struct {
 	iVector	numPerGroup;
 	iVector	groupBeg;
 	dVector	mean;         		/* mean of each rv */
+	bool	isDiscrete;			/* Flag to check if the probability distribution is continuous or discrete. */
 	statModel *mod;
 }stocType;
 
@@ -118,8 +119,10 @@ int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, 
 float scalit(float lower, float upper, long long *RUN_SEED);
 float randUniform(long long *SEED);
 int randInteger(long long *SEED, int iMax);
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector *probs, int *numSamples, double TOLERANCE);
-int readSimData(cString fname, dVector *simObservVals, dVector probs, int numRV, int *numSamples);
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs,
+		int *numObs, int desiredSampleSize, double TOLERANCE);
+int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
+void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean);
 
 #endif /* SMPS_H_ */

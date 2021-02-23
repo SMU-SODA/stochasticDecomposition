@@ -7,8 +7,9 @@
  *  	Report: harsha@smu.edu
  */
 
+//#include <solver_cplex.h>
+#include <solver_gurobi.h>
 #include "utils.h"
-#include "solver.h"
 
 long int MEM_USED;
 cString outputDir;

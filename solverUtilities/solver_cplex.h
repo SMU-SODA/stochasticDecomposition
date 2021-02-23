@@ -58,7 +58,12 @@
 
 #define 	THREADS			CPXPARAM_Threads
 
-int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap);
+ENVptr newEnv();
+void openSolver();
+void closeSolver();
+
+int solveProblem(LPptr lp, cString pname, int type, int *status);
+
 int getProbType(LPptr lp);
 double getObjective(LPptr lp, int type);
 int getPrimal(LPptr lp, dVector X, int length);
@@ -67,6 +72,7 @@ int getDual(LPptr lp, dVector Pi, int length);
 int getDualSlacks(LPptr lp, dVector Dj, int length);
 int getBasis(LPptr lp, iVector cstat, iVector rstat);
 int getBinvC(LPptr lp, int col, dVector a );
+
 int changeCoef(LPptr lp, int row, int col, double val);
 int changeObjx(LPptr lp, int cnt, iVector indices, dVector values);
 int changeRHS(LPptr lp, int cnt, iVector indices, dVector values);
@@ -74,6 +80,7 @@ int changeBDS(LPptr lp, int cnt, iVector indices, cString lu, dVector bd);
 int changeCol(LPptr lp, int column, dVector coef, int start, int stop);
 int changeCtype(LPptr lp, int cnt, iVector indices, cString ctype);
 int changeProbType(LPptr lp, int type);
+
 int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, iVector rmatind, dVector rmatval, cString rowname);
 int addCol(LPptr lp, int nzcnt, double objx, int cmatbeg, iVector cmatind, dVector cmatval, double bdu, double bdl, cString colname);
 int removeRow(LPptr lp, int begin, int end);
@@ -90,9 +97,6 @@ int copyQPseparable(LPptr lp, double *qsepvec);
 LPptr cloneProblem(LPptr origLp);
 int writeProblem(LPptr lp, char *filename);
 
-void openSolver();
-ENVptr newEnv();
-void closeSolver();
 int getIntParam(int paramName, int *paramValue);
 int setIntParam(int paramname, int paramvalue);
 int setDoubleParam (int paramName, double paramVal);
@@ -124,9 +128,9 @@ int getBasisInvRow(LPptr lp, int i, dVector phi);
 int getBasisInvCol(LPptr lp, int i, dVector phi);
 int getBasisInvARow(LPptr lp, int i, dVector phi);
 int getBasisInvACol(LPptr lp, int i, dVector phi);
+
 int freeProblem(LPptr lp);
 
 int refineConflict (LPptr lp , int mar, int mac);
-
 
 #endif /* MTSD_SOLVER_H_ */

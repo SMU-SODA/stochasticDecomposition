@@ -137,6 +137,13 @@ void *log_realloc(char *cString, void *free_ptr, void *alloc_ptr, int size) {
 	return alloc_ptr;
 }//END log_realloc()
 
+void mem_free ( void *ptr ) {
+
+	if ( ptr != NULL ) {
+		free(ptr);
+		ptr = NULL;
+	}
+}
 
 double str2float(char *cString){
 	double val;

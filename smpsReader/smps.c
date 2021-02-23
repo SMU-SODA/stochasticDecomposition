@@ -7,7 +7,7 @@
 
 #include <utils.h>
 #include <smps.h>
-#include <solver.h>
+#include <solver_cplex.h>
 
 int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
 
@@ -374,6 +374,7 @@ stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeTyp
 	stoc->numOmega = 0;
 	stoc->numGroups = 0;
 	stoc->sim = false;
+	stoc->isDiscrete = true;
 	stoc->mod = NULL;
 
 	/* STOCH section: read problem name and compare with that read earlier */
@@ -507,7 +508,7 @@ int readIndepDiscrete(FILE *fptr, cString *fields, int maxOmegas, int maxVals, c
 
 	/* store the type of stochastic process encountered */
 	sprintf(stoc->type, "INDEP_DISCRETE");
-	stoc->sim = true;
+	stoc->sim = false;
 
 	stoc->numVals = (iVector) arr_alloc(maxOmegas, int);
 	stoc->vals    = (dVector *) arr_alloc(maxOmegas, dVector);
@@ -609,7 +610,8 @@ int readNormal(FILE *fptr, cString *fields, int maxOmegas, cString **rvRows, cSt
 	char strType;
 
 	/* continuous distribution, use a simulator */
-	stoc->sim = true;
+	stoc->sim = false;
+	stoc->isDiscrete = false;
 	sprintf(stoc->type, "INDEP_%s",fields[1]);
 
 	stoc->vals	  = (dVector *) arr_alloc(1, dVector);
@@ -936,7 +938,7 @@ int readLinTrans(FILE *fptr, cString *fields, oneProblem *orig, stocType *stoc, 
 
 	/* Update the stocType */
 	strcpy(stoc->type, "LINTRAN");
-	stoc->sim = true;
+	stoc->sim = false;
 
 	/* Read from the stoc file line-by-line */
 	while (true) {

@@ -5,13 +5,13 @@
  *      Author: Harsha Gangammanavar
  */
 
+#include <solver_cplex.h>
 #include <utils.h>
-#include <solver.h>
 
 extern cString 	outputDir;
 ENVptr	env;
 
-int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap) {
+int solveProblem(LPptr lp, cString pname, int type, int *status) {
 	int		aggres = 0, res = 0;
 
 	solveagain:
@@ -24,22 +24,15 @@ int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap) 
 	case PROB_QP:
 		(*status) = CPXqpopt(env, lp);
 		break;
-	case PROB_MILP:
-		setDoubleParam(CPXPARAM_MIP_Tolerances_MIPGap, mipGap);
-		(*status) = CPXmipopt(env, lp);
-		break;
-	case PROB_MIQP:
-		(*status) = CPXmipopt(env, lp);
-		break;
 	default:
 		break;
 	}
 
 	RESOLVE:
 	(*status) = CPXgetstat(env, lp);
-	if ((*status) != STAT_OPTIMAL && (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL  ) {
+	if ((*status) != STAT_OPTIMAL ) {
 		writeProblem(lp, "error.lp");
-		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
+		if ((*status) == STAT_INFEASIBLE ) {
 			fprintf(stderr, "\nWarning: Problem is infeasible. ");
 			return (*status);
 		}
@@ -83,28 +76,6 @@ int solveProblem(LPptr lp, cString pname, int type, int *status, double mipGap) 
 
 	skip: if (aggres)
 		setIntParam(PARAM_SCAIND, 0);
-
-	return 0;
-}//END solveProblem()
-
-int solveProblemCallback(LPptr lp, cString pname, int *status, double mipGap) {
-	int		aggres = 0, res = 0;
-
-	setDoubleParam(CPXPARAM_MIP_Tolerances_MIPGap, mipGap);
-	(*status) = CPXmipopt(env, lp);
-
-	(*status) = CPXgetstat(env, lp);
-	if ( (*status) != MIP_OPTIMAL && (*status)!= MIP_OPTIMAL_TOL ) {
-		writeProblem(lp, "error.lp");
-		if ((*status) == STAT_INFEASIBLE || (*status) == MIP_INFEASIBLE) {
-			fprintf(stderr, "\nProblem is infeasible.\n");
-			return (*status);
-		}
-		else {
-			solverErrmsg((*status));
-			return (*status);
-		}
-	}
 
 	return 0;
 }//END solveProblem()
@@ -352,12 +323,10 @@ LPptr setupProblem(cString name, int type, int numcols, int numrows, int objsens
 		mem_free(indices);
 	}
 
-
 	if ( changeProbType(lp, type) ) {
 		errMsg("Problem Setup", "new_subprob", "subprob",0);
 		return NULL;
 	}
-
 
 	return lp;
 }//END setupProblem()
@@ -751,7 +720,7 @@ int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, iV
 }//END addRow()
 
 int addCol(LPptr lp, int nzcnt, double objx, int matbeg, iVector cmatind, dVector cmatval, double bdu,
-		double bdl, cString colname){
+		double bdl, cString colname) {
 	cString	*cNames;
 	int 	status, cmatbeg[1];
 	double 	obj[1], lb[1], ub[1];

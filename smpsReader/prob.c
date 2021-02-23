@@ -6,7 +6,7 @@
  */
 
 #include <utils.h>
-#include <solver.h>
+#include <solver_cplex.h>
 #include <smps.h>
 #include <prob.h>
 
@@ -516,7 +516,7 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* solve the mean value problem */
 	changeLPSolverType(ALG_AUTOMATIC);
-	status = solveProblem(orig->lp, orig->name, PROB_QP, &status, 0.0);
+	status = solveProblem(orig->lp, orig->name, PROB_QP, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;
@@ -648,13 +648,14 @@ dVector calcLowerBound(oneProblem *orig, timeType *tim, stocType *stoc) {
 				return NULL;
 			}
 
-#ifdef SETUP_CHECK
+#ifdef DECOMPOSE_CHECK
 			writeProblem(lpClone, "lowerBoundCalc.lp");
 #endif
+			writeProblem(lpClone, "lowerBoundCalc.lp");
 
 			/* solve the problem */
 			changeLPSolverType(ALG_AUTOMATIC);
-			if (solveProblem(lpClone, "lowerBoundCalc", PROB_LP, &stat1, 0.0) ) {
+			if (solveProblem(lpClone, "lowerBoundCalc", PROB_LP, &stat1) ) {
 				errMsg("setup", "calcLowerBound", "failed to solve problem computing lower bound", 0);
 				return NULL;
 			}
