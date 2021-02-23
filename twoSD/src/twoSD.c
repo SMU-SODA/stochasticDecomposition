@@ -26,7 +26,7 @@ int main (int argc, char *argv[]) {
 	
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
-	if (readConfig("./src/", inputDir) ) {
+	if (readConfig("C:\\Users\\stabr\\Documents\\GitHub\\stochasticDecomposition\\twoSD\\src\\", inputDir)) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}

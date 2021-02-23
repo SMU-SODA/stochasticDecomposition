@@ -790,6 +790,21 @@ int dropCut(cellType *cell, int cutIdx) {
 
 	/* decrease the number of rows on solver */
 	cell->master->mar--;
+#else
+	/* Decrement the row number of all optimality cuts which were added after the cut that was just dropped */
+	for (idx = 0; idx < cell->cuts->cnt; idx++) {
+		if (cell->cuts->vals[idx]->rowNum > deletedRow)
+			--cell->cuts->vals[idx]->rowNum;
+	}
+
+	/* Decrement the row number of all feasibility cuts which were added after the cut that was just dropped */
+	for (idx = 0; idx < cell->fcuts->cnt; idx++) {
+		if (cell->fcuts->vals[idx]->rowNum > deletedRow)
+			--cell->fcuts->vals[idx]->rowNum;
+	}
+
+	/* decrease the number of rows on solver */
+	cell->master->mar--;
 #endif // defined(remove_cut)
 
 
