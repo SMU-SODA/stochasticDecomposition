@@ -156,6 +156,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 }//END algo()
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
+	int SDstatus;
 	dVector 	observ;
 	clock_t		tic;
 	bool breakLoop = false;
@@ -170,9 +171,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		
 		tic = clock();
 
-		if (mainloopSDCell(stoc, prob, cell, &breakLoop, observ)) {
+		SDstatus = mainloopSDCell(stoc, prob, cell, &breakLoop, observ);
+		if (SDstatus == 1) {
 			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 			goto TERMINATE;
+		}
+		else if (SDstatus == 2)
+		{
+			errMsg("Callback", "usersolve", "failed to solve Benders cell for the node problem", 0);
 		}
 
 		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
@@ -212,7 +218,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	TERMINATE:
 	mem_free(observ);
-	return 1;
+	return SDstatus;
 }//END solveCell()
 
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ)
@@ -271,9 +277,10 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 		checkImprovement(prob[0], cell, candidCut);
 
 	/******* 6. Solve the master problem to obtain the new candidate solution */
-	if (solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb)) {
+	int solveStatus = solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb);
+	if (solveStatus == 1 || solveStatus == 2) {
 		errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-		return 1;
+		return solveStatus;
 	}
 
 

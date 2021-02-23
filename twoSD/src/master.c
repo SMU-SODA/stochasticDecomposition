@@ -51,7 +51,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
 		}
 #endif // defined(printInfeas)
-		return 1;
+		return 2;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 

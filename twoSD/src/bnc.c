@@ -679,9 +679,11 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 #endif // defined(writemaster)
 
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if (solveCell(stoc, prob, cell)) {
-			return 1;
+		int cellStatus = solveCell(stoc, prob, cell);
+		if (cellStatus == 1 || cellStatus == 2) {
+			return cellStatus;
 		}
+
 
 #if defined(BNC_CHECK)
 		printf("\nafter SD:%-10s%-10.4f%-10s%-10.4f", "incumbEst:", cell->incumbEst, "candidEst:", cell->candidEst);
@@ -1159,7 +1161,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	}
 
 	// Solve the node problem and obtain the solutions
-	if (solveNode(stoc,prob,cell, node, original->name)) {
+	int status = solveNode(stoc, prob, cell, node, original->name);
+	if (status == 2) {
 
 #if defined(printBranch)
 		if (node->key > 0) {
@@ -1185,6 +1188,24 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 		freeNode(nodenew);
 		return 0;
+	}
+	else if (status == 1)
+	{
+		
+		struct BnCnodeType * nodenew = NULL;
+		if (node->prevnode != NULL)
+		{
+			nodenew = node;
+			node = nodenew->prevnode;
+			node->nextnode = NULL;
+			*activeNode = nextNode(node);
+		}
+		else {
+			errMsg("beanchBnC", "branchNode", "failed to solve the root node", 0);
+			return 1;
+		}
+
+		return 1;
 	}
 
 	node->LB = node->objval;
