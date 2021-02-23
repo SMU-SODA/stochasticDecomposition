@@ -93,7 +93,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 				sprintf(elemName, "volChg[%d][%d]", t, data.stdMaturities[i]+1);
 				volChg[t][i].setName(elemName); model.add(volChg[t][i]);
 				if ( i == 0 )
-					sgpf.timCols.push_back(elemName);
+					sgpf.timeCols.push_back(elemName);
 				if ( t != 0 ) {
 					sgpf.stocCols[t-1].push_back(elemName);
 					sgpf.stocRows[t-1].push_back("obj");
@@ -174,7 +174,7 @@ int createSGPFcor(SMPSmodel &sgpf, SGPFdata &data) {
 				}
 
 				if ( i == 0 )
-					sgpf.timRows.push_back(elemName);
+					sgpf.timeRows.push_back(elemName);
 			}
 
 			/* 2. State/volume of the portfolio */
@@ -307,7 +307,7 @@ int createSGPFtim(SMPSmodel sgpf) {
 
 	tFile << "PERIODS" << endl;
 	for (int t = 0; t < sgpf.numStages; t++ ) {
-		sprintf(line, "    %18s%18s\tStage%2d\n", sgpf.timCols[t].c_str(), sgpf.timRows[t].c_str(), t); tFile << line;
+		sprintf(line, "    %18s%18s\tStage%2d\n", sgpf.timeCols[t].c_str(), sgpf.timeRows[t].c_str(), t); tFile << line;
 	}
 	tFile << "ENDATA" << endl;
 	tFile.close();

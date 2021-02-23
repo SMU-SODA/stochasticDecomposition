@@ -193,7 +193,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-													/ (((b3 * r + b2) * r + b1) * r + one);
+															/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -211,13 +211,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-													/ ((d2 * r + d1) * r + one);
+															/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-													/ ((f2 * r + f1) * r + one);
+															/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -343,10 +343,6 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 				(*numObs)++;
 			}
 		}
-
-		for ( int cnt = 0; cnt < (*numObs); cnt++ ) {
-			probs[cnt] = weights[cnt]/(double) desiredSampleSize;
-		}
 	}
 	else {
 		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
@@ -354,12 +350,17 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
 			simObservVals[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
 			probs[(*numObs)] = 1/(double) desiredSampleSize;
+			weights[(*numObs)] = 1;
 			(*numObs)++;
 		}
 		if ( readSimData(fname, simObservVals, stoc->numOmega, (*numObs)) ) {
 			errMsg("read", "setupSAA", "failed to read simulated data", 0);
 			return 1;
 		}
+	}
+
+	for ( int cnt = 0; cnt < (*numObs); cnt++ ) {
+		probs[cnt] = weights[cnt]/(double) desiredSampleSize;
 	}
 
 	mem_free(weights);
@@ -441,14 +442,16 @@ int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate) {
 	return 0;
 }//End readSimLine()
 
-void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean) {
+void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats) {
 
 	for ( int n = 1; n <= numRV; n++ ) {
-		sampleMean[n] = 0.0;
-		for ( int m = 0; m < sampleSize; m++ ) {
-			sampleMean[n] += vals[m][n]*weights[m];
+		for ( int m = 0; m < numStats; m++ ) {
+			sampleStats[m][n] = 0.0;
+			for ( int obs = 0; obs < sampleSize; obs++ ) {
+				sampleStats[m][n] += pow(vals[obs][n], m+1)*weights[obs];
+			}
+			sampleStats[m][n] /= numObs;
 		}
-		sampleMean[n] /= numObs;
 	}
 
 	return;

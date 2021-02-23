@@ -123,6 +123,7 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 		int *numObs, int desiredSampleSize, double TOLERANCE);
 int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
-void computeSampleMean(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector sampleMean);
+void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats);
+
 
 #endif /* SMPS_H_ */
