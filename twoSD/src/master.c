@@ -20,14 +20,14 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
 
-	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->cuts) ) {
+	if( changeEtaCol(cell->master->lp, num->rows, num->cols, cell->sampleSize, cell->activeCuts) ) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
 
 	if ( cell->lbType == NONTRIVIAL ) {
 		/* update the right-hand side of cuts to reflect the non-trivial lower bound */
-		if ( updateRHS(cell->master->lp, cell->cuts, cell->k, cell->lb) ) {
+		if ( updateRHS(cell->master->lp, cell->activeCuts, cell->k, cell->lb) ) {
 			errMsg("algorithm", "solveQPMaster", "failed to update right-hand side with lower bound information", 0);
 			return 1;
 		}
@@ -51,7 +51,9 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 			errMsg("algorithm", "solveQPMaster", "failed to solve the master problem", 0);
 		}
 #endif // defined(printInfeas)
-		return 2;
+
+		cell->masterFeasFlag = false;
+		return 0;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
 
@@ -83,7 +85,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, num->cols, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;

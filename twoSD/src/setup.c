@@ -271,7 +271,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
 	cell->piM = cell->djM = NULL;
-	cell->cuts = cell->fcuts = NULL;
+	cell->activeCuts = cell->fcuts = cell->cutsPool = NULL;
 	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
 	cell->pi_ratio = NULL;
 
@@ -332,7 +332,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->maxCuts = config.CUT_MULT * prob[0]->num->cols + 3;
 	cell->maxMIPCuts = 1000;
 	cell->etaIdx = prob[0]->num->cols;
-	cell->cuts 	  = newCuts(cell->maxCuts);
+	cell->activeCuts = newCuts(cell->maxCuts);
+	cell->cutsPool = (cutsType **) arr_alloc(config.NodeNum, cutsType *);
 	cell->MIRcuts = newCuts(cell->maxMIPCuts);
 	cell->GMIcuts = newCuts(cell->maxMIPCuts);
 

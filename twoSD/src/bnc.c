@@ -19,8 +19,6 @@ extern configType config;
 #define useDNODE 
 #define useINODE
 
-
-
 #undef writeprob
 
 int currKey;
@@ -38,6 +36,235 @@ double meanVal;               // Global lower bound
 #define printBranch
 #undef depthtest
 #undef writemaster
+
+/* branch and bound algorithm */
+int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB) {
+	int i;
+	int nodecnt = 0;
+	int maxcut = config.CUT_MULT * cell->master->mac + 3;
+	cell->basis->incumPicnt = maxcut;
+	cell->basis->basisEval = config.Pi_EVAL_FLAG;
+
+#if defined(useDNODE)
+	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
+		errMsg("allocation", "branchbound", "nodearr", 0);
+#endif // defined(useDNODE)
+#if defined(useINODE)
+	if (!(inodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
+		errMsg("allocation", "branchbound", "inodearr", 0);
+#endif // defined(useDNODE)
+	dnodes = -1;
+	inodes = -1;
+
+	/* set of LB and UB */
+	GlobeUB = UB;
+
+	original = prob[0]->sp;
+	struct BnCnodeType * rootNode = NULL;  // root node
+	struct BnCnodeType * activeNode = NULL;// active node in the tree
+	struct BnCnodeType * currentNode = NULL;// current node that is investigated
+
+#if defined(printBranch)
+	printLine();
+	printf("Starting the BnC branch and bound procedure...\n");
+	printf("Github page: https://github.com/siavashtab \n");
+	printf("Email: stabrizian@smu.edu\n");
+	printLine();
+	printf("\n\n");
+	printLine();
+	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%-12s\n", "node id", "parent", "depth", "k", "\\|x\\|","fval", "UB", "feasible", "integer","Lamfrac");
+	printLine();
+#endif // defined(printBranch)
+
+	rootNode = newrootNode(original->mac, LB, UB, original);
+	rootNode->parobjVal = prob[0]->lb;
+	meanVal = prob[0]->lb;
+
+	for (i = 0; i < rootNode->numVar; i++)
+	{
+		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
+			rootNode->stInt = i;
+			break;
+		}
+	}
+	rootNode->edInt = 1;
+	for (i = rootNode->stInt + 1; i < rootNode->numVar; i++)
+	{
+		if (original->ctype[i] != 'B' && original->ctype[i] != 'I') {
+			rootNode->edInt = i;
+			break;
+		}
+		else
+		{
+			rootNode->edInt++;
+		}
+	}
+
+	for (i = 0; i < prob[0]->num->cols; i++)
+		rootNode->vars[i] = cell->incumbX[i+1];
+	activeNode = rootNode;
+	currentNode = rootNode;
+	currDepth = -1;
+
+	if (config.HEURST_FLAG == 1) {
+		struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
+		hrsticNode = copyNode(rootNode, 0.1);
+		hrsticNode->ishrstic = 1;
+		rootNode->nextnode = hrsticNode;
+		hrsticNode->prevnode = rootNode;
+		activeNode = hrsticNode;
+		currentNode = hrsticNode;
+	}
+
+	while (activeNode != NULL)
+	{
+		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
+			errMsg("BnC", "branchbound", "branching failed", 0);
+
+		if (activeNode == NULL) break;
+		if (activeNode->prevnode == NULL && nodecnt > 1) break;
+
+		if (cell->k == config.MAX_ITER) break;
+		if (nodecnt > config.MAX_NODES) break;
+
+		currentNode = activeNode;
+		nodecnt++;
+
+		/*
+		Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better
+		 */
+#if defined(useDNODE)
+		if (dnodes > 0)
+		{
+			for (int cnt = 0; cnt < dnodes; cnt++)
+			{
+				double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) +
+						maxCutHeight(cell->cuts, cell->sampleSize, nodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
+				if (est < cell->incumbEst && est > meanVal)
+				{
+					nodearr[cnt]->isActive = true;
+					for (int n = cnt; n < dnodes - 1; n++)
+					{
+						nodearr[n] = nodearr[n + 1];
+					}
+					nodearr[dnodes] = NULL;
+					dnodes -= 1;
+				}
+			}
+		}
+#endif // defined(useDNODE)
+
+		/*
+		Loop for revisiting the integer feasible nodes to update the current best
+		 */
+#if defined(useINODE)
+		if (inodes > 0)
+		{
+			for (int cnt = 0; cnt < inodes; cnt++)
+			{
+				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
+												+ maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
+				if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal)
+				{
+					GlobeUB = est;
+					bestNode = inodearr[cnt];
+				}
+			}
+		}
+#endif // defined(useINODE)
+	}
+
+	// Replace the best node to the incumbent for the out-of-sample testing
+	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
+	cell->incumbEst = bestNode->objval;
+
+	// Remove the tolerance from the best solution
+	for (int v = 0; v < bestNode->edInt; v++)
+		bestNode->vars[v] = round(bestNode->vars[v]);
+
+#if defined(printBest)
+	printLine();
+	printLine();
+	printf("Best node key:  %d - depth: %d \n", bestNode->key, bestNode->depth);
+	printf("Best Int feasible Solution: \n");
+	printVector(bestNode->vars, bestNode->edInt, NULL);
+	printf("\nNumber of disjunctions: %d \n", sumintVec(bestNode->disjncs, bestNode->edInt));
+	printLine();
+	printLine();
+#endif // defined(printBest)
+
+	//freeOneProblem(original);
+	freeNodes(rootNode);
+	return 0;
+}
+
+/* The subroutine sets up the B&B node by updating the cell structure with information necessary to solve the node SP. */
+int setupNode(probType **prob, cellType *cell, struct BnCnodeType *node) {
+
+	/* 1. Copy active cuts corresponding to the parent node from the cuts pool */
+	// TODO
+
+	/* 2. Retrieve the incumbent from the parent node and perform updates. */
+	/* 2a. Add the B&B conditions */
+	if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node))
+		errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
+
+	/* Update incumbent information for the cell*/
+	truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
+
+	copyVector(node->vars, cell->incumbX, node->numVar, true);
+	copyVector(cell->incumbX, cell->candidX, node->numVar, true);
+
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar)
+									+ maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	cell->incumbEst = cell->candidEst;
+	node->objval = cell->incumbEst;
+
+	/* 2b. Setup the quadratic master using the new incumbent */
+	if (changeQPrhs(prob[0], cell, node->vars)) {
+		errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
+		return 1;
+	}
+
+	/* 2c. Update the proximal parameter */
+	if (changeQPproximal(cell->master->lp, node->edInt, cell->quadScalar)) {
+		errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
+		return 1;
+	}
+
+#if defined(writemaster)
+	writeProblem(cell->master->lp, "master_test_afterclean.lp");
+#endif // defined(writemaster)
+
+
+	return 0;
+}//END setupNode()
+
+int cleanNode(probType *prob, cellType *cell) {
+
+	/* 1. Copy the active cuts to the cutsPool */
+
+
+	/* 2. Clean the master by removing all the inactive cuts */
+	if (prob->num->rows < cell->master->mar) {
+		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
+			if (removeRow(cell->master->lp, cnt, cnt)) {
+				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
+				errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+				return 1;
+			}
+		cell->master->mar -= cell->activeCuts->cnt;
+	}
+
+	/* 3. Remove the inactive cuts from the activeCuts structure */
+	freeCutsType(cell->activeCuts, true);
+
+
+#if defined(writemaster)
+	writeProblem(cell->master->lp, "master_test_afterclean.lp");
+#endif // defined(writemaster)
+	return 0;
+}//END cleanNode()
 
 
 int sumintVec(iVector a, int len)
@@ -515,10 +742,8 @@ void disjunctCut(oneProblem  *master, probType *prob) {
 }
 
 
-// Subroutine for Solving the node problem given the lp pointer and
-// node information
-double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname)
-{
+// Subroutine for Solving the node problem given the lp pointer and node information
+double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname) {
 	cell->ki = 0;
 
 #if defined(BNC_CHECK)
@@ -538,7 +763,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 		writeProblem(cell->master->lp, "master_test_beforeclean.lp");
 #endif // defined(writemaster)
 
-
 		if (row_num > prob[0]->num->rows)
 		{
 			/* Get rid of the indexed cut on the solver */
@@ -552,12 +776,6 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 						return 1;
 					}
 			}
-		}
-
-		/* deactivate the current cuts */
-		for (int c = 0; c < cell->cuts->cnt; c++)
-		{
-			cell->cuts->vals[c]->isAvctive = false;
 		}
 
 		cell->master->mar = prob[0]->sp->mar;
@@ -676,12 +894,11 @@ double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnode
 	{
 #if defined(writemaster)
 		writeProblem(cell->master->lp, "master_test_beforesolve.lp");
-#endif // defined(writemaster)
+#endif
 
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		int cellStatus = solveCell(stoc, prob, cell);
-		if (cellStatus == 1 || cellStatus == 2) {
-			return cellStatus;
+		if ( solveCell(stoc, prob, cell) ) {
+			return 1;
 		}
 
 
@@ -875,170 +1092,6 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 	return node->depth;
 }//END branchVar()
 
-/* branch and bound algorithm */
-int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB)
-{
-
-	int i;
-	int nodecnt = 0;
-	int maxcut = config.CUT_MULT * cell->master->mac + 3;
-	cell->basis->incumPicnt = maxcut;
-	cell->basis->basisEval = config.Pi_EVAL_FLAG;
-
-#if defined(useDNODE)
-	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
-		errMsg("allocation", "branchbound", "nodearr", 0);
-#endif // defined(useDNODE)
-#if defined(useINODE)
-	if (!(inodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
-		errMsg("allocation", "branchbound", "inodearr", 0);
-#endif // defined(useDNODE)
-	dnodes = -1;
-	inodes = -1;
-
-	/* set of LB and UB */
-	GlobeUB = UB;
-
-	original = prob[0]->sp;
-	struct BnCnodeType * rootNode = NULL;  // root node
-	struct BnCnodeType * activeNode = NULL;// active node in the tree 
-	struct BnCnodeType * currentNode = NULL;// current node that is investigated
-
-#if defined(printBranch)
-	printLine();
-	printf("Starting the BnC branch and bound procedure...\n");
-	printf("Github page: https://github.com/siavashtab \n");
-	printf("Email: stabrizian@smu.edu\n");
-	printLine();
-	printf("\n\n");
-	printLongLine();
-	printf("%-10s%-10s%-10s%-10s%-10s%-12s%-12s%-12s%-12s%-12s\n", "node id", "parent", "depth", "k", "\\|x\\|","fval", "UB", "feasible", "integer","Lamfrac");
-	printLongLine();
-#endif // defined(printBranch)
-
-	rootNode = newrootNode(original->mac, LB, UB, original);
-	rootNode->parobjVal = cell->meanVal;
-	meanVal = cell->meanVal;
-
-	for (i = 0; i < rootNode->numVar; i++)
-	{
-		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
-			rootNode->stInt = i;
-			break;
-		}
-	}
-	rootNode->edInt = 1;
-	for (i = rootNode->stInt + 1; i < rootNode->numVar; i++)
-	{
-		if (original->ctype[i] != 'B' && original->ctype[i] != 'I') {
-			rootNode->edInt = i;
-			break;
-		}
-		else
-		{
-			rootNode->edInt++;
-		}
-	}
-	for (i = 0; i < prob[0]->num->cols; i++)
-		rootNode->vars[i] = cell->incumbX[i+1];
-	activeNode = rootNode;
-	currentNode = rootNode;
-	currDepth = -1;
-
-	if (config.HEURST_FLAG == 1)
-	{
-		struct BnCnodeType *hrsticNode = NULL;  // heuristic root node
-		hrsticNode = copyNode(rootNode, 0.1);
-		hrsticNode->ishrstic = 1;
-		rootNode->nextnode = hrsticNode;
-		hrsticNode->prevnode = rootNode;
-		activeNode = hrsticNode;
-		currentNode = hrsticNode;
-	}
-
-	while (activeNode != NULL)
-	{
-		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
-			errMsg("BnC", "branchbound", "branching failed", 0);
-
-		if (activeNode == NULL) break;
-		if (activeNode->prevnode == NULL && nodecnt > 1) break;
-
-		if (cell->k == config.MAX_ITER) break;
-		if (nodecnt > config.MAX_NODES) break;
-
-		currentNode = activeNode;
-		nodecnt++;
-
-		/*
-		Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better
-		 */
-#if defined(useDNODE)
-		if (dnodes > 0)
-		{
-			for (int cnt = 0; cnt < dnodes; cnt++)
-			{
-				double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, nodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est < cell->incumbEst && est > meanVal)
-				{
-					nodearr[cnt]->isActive = true;
-					for (int n = cnt; n < dnodes - 1; n++)
-					{
-						nodearr[n] = nodearr[n + 1];
-					}
-					nodearr[dnodes] = NULL;
-					dnodes -= 1;
-				}
-			}
-		}
-#endif // defined(useDNODE)
-
-
-
-		/*
-		Loop for revisiting the integer feasible nodes to update the current best
-		 */
-#if defined(useINODE)
-		if (inodes > 0)
-		{
-			for (int cnt = 0; cnt < inodes; cnt++)
-			{
-				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal)
-				{
-					GlobeUB = est;
-					bestNode = inodearr[cnt];
-				}
-			}
-		}
-#endif // defined(useINODE)
-
-
-	}
-
-	//Replace the best node to the incumbent for the out of sample testing
-	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
-	cell->incumbEst = bestNode->objval;
-
-	//Remove the tolerance from the best solution
-	for (int v = 0; v < bestNode->edInt; v++) bestNode->vars[v] = round(bestNode->vars[v]);
-
-#if defined(printBest)
-	printLine();
-	printLine();
-	printf("Best node key:  %d - depth: %d \n", bestNode->key, bestNode->depth);
-	printf("Best Int feasible Solution: \n");
-	printVector(bestNode->vars, bestNode->edInt, NULL);
-	printf("\nNumber of disjunctions: %d \n", sumintVec(bestNode->disjncs, bestNode->edInt));
-	printLine();
-	printLine();
-#endif // defined(printBest)
-
-	//freeOneProblem(original);
-	freeNodes(rootNode);
-	return 0;
-}
-
 /* Return the previous active node */
 struct BnCnodeType *nextNode(struct BnCnodeType *node)
 {
@@ -1162,14 +1215,17 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	// Solve the node problem and obtain the solutions
 	int status = solveNode(stoc, prob, cell, node, original->name);
-	if (status == 2) {
+
+	if ( !cell->masterFeasFlag ) {
 
 #if defined(printBranch)
 		if (node->key > 0) {
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False", "NaN");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n",
+					node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt),0.0, 0.0, "False", "False", "NaN");
 		}
 		else {
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False", "NaN");
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n",
+					node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), 0.0, 0.0, "False", "False", "NaN");
 		}
 #endif // defined(printBranch)
 
@@ -1179,6 +1235,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 			nodenew = node;
 			node = nodenew->prevnode;
 			node->nextnode = NULL;
+
+			/* Active a new node */
 			*activeNode = nextNode(node);
 		}
 		else {
@@ -1191,7 +1249,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	}
 	else if (status == 1)
 	{
-		
+
 		struct BnCnodeType * nodenew = NULL;
 		if (node->prevnode != NULL)
 		{

@@ -32,11 +32,11 @@ bool optimal(probType **prob, cellType *cell) {
 		if ( preTest(cell) ) {
 			if ((cell->optFlag = fullTest(prob, cell)) == true) {
 				/* full test satisfied */
-				//printf (">"); fflush(stdout);
+//				printf (">"); fflush(stdout);
 				return true;
 			}
 			else {
-				//printf(">"); fflush(stdout);
+//				printf(">"); fflush(stdout);
 			}
 
 		}

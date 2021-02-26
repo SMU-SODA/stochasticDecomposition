@@ -18,7 +18,7 @@
 #define TWOSD_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
@@ -117,12 +117,11 @@ typedef struct{
 }configType;
 
 typedef struct {
-	bool    isAvctive;				/* is the cut active in the master problem */
 	double  alpha;                  /* scalar value for the righ-hand side */
 	dVector  beta;                  /* coefficients of the master problems's primal variables */
 	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
-	iVector	iStar;					/* indices of maximal pi for each distint observation */
+	iVector	iStar;					/* indices of maximal pi for each distinct observation */
 	bool	isIncumb;				/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
 	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
@@ -198,7 +197,6 @@ typedef struct {
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
 	bool		callback;			/* flag to indicate if the cell is being solved in callback phase (true) */
-	double      meanVal;            /* optimal objective of the mean value problem */
 
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
@@ -228,7 +226,8 @@ typedef struct {
 	int      	maxMIPCuts;         /* maximum number of MIP cuts to be used*/
 	int         etaIdx;             /* Index of eta column after starting the B&B*/
 
-	cutsType    *cuts;              /* optimality cuts */
+	cutsType    *activeCuts;        /* optimality cuts */
+	cutsType	**cutsPool;			/* array of cuts that are active at the B&B leaf nodes. */
 	cutsType    *MIRcuts;           /* MIP feasibility cuts */
 	cutsType    *GMIcuts;           /* MIP feasibility cuts */
 	cutsType    *fcuts;             /* feasibility cuts */
@@ -249,6 +248,7 @@ typedef struct {
     bool 		optMode;			/* When false, the algorithm tries to resolve infeasibility */
 
     bool		spFeasFlag;			/* Indicates whether the subproblem is feasible */
+    bool 		masterFeasFlag;		/* Indicates whether the master problem is feasible */
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
@@ -256,8 +256,8 @@ typedef struct {
 
 	///// B&B paramters
 	bncInfoSummary *bncInfo;
-	bool isinBnB;
-	int rownum;
+	bool 		isinBnB;
+int 			rownum;
 	sampleType	*sample;
 	nodeInfo    *nodeSol;			/* solution of nodes that are discovered in B&B */
 	char        **cur_rowname;		/* row names in BnB */
