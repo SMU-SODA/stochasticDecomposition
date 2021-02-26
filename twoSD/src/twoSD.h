@@ -233,6 +233,7 @@ typedef struct {
 	cutsType    *fcuts;             /* feasibility cuts */
     cutsType 	*fcutsPool;			/* Pool of feasibility cuts */
     int			fUpdt[2];			/* coordinate in delta structure for which the updates have been carried out */
+    int			numPools;			/* Number of pools of cuts. This is equal to the number of active leaf nodes. */
 
 	lambdaType 	*lambda;			/* holds dual solutions corresponding to rows effected by randomness */
 	sigmaType 	*sigma;				/* holds $\pi \times \bar{b}$ and $\pi \times \bar{C} $ values */
@@ -295,8 +296,8 @@ struct BnCnodeType {
 	int     partightPi;                  /* number of pis used in tight cuts of th parent node */
 	int     parLambdasize;               /* total lamda size the parent node */
 	int     parparinit;                  /* initial lambda loop for the next iterations from parent of the parent */
-	int     tightCuts;					 /* number of tight cuts after finally after finishing the solveCell */
-	int     partightCuts;				 /* number of tight parent cuts after finally after finishing the solveCell */
+	int     poolID;					 	 /* Index to cutsPool corresponding to the node. */
+	int     parentPoolID;				 /* Index to cutsPool corresponding to the parent of the node. */
 	iVector tcuts;						 /* collection of cuts indexes from cell->cuts are tight in this node */
 	iVector partcuts;					 /* collection of parent cuts indexes from cell->cuts are tight in parent node */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
@@ -373,6 +374,8 @@ oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
+int copyCuts(numType *num, cutsType *orig, cutsType *copy);
+cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
 void printCut(oneCut *cut, int betaLen);
 void freeOneCut(oneCut *cut);
@@ -425,7 +428,9 @@ bool isInVec(iVector vec, int len, int val);
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
 int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node);
-double solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
+int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
+int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
+int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int          freeNodes(struct BnCnodeType *root);
 int 	     freeNode(struct BnCnodeType *node);
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);

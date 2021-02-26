@@ -333,7 +333,10 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->maxMIPCuts = 1000;
 	cell->etaIdx = prob[0]->num->cols;
 	cell->activeCuts = newCuts(cell->maxCuts);
+
 	cell->cutsPool = (cutsType **) arr_alloc(config.NodeNum, cutsType *);
+	cell->numPools = 0;
+
 	cell->MIRcuts = newCuts(cell->maxMIPCuts);
 	cell->GMIcuts = newCuts(cell->maxMIPCuts);
 

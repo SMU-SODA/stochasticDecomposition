@@ -112,8 +112,6 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inC
 	return cutIdx;
 }//END formCut()
 
-
-
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
 	oneCut *cut;
@@ -393,6 +391,56 @@ int dropCut(cellType *cell, int cutIdx) {
 
 	return 0;
 }//END dropCut()
+
+int copyCuts(numType *num, cutsType *orig, cutsType *copy) {
+
+	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
+		oneCut *cut;
+
+		cut = newCut(num->cols, orig->vals[cnt]->omegaCnt, orig->vals[cnt]->numSamples);
+
+		cut->isIncumb = orig->vals[cnt]->isIncumb;
+		cut->alpha = orig->vals[cnt]->alpha;
+		cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
+		cut->slackCnt = orig->vals[cnt]->slackCnt;
+
+		cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols);
+		cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, num->cols);
+		cut->name = (cString) arr_alloc(NAMESIZE, char);
+		strcpy(cut->name, orig->vals[cnt]->name);
+
+		copy->vals[copy->cnt++] = cut;
+	}
+
+	return copy;
+}//END copyCuts()
+
+cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi) {
+	cutsType copy;
+
+	copy = newCuts(orig->cnt);
+	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
+		if (pi[orig->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
+			oneCut *cut;
+
+			cut = newCut(num->cols, orig->vals[cnt]->omegaCnt, orig->vals[cnt]->numSamples);
+
+			cut->isIncumb = orig->vals[cnt]->isIncumb;
+			cut->alpha = orig->vals[cnt]->alpha;
+			cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
+			cut->slackCnt = orig->vals[cnt]->slackCnt;
+
+			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols);
+			cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, num->cols);
+			cut->name = (cString) arr_alloc(NAMESIZE, char);
+			strcpy(cut->name, orig->vals[cnt]->name);
+
+			copy->vals[copy->cnt++] = cut;
+		}
+	}
+
+	return copy;
+}//END duplicActiveCuts()
 
 /*
  ** This function calculate the variance of the
