@@ -32,8 +32,8 @@ int dnodes;                   // number of deactivated nodes
 int inodes;                   // number of integer feasible nodes 
 int maxcut;
 double meanVal;               // Global lower bound 
-#define printBest
-#define printBranch
+#undef printBest
+#undef printBranch
 #undef depthtest
 #undef writemaster
 
@@ -96,6 +96,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		}
 	}
 
+	/* Copy the incumbent solution (currently stores the mean value problem solution) to node->vars. */
 	for (i = 0; i < prob[0]->num->cols; i++)
 		rootNode->vars[i] = cell->incumbX[i+1];
 	activeNode = rootNode;
@@ -113,7 +114,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	}
 
 	/* Loop though all the active nodes (leaf nodes) to update their incumbent estimates */
-	while (activeNode != NULL) {
+//	while (activeNode != NULL) {
+	while ( nodecnt < 1 ) {
+
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
@@ -155,13 +158,15 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #endif // defined(useINODE)
 	}
 
-	// Replace the best node to the incumbent for the out-of-sample testing
-	copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
-	cell->incumbEst = bestNode->objval;
+	if ( bestNode != NULL ) {
+		// Replace the best node to the incumbent for the out-of-sample testing
+		copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
+		cell->incumbEst = bestNode->objval;
 
-	// Remove the tolerance from the best solution
-	for (int v = 0; v < bestNode->edInt; v++)
-		bestNode->vars[v] = round(bestNode->vars[v]);
+		// Remove the tolerance from the best solution
+		for (int v = 0; v < bestNode->edInt; v++)
+			bestNode->vars[v] = round(bestNode->vars[v]);
+	}
 
 #if defined(printBest)
 	printLine();
@@ -331,20 +336,24 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		printVector(node->vars, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 
-		/* Create the left and the right nodes. For the left node a copy of parents active cuts is initialized as a new
-		 * entry in the cutsPool structure. */
+		/* Create the left and the right nodes. For the right node, we use the entry in the cutsPool structure for the parent node */
 		node->right = newNode(getnodeIdx(node->depth + 1, node->key, 0), node, node->vars[vaIdx + 1], vaIdx, false);
 		node->right->poolID = node->right->parentPoolID;
 
+		/* For the left node a copy of parents active cuts is initialized as a new entry in the cutsPool structure. */
 		node->left  = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
 		cell->cutsPool[cell->numPools] = duplicActiveCuts(prob[0]->num, cell->cutsPool[node->left->parentPoolID], cell->piM);
 		node->left->poolID = cell->numPools++;
 
-		node->right->prevnode = node;
+		node->right->prevnode = node->prevnode;
 		node->nextnode = node->right;
+		node->prevnode->nextnode = node->nextnode;
 		node->right->nextnode = node->left;
 		node->left->prevnode = node->right;
 		*activeNode = node->left;
+
+		/* Delete the parent node */
+		freeNode(node);
 	}
 	else {
 		*activeNode = nextNode(node);
@@ -471,26 +480,28 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 /* The subroutine sets up the B&B node by updating the cell structure with information necessary to solve the node SP. */
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
-	/* 1. Copy active cuts corresponding to the parent node from the cuts pool */
-	copyCuts(prob->num, cell->cutsPool[node->parentPoolID], cell->activeCuts);
+	if ( node->key != 0 ) {
+		/* 1. Copy active cuts corresponding to the parent node from the cuts pool */
+		copyCuts(prob->num, cell->cutsPool[node->parentPoolID], cell->activeCuts);
 
-	/* 2. Retrieve the incumbent from the parent node and perform updates. */
-	/* 2a. Add the B&B conditions */
-	if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node)) {
-		errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
-		return 1;
+		/* 2. Retrieve the incumbent from the parent node and perform updates. */
+		/* 2a. Add the B&B conditions */
+		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node)) {
+			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
+			return 1;
+		}
+
+		/* Update incumbent information for the cell*/
+		truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
+
+		copyVector(node->vars, cell->incumbX, node->numVar, true);
+		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
+
+		cell->candidEst = vXvSparse(cell->candidX, prob->dBar)
+									+ maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob->num->cols, prob->lb);
+		cell->incumbEst = cell->candidEst;
+		node->objval = cell->incumbEst;
 	}
-
-	/* Update incumbent information for the cell*/
-	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
-
-	copyVector(node->vars, cell->incumbX, node->numVar, true);
-	copyVector(cell->incumbX, cell->candidX, node->numVar, true);
-
-	cell->candidEst = vXvSparse(cell->candidX, prob->dBar)
-							+ maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob->num->cols, prob->lb);
-	cell->incumbEst = cell->candidEst;
-	node->objval = cell->incumbEst;
 
 	/* 2b. Setup the quadratic master using the new incumbent */
 	if (changeQPrhs(prob, cell, node->vars)) {

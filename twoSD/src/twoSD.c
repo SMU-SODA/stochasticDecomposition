@@ -55,7 +55,7 @@ int main (int argc, char *argv[]) {
 	/* release structures and close solver environment */
 	TERMINATE:
 	freeOneProblem(orig);
-//	freeTimeType(tim);
+	freeTimeType(tim);
 	freeStocType(stoc);
 	closeSolver();
 	mem_free(probName); mem_free(inputDir);

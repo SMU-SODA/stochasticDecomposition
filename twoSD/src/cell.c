@@ -11,6 +11,8 @@
 
 #include "twoSD.h"
 
+extern configType config;
+
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	int SDstatus;
 	dVector 	observ;
@@ -28,19 +30,19 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		/* Main loop of SD */
 		cell->k++;
 		cell->ki++;
-	#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
+#if defined(STOCH_CHECK) || defined(ALGO_CHECK)
 		printf("\nIteration-%d :: \n", cell->k);
-	#else
+#else
 		if ((cell->k - 1) % 100 == 0) {
 			printf("\nIteration-%4d: ", cell->k);
 		}
-	#endif
+#endif
 
 		if(cell->ki > 1)
-		/******* 1. Optimality tests *******/
-		if ( optimal(prob, cell) ) {
-			return 0;
-		}
+			/******* 1. Optimality tests *******/
+			if ( optimal(prob, cell) ) {
+				return 0;
+			}
 
 		/******* 2. Generate new observations, and add it to the set of observations *******/
 		cell->sampleSize += config.SAMPLE_INCREMENT;
@@ -97,7 +99,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	}//END while loop
 
 #if defined(LPMIP_PRINT)
-	 // Print before branch and bound -------------------------
+	// Print before branch and bound -------------------------
 	printf("\nQP relaxation solution:\n");
 	printVector(cell->incumbX, cell->master->mac - 1, NULL);
 	printf("\nQP relaxation Estimate %0.4f", cell->incumbEst);
@@ -135,10 +137,10 @@ int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakL
 #endif
 
 	if(cell->ki > 1)
-	/******* 1. Optimality tests *******/
-	if (IPoptimal(prob, cell)) {
-		(*breakLoop) = true; return 0;
-	}
+		/******* 1. Optimality tests *******/
+		if (IPoptimal(prob, cell)) {
+			(*breakLoop) = true; return 0;
+		}
 
 	/******* 2. Generate new observations, and add it to the set of observations *******/
 	cell->sampleSize += config.SAMPLE_INCREMENT;

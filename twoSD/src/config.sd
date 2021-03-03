@@ -32,7 +32,7 @@ Pi_EVAL_FLAG  0
 HEURST_FLAG  0
 
 // Master type: 0 for LP, 1 for MILP, 5 for QP and 7 for MIQP
-MASTER_TYPE 5
+MASTER_TYPE 1
 
 // Multiplier for the number of cuts; with QP, SD sets this to 1
 CUT_MULT  1

@@ -184,12 +184,12 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	indices[0] = idx;
 
 	/* Optimality minorants */
-	batch->sp->mar += cell->cuts->cnt;
-	for ( cnt = 0; cnt < cell->cuts->cnt; cnt++ ) {
-		sprintf(tempName, "%s%s", cell->cuts->vals[cnt]->name, batchNameSuffix);
-		cell->cuts->vals[cnt]->beta[0] = (double) (batch->ck[batch->cnt-1]) / (double) cell->cuts->vals[cnt]->numSamples;
-		if ( addRow(batch->sp->lp, prob->num->cols+1, cell->cuts->vals[cnt]->alphaIncumb, GE, 0, indices,
-				cell->cuts->vals[cnt]->beta, tempName) ) {
+	batch->sp->mar += cell->activeCuts->cnt;
+	for ( cnt = 0; cnt < cell->activeCuts->cnt; cnt++ ) {
+		sprintf(tempName, "%s%s", cell->activeCuts->vals[cnt]->name, batchNameSuffix);
+		cell->activeCuts->vals[cnt]->beta[0] = (double) (batch->ck[batch->cnt-1]) / (double) cell->activeCuts->vals[cnt]->numSamples;
+		if ( addRow(batch->sp->lp, prob->num->cols+1, cell->activeCuts->vals[cnt]->alphaIncumb, GE, 0, indices,
+				cell->activeCuts->vals[cnt]->beta, tempName) ) {
 			errMsg("solver", "buildCompromise", "failed to add new cut row to problem in solver", 0);
 			return 1;
 		}

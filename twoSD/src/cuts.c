@@ -412,11 +412,11 @@ int copyCuts(numType *num, cutsType *orig, cutsType *copy) {
 		copy->vals[copy->cnt++] = cut;
 	}
 
-	return copy;
+	return 0;
 }//END copyCuts()
 
 cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi) {
-	cutsType copy;
+	cutsType *copy;
 
 	copy = newCuts(orig->cnt);
 	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
@@ -584,7 +584,7 @@ int formFeasCut(probType *prob, cellType *cell) {
 
 	/* identify, in the feasibility cut pool, cuts that are violated by the input solution xk */
 	checkFeasCutPool(cell, prob->num->prevCols);
-	cell->piM = (dVector) mem_realloc(cell->piM, prob->num->prevRows+cell->cuts->cnt+cell->fcuts->cnt);
+	cell->piM = (dVector) mem_realloc(cell->piM, prob->num->prevRows + cell->activeCuts->cnt+cell->fcuts->cnt);
 
 	return 0;
 }//END formFeasCut()

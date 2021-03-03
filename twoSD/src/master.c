@@ -11,7 +11,6 @@
 
 #include "twoSD.h"
 
-extern configType config;
 #undef printInfeas
 
 /* This function is the regularized QP version of master problem. The master problem is solved after the newest cut is added to master problem,
@@ -40,7 +39,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
-	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
+	if ( solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status) ) {
 #if defined(printInfeas)
 		if (status == STAT_INFEASIBLE) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!", 0);
@@ -122,20 +121,20 @@ int recoverX(dVector sol, dVector incumb, dVector candid, iVector disjnct, dVect
 int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	double 	d2 = 0.0; /* height at the candidate solution. */
 	int 	status, i;
-	//writeProblem(cell->master->lp, "callLPMastersolve1.lp");
-	if (changeEtaColMIP(cell->master->lp, cell->rownum, cell->etaIdx, cell->sampleSize, cell->cuts, cell->MIRcuts, cell->GMIcuts, cell->ki,cell->cur_rowname)) {
+
+	if (changeEtaColMIP(cell->master->lp, cell->rownum, cell->etaIdx, cell->sampleSize, cell->activeCuts, cell->MIRcuts, cell->GMIcuts, cell->ki,cell->cur_rowname)) {
 		errMsg("algorithm", "solveQPMaster", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
-	//writeProblem(cell->master->lp, "callLPMastersolve2.lp");
+
 	if (cell->lbType == NONTRIVIAL) {
 		/* update the right-hand side of cuts to reflect the non-trivial lower bound */
-		if (updateRHS(cell->master->lp, cell->cuts, cell->k, cell->lb)) {
+		if (updateRHS(cell->master->lp, cell->activeCuts, cell->k, cell->lb)) {
 			errMsg("algorithm", "solveQPMaster", "failed to update right-hand side with lower bound information", 0);
 			return 1;
 		}
 	}
-	//writeProblem(cell->master->lp, "callLPMastersolve3.lp");
+
 #ifdef ALGO_CHECK
 	writeProblem(cell->master->lp, "cellMaster.lp");
 #endif
@@ -184,7 +183,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta(xbar + \Delta X) */
-	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, num->cols, lb);
+	cell->candidEst = vXvSparse(cell->candidX, dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, num->cols, lb);
 
 	/* Calculate gamma for next improvement check on incumbent x. */
 	cell->gamma = cell->candidEst - cell->incumbEst;
@@ -205,7 +204,7 @@ int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX) {
 	indices[0] = lenX;
 
 	/* Cut right-hand side */
-	if ( config.MASTER_TYPE == PROB_QP )
+	if ( master->type == PROB_QP )
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
 
 	/* Set up the cut name */
@@ -308,15 +307,12 @@ int changeEtaCol(LPptr lp, int numRows, int numCols, int currSampleSize, cutsTyp
 	int 	c;
 
 	for (c = 0; c < cuts->cnt; c++) {
-		if (cuts->vals[c]->isAvctive)
-		{
-			/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
-			coef[0] = (double)(currSampleSize) / (double)cuts->vals[c]->numSamples;         // coefficient k/j of eta column
+		/* Currently both incumbent and candidate cuts are treated similarly, and sunk as iterations proceed */
+		coef[0] = (double)(currSampleSize) / (double)cuts->vals[c]->numSamples;         // coefficient k/j of eta column
 
-			if (changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum + 1)) {
-				errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
-				return 1;
-			}
+		if (changeCol(lp, numCols, coef, cuts->vals[c]->rowNum, cuts->vals[c]->rowNum + 1)) {
+			errMsg("solver", "changeEtaCol", "failed to change eta column in the stage problem", 0);
+			return 1;
 		}
 	}
 
@@ -426,11 +422,8 @@ int updateRHS(LPptr lp, cutsType *cuts, int numIter, double lb) {
 		errMsg("allocation", "updateRHS", "indices", 0);
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		if (cuts->vals[cnt]->isAvctive)
-		{
-			rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double)numIter / (double)cuts->vals[cnt]->numSamples - 1) * lb;
-			indices[cnt] = cuts->vals[cnt]->rowNum;
-		}
+		rhs[cnt] = cuts->vals[cnt]->alphaIncumb + ((double)numIter / (double)cuts->vals[cnt]->numSamples - 1) * lb;
+		indices[cnt] = cuts->vals[cnt]->rowNum;
 	}
 
 	/* Now we change the right-hand of the master problem. */
@@ -486,9 +479,9 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk) {
 	dVector 	rhs;
 	iVector 	indices;
 
-	if (!(rhs =(dVector) arr_alloc(prob->num->rows+cell->cuts->cnt+1, double)))
+	if (!(rhs =(dVector) arr_alloc(prob->num->rows+cell->activeCuts->cnt+1, double)))
 		errMsg("Allocation", "changeRhs", "rhs",0);
-	if (!(indices =(iVector) arr_alloc(prob->num->rows+cell->cuts->cnt, int)))
+	if (!(indices =(iVector) arr_alloc(prob->num->rows + cell->activeCuts->cnt, int)))
 		errMsg("Allocation", "changeRhs", "indices",0);
 	/* Be careful with the one_norm!! In the CxX() routine, it assumes the 0th element is reserved for the 1_norm, in the returned dVector, the T sparse
 	 dVector, and the x dVector. */
@@ -514,61 +507,16 @@ int changeQPrhs(probType *prob, cellType *cell, dVector xk) {
 #endif // defined(clean_master)
 
 	/*** new rhs = alpha - beta * xbar (benders cuts)***/
-	for (cnt = 0; cnt < cell->cuts->cnt; cnt++) {
-		rhs[prob->num->rows+cnt+1] = cell->cuts->vals[cnt]->alpha - vXv(cell->cuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
-		indices[prob->num->rows+cnt] = cell->cuts->vals[cnt]->rowNum;
+	for (cnt = 0; cnt < cell->activeCuts->cnt; cnt++) {
+		rhs[prob->num->rows+cnt+1] = cell->activeCuts->vals[cnt]->alpha - vXv(cell->activeCuts->vals[cnt]->beta, xk, NULL, prob->sp->mac);
+		indices[prob->num->rows+cnt] = cell->activeCuts->vals[cnt]->rowNum;
 
-		cell->cuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows+cnt+1];
+		cell->activeCuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows+cnt+1];
 	}
 
 	/* Now we change the right-hand of the master problem. */
-	status = changeRHS(cell->master->lp, prob->num->rows + cell->cuts->cnt, indices, rhs+1);
+	status = changeRHS(cell->master->lp, prob->num->rows + cell->activeCuts->cnt, indices, rhs+1);
 	if (status)	{
-		errMsg("solver", "changeQPrhs", "failed to change the right-hand side in the solver", 0);
-		return 1;
-	}
-
-	mem_free(rhs);
-	mem_free(indices);
-	return 0;
-}//END changeQPrhs()
-
- /* 
- * by siavash tabrizian March 20
- * Since x = xbar + d, the corresponding changes will therefore be:
- * 		 A * d = b - A * xbar --->> A * x = b
- * 		 eta + beta * d >= alpha - beta * xbar ---->> eta + beta * x >= alpha
- * Turning it back to A * x = b */
-int revchangeQPrhs(probType *prob, cellType *cell, dVector xk) {
-	int 	status = 0, cnt;
-	dVector 	rhs;
-	iVector 	indices;
-
-	if (!(rhs = (dVector)arr_alloc(prob->num->rows + cell->cuts->cnt + 1, double)))
-		errMsg("Allocation", "changeRhs", "rhs", 0);	
-	if (!(indices = (iVector)arr_alloc(prob->num->rows + cell->cuts->cnt, int)))
-		errMsg("Allocation", "changeRhs", "indices", 0);
-
-	/* Be careful with the one_norm!! In the CxX() routine, it assumes the 0th element is reserved for the 1_norm, in the returned dVector, the T sparse
-	dVector, and the x dVector. */
-	for (cnt = 0; cnt < prob->num->rows; cnt++) {
-		rhs[cnt + 1] = prob->sp->rhsx[cnt];
-		indices[cnt] = cnt;
-	}
-	
-	/* b + A * xbar */
-	//rhs = MSparsexvSub(prob->Dbar, xk, rhs);
-	
-	/*** new rhs = alpha + beta * xbar (benders cuts)***/
-	for (cnt = 0; cnt < cell->cuts->cnt + cell->GMIcuts->cnt + cell->MIRcuts->cnt; cnt++) {
-		rhs[prob->num->rows + cnt + 1] = cell->cuts->vals[cnt]->alpha;
-		indices[prob->num->rows + cnt] = cell->cuts->vals[cnt]->rowNum;
-		cell->cuts->vals[cnt]->alphaIncumb = rhs[prob->num->rows + cnt + 1];
-	}
-
-	/* Now we change the right-hand of the master problem. */
-	status = changeRHS(cell->master->lp, prob->num->rows + cell->cuts->cnt, indices, rhs + 1);
-	if (status) {
 		errMsg("solver", "changeQPrhs", "failed to change the right-hand side in the solver", 0);
 		return 1;
 	}
@@ -634,7 +582,7 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 
 /* This subroutine initializes the master problem by copying information from the decomposed prob[0](type: oneProblem) and adding a column for
  * theta for modified benders decomposition. */
-oneProblem *newMaster(oneProblem *orig, double lb) {
+oneProblem *newMaster(oneProblem *orig, double lb, int type) {
 	oneProblem 	*master;
 	int         r, i, j, idx, cnt;
 	long        colOffset, rowOffset;
@@ -644,8 +592,8 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 		errMsg("Memory allocation", "new_master", "Faile to allocate memory to mcell->sp", 0);
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Allocating memory to master -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	master->type 	= config.MASTER_TYPE;               /* type of problem: LP, QP, MIP or MIQP */
-	master->objsen 	= orig->objsen;                 	/* sense of the objective: 1 for minimization and -1 for maximization */
+	master->type 	= type;               /* type of problem: LP, QP, MIP or MIQP */
+	master->objsen 	= orig->objsen;       /* sense of the objective: 1 for minimization and -1 for maximization */
 	master->mar 	= orig->mar;                       	/* number of rows */
 	master->numInt 	= orig->numInt;                 	/* number of integer variables in the problem  */
 	master->numnz 	= orig->numnz;                   	/* number of non-zero elements in constraint matrix */
@@ -654,7 +602,7 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	master->rstorsz = orig->rstorsz;               		/* memory size for storing row names */
 	master->mac 	= orig->mac+1;           			/* number of columns + etas */
 	master->macsz 	= orig->macsz + 1;       			/* extended column size */
-	master->cstorsz 	= orig->cstorsz + NAMESIZE;    	/* memory size for storing column names */
+	master->cstorsz = orig->cstorsz + NAMESIZE;    		/* memory size for storing column names */
 
 	/* Allocate memory to the information whose type is cString */
 	if (!(master->name = (cString) arr_alloc(NAMESIZE, char)))

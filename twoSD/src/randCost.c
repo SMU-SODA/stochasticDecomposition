@@ -319,6 +319,7 @@ void freeBasisType(basisType *basis, bool partial) {
 			}
 			mem_free(basis->vals);
 			mem_free(basis->obsFeasible);
+			mem_free(basis->iStar);
 		}
 		mem_free(basis);
 	}

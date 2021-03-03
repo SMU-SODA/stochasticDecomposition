@@ -40,7 +40,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta . x */ //
-	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 	printf("\n\nLP estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
 	evaluate(NULL,NULL, stoc, prob, cell->subprob, cell->candidX);
@@ -59,7 +59,7 @@ int phase_one_analysis(stocType *stoc, probType **prob, cellType *cell) {
 	}
 
 	/* Find the highest cut at the candidate solution. where cut_height = alpha - beta . x */ //
-	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
+	cell->candidEst = vXvSparse(cell->candidX, prob[0]->dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob[0]->num->cols, prob[0]->lb);
 	printf("\n\nMILP estimate: %0.4f\n", cell->candidEst);
 	printVector(cell->candidX, prob[0]->num->cols, NULL);
 	evaluate(NULL,NULL, stoc, prob, cell->subprob, cell->candidX);

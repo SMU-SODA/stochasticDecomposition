@@ -69,8 +69,9 @@ enum cutForm {
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
+	int		NUM_SEEDS;			/* Maximum number of replications that can be carried out. */
 	long long *RUN_SEED;		/* seed used during optimization */
+
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
 	int		MAX_ITER;			/* maximum number of iterations */
@@ -113,7 +114,7 @@ typedef struct{
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
 	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
-	double     INT_TOLERANCE;      /* Tolerence for call a variable integer*/
+	double  INT_TOLERANCE;      /* Tolerence for call a variable integer*/
 }configType;
 
 typedef struct {
@@ -207,7 +208,6 @@ typedef struct {
 	double      candidEst;          /* objective value master problem */
 
 	dVector     incumbX;			/* incumbent master solution */
-	dVector     incumbMIPX;			/* incumbent master solution after MIP procedure */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
@@ -256,11 +256,9 @@ typedef struct {
 	runTime		time;				/* Run time structure */
 
 	///// B&B paramters
-	bncInfoSummary *bncInfo;
 	bool 		isinBnB;
-int 			rownum;
+	int 		rownum;
 	sampleType	*sample;
-	nodeInfo    *nodeSol;			/* solution of nodes that are discovered in B&B */
 	char        **cur_rowname;		/* row names in BnB */
 
 }cellType;
@@ -296,14 +294,18 @@ struct BnCnodeType {
 	int     partightPi;                  /* number of pis used in tight cuts of th parent node */
 	int     parLambdasize;               /* total lamda size the parent node */
 	int     parparinit;                  /* initial lambda loop for the next iterations from parent of the parent */
+
 	int     poolID;					 	 /* Index to cutsPool corresponding to the node. */
 	int     parentPoolID;				 /* Index to cutsPool corresponding to the parent of the node. */
+
 	iVector tcuts;						 /* collection of cuts indexes from cell->cuts are tight in this node */
 	iVector partcuts;					 /* collection of parent cuts indexes from cell->cuts are tight in parent node */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
 	double  parobjVal;                   /* objective value of the parent node */
-	iVector  disjncs;                    /* list of distjuctive cuts on variables 0: not added 1: disjnct is added */
-	dVector  * disjncsVal;               /* list of distjuctive cuts values on variables - it has upper and lower limits */
+
+	iVector  disjncs;                    /* list of disjunctive cuts on variables 0: not added 1: disjnct is added */
+	dVector  * disjncsVal;               /* list of disjunctive cuts values on variables - it has upper and lower limits */
+
 	iVector	IncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts */
 	iVector	ParIncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts of the parent */
 	int numVar;                          /* number of variables */
@@ -339,9 +341,10 @@ void getRowNameMaster(cellType *cell);
 
 /* setup.c */
 int readConfig(cString path2config, cString inputDir);
-int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, dVector *meanSol, dVector lb);
+int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch,
+		dVector *meanSol, int type);
 int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***cloneprob, cellType **clonecell, dVector *meanSol, dVector lb);
-cellType *newCell(stocType *stoc, probType **prob, dVector xk);
+cellType *newCell(stocType *stoc, probType **prob, dVector xk, int type);
 int cleanCellType(cellType *cell, probType *prob, dVector xk);
 int cleanBnCCellType(cellType *cell, probType *prob, dVector xk);
 void freeCellType(cellType *cell);
@@ -359,7 +362,7 @@ int changeQPproximal(LPptr lp, int numCols, double sigma);
 int changeQPrhs(probType *prob, cellType *cell, dVector xk);
 int revchangeQPrhs(probType *prob, cellType *cell, dVector xk);
 int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int offset);
-oneProblem *newMaster(oneProblem *orig, double lb);
+oneProblem *newMaster(oneProblem *orig, double lb, int type);
 int recoverX(dVector sol, dVector incumb, dVector candid, iVector disjnct, dVector vals, int cnt);
 
 /* cuts.c */

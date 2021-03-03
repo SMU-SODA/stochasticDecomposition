@@ -32,11 +32,11 @@ bool optimal(probType **prob, cellType *cell) {
 		if ( preTest(cell) ) {
 			if ((cell->optFlag = fullTest(prob, cell)) == true) {
 				/* full test satisfied */
-//				printf (">"); fflush(stdout);
+				printf (">"); fflush(stdout);
 				return true;
 			}
 			else {
-//				printf(">"); fflush(stdout);
+				printf(">"); fflush(stdout);
 			}
 
 		}
@@ -131,7 +131,7 @@ bool fullTest(probType **prob, cellType *cell) {
 
 	clock_t tic = clock();
 	/* (a) choose good cuts */
-	gCuts = chooseCuts(cell->cuts, cell->piM, prob[0]->num->cols);
+	gCuts = chooseCuts(cell->activeCuts, cell->piM, prob[0]->num->cols);
 	if ( gCuts->cnt == 0 ) {
 		freeCutsType(gCuts, false);
 		return false;
@@ -202,7 +202,7 @@ bool fullTest(probType **prob, cellType *cell) {
 
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lower bound. In QP approach,
 		 * we don't include the incumb_x * c in estimate */
-		if (config.MASTER_TYPE == PROB_LP) {
+		if ( cell->master->type == PROB_LP) {
 			est += vXvSparse(cell->incumbX, prob[0]->dBar);
 			// TODO: solve a temporary master problem
 			errMsg("optimality", "fullTest", "lower bound calculations are incomplete", 1);

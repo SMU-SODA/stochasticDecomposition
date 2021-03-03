@@ -24,7 +24,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	dVector	 meanSol = NULL;
 	probType **prob = NULL;
 	cellType *cell = NULL;
-	dVector	lb = NULL;
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL, *dFile = NULL, *oFile = NULL;
 
@@ -32,7 +31,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	openSolver();
 
 	/* complete necessary initialization for the algorithm */
-	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, lb) )
+	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol, PROB_QP) )
 		goto TERMINATE;
 
 #if defined(LPMIP_PRINT)
@@ -48,7 +47,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	printDecomposeSummary(sFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
-	for ( int rep = 0; rep < config.NUM_REPS; rep++ ) {
+	for ( int rep = 0; rep < config.MULTIPLE_REP; rep++ ) {
 		fprintf(sFile, "\n====================================================================================================================================\n");
 		fprintf(sFile, "Replication-%d\n", rep+1);
 		fprintf(stdout, "\n====================================================================================================================================\n");
@@ -77,9 +76,17 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 #endif //  defined(experiment)
 
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if (branchbound(stoc, prob, cell, -INFINITY, INFINITY)) {
-			errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
-			goto TERMINATE;
+		if ( config.MASTER_TYPE == PROB_MILP ) {
+			if (branchbound(stoc, prob, cell, -INFINITY, INFINITY)) {
+				errMsg("algorithm", "algo", "failed to solve the problem using integer B&C 2-SD algorithm", 0);
+				goto TERMINATE;
+			}
+		}
+		else {
+			if ( solveCell(stoc, prob, cell) ) {
+				errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
+				goto TERMINATE;
+			}
 		}
 
 		cell->time.repTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
@@ -99,7 +106,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		if (config.EVAL_FLAG == 1)
 		{
 			//LB estimate: CTx (dot product) + height of the cut(subroutine: )
-			//cell->incumbEst = vXvSparse(cell->incumbX, prob[0]->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob[0]->num->cols, cell->lb);
 			evaluate(dFile, sFile, stoc, prob, cell->subprob, cell->incumbX);
 		}
 		else
@@ -149,7 +155,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	freeBatchType(batch);
 	freeCellType(cell);
 	freeProbType(prob, 2);
-	mem_free(lb);
 	return 1;
 }//END algo()
 
@@ -178,6 +183,3 @@ void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellTyp
 	}
 
 }//END WriteStat
-
-
-

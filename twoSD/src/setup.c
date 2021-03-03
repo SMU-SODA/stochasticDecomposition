@@ -28,14 +28,13 @@ int readConfig(cString path2config, cString inputDir) {
 
 	config.RUN_SEED = (long long *) arr_alloc(maxReps+1, long long);
 	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
-	config.NUM_REPS = 0;
 	config.SAMPLE_INCREMENT = 1;
 
 	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
 		if (!(strcmp(line, "RUN_SEED"))) {
-			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_REPS+1]);
-			config.NUM_REPS++;
-			if ( config.NUM_REPS > maxReps ) {
+			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_SEEDS+1]);
+			config.NUM_SEEDS++;
+			if ( config.NUM_SEEDS > maxReps ) {
 				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
 				maxReps *= 2;
 			}
@@ -133,8 +132,13 @@ int readConfig(cString path2config, cString inputDir) {
 
 	fclose(fptr);
 
-	if ( config.MULTIPLE_REP == 0 ) {
-		config.NUM_REPS = 1;
+	config.NUM_SEEDS = minimum(config.NUM_SEEDS, r2);
+	if ( config.MULTIPLE_REP > config.NUM_SEEDS ) {
+		printf("Requesting to perform more replications than the number of seeds provided.\n");
+		return 1;
+	}
+
+	if ( config.MULTIPLE_REP == 1 ) {
 		config.COMPROMISE_PROB = 0;
 	}
 
@@ -142,8 +146,9 @@ int readConfig(cString path2config, cString inputDir) {
 }//END readConfig()
 
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell,
-		batchSummary **batch, dVector *meanSol, dVector lb) {
+		batchSummary **batch, dVector *meanSol, int type) {
 	int 	t;
+	dVector lb = NULL;
 
 	/* setup mean value problem which will act as reference for all future computations */
 	(*meanSol) = meanProblem(orig, stoc);
@@ -156,7 +161,8 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	lb = calcLowerBound(orig, tim, stoc);
 	if ( lb == NULL )  {
 		errMsg("setup", "setupAlgo", "failed to compute lower bounds on stage problem", 0);
-		mem_free(lb); return 1;
+		mem_free(lb);
+		return 1;
 	}
 
 
@@ -164,7 +170,8 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 	(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
 	if ((*prob) == NULL) {
 		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
-		mem_free(lb); return 1;
+		mem_free(lb);
+		return 1;
 	}
 
 #ifdef DECOMPOSE_CHECK
@@ -187,69 +194,25 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 
 
 	/* create the cells which will be used in the algorithms */
-	(*cell) = newCell(stoc, (*prob), (*meanSol));
+	(*cell) = newCell(stoc, (*prob), (*meanSol), type);
 	if ( (*cell) == NULL ) {
 		errMsg("setup", "setupAlgo", "failed to create the necessary cell structure", 0);
+		mem_free(lb);
 		return 1;
 	}
 
-	if ( config.NUM_REPS > 1 )
-		(*batch)  = newBatchSummary((*prob)[0], config.NUM_REPS);
+	if ( config.MULTIPLE_REP > 1 )
+		(*batch)  = newBatchSummary((*prob)[0], config.MULTIPLE_REP);
 
-	return 0;
-}//END setupAlgo()
-
-/*
-Setup clone cell and probs
-Siavash Tabrizian July 20
-*/
-int setupClone(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, dVector *meanSol, dVector lb) {
-	int 	t;
-
-
-	/* decompose the problem into master and subproblem */
-	(*prob) = newProb(orig, stoc, tim, lb, config.TOLERANCE);
-	if ((*prob) == NULL) {
-		errMsg("setup", "setupAlgo", "failed to update probType with elements specific to algorithm", 0);
-		mem_free(lb); return 1;
-	}
-
-#ifdef DECOMPOSE_CHECK
-	printDecomposeSummary(stdout, orig->name, tim, (*prob));
-#endif
-
-	/* ensure that we have a linear programs at all stages */
-	t = 0;
-	while (t < tim->numStages) {
-		if (config.SMIP != 0)
-		{
-			if ((*prob)[t++]->sp->type != PROB_LP)
-				printf("Warning :: Clone stage-%d problem is a mixed-integer program. Solving its linear relaxation.\n", t);
-		}
-		else
-		{
-			t++;
-		}
-	}
-
-
-	/* create the cells which will be used in the algorithms */
-	(*cell) = newCell(stoc, (*prob), (*meanSol));
-	if ((*cell) == NULL) {
-		errMsg("setup", "setupAlgo", "failed to create the necessary cell structure", 0);
-		return 1;
-	}
-
-
+	mem_free(lb);
 	return 0;
 }//END setupAlgo()
 
  /* creating info summary from bnc */
-bncInfoSummary *setupBncInfo(int cnt)
-{
+bncInfoSummary *setupBncInfo(int cnt) {
 	bncInfoSummary *info = NULL;
 
-	if (!(info = (bncInfoSummary *)mem_malloc(sizeof(bncInfoSummary))))
+	if (!(info = (bncInfoSummary *) mem_malloc(sizeof(bncInfoSummary))))
 		errMsg("Memory allocation", "newCell", "failed to allocate memory to bncInfo", 0);
 	if (!(info->disjnct = (iVector)arr_alloc(cnt, int)))
 		errMsg("allocation", "setupBncInfo", "info->disjnct", 0);
@@ -260,23 +223,24 @@ bncInfoSummary *setupBncInfo(int cnt)
 }//END setupBncInfo()
 
 /* This function is used to create cells used in the algorithm */
-cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
+cellType *newCell(stocType *stoc, probType **prob, dVector xk, int type) {
 	cellType    *cell = NULL;
 	int			length;
 
 	/* allocate memory to all cells used in the algorithm. The first cell belongs to the master problem, while the rest correspond to each of the
 	 * sub-agents in the problem.  */
-	if (!(cell = (cellType *) mem_malloc(sizeof(cellType))) )
-		errMsg("Memory allocation", "newCell", "failed to allocate memory to cell",0);
+	cell = (cellType *) mem_malloc(sizeof(cellType));
+
 	cell->master = cell->subprob = NULL;
 	cell->candidX = cell->incumbX = NULL;
 	cell->piM = cell->djM = NULL;
-	cell->activeCuts = cell->fcuts = cell->cutsPool = NULL;
+	cell->activeCuts = cell->fcuts = NULL;
+	cell->cutsPool = NULL;
 	cell->lambda = NULL; cell->sigma = NULL; cell->delta = NULL; cell->omega = NULL;
 	cell->pi_ratio = NULL;
 
 	/* setup the master problem */
-	cell->master = newMaster(prob[0]->sp, prob[0]->lb);
+	cell->master = newMaster(prob[0]->sp, prob[0]->lb, type);
 	if (cell->master == NULL) {
 		errMsg("setup", "newCell", "failed to setup the master problem", 0);
 		return NULL;
@@ -291,6 +255,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
+	cell->ki    = 0;
 	cell->mk    = 0;
 	cell->gk    = 0;
 	cell->sampleSize = 0;
@@ -306,9 +271,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->candidEst 		= prob[0]->lb + vXvSparse(cell->candidX, prob[0]->dBar);
 
 	/* incumbent solution and estimates */
-	if (config.MASTER_TYPE == PROB_QP) {
+	if ( cell->master->type == PROB_QP ) {
 		cell->incumbX   = duplicVector(xk, prob[0]->num->cols);
-		cell->incumbMIPX = duplicVector(xk, prob[0]->num->cols);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
@@ -316,7 +280,6 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 		cell->incumbChg = true;
 	}
 	else {
-		cell->incumbMIPX = NULL;
 		cell->incumbX   = NULL;
 		cell->incumbEst = 0.0;
 		cell->quadScalar= 0.0;
@@ -346,11 +309,6 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	if ( !(cell->piM = (dVector) arr_alloc(prob[0]->num->rows + cell->maxCuts + 1, double)) )
 		errMsg("allocation", "newCell", "cell->piM", 0);
 
-	/* node info of B&B solutions */
-	if (!(cell->nodeSol = (nodeInfo*)arr_alloc(config.NodeNum, nodeInfo)))
-		errMsg("allocation", "newCell", "cell->nodeInfo", 0);
-	cell->bncInfo = setupBncInfo(prob[0]->num->cols);
-
 	/* stochastic elements: we need more room to store basis information when the cost coefficients are random. */
 	if ( prob[1]->num->rvdOmCnt > 0 )
 		length = prob[1]->num->rvdOmCnt*config.MAX_ITER + config.MAX_ITER / config.TAU + 1;
@@ -363,8 +321,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->omega  = newOmega(prob[1]->num->numRV, config.MAX_ITER);
 	cell->sample = newSample(config.SAMPLE_INCREMENT);
 
-	cell->optFlag 			= false;
-	cell->MIPFlag           = false;
+	cell->optFlag = false;
+	cell->MIPFlag = false;
 
 	/* Dual stability test is disabled DUAL_STABILITY is false. */
 	if ( !config.DUAL_STABILITY ) {
@@ -378,6 +336,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	}
 
 	cell->spFeasFlag = true;
+	cell->masterFeasFlag = true;
 	cell->fcuts		= newCuts(cell->maxCuts);
 	cell->fcutsPool = newCuts(cell->maxCuts);
 	cell->feasCnt 		= 0;
@@ -388,7 +347,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->time.iterAccumTime = cell->time.masterAccumTime = cell->time.subprobAccumTime = cell->time.optTestAccumTime = cell->time.argmaxAccumTime = 0.0;
 
 	/* construct the QP using the current incumbent */
-	if ( config.MASTER_TYPE == PROB_QP ) {
+	if ( cell->master->type == PROB_QP ) {
 		if ( constructQP(prob[0], cell, cell->incumbX, cell->quadScalar) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
 			return NULL;
@@ -428,7 +387,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	copyVector(xk, cell->candidX, prob->num->cols, true);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
-	if (config.MASTER_TYPE == PROB_QP) {
+	if ( cell->master->type == PROB_QP ) {
 		copyVector(xk, cell->incumbX, prob->num->cols, true);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
@@ -461,7 +420,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	}
 
 	/* cuts */
-	if (cell->cuts) freeCutsType(cell->cuts, true);
+	if (cell->activeCuts) freeCutsType(cell->activeCuts, true);
 	if (cell->MIRcuts) freeCutsType(cell->MIRcuts, true);
 	if (cell->GMIcuts) freeCutsType(cell->GMIcuts, true);
 	if (cell->fcuts) freeCutsType(cell->fcuts, true);
@@ -481,7 +440,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->time.repTime = cell->time.iterTime = cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
 	cell->time.iterAccumTime = cell->time.masterAccumTime = cell->time.subprobAccumTime = cell->time.optTestAccumTime = cell->time.argmaxAccumTime = 0.0;
 
-	if ( config.MASTER_TYPE == PROB_QP ) {
+	if ( cell->master->type == PROB_QP ) {
 		if ( constructQP(prob, cell, cell->incumbX, cell->quadScalar) ) {
 			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
 			return 1;
@@ -499,77 +458,6 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	return 0;
 }//END cleanCellType()
 
-int cleanBnCCellType(cellType *cell, probType *prob, dVector xk) {
-	int cnt;
-
-	/* constants and arrays */
-	cell->LPcnt = 0;
-	cell->optFlag = false;
-	cell->spFeasFlag = true;
-	if (config.DUAL_STABILITY)
-		cell->dualStableFlag = false;
-
-	copyVector(xk, cell->candidX, prob->num->cols, true);
-	cell->candidEst = prob->lb + vXvSparse(cell->candidX, prob->dBar);
-
-	if (config.MASTER_TYPE == PROB_QP) {
-		copyVector(xk, cell->incumbX, prob->num->cols, true);
-		cell->incumbEst = cell->candidEst;
-		cell->quadScalar = config.MIN_QUAD_SCALAR;
-		cell->iCutIdx = 0;
-		cell->iCutUpdt = 0;
-		cell->incumbChg = true;
-	}
-	cell->gamma = 0.0;
-	cell->normDk_1 = 0.0;
-	cell->normDk = 0.0;
-
-	/* oneProblem structures and solver elements */
-	for (cnt = prob->num->rows + cell->cuts->cnt + cell->fcuts->cnt - 1; cnt >= prob->num->rows; cnt--)
-		if (removeRow(cell->master->lp, cnt, cnt)) {
-			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
-			return 1;
-		}
-	cell->master->mar = prob->num->rows;
-	if (changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
-		errMsg("algorithm", "cleanCellType", "failed to change the proximal term", 0);
-		return 1;
-	}
-
-	/* cuts */
-	if (cell->cuts) freeCutsType(cell->cuts, true);
-	if (cell->MIRcuts) freeCutsType(cell->MIRcuts, true);
-	if (cell->GMIcuts) freeCutsType(cell->GMIcuts, true);
-	if (cell->fcuts) freeCutsType(cell->fcuts, true);
-	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, true);
-	cell->feasCnt = 0;
-	cell->infeasIncumb = false;
-	cell->fUpdt[0] = cell->fUpdt[1] = 0;
-
-
-	/* reset all the clocks */
-	cell->time.repTime = cell->time.iterTime = cell->time.masterIter = cell->time.subprobIter = cell->time.optTestIter = cell->time.argmaxIter = 0.0;
-	cell->time.iterAccumTime = cell->time.masterAccumTime = cell->time.subprobAccumTime = cell->time.optTestAccumTime = cell->time.argmaxAccumTime = 0.0;
-
-	if (config.MASTER_TYPE == PROB_QP) {
-		if (constructQP(prob, cell, cell->incumbX, cell->quadScalar)) {
-			errMsg("setup", "newCell", "failed to change the right-hand side after incumbent change", 0);
-			return 1;
-		}
-
-		cell->incumbChg = false;
-#if defined(SETUP_CHECK)
-		if (writeProblem(cell->aster->lp, "cleanedQPMaster.lp")) {
-			errMsg("write problem", "new_master", "failed to write master problem to file", 0);
-			return 1;
-		}
-#endif
-	}
-
-	return 0;
-}//END cleanBnCCellType()
-
-
 void freeCellType(cellType *cell) {
 
 	if ( cell ) {
@@ -578,7 +466,7 @@ void freeCellType(cellType *cell) {
 		if (cell->incumbX) mem_free(cell->incumbX);
 		if (cell->piM) mem_free(cell->piM);
 		if (cell->djM) mem_free(cell->djM);
-		if (cell->cuts) freeCutsType(cell->cuts, false);
+		if (cell->activeCuts) freeCutsType(cell->activeCuts, false);
 		if (cell->MIRcuts) freeCutsType(cell->MIRcuts, false);
 		if (cell->GMIcuts) freeCutsType(cell->GMIcuts, false);
 		if (cell->fcuts) freeCutsType(cell->fcuts, false);
@@ -590,6 +478,11 @@ void freeCellType(cellType *cell) {
 		if (cell->basis) freeBasisType(cell->basis, false);
 		if (cell->sample) freeSampleType(cell->sample);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
+		if (cell->cutsPool) {
+			for ( int n = 0; n < cell->numPools; n++ )
+				if ( cell->cutsPool[n] ) freeCutsType(cell->cutsPool[n], false);
+			mem_free(cell->cutsPool);
+		}
 		mem_free(cell);
 	}
 
