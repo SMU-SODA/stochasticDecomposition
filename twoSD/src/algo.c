@@ -14,7 +14,7 @@
  *
  */
 
-#include "twoSD.h"
+#include "bnc.h" 
 
 extern cString outputDir;
 extern configType config;

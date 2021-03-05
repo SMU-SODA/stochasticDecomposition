@@ -11,31 +11,11 @@
  *
  */
 
-#include "twoSD.h"
+#include "bnc.h"
 
 
 extern configType config;
-#define maxdnodes   1000
-#define useDNODE 
-#define useINODE
 
-#undef writeprob
-
-int currKey;
-int currDepth;
-double GlobeUB;               // Global upper bound
-oneProblem      *original;    // Info of the original problem 
-struct BnCnodeType *bestNode; // best node that is found so far
-struct BnCnodeType **nodearr; // array of deactivated leaf nodes
-struct BnCnodeType **inodearr;// array of integer feasible leaf nodes
-int dnodes;                   // number of deactivated nodes 
-int inodes;                   // number of integer feasible nodes 
-int maxcut;
-double meanVal;               // Global lower bound 
-#undef printBest
-#undef printBranch
-#undef depthtest
-#undef writemaster
 
 /* branch and bound algorithm */
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB) {
