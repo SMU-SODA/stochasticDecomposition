@@ -160,6 +160,18 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #endif // defined(printBest)
 
 	//freeOneProblem(original);
+	if(dnodes > 0)
+		for (int i = 0; i < dnodes; i++)
+		{
+			freeNode(nodearr[i]);
+			mem_free(nodearr[i]);
+		}
+	if (inodes > 0)
+		for (int i = 0; i < dnodes; i++)
+		{
+			freeNode(inodearr[i]);
+			mem_free(inodearr[i]);
+		}
 	freeNodes(rootNode);
 	return 0;
 }//END branchBound()
@@ -604,9 +616,12 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->poolID = 0;
 	if (!(temp->tcuts = (iVector)arr_alloc(maxcut, int)))
 		errMsg("allocation", "newNode", "temp->tcuts", 0);
+	if (!(temp->partcuts = (iVector)arr_alloc(maxcut, int)))
+		errMsg("allocation", "newNode", "temp->tcuts", 0);
 	for (int c = 0; c < maxcut; c++)
 	{
 		temp->tcuts[c] = -1;
+		temp->partcuts[c] = -1;
 	}
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
@@ -630,6 +645,11 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 			temp->IncumbiStar[i] = -1;
 			temp->ParIncumbiStar[i] = -1;
 		}
+	}
+	else
+	{
+		temp->IncumbiStar = NULL;
+		temp->ParIncumbiStar = NULL;
 	}
 	for (int v = 0; v < temp->numVar + 1; v++)
 		temp->vars[v] = 0.0;
@@ -709,6 +729,11 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 			temp->IncumbiStar[i] = -1;
 			temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
 		}
+	}
+	else
+	{
+		temp->IncumbiStar = NULL;
+		temp->ParIncumbiStar = NULL;
 	}
 
 #if defined(BNC_CHECK)
@@ -1010,10 +1035,10 @@ struct BnCnodeType *successorNode(struct BnCnodeType *node) {
 	return current;
 }
 
-int freeNodes(struct BnCnodeType *root)
+void freeNodes(struct BnCnodeType *root)
 {
 	// Return 1 when the tree is empty
-	if (root == NULL) return 1;
+	if (root == NULL) return;
 
 	struct BnCnodeType *next = root;
 
@@ -1022,37 +1047,31 @@ int freeNodes(struct BnCnodeType *root)
 		struct BnCnodeType *node = next;
 		next = node->nextnode;
 		if (node) {
-			if (node->disjncs) mem_free(node->disjncs);
-			if (node->disjncsVal)  mem_free(node->disjncsVal);
-			if (node->vars)  mem_free(node->vars);
-			//if (node->duals)  mem_free(node->duals);
-			//if (node->prevnode) node->prevnode->nextnode = NULL;
-			//if (node->nextnode) node->nextnode->prevnode = NULL;
-			mem_free(node);
+			freeNode(node);
 		}
 	}
 
 
-	return 0;
-
 }//End freeNode()
 
-int freeNode(struct BnCnodeType *node)
+void freeNode(struct BnCnodeType *node)
 {
 	// Return 1 when the tree is empty
-	if (node == NULL) return 1;
+	if (node == NULL) return;
 
 	if (node->prevnode) node->prevnode->nextnode = NULL;
 	if (node->nextnode) node->nextnode->prevnode = NULL;
-	node->prevnode = NULL; node->nextnode = NULL;
+	if (node->tcuts) mem_free(node->tcuts);
+	if (node->partcuts) mem_free(node->partcuts);
 	if (node->disjncs) mem_free(node->disjncs);
-	if (node->disjncsVal)  mem_free(node->disjncsVal);
+	for (int i =0; i< node->numVar; i++)
+		if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
+	if (node->IncumbiStar) mem_free(node->IncumbiStar);
+	if (node->ParIncumbiStar) mem_free(node->ParIncumbiStar);
 	if (node->vars)  mem_free(node->vars);
 	//if (node->duals)  mem_free(node->duals);
 	mem_free(node);
 
-
-	return 0;
 
 }//End freeNode()
 

@@ -69,7 +69,7 @@ struct BnCnodeType {
 	double UB;                           /* lower bounds and upper bounds at this node */
 	double objval;                       /* objective value of the node problem  */
 	dVector vars;                        /* the values of variables */
-	dVector duals;                       /* the values of the duals of the node problem */
+//	dVector duals;                       /* the values of the duals of the node problem */
 	bool   isInt;                        /* is the solution obtained from the node integer */
 	bool   isActive;                     /* the node is active or not */
 	bool   isSPopt;                      /* the estimation of the node completed */
@@ -91,8 +91,8 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
-int          freeNodes(struct BnCnodeType *root);
-int 	     freeNode(struct BnCnodeType *node);
+void          freeNodes(struct BnCnodeType *root);
+void 	     freeNode(struct BnCnodeType *node);
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);
 struct BnCnodeType *nextNode(struct BnCnodeType *node);
 struct BnCnodeType     *successorNode(struct BnCnodeType *node);
