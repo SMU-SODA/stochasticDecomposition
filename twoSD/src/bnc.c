@@ -94,8 +94,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	}
 
 	/* Loop though all the active nodes (leaf nodes) to update their incumbent estimates */
-//	while (activeNode != NULL) {
-	while ( nodecnt < 1 ) {
+	while (activeNode != NULL) {
+//	while ( nodecnt < 1 ) {
 
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
@@ -339,7 +339,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 		node->right->prevnode = node->prevnode;
 		node->nextnode = node->right;
-		node->prevnode->nextnode = node->nextnode;
+		if(node->prevnode) node->prevnode->nextnode = node->nextnode;
 		node->right->nextnode = node->left;
 		node->left->prevnode = node->right;
 		*activeNode = node->left;
