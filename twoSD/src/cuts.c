@@ -73,7 +73,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 		cell->pi_ratio[cell->k % config.SCAN_LEN] = tempRatio/(double) cell->sampleSize;
 
 		double variance = calcVariance(cell->pi_ratio, NULL, NULL, 0);
-		if ( DBL_ABS(variance) > .000001 || fabs(cell->pi_ratio[cell->k % config.SCAN_LEN] - 1) > 0.05 )
+		if ( DBL_ABS(variance) > .000001 || fabs(cell->pi_ratio[cell->k % config.SCAN_LEN] - 1) > (1-config.PI_RATIO) )
 			cell->dualStableFlag = false;
 		else
 			cell->dualStableFlag = true;
