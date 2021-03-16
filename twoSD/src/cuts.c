@@ -104,7 +104,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inC
 		return -1;
 	}
 
-	if ( addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols) ) {
+	if ( addCut2Master(cell->master, cut, cell->incumbX, prob[0]->num->cols, cell->master->type == PROB_QP) ) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
 		return -1;
 	}
@@ -271,9 +271,8 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
-	int maxcut = config.CUT_MULT * numX + 3;
 	if ( numIstar > 0 ) {
-		if (!(cut->iStar = arr_alloc(maxcut*config.MAX_ITER, int)))
+		if (!(cut->iStar = arr_alloc(numIstar, int)))
 			errMsg("allocation", "new_cut", "iStar", 0);
 	}
 	else
@@ -404,8 +403,8 @@ int copyCuts(numType *num, cutsType *orig, cutsType *copy) {
 		cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
 		cut->slackCnt = orig->vals[cnt]->slackCnt;
 
-		cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols);
-		cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, num->cols);
+		cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols, true);
+		cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
 		cut->name = (cString) arr_alloc(NAMESIZE, char);
 		strcpy(cut->name, orig->vals[cnt]->name);
 
@@ -423,15 +422,19 @@ cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi) {
 		if (pi[orig->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
 			oneCut *cut;
 
-			cut = newCut(num->cols, orig->vals[cnt]->omegaCnt, orig->vals[cnt]->numSamples);
+			cut = (oneCut *) mem_malloc(sizeof(oneCut));
+			cut->numSamples = orig->vals[cnt]->numSamples;
+			cut->omegaCnt = orig->vals[cnt]->omegaCnt;
 
+			cut->rowNum = -1;
 			cut->isIncumb = orig->vals[cnt]->isIncumb;
 			cut->alpha = orig->vals[cnt]->alpha;
 			cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
 			cut->slackCnt = orig->vals[cnt]->slackCnt;
 
-			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols);
-			cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, num->cols);
+			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols, true);
+			cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
+
 			cut->name = (cString) arr_alloc(NAMESIZE, char);
 			strcpy(cut->name, orig->vals[cnt]->name);
 
@@ -672,7 +675,7 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 				printf("Incumbent violates one old cut from feasible cut pool, but the cut already exists in the master problem.\n");
 			else {
 				printf( "Incumbent violates one new cut from feasible cut pool, also adding to master problem.\n");
-				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX);
+				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX, cell->master->type == PROB_QP);
 			}
 		}
 		else {
@@ -683,7 +686,7 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 
 			if (betaX < alpha) {
 				printf("Candidate violates one cut from feasible cut pool (this cut is not in feasCutsAdded but will be added)\n");
-				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX);
+				addCut2Master(cell->master, cell->fcutsPool->vals[idx], cell->incumbX, lenX, cell->master->type == PROB_QP);
 			}
 		}
 	}

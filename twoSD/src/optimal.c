@@ -138,7 +138,7 @@ bool fullTest(probType **prob, cellType *cell) {
 	}
 
 	/* Allocate memory. */
-	if (!(cstat = (iVector)arr_alloc(prob[0]->num->cols + 1, int)))
+	if (!(cstat = (iVector)arr_alloc(prob[0]->num->cols+2, int)))
 		errMsg("allocation", "stochasticUpdates", "cstat", 0);
 
 	///* Obtain the status of columns and rows in the basis. */
@@ -223,12 +223,13 @@ bool fullTest(probType **prob, cellType *cell) {
 		/* (h) check No. of fails. skip out of the loop if there's no hope of meeting the condition */
 		if ( rep + 1 - numPass >= (1 - config.PERCENT_PASS) * config.BOOTSTRAP_REP) {
 			/* The bootstrap test has failed */
-			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, false);
+			mem_free(cdf); mem_free(observ); freeCutsType(gCuts, false); mem_free(cstat);
 			return false;
 		}
 	}//END replication loop
 	cell->time.optTestIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
+	mem_free(cstat);
 	mem_free(cdf); mem_free(observ);
 	freeCutsType(gCuts, false);
 	return true;

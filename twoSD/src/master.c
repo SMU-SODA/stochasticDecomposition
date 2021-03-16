@@ -191,7 +191,7 @@ int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	return 0;
 }//END solveLPMaster()
 
-int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX) {
+int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool updateRHS) {
 	iVector 	indices;
 	int 	cnt;
 	static int cummCutNum = 0;
@@ -204,8 +204,10 @@ int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX) {
 	indices[0] = lenX;
 
 	/* Cut right-hand side */
-	if ( master->type == PROB_QP )
+	if ( updateRHS )
 		cut->alphaIncumb = cut->alpha - vXv(cut->beta, vectX, NULL, lenX);
+	else
+		cut->alphaIncumb = cut->alpha;
 
 	/* Set up the cut name */
 	sprintf(cut->name, "cut_%04d", cummCutNum++);

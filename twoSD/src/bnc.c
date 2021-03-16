@@ -16,7 +16,6 @@
 
 extern configType config;
 
-
 /* branch and bound algorithm */
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB) {
 	int i;
@@ -94,8 +93,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	}
 
 	/* Loop though all the active nodes (leaf nodes) to update their incumbent estimates */
-	while (activeNode != NULL) {
-//	while ( nodecnt < 1 ) {
+//	while (activeNode != NULL) {
+	while ( nodecnt < 2 ) {
 
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
@@ -328,24 +327,34 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		printVector(node->vars, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 
-		/* Create the left and the right nodes. For the right node, we use the entry in the cutsPool structure for the parent node */
-		node->right = newNode(getnodeIdx(node->depth + 1, node->key, 0), node, node->vars[vaIdx + 1], vaIdx, false);
-		node->right->poolID = node->right->parentPoolID;
+		struct BnCnodeType *right, *left;
 
-		/* For the left node a copy of parents active cuts is initialized as a new entry in the cutsPool structure. */
-		node->left  = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
-		cell->cutsPool[cell->numPools] = duplicActiveCuts(prob[0]->num, cell->cutsPool[node->left->parentPoolID], cell->piM);
-		node->left->poolID = cell->numPools++;
+		right = newNode(getnodeIdx(node->depth + 1, node->key, 0), node, node->vars[vaIdx + 1], vaIdx, false);
+		right->poolID = node->poolID;
 
-		node->right->prevnode = node->prevnode;
-		node->nextnode = node->right;
-		if(node->prevnode) node->prevnode->nextnode = node->nextnode;
-		node->right->nextnode = node->left;
-		node->left->prevnode = node->right;
-		*activeNode = node->left;
+		left  = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
+		cell->cutsPool[cell->numPools] = duplicActiveCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], cell->piM);
+		left->poolID = cell->numPools++;
 
-		/* Delete the parent node */
-		freeNode(node);
+		if ( node->key == 0 ) {
+			node->nextnode = right;
+			right->nextnode = left;
+
+			left->prevnode = right;
+			right->prevnode = node;
+		}
+		else {
+			struct BnCnodeType *temp = node->prevnode;
+			temp->nextnode = right;
+			right->prevnode = node->prevnode;
+
+			left->prevnode = right;
+			right->nextnode = left;
+
+			freeNode(node);
+		}
+
+		*activeNode = left;
 	}
 	else {
 		*activeNode = nextNode(node);
@@ -463,7 +472,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 
 	if (cell->ki > 600) printf("\n");
 
-	printf("SD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n",
+	printf("\nSD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n",
 			cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
 
 	return 0;
@@ -473,8 +482,16 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 	if ( node->key != 0 ) {
-		/* 1. Copy active cuts corresponding to the parent node from the cuts pool */
+		/* 1a. Copy active cuts corresponding to the parent node from the cuts pool */
 		copyCuts(prob->num, cell->cutsPool[node->parentPoolID], cell->activeCuts);
+
+		/* 1b. Add the active cuts to the master problem */
+		for ( int n = 0; n < cell->activeCuts->cnt; n++ ) {
+			if ( addCut2Master(cell->master, cell->activeCuts->vals[n], cell->incumbX, prob->num->cols, false) ) {
+				errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
+				return -1;
+			}
+		}
 
 		/* 2. Retrieve the incumbent from the parent node and perform updates. */
 		/* 2a. Add the B&B conditions */
@@ -595,7 +612,6 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->fracVal = -1;
 	temp->varId = -1;
 	temp->ishrstic = false;
-	temp->left = temp->right = NULL;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = numVar;
 	temp->LB = LB;
@@ -614,15 +630,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->isSPopt = true;
 	temp->parentPoolID = -1;
 	temp->poolID = 0;
-	if (!(temp->tcuts = (iVector)arr_alloc(maxcut, int)))
-		errMsg("allocation", "newNode", "temp->tcuts", 0);
-	if (!(temp->partcuts = (iVector)arr_alloc(maxcut, int)))
-		errMsg("allocation", "newNode", "temp->tcuts", 0);
-	for (int c = 0; c < maxcut; c++)
-	{
-		temp->tcuts[c] = -1;
-		temp->partcuts[c] = -1;
-	}
+
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -685,7 +693,6 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->fracVal = fracVal;
 	temp->varId = varId;
 	temp->ishrstic = false;
-	temp->left = temp->right = NULL;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = parent->numVar;
 	temp->stInt = parent->stInt;
@@ -700,20 +707,12 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->Lambdasize = 0;
 	temp->parparinit = parent->parLambdasize;
 	temp->fracPi = 0.0;
-	temp->isActive = true;
+	temp->isActive = isleft?true:false;
 	temp->isfathomed = false;
 	temp->parobjVal = parent->objval;
 	temp->isSPopt = true;
 	temp->parentPoolID = parent->poolID;
-	if (!(temp->tcuts = (iVector)arr_alloc(maxcut, int)))
-		errMsg("allocation", "newNode", "temp->tcuts", 0);
-	if (!(temp->partcuts = (iVector)arr_alloc(maxcut, int)))
-		errMsg("allocation", "newNode", "temp->partcuts", 0);
-	for (int c = 0; c < maxcut; c++)
-	{
-		temp->partcuts[c] = parent->tcuts[c];
-		temp->tcuts[c] = -1;
-	}
+
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
@@ -830,7 +829,6 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 	temp->fracVal = node->fracVal;
 	temp->ishrstic = true;
 	temp->varId = node->varId;
-	temp->left = temp->right = NULL;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = node->numVar;
 	temp->stInt = node->stInt;
@@ -1023,35 +1021,15 @@ struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *act
 	return node;
 }
 
-// return the inorder successor of the input node: this is just based on the order
-// of the node in the tree not lower bound or upper bound
-struct BnCnodeType *successorNode(struct BnCnodeType *node) {
-	struct BnCnodeType *current = node;
+void freeNodes(struct BnCnodeType *root) {
 
-	// Find the leftmost leaf
-	while (current && current->left != NULL)
-		current = current->left;
-
-	return current;
-}
-
-void freeNodes(struct BnCnodeType *root)
-{
-	// Return 1 when the tree is empty
-	if (root == NULL) return;
-
-	struct BnCnodeType *next = root;
-
-	while (next)
-	{
-		struct BnCnodeType *node = next;
-		next = node->nextnode;
-		if (node) {
-			freeNode(node);
-		}
+	struct BnCnodeType *node = root;
+	while ( node != NULL ) {
+		struct BnCnodeType *next = node->nextnode;
+		freeNode(node);
+		node = next;
 	}
-
-
+	return;
 }//End freeNode()
 
 void freeNode(struct BnCnodeType *node)
@@ -1061,15 +1039,15 @@ void freeNode(struct BnCnodeType *node)
 
 	if (node->prevnode) node->prevnode->nextnode = NULL;
 	if (node->nextnode) node->nextnode->prevnode = NULL;
-	if (node->tcuts) mem_free(node->tcuts);
-	if (node->partcuts) mem_free(node->partcuts);
 	if (node->disjncs) mem_free(node->disjncs);
-	for (int i =0; i< node->numVar; i++)
-		if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
+	if ( node->disjncsVal ) {
+		for (int i = 0; i < node->numVar; i++)
+			if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
+		mem_free(node->disjncsVal);
+	}
 	if (node->IncumbiStar) mem_free(node->IncumbiStar);
 	if (node->ParIncumbiStar) mem_free(node->ParIncumbiStar);
 	if (node->vars)  mem_free(node->vars);
-	//if (node->duals)  mem_free(node->duals);
 	mem_free(node);
 
 

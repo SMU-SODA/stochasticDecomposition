@@ -18,7 +18,7 @@
 #define TWOSD_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
@@ -304,7 +304,7 @@ void freeCellType(cellType *cell);
 /* master.c */
 int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
 int solveLPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb);
-int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX);
+int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool updateRHS);
 int addMIPCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool GMI);
 int constructQP(probType *prob, cellType *cell, dVector incumbX, double quadScalar);
 int changeEtaColMIP(LPptr lp, int numRows, int numCols, int currSampleSize, cutsType *SDcuts, cutsType *MIRcuts, cutsType *GMIcuts, int iter, char **cur_rowname);

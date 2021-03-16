@@ -23,7 +23,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 
 	batch->ck[batch->cnt] 	 = cell->sampleSize;
 	batch->objLB[batch->cnt] = cell->incumbEst;
-	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols);
+	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols, true);
 	batch->cnt++;
 
 	/* a. Setup or update the batch problem */

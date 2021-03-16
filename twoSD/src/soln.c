@@ -41,7 +41,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 		}
 		cell->iCutIdx = candidCut;
 		cell->incumbChg = false;
-		//printf("+"); fflush(stdout);
+		printf("+"); fflush(stdout);
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */

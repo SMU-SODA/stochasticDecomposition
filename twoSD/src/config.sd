@@ -8,7 +8,7 @@ MIN_ITER 10
 MAX_ITER   5000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   100
+MAX_ITER_CLBK   5000
 
 // Maximum number of visited nodes 
 MAX_NODES   20

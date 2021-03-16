@@ -41,6 +41,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		if(cell->ki > 1)
 			/******* 1. Optimality tests *******/
 			if ( optimal(prob, cell) ) {
+				mem_free(observ);
 				return 0;
 			}
 
@@ -61,14 +62,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ((candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, 0)) < 0) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
-			return 1;
+			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
 			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 0)) < 0) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
-				return 1;
+				goto TERMINATE;
 			}
 			cell->iCutUpdt = cell->k;
 		}
@@ -81,12 +82,12 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		/******* 6. Solve the master problem to obtain the new candidate solution */
 		if ( solveQPMaster(prob[0]->num, prob[0]->dBar, cell, prob[0]->lb) ) {
 			errMsg("algorithm", "solveCell", "failed to solve master problem", 0);
-			return 1;
+			goto TERMINATE;
 		}
 
 		/* Return when the master problem is infeasible. The infeasibility is handled differently for SLPs and SMIPs. */
 		if ( !cell->masterFeasFlag )
-			return 1;
+			goto TERMINATE;
 
 		cell->time.masterAccumTime += cell->time.masterIter; cell->time.subprobAccumTime += cell->time.subprobIter;
 		cell->time.argmaxAccumTime += cell->time.argmaxIter; cell->time.optTestAccumTime += cell->time.optTestIter;
@@ -114,9 +115,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		goto TERMINATE;
 	}
 #endif // defined(PHASE1ANLYS)
-
-	mem_free(observ);
-	return 0;
 
 	TERMINATE:
 	mem_free(observ);

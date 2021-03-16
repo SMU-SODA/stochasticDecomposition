@@ -53,8 +53,6 @@ struct BnCnodeType {
 	int     poolID;					 	 /* Index to cutsPool corresponding to the node. */
 	int     parentPoolID;				 /* Index to cutsPool corresponding to the parent of the node. */
 
-	iVector tcuts;						 /* collection of cuts indexes from cell->cuts are tight in this node */
-	iVector partcuts;					 /* collection of parent cuts indexes from cell->cuts are tight in parent node */
 	double  fracVal;                     /* disjuncted fractional value for the varId */
 	double  parobjVal;                   /* objective value of the parent node */
 
@@ -76,7 +74,6 @@ struct BnCnodeType {
 	bool   isfathomed;                   /* the node is fathomed or not */
 	bool   isleft;                       /* the node is in the left of its parent */
 	bool   ishrstic;                     /* the node is a heuristic node */
-	struct BnCnodeType *left, *right;    /* pointer to the left and right children. */
 	struct BnCnodeType *nextnode;        /* next node in the queue. */
 	struct BnCnodeType *prevnode;        /* next node in the queue. */
 };
