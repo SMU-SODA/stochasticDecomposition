@@ -310,7 +310,6 @@ void freeConfig() {
 }//END freeConfig()
 
 int cleanCellType(cellType *cell, probType *prob, dVector xk) {
-	int cnt;
 
 	/* constants and arrays */
 	cell->k = 0;
@@ -318,8 +317,12 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;
-	if ( config.CHECK_DUAL_STABILITY )
+	if ( config.CHECK_DUAL_STABILITY ) {
 		cell->dualStableFlag	= false;
+		for ( int n = 0; n < config.SCAN_LEN; n++ ) {
+			cell->pi_ratio[n] = 0.0;
+		}
+	}
 
 	copyVector(xk, cell->candidX, prob->num->cols, true);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
@@ -337,7 +340,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	cell->normDk 	= 0.0;
 
 	/* oneProblem structures and solver elements */
-	for ( cnt = prob->num->rows+cell->cuts->cnt+cell->fcuts->cnt-1; cnt >= prob->num->rows; cnt-- )
+	for ( int cnt = prob->num->rows+cell->cuts->cnt+cell->fcuts->cnt-1; cnt >= prob->num->rows; cnt-- )
 		if (  removeRow(cell->master->lp, cnt, cnt) ) {
 			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
 			return 1;
