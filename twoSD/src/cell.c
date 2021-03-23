@@ -14,7 +14,6 @@
 extern configType config;
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
-	int SDstatus;
 	dVector 	observ;
 	clock_t		tic;
 	int 		candidCut;
@@ -116,9 +115,11 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	}
 #endif // defined(PHASE1ANLYS)
 
+	mem_free(observ);
+	return 0;
 	TERMINATE:
 	mem_free(observ);
-	return SDstatus;
+	return 1;
 }//END solveCell()
 
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ) {

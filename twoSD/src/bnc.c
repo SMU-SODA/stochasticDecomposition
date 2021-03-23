@@ -94,8 +94,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	}
 
 	/* Loop though all the active nodes (leaf nodes) to update their incumbent estimates */
-//	while (activeNode != NULL) {
-	while ( nodecnt < 2 ) {
+	while (activeNode != NULL) {
+//	while ( nodecnt < 2 ) {
 
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode, &prevcurrNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
@@ -347,7 +347,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		else {
 			struct BnCnodeType *temp = node->prevnode;
 			temp->nextnode = right;
-			right->prevnode = prevactiveNode;
+			right->prevnode = (*prevactiveNode);
 
 			left->prevnode = right;
 			right->nextnode = left;
@@ -1034,13 +1034,10 @@ void freeNodes(struct BnCnodeType *root) {
 	return;
 }//End freeNode()
 
-void freeNode(struct BnCnodeType *node)
-{
+void freeNode(struct BnCnodeType *node) {
+
 	// Return 1 when the tree is empty
 	if (node == NULL) return;
-
-	if (node->prevnode) node->prevnode->nextnode = NULL;
-	if (node->nextnode) node->nextnode->prevnode = NULL;
 	if (node->disjncs) mem_free(node->disjncs);
 	if ( node->disjncsVal ) {
 		for (int i = 0; i < node->numVar; i++)
@@ -1051,7 +1048,6 @@ void freeNode(struct BnCnodeType *node)
 	if (node->ParIncumbiStar) mem_free(node->ParIncumbiStar);
 	if (node->vars)  mem_free(node->vars);
 	mem_free(node);
-
 
 }//End freeNode()
 

@@ -160,13 +160,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 
 void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header) {
 
-	if ( header ) {
-		fprintf(soln, "\n--------------------------------------- Problem Information ----------------------------------------\n\n");
-		fprintf(soln, "Problem                                : %s\n", prob[0]->name);
-		fprintf(soln, "First Stage Rows                       : %d\n", prob[0]->num->rows);
-		fprintf(soln, "First Stage Columns                    : %d\n", prob[0]->num->cols);
-	}
-
 	fprintf(soln, "\n------------------------------------------- Optimization -------------------------------------------\n\n");
 
 	fprintf(soln, "Algorithm                              : Two-stage Stochastic Decomposition\n");

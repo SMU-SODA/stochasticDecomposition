@@ -15,6 +15,10 @@
 #define useINODE
 
 #undef writeprob
+#undef printBest
+#define printBranch
+#undef depthtest
+#undef writemaster
 
 int currKey;
 int currDepth;
@@ -27,10 +31,6 @@ int dnodes;                   // number of deactivated nodes
 int inodes;                   // number of integer feasible nodes 
 int maxcut;
 double meanVal;               // Global lower bound 
-#undef printBest
-#undef printBranch
-#undef depthtest
-#undef writemaster
 
  /// BnC structures 
  /* A data structure which holds on the node informations in the branch and bound tree */
@@ -74,6 +74,7 @@ struct BnCnodeType {
 	bool   isfathomed;                   /* the node is fathomed or not */
 	bool   isleft;                       /* the node is in the left of its parent */
 	bool   ishrstic;                     /* the node is a heuristic node */
+
 	struct BnCnodeType *nextnode;        /* next node in the queue. */
 	struct BnCnodeType *prevnode;        /* next node in the queue. */
 };
