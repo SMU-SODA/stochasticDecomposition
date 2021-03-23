@@ -96,7 +96,7 @@ struct BnCnodeType     *successorNode(struct BnCnodeType *node);
 struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *activenode);
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB);
 int branchVar(struct BnCnodeType *node, int strategy);
-int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode);
+int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode, struct BnCnodeType **prevactiveNode);
 int getfirstLeaf(int depth);
 int getnodeIdx(int depth, int key, int isleft);
 void fracLamda(cellType *cell, struct BnCnodeType *node);
