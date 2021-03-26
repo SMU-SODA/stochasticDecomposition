@@ -507,7 +507,8 @@ void printLine() {
 
 }//END printLine
 
-iVector findElems(iVector allElem, int totalElem, int *numUniq){
+/* Create a vector on non-zero elements in the input integer vector */
+iVector findElements(iVector allElem, int totalElem, int *numUniq){
 	iVector	elemUniq;
 	int		n, m, len;
 
@@ -537,6 +538,18 @@ iVector findElems(iVector allElem, int totalElem, int *numUniq){
 
 	return elemUniq;
 }//END findElems()
+
+/* check if an integer is in an element of input iVector */
+bool isInVec(iVector vec, int len, int val) {
+	int i;
+
+	for (i = 0; i < len; i++)
+		if (vec[i] == val) {
+			return true;
+		}
+
+	return false;
+}//END isInVec()
 
 /* The function encodes an integer dVector _stream_ of given length _len_ into an unsigned long dVector _codeWord_. The _maxValue indicates the maximum value of decoded integer.*/
 unsigned long *encodeIntvec(iVector stream, int len, int wordLength, int maxValue) {
