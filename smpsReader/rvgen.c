@@ -65,8 +65,11 @@ void generateOmega(stocType *stoc, dVector observ, double minVal, long long *see
 		else if ( !strcmp(stoc->type, "SIMULATOR") ) {
 			/* Using an external simulator */
 			if ( readSimLine(fid, observ, stoc->numOmega, true) ) {
-				errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
+				errMsg("algorithm", "generateOmega", "failed to obtain scenario from the simulator",0);
 			}
+		}
+		else if ( !strcmp(stoc->type, "SCENARIOS_DISCRETE") ) {
+			generateScenario(stoc, observ, seed);
 		}
 		else {
 			errMsg("rvgen", "generateOmega", "unknown section type in omegastuff", 0);
@@ -143,6 +146,15 @@ void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal,
 	mem_free(eps);
 	return;
 }//END generateLinTran()
+
+void generateScenario(stocType *stoc, dVector observ, long long *seed) {
+	int n, m, val; /* select which block */
+
+	val = randInteger(seed, stoc->numVals[0]); /* read block realizations */
+	for (n = 0; n < stoc->numOmega; n++)
+		observ[n] = stoc->vals[n][val];
+
+}//END generateScenario()
 
 /* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
  * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */

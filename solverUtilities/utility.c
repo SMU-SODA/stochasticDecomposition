@@ -159,13 +159,13 @@ int str2int(char *cString) {
 
 /* This function returns the minimum number of bits needed to represent a given number. */
 int getNumBits(int num) {
-  int 	hi_bit = 1;
-  int 	numBits;
+	int 	hi_bit = 1;
+	int 	numBits;
 
-  for (numBits = 0; hi_bit <= num; numBits++)
-    hi_bit = hi_bit << 1;
+	for (numBits = 0; hi_bit <= num; numBits++)
+		hi_bit = hi_bit << 1;
 
-  return numBits;
+	return numBits;
 }//END getNumBits()
 
 
@@ -189,21 +189,21 @@ double twoNorm(dVector a, dVector b, int len) {
 			norm += pow((a[cnt]-b[cnt]), 2);
 	else
 
-	norm = sqrt(norm);
+		norm = sqrt(norm);
 	return norm;
 }//END twoNorm()
 
 void calcMeanVariance(dVector x, int lenX, double *mean, double *variance) {
-    double 	temp;
-    int 	cnt;
+	double 	temp;
+	int 	cnt;
 
-    temp = 0.0;
-    (*variance) = 0.0; (*mean) = x[0];
-    for (cnt = 1; cnt < lenX; cnt++) {
-        temp = (*mean);
-        (*mean) = (*mean) + (x[cnt] - (*mean)) / (double) (cnt + 1);
-        (*variance) = (1 - 1 / (double) cnt) * (*variance) + (cnt + 1) * ((*mean) - temp) * ((*mean) - temp);
-    }
+	temp = 0.0;
+	(*variance) = 0.0; (*mean) = x[0];
+	for (cnt = 1; cnt < lenX; cnt++) {
+		temp = (*mean);
+		(*mean) = (*mean) + (x[cnt] - (*mean)) / (double) (cnt + 1);
+		(*variance) = (1 - 1 / (double) cnt) * (*variance) + (cnt + 1) * ((*mean) - temp) * ((*mean) - temp);
+	}
 
 }//END calcVariance()
 
@@ -311,7 +311,7 @@ bool equalVector(dVector a, dVector b, int len, double tolerance) {
 	for (cnt = 1; cnt <= len; cnt++)
 		if ( DBL_ABS(a[cnt] - b[cnt]) > tolerance )
 			return false;
-    
+
 	return true;
 }//END equalVector()
 
@@ -341,8 +341,8 @@ bool isZeroVector(dVector a, int len, double tolerance) {
 	for (cnt = 0; cnt < len; cnt++) {
 		if ( DBL_ABS(a[cnt]) >= tolerance )
 			return false;
-//		else
-//			a[cnt] = 0.0;
+		//		else
+		//			a[cnt] = 0.0;
 	}
 
 	return true;
@@ -360,31 +360,44 @@ bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance
 }//END isInteger()
 
 
-dVector duplicVector(dVector a, int len) {
+dVector duplicVector(dVector a, int len, bool isOneNorm) {
 	int		i;
 	dVector	b;
 
-	if ((b = (dVector) arr_alloc(len+1, double))) {
-		for (i = 1; i <= len; i++)
-			b[i] = a[i];
-		b[0] = oneNorm(b+1, len);
+	if ( isOneNorm ) {
+		if ((b = (dVector) arr_alloc(len+1, double))) {
+			for (i = 1; i <= len; i++)
+				b[i] = a[i];
+			b[0] = oneNorm(b+1, len);
+		}
 	}
-	else
-		errMsg("allocation", "duplicArray", "b", 1);
+	else {
+		if ((b = (dVector) arr_alloc(len, double))) {
+			for (i = 0; i < len; i++)
+				b[i] = a[i];
+		}
+	}
+
 
 	return b;
 }//END duplicArray()
 
-iVector duplicIntvec(iVector a, int len) {
+iVector duplicIntvec(iVector a, int len, bool isOneNorm) {
 	int		i;
 	iVector	b;
 
-	if ((b = (iVector) arr_alloc(len+1, int))) {
-		for (i = 1; i <= len; i++)
-			b[i] = a[i];
+	if ( isOneNorm ) {
+		if ((b = (iVector) arr_alloc(len+1, int))) {
+			for (i = 1; i <= len; i++)
+				b[i] = a[i];
+		}
 	}
-	else
-		errMsg("allocation", "duplicArray", "b", 1);
+	else {
+		if ((b = (iVector) arr_alloc(len, int))) {
+			for (i = 0; i < len; i++)
+				b[i] = a[i];
+		}
+	}
 
 	return b;
 }//END duplicArray()
@@ -490,7 +503,7 @@ void printSparseMatrix(sparseMatrix *V, char *cString) {
 
 void printLine() {
 
-    printf("-------------------------------------------------------------------------- \n");
+	printf("-------------------------------------------------------------------------- \n");
 
 }//END printLine
 
@@ -551,20 +564,20 @@ iVector decodeIntvec(unsigned long *codeWord, int len, int wordLength, int maxVa
 	iVector 	stream;
 	int 	j, group, shift, numBits, mask = 0;
 
-    numBits = (int) ceil(log2(maxValue));
-    for ( j = 0; j < numBits; j++ )
-    	mask = (mask << 1) + 1;
-    stream = (iVector) arr_alloc(len+1, int);
+	numBits = (int) ceil(log2(maxValue));
+	for ( j = 0; j < numBits; j++ )
+		mask = (mask << 1) + 1;
+	stream = (iVector) arr_alloc(len+1, int);
 
-    /* Let's decode phi_col */
-    for (j = 1; j <= len; j++) {
-        group = numBits*(j-1)/wordLength + 1;
-        shift = wordLength - numBits*(j % wordLength);
-        stream[j] = (unsigned long) codeWord[group] >> shift;
-        stream[j] = stream[j] & mask;
-    }
+	/* Let's decode phi_col */
+	for (j = 1; j <= len; j++) {
+		group = numBits*(j-1)/wordLength + 1;
+		shift = wordLength - numBits*(j % wordLength);
+		stream[j] = (unsigned long) codeWord[group] >> shift;
+		stream[j] = stream[j] & mask;
+	}
 
-    return stream;
+	return stream;
 }//END decodeIntvec()
 
 /* This subroutine extracts elements which are common to the two input integer dVectors _a_ and _b_ */

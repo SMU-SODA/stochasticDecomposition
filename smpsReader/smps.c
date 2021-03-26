@@ -1139,8 +1139,11 @@ int readScenarios(FILE *fptr, cString *fields, oneProblem *orig, timeType *tim, 
 		errMsg("allocation", "readScenarios", "rvNames", 0);
 	if ( !(scenName = (cString *) arr_alloc(maxScenarios, cString)) )
 		errMsg("allocation", "readScenarios", "scenNames", 0);
-	if ( !(stoc->probs[0] = (dVector) arr_alloc(maxScenarios, double)) )
-		errMsg("allocation", "readScenarios", "scenario probability", 0);
+
+	stoc->vals     = (dVector *) arr_alloc(maxOmegas, dVector);
+	stoc->numVals  = (iVector) arr_alloc(maxOmegas, int);
+	stoc->probs    = (dVector *) arr_alloc(1, dVector);
+	stoc->probs[0] = (dVector) arr_alloc(maxScenarios, double);
 
 	if ( !(strcmp(fields[1], "DISCRETE")) ) {
 		/* store the type of stochastic process encountered */
@@ -1273,7 +1276,9 @@ int readScenarios(FILE *fptr, cString *fields, oneProblem *orig, timeType *tim, 
 	stoc->probs[0] 	= (dVector) mem_realloc(stoc->probs[0], numScen*sizeof(double));
 	stoc->probs 	= (dVector *) mem_realloc(stoc->probs, 1*sizeof(dVector));
 	mem_free(stoc->groupBeg); stoc->groupBeg = NULL;
-	mem_free(stoc->numPerGroup); stoc->numPerGroup = NULL;
+	mem_free(stoc->numPerGroup);
+	stoc->numGroups++;
+	stoc->numPerGroup = NULL;
 
 	return 0;
 }//END readScenarios()
