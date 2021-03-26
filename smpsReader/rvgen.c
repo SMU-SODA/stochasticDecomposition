@@ -331,6 +331,9 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 			else if ( !strcmp(stoc->type, "LINTRAN") ) {
 				generateLinTran(stoc, observ+1, 0, TOLERANCE, seed);
 			}
+			else if ( !strcmp(stoc->type, "SCENARIOS_DISCRETE")) {
+				generateScenario(stoc, observ, seed);
+			}
 			else {
 				errMsg("simulate", "setupSAA", "no procedure for simulating distribution type", 0);
 				return 1;

@@ -330,8 +330,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, dVector lb, 
 				errMsg("allocation", "newProb", "prob[t]->coord",0);
 			prob[t]->num->prevCols = prob[t-1]->num->cols;
 			prob[t]->num->prevRows = prob[t-1]->num->rows;
-			prob[t]->coord->CCols = findElems(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
-			prob[t]->coord->CRows = findElems(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
+			prob[t]->coord->CCols = findElements(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
+			prob[t]->coord->CRows = findElements(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
 			prob[t]->coord->allRVCols = prob[t]->coord->allRVRows = prob[t]->coord->rvCols = prob[t]->coord->rvRows = NULL;
 			prob[t]->coord->rvCOmCols = prob[t]->coord->rvCOmRows = prob[t]->coord->rvbOmRows = prob[t]->coord->rvdOmCols = NULL;
 		}
@@ -417,8 +417,8 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, dVector lb, 
 	}
 
 	for ( t = 1; t < tim->numStages; t++ ) {
-		prob[t]->coord->rvCols = findElems(prob[t]->coord->allRVCols, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
-		prob[t]->coord->rvRows = findElems(prob[t]->coord->allRVRows, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
+		prob[t]->coord->rvCols = findElements(prob[t]->coord->allRVCols, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
+		prob[t]->coord->rvRows = findElements(prob[t]->coord->allRVRows, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
 	}
 
 	/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
