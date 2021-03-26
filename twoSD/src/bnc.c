@@ -577,32 +577,6 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	return 0;
 }//END cleanNode()
 
-
-int sumintVec(iVector a, int len)
-{
-	int n;
-	int output = 0.0;
-
-	for (n = 0; n < len; n++)
-		output += a[n];
-
-	return output;
-}
-
-/* check if an integer is in an iVector */
-bool isInVec(iVector vec, int len, int val)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		if (vec[i] == val)
-		{
-			return true;
-		}
-
-	return false;
-}
-
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig) {
 	int i;
 
@@ -950,7 +924,7 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 	return 0;
 }
 
-// Truncate the var from SD based on the lower bounds and upper bounds of the original problem
+// Truncate the variables from SD based on the lower bounds and upper bounds of the original problem
 void truncate(dVector var, dVector lb, dVector ub, int cnt)
 {
 	for (int v = 0; v < cnt; v++)
@@ -958,69 +932,6 @@ void truncate(dVector var, dVector lb, dVector ub, int cnt)
 		if (var[v+1] < lb[v]) var[v+1] = lb[v];
 		if (var[v+1] > ub[v]) var[v+1] = ub[v];
 	}
-}
-
-// Build separate disjunctives
-void disjunctCut(oneProblem  *master, probType *prob) {
-	cString name;
-	dVector beta;
-	iVector indices;
-	double alpha; int cnt; int v;
-	int lenX = master->mac;
-
-	if (!(beta = arr_alloc(lenX + 1, double)))
-		errMsg("allocation", "new_cut", "beta", 0);
-	alpha = 0.0;
-	name = (cString)arr_alloc(NAMESIZE, char);
-	for (v = 0; v < lenX + 1; v++) beta[v] = 0.0;
-	/* Set up indices */
-	if (!(indices = (iVector)arr_alloc(lenX + 1, int)))
-		errMsg("Allocation", "addcut2Master", "fail to allocate memory to coefficients of beta", 0);
-	for (cnt = 1; cnt <= lenX; cnt++)
-		indices[cnt] = cnt - 1;
-	indices[0] = lenX;
-
-	for (v = 0; v < lenX; v++)
-	{
-		if (master->bdl[v] != prob->sp->bdl[v])
-		{
-			alpha = master->bdl[v];
-			beta[v] = 1;
-			/* add the cut to the cell cuts structure as well as on the solver */
-			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
-				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
-				return;
-			}
-			beta[v] = 0;
-		}
-		if (master->bdu[v] != prob->sp->bdu[v])
-		{
-			/* add the cut to the cell cuts structure as well as on the solver */
-			alpha = master->bdu[v];
-			beta[v] = 1;
-			/* add the cut to the cell cuts structure as well as on the solver */
-			if (addRow(master->lp, lenX + 1, alpha, GE, 0, indices, beta, name)) {
-				errMsg("bnc", "disjunctCut", "failed to add new row to problem in solver", 0);
-				return;
-			}
-			beta[v] = 0;
-		}
-	}
-}
-
-// Insert a node based on its key to the tree
-struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *activenode) {
-	// Return an error message if the inserted node is NULL
-	if (node == NULL)
-	{
-		errMsg("NULL node", "insert", "node is NULL", 0);
-	}
-
-	// Traverse to place the node - insert it to the queue
-	node->prevnode = activenode;
-	activenode->nextnode = node;
-
-	return node;
 }
 
 void freeNodes(struct BnCnodeType *root) {

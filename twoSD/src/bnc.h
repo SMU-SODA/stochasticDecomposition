@@ -89,12 +89,11 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
-void          freeNodes(struct BnCnodeType *root);
-void 	     freeNode(struct BnCnodeType *node);
+void freeNodes(struct BnCnodeType *root);
+void freeNode(struct BnCnodeType *node);
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);
 struct BnCnodeType *nextNode(struct BnCnodeType *node);
-struct BnCnodeType     *successorNode(struct BnCnodeType *node);
-struct BnCnodeType *insertNode(struct BnCnodeType *node, struct BnCnodeType *activenode);
+
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB);
 int branchVar(struct BnCnodeType *node, int strategy);
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode, struct BnCnodeType **prevactiveNode);
