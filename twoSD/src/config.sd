@@ -171,7 +171,7 @@ EPSILON 0.05
 SCAN_LEN 128
 
 // Number of replications
-MULTIPLE_REP 1  
+MULTIPLE_REP 1
 
 // Create compromise problem
 COMPROMISE_PROB	0

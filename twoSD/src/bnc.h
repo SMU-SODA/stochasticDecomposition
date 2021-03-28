@@ -1,9 +1,16 @@
 /*
- * stoc.h
- *
- *  Created on: Sep 11, 2017
- *      Author: gjharsha
- */
+* bnc.h
+*
+*  Created on: Nov 30, 2020
+*      Author: Siavash Tabrizian
+* Institution: Southern Methodist University
+*
+* Please send you comments or bug report to stabrizian (at) smu (dot) edu
+*
+* This is part of the SD-integer project which handels the branch and bound tree
+*
+*/
+
 
 #ifndef BNC_H_
 #define BNC_H_
@@ -25,6 +32,7 @@ int currDepth;
 double GlobeUB;               // Global upper bound
 oneProblem      *original;    // Info of the original problem 
 struct BnCnodeType *bestNode; // best node that is found so far
+struct BnCnodeType *rootNode; // root node 
 struct BnCnodeType **nodearr; // array of deactivated leaf nodes
 struct BnCnodeType **inodearr;// array of integer feasible leaf nodes
 int dnodes;                   // number of deactivated nodes 
@@ -93,7 +101,7 @@ void freeNodes(struct BnCnodeType *root);
 void freeNode(struct BnCnodeType *node);
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);
 struct BnCnodeType *nextNode(struct BnCnodeType *node);
-
+struct BnCnodeType *prevNode(struct BnCnodeType *node);
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB);
 int branchVar(struct BnCnodeType *node, int strategy);
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode, struct BnCnodeType **prevactiveNode);

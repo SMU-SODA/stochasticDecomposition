@@ -38,7 +38,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	GlobeUB = UB;
 
 	original = prob[0]->sp;
-	struct BnCnodeType * rootNode = NULL;  // root node
+	rootNode = NULL;  // root node
 	struct BnCnodeType * activeNode = NULL;// active node in the tree
 	struct BnCnodeType * prevcurrNode = NULL;// active node in the tree
 	struct BnCnodeType * currentNode = NULL;// current node that is investigated
@@ -159,19 +159,17 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBest)
 
-	//freeOneProblem(original);
-	if(dnodes > 0)
-		for (int i = 0; i < dnodes; i++)
-		{
-			freeNode(nodearr[i]);
-			mem_free(nodearr[i]);
-		}
-	if (inodes > 0)
-		for (int i = 0; i < dnodes; i++)
-		{
-			freeNode(inodearr[i]);
-			mem_free(inodearr[i]);
-		}
+	////freeOneProblem(original);
+	//if(dnodes > 0)
+	//	for (int i = 0; i < dnodes; i++)
+	//	{
+	//		freeNode(nodearr[i]);
+	//	}
+	//if (inodes > 0)
+	//	for (int i = 0; i < dnodes; i++)
+	//	{
+	//		freeNode(inodearr[i]);
+	//	}
 	freeNodes(rootNode);
 	return 0;
 }//END branchBound()
@@ -210,30 +208,24 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 #endif // defined(printBranch)
 
-		struct BnCnodeType * nodenew = NULL;
 		if (node->prevnode != NULL) {
-			nodenew = node;
-			node = nodenew->prevnode;
-			node->nextnode = NULL;
-
 			/* Active a new node */
 			*activeNode = nextNode(node);
+			*prevactiveNode = prevNode(node);
 		}
 		else {
 			errMsg("beanchBnC", "branchNode", "failed to solve the root node", 0);
 			return 1;
 		}
 
-		freeNode(nodenew);
+		freeNode(node);
 		return 0;
 	}
 	else if (status == 1) {
-		struct BnCnodeType * nodenew = NULL;
 		if (node->prevnode != NULL) {
-			nodenew = node;
-			node = nodenew->prevnode;
-			node->nextnode = NULL;
 			*activeNode = nextNode(node);
+			*prevactiveNode = prevNode(node);
+			freeNode(node);
 		}
 		else {
 			errMsg("beanchBnC", "branchNode", "failed to solve the root node", 0);
@@ -274,7 +266,13 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 #endif // defined(useINODE)
 		}
 		node->UB = node->objval;
-		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
+		if (node->prevnode->depth == 0) {
+			*activeNode = NULL;
+		}
+		else {
+			*activeNode = nextNode(node);
+			*prevactiveNode = prevNode(node);
+		}
 		currDepth = (*activeNode)->depth;
 
 		return 0;
@@ -293,12 +291,18 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	// Condition 2. The obtained solution is below the global lower bound, add the node to a pool.
 	// Compare the obj val with the Global LB
-	if (node->objval > GlobeUB) {
+	if (node->objval > GlobeUB || node->isSPopt == false) {
 		node->isActive = false;
 #if defined(useDNODE)
 		if (dnodes < maxdnodes) nodearr[dnodes++] = node;
 #endif // defined(useINODE)
-		if (node->prevnode->depth == 0) *activeNode = NULL; else *activeNode = nextNode(node);
+		if (node->prevnode->depth == 0) {
+			*activeNode = NULL;
+		}
+		else {
+			*activeNode = nextNode(node);
+			*prevactiveNode = prevNode(node);
+		}
 		if (node->prevnode->depth == 0) currDepth = 0; else currDepth = (*activeNode)->depth;
 		return 0;
 	}
@@ -463,7 +467,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	}
 	else {
 		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
-		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal) {
+		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal || cell->ki >= config.MAX_ITER_CLBK) {
 			node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
 			node->isSPopt = false;
 		}
@@ -683,7 +687,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->Lambdasize = 0;
 	temp->parparinit = parent->parLambdasize;
 	temp->fracPi = 0.0;
-	temp->isActive = isleft?true:false;
+	temp->isActive = true;
 	temp->isfathomed = false;
 	temp->parobjVal = parent->objval;
 	temp->isSPopt = true;
@@ -934,70 +938,65 @@ void truncate(dVector var, dVector lb, dVector ub, int cnt)
 	}
 }
 
-void freeNodes(struct BnCnodeType *root) {
-
-	struct BnCnodeType *node = root;
-	while ( node != NULL ) {
-		struct BnCnodeType *next = node->nextnode;
-		freeNode(node);
-		node = next;
-	}
-	return;
-}//End freeNode()
-
-void freeNode(struct BnCnodeType *node) {
-
-	// Return 1 when the tree is empty
-	if (node == NULL) return;
-	if (node->disjncs) mem_free(node->disjncs);
-	if ( node->disjncsVal ) {
-		for (int i = 0; i < node->numVar; i++)
-			if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
-		mem_free(node->disjncsVal);
-	}
-	if (node->IncumbiStar) mem_free(node->IncumbiStar);
-	if (node->ParIncumbiStar) mem_free(node->ParIncumbiStar);
-	if (node->vars)  mem_free(node->vars);
-	mem_free(node);
-
-}//End freeNode()
-
-/* Return the previous active node */
+/* Return the previous active node of the input node 
+   The reason for this subroutine is that some of the nodes are deactivated */
 struct BnCnodeType *nextNode(struct BnCnodeType *node)
 {
-
 	struct BnCnodeType *temp = NULL;
 	temp = node;
 	bool contin = true;
 
-	if (node->isActive == false)
+	while (contin)
 	{
-		while (contin)
+		temp = temp->prevnode;
+
+		if (temp->key == 0)
 		{
-			temp = temp->prevnode;
-
-			if (temp->key == 0)
-			{
-				contin = false;
-				break;
-			}
-
-			if (temp->isActive == true)
-			{
-				contin = false;
-				break;
-			}
-
+			contin = false;
+			break;
 		}
-	}
-	else
-	{
-		temp = node;
+
+		if (temp->isActive == true)
+		{
+			contin = false;
+			break;
+		}
 
 	}
 
 
 	return temp;
+}
+
+/* Return the previous node of the input node */
+struct BnCnodeType *prevNode(struct BnCnodeType *node)
+{
+
+	struct BnCnodeType *temp = rootNode;
+	struct BnCnodeType *prevtemp = rootNode;
+	temp = node;
+	bool contin = true;
+
+	while (contin)
+	{
+
+		if (temp->nextnode == NULL || node->key == 0)
+		{
+			contin = false;
+			return NULL;
+		}
+		temp = temp->nextnode;
+
+		if (temp == node)
+		{
+			contin = false;
+			return prevtemp;
+		}
+		prevtemp = prevtemp->nextnode;
+
+	}
+
+	return rootNode;
 }
 
 /* get the index of the first leaf */
@@ -1051,3 +1050,34 @@ void fracLamda(cellType *cell, struct BnCnodeType *node) {
 	node->tightPi = totLambda;
 	node->fracPi = ((double)totLambda) / ((double)node->Lambdasize);
 }//END fracLamda()
+
+
+/* Free the queue by passing the root node and using next nodes */
+void freeNodes(struct BnCnodeType *root) {
+
+	struct BnCnodeType *node = root;
+	while (node != NULL) {
+		struct BnCnodeType *next = node->nextnode;
+		freeNode(node);
+		node = next;
+	}
+	return;
+}//End freeNode()
+
+/* free a single node */
+void freeNode(struct BnCnodeType *node) {
+
+	// Return 1 when the tree is empty
+	if (node == NULL) return;
+	if (node->disjncs) mem_free(node->disjncs);
+	if (node->disjncsVal) {
+		for (int i = 0; i < node->numVar; i++)
+			if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
+		mem_free(node->disjncsVal);
+	}
+	if (node->IncumbiStar) mem_free(node->IncumbiStar);
+	if (node->ParIncumbiStar) mem_free(node->ParIncumbiStar);
+	if (node->vars)  mem_free(node->vars);
+	mem_free(node);
+
+}//End freeNode()

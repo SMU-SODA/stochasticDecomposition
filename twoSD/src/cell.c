@@ -37,7 +37,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		}
 #endif
 
-		if(cell->ki > 1)
+		if(cell->ki > config.MIN_ITER)
 			/******* 1. Optimality tests *******/
 			if ( optimal(prob, cell) ) {
 				mem_free(observ);
