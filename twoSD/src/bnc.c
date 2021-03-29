@@ -159,18 +159,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBest)
 
-	////freeOneProblem(original);
-	//if(dnodes > 0)
-	//	for (int i = 0; i < dnodes; i++)
-	//	{
-	//		freeNode(nodearr[i]);
-	//	}
-	//if (inodes > 0)
-	//	for (int i = 0; i < dnodes; i++)
-	//	{
-	//		freeNode(inodearr[i]);
-	//	}
 	freeNodes(rootNode);
+
 	return 0;
 }//END branchBound()
 
@@ -237,13 +227,12 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	node->LB = node->objval;
 	node->numSamp = cell->k;
-	fracLamda(cell, node);
 
 	// Condition 1. Check if the obtained solution from the solveNode is integer
 	if (isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE) || node->depth == node->numVar) {
 #if defined(printBranch)
 		if (node->key > 0) {
-			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.3f\n",
+			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.2f\n",
 					node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "True",node->fracPi);
 		}
 		else {
@@ -280,7 +269,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 #if defined(printBranch)
 	if (node->key > 0) {
-		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.3f\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False",node->fracPi);
+		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.2f\n", node->key, node->parentkey, node->depth, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False",node->fracPi);
 	}
 	else {
 		printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-12s\n", node->key, 0, 0, cell->k, oneNorm(node->vars, node->edInt), node->LB, GlobeUB, "True", "False","NaN");
@@ -478,8 +467,8 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 
 	if (cell->ki > 600) printf("\n");
 
-	printf("\nSD output: iters:%-4d - dnodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n",
-			cell->ki, dnodes + 1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
+	printf("\nSD output: iters:%-4d - dnodes:%-3d - inodes:%-3d - sigma size:%-7d - lambda size:%-7d - omega size:%-7d\n",
+			cell->ki, dnodes + 1, inodes +1, cell->sigma->cnt, cell->lambda->cnt, cell->omega->cnt);
 
 	return 0;
 }//END solveNode()
@@ -550,6 +539,9 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 		node->objval = cell->incumbEst;
 	}
 	cell->optFlag = false;
+
+	// Update the info about the fraction of bases used in the incumbent cut for this node
+	fracLamda(cell, node);
 
 #if defined(BNC_CHECK)
 	cString nullString = NULL;
@@ -699,11 +691,11 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (config.Pi_EVAL_FLAG == 1)
 	{
-		if (!(temp->IncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+		if (!(temp->IncumbiStar = (iVector)arr_alloc(config.MAX_ITER, int)))
 			errMsg("allocation", "newNode", "temp->vars", 0);
-		if (!(temp->ParIncumbiStar = (iVector)arr_alloc(maxcut*config.MAX_ITER, int)))
+		if (!(temp->ParIncumbiStar = (iVector)arr_alloc(config.MAX_ITER, int)))
 			errMsg("allocation", "newNode", "temp->vars", 0);
-		for (i = 0; i < maxcut*config.MAX_ITER; i++)
+		for (i = 0; i < config.MAX_ITER; i++)
 		{
 			temp->IncumbiStar[i] = -1;
 			temp->ParIncumbiStar[i] = parent->IncumbiStar[i];
@@ -1031,23 +1023,50 @@ int getnodeIdx(int depth, int key, int isleft)
 /* this function returns the fraction of lamda values are used from the earlier iterations or
 from the tight lambdas of the parent and new lamdas discovered in the current node */
 void fracLamda(cellType *cell, struct BnCnodeType *node) {
-	int j, notnewLambda, totLambda;
+	int i, j, k, totLambda;
 
 	node->Lambdasize = cell->lambda->cnt;
-	notnewLambda = 0;
 	totLambda = 0;
 
-	if (cell->basis->basisEval == 1)  {
-		for (j = 0; j < cell->activeCuts->vals[cell->iCutIdx]->numSamples; j++) {
-			if (cell->activeCuts->vals[cell->iCutIdx]->iStar[j] != -1) {
-				node->IncumbiStar[totLambda] = cell->activeCuts->vals[cell->iCutIdx]->iStar[j];
-				totLambda += 1;
-				notnewLambda += 1;
+	for (j = 0; j < cell->activeCuts->vals[cell->iCutIdx]->numSamples; j++) {
+		if (config.Pi_EVAL_FLAG == 1)
+		{
+			node->IncumbiStar[totLambda] = cell->activeCuts->vals[cell->iCutIdx]->iStar[j];
+		}
+		totLambda += 1;
+	}
+
+
+	/*
+	* Find duplicate elements in array
+	*/
+	if (config.Pi_EVAL_FLAG == 1) {
+		for (i = 0; i < totLambda - 1; i++)
+		{
+			for (j = i + 1; j < totLambda; j++)
+			{
+				/* If any duplicate found */
+				if (node->IncumbiStar[i] == node->IncumbiStar[j])
+				{
+					/* Delete the current duplicate element */
+					for (k = j; k < totLambda - 1; k++)
+					{
+						node->IncumbiStar[k] = node->IncumbiStar[k + 1];
+					}
+
+					/* Decrement size after removing duplicate element */
+					totLambda--;
+
+					/* If shifting of elements occur then don't increment j */
+					j--;
+				}
 			}
 		}
 	}
 
-	node->tightPi = totLambda;
+
+	node->tightPi = totLambda < node->Lambdasize ? totLambda : node->Lambdasize;
+
 	node->fracPi = ((double)totLambda) / ((double)node->Lambdasize);
 }//END fracLamda()
 
