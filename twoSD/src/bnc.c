@@ -152,7 +152,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 	printLine();
 	printf("Best node key:  %d - depth: %d \n", bestNode->key, bestNode->depth);
-	printf("Best Int feasible Solution: \n");
+	printf("Best Int feasicopy->name = (cString) arr_alloc(NAMESIZE, char);ble Solution: \n");
 	printVector(bestNode->vars, bestNode->edInt, NULL);
 	printf("\nNumber of disjunctions: %d \n", sumintVec(bestNode->disjncs, bestNode->edInt));
 	printLine();
@@ -160,6 +160,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #endif // defined(printBest)
 
 	freeNodes(rootNode);
+	mem_free(nodearr);
+	mem_free(inodearr);
 
 	return 0;
 }//END branchBound()
@@ -251,7 +253,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 		else {
 #if defined(useINODE)
-			if (inodes < maxdnodes) inodearr[inodes++] = node;
+			if (inodes < maxdnodes)
+				inodearr[++inodes] = node;
 #endif // defined(useINODE)
 		}
 		node->UB = node->objval;
@@ -283,7 +286,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	if (node->objval > GlobeUB || node->isSPopt == false) {
 		node->isActive = false;
 #if defined(useDNODE)
-		if (dnodes < maxdnodes) nodearr[dnodes++] = node;
+		if (dnodes < maxdnodes)
+			nodearr[++dnodes] = node;
 #endif // defined(useINODE)
 		if (node->prevnode->depth == 0) {
 			*activeNode = NULL;
@@ -327,8 +331,9 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		right->poolID = node->poolID;
 
 		left  = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
-		cell->cutsPool[cell->numPools] = duplicActiveCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], cell->piM);
 		left->poolID = cell->numPools++;
+		cell->cutsPool[left->poolID] = NULL;
+		copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
 
 		if ( node->key == 0 ) {
 			node->nextnode = right;
@@ -478,7 +483,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 	if ( node->key != 0 ) {
 		/* 1a. Copy active cuts corresponding to the parent node from the cuts pool */
-		copyCuts(prob->num, cell->cutsPool[node->parentPoolID], cell->activeCuts);
+		copyCuts(prob->num, cell->cutsPool[node->poolID], &cell->activeCuts);
 
 		/* 1b. Add the active cuts to the master problem */
 		for ( int n = 0; n < cell->activeCuts->cnt; n++ ) {
@@ -551,7 +556,7 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 #endif // defined(BNC_CHECK)
 
 	/* 2. Copy the active cuts to the cutsPool */
-	cell->cutsPool[cell->numPools++] = duplicActiveCuts(prob->num, cell->activeCuts, cell->piM);
+	copyCutstoNodePool(prob->num, cell->activeCuts, cell->cutsPool[node->poolID], cell->piM);
 
 	/* 3. Clean the master by removing all the inactive cuts */
 	if (prob->num->rows < cell->master->mar) {

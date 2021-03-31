@@ -27,7 +27,7 @@ int LPresolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, 
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
-int addCut2Pool(cellType *cell, int mar, oneCut *cut, int lenX, double lb, bool feasCut);
+int addCut2ActivePool(cellType *cell, int mar, oneCut *cut, int lenX, double lb, bool feasCut);
 
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inCallback) {
 	oneCut 	*cut;
@@ -99,7 +99,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, int inC
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( (cutIdx = addCut2Pool(cell, prob[0]->num->rows, cut, prob[0]->num->cols, lb, false)) < 0) {
+	if ( (cutIdx = addCut2ActivePool(cell, prob[0]->num->rows, cut, prob[0]->num->cols, lb, false)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
@@ -391,33 +391,45 @@ int dropCut(cellType *cell, int cutIdx) {
 	return 0;
 }//END dropCut()
 
-int copyCuts(numType *num, cutsType *orig, cutsType *copy) {
+int copyCuts(numType *num, cutsType *orig, cutsType **copy) {
+
+	if ( (*copy) == NULL ) {
+		(*copy) = newCuts(orig->cnt);
+	}
 
 	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
 		oneCut *cut;
 
 		cut = newCut(num->cols, orig->vals[cnt]->omegaCnt, orig->vals[cnt]->numSamples);
+		copyOneCut(orig->vals[cnt], cut, num->cols);
 
-		cut->isIncumb = orig->vals[cnt]->isIncumb;
-		cut->alpha = orig->vals[cnt]->alpha;
-		cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
-		cut->slackCnt = orig->vals[cnt]->slackCnt;
-
-		cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols, true);
-		cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
-		cut->name = (cString) arr_alloc(NAMESIZE, char);
-		strcpy(cut->name, orig->vals[cnt]->name);
-
-		copy->vals[copy->cnt++] = cut;
+		(*copy)->vals[(*copy)->cnt++] = cut;
 	}
 
 	return 0;
 }//END copyCuts()
 
-cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi) {
-	cutsType *copy;
+void copyOneCut(oneCut *orig, oneCut *copy, int numCols) {
 
-	copy = newCuts(orig->cnt);
+	copy->isIncumb = orig->isIncumb;
+	copy->alpha = orig->alpha;
+	copy->alphaIncumb = orig->alphaIncumb;
+	copy->slackCnt = orig->slackCnt;
+
+	copyVector(orig->beta, copy->beta, numCols, true);
+	copyIntvec(orig->iStar, copy->iStar, orig->omegaCnt);
+	strcpy(copy->name, orig->name);
+
+}//END copyOneCut()
+
+int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi) {
+
+	/* If the current pool is filled, clean it before refilling. This happens as one of the daughter node inherits the
+	 * parent's pool. */
+	if ( copy->cnt > 0 ) {
+		freeCutsType(copy, true);
+	}
+
 	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
 		if (pi[orig->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
 			oneCut *cut;
@@ -442,8 +454,8 @@ cutsType *duplicActiveCuts(numType *num, cutsType *orig, dVector pi) {
 		}
 	}
 
-	return copy;
-}//END duplicActiveCuts()
+	return 0;
+}//END copyCutstoNodePool()
 
 /*
  ** This function calculate the variance of the
@@ -617,7 +629,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, 0, cut, num->prevCols, 0.0, true);
+				addCut2ActivePool(cell, 0, cut, num->prevCols, 0.0, true);
 			}
 		}
 	cell->fUpdt[1] = cell->omega->cnt;
@@ -640,7 +652,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, 0, cut, num->prevCols, 0.0, true);
+				addCut2ActivePool(cell, 0, cut, num->prevCols, 0.0, true);
 			}
 		}
 	cell->fUpdt[0] = cell->basis->cnt;
@@ -738,7 +750,7 @@ void freeCutsType(cutsType *cuts, bool partial) {
 /* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
  * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
  * duplicate of existing cut before it is added to the pool. */
-int addCut2Pool(cellType *cell, int mar, oneCut *cut, int lenX, double lb, bool feasCut) {
+int addCut2ActivePool(cellType *cell, int mar, oneCut *cut, int lenX, double lb, bool feasCut) {
 	int	cnt;
 
 	if ( feasCut ) {

@@ -298,7 +298,8 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk, int type) {
 	cell->activeCuts = newCuts(cell->maxCuts);
 
 	cell->cutsPool = (cutsType **) arr_alloc(config.NodeNum, cutsType *);
-	cell->numPools = 0;
+	cell->cutsPool[0] = newCuts(cell->maxCuts);
+	cell->numPools = 1;
 
 	cell->MIRcuts = newCuts(cell->maxMIPCuts);
 	cell->GMIcuts = newCuts(cell->maxMIPCuts);

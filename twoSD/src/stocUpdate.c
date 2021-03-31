@@ -190,8 +190,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
-	if (basis->basisEval == 0)
-	{
+	if (basis->basisEval == 0) {
 		/* Run through the list of basis to choose the one which provides the best lower bound */
 		/* argmax procedure using the pi evaluation procedure */
 		for (cnt = 0; cnt < basis->cnt; cnt++) { //create  a subset for current node
@@ -219,8 +218,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 			}
 		}
 	}
-	else
-	{
+	else {
 		/* Run through the list of basis to choose the one which provides the best lower bound */
 		for (cnt = 0; cnt < basis->cnt; cnt++) { //create  a subset for current node
 			if (cnt > basis->init || isInVec(basis->iStar, basis->incumPicnt, cnt))
