@@ -285,20 +285,24 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	// Condition 2. The obtained solution is below the global lower bound, add the node to a pool.
 	// Compare the obj val with the Global LB
 	if (node->objval > GlobeUB || node->isSPopt == false) {
-		node->isActive = false;
+		if (node->prevnode) {
+			node->isActive = false;
 #if defined(useDNODE)
-		if (dnodes < maxdnodes)
-			nodearr[++dnodes] = node;
+			if (dnodes < maxdnodes)
+				nodearr[++dnodes] = node;
 #endif // defined(useINODE)
-		if (node->prevnode->depth == 0) {
-			*activeNode = NULL;
+			if (node->prevnode->depth == 0) {
+				*activeNode = NULL;
+			}
+			else {
+				*activeNode = nextNode(node);
+				*prevactiveNode = prevNode(node);
+			}
+
+			if (node->prevnode->depth == 0) currDepth = 0; else currDepth = (*activeNode)->depth;
+			return 0;
 		}
-		else {
-			*activeNode = nextNode(node);
-			*prevactiveNode = prevNode(node);
-		}
-		if (node->prevnode->depth == 0) currDepth = 0; else currDepth = (*activeNode)->depth;
-		return 0;
+
 	}
 
 	// Condition 3. Select the variable index for branching
