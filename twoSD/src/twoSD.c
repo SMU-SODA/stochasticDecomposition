@@ -10,7 +10,7 @@
  */
 
 #include <twoSD.h>
-void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
+void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir, cString *configFile);
 void printHelpMenu();
 
 long long	MEM_USED = 0;	/* amount of memory allocated each iteration */
@@ -19,23 +19,22 @@ configType	config;			/* algorithm tuning parameters */
 
 int main (int argc, char *argv[]) {
 	int 	status;
-	cString inputDir = NULL, probName = NULL;
+	cString inputDir = NULL, probName = NULL, configFile = NULL;
 	oneProblem *orig = NULL;
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
-	
 	outputDir = NULL;
+	
+	/* read problem information */
+	parseCmdLine(argc, argv, &probName, &inputDir, &configFile);
+
 	/* read the default algorithm configuration parameters */
-//	if (readConfig("C:\\Users\\stabr\\Documents\\GitHub\\stochasticDecomposition\\twoSD\\src\\", inputDir)) {
-	if (readConfig("./src/", inputDir)) {
+	if (configFile == NULL) strcpy((*configFile), "C:\\Users\\stabr\\Documents\\GitHub\\stochasticDecomposition\\twoSD\\src\\");
+	if (readConfig(configFile, inputDir)) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
 
-
-	/* read problem information */
-	parseCmdLine(argc, argv, &probName, &inputDir);
-	
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
 	if ( status ) {
@@ -59,12 +58,12 @@ int main (int argc, char *argv[]) {
 	freeTimeType(tim);
 	freeStocType(stoc);
 	closeSolver();
-	mem_free(probName); mem_free(inputDir);
+	mem_free(probName); mem_free(inputDir); mem_free(configFile);
 
 	return 0;
 }//END main()
 
-void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) {
+void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir, cString *configFile) {
 
 
 	for(int i=1; (i < argc); i++) {
@@ -83,6 +82,10 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 			case 'i': {
 				(*inputDir) = (cString) arr_alloc(2*BLOCKSIZE, char);
 				strcpy((*inputDir), argv[++i]); break;
+			}
+			case 'g': {
+				(*configFile) = (cString)arr_alloc(2 * BLOCKSIZE, char);
+				strcpy((*configFile), argv[++i]); break;
 			}
 			case 'o': {
 				outputDir = (cString) arr_alloc(2*BLOCKSIZE, char);

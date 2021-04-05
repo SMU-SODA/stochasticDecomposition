@@ -39,6 +39,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	original = prob[0]->sp;
 	rootNode = NULL;  // root node
+	bestNode = NULL;
 	struct BnCnodeType * activeNode = NULL;// active node in the tree
 	struct BnCnodeType * prevcurrNode = NULL;// active node in the tree
 	struct BnCnodeType * currentNode = NULL;// current node that is investigated

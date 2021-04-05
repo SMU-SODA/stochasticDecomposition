@@ -417,7 +417,12 @@ void copyOneCut(oneCut *orig, oneCut *copy, int numCols) {
 	copy->slackCnt = orig->slackCnt;
 
 	copyVector(orig->beta, copy->beta, numCols, true);
-	copyIntvec(orig->iStar, copy->iStar, orig->omegaCnt);
+	if (orig->iStar == NULL) {
+		copy->iStar = NULL;
+	}
+	else {
+		copyIntvec(orig->iStar, copy->iStar, orig->omegaCnt);
+	}
 	strcpy(copy->name, orig->name);
 
 }//END copyOneCut()
@@ -445,7 +450,12 @@ int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi)
 			cut->slackCnt = orig->vals[cnt]->slackCnt;
 
 			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols, true);
-			cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
+			if (orig->vals[cnt]->iStar == NULL) {
+				cut->iStar = NULL;
+			}
+			else {
+				cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
+			}
 
 			cut->name = (cString) arr_alloc(NAMESIZE, char);
 			strcpy(cut->name, orig->vals[cnt]->name);
