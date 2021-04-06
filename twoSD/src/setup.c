@@ -363,6 +363,12 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk, int type) {
 #endif
 	}
 
+	cell->tot_nodes = 0;
+	cell->depth = 0;
+	cell->d_nodes = 0;
+	cell->int_nodes = 0;
+	cell->maxiter_nodes = 0;
+
 	return cell;
 }//END newCell()
 

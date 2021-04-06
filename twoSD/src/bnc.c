@@ -59,6 +59,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	rootNode = newrootNode(original->mac, LB, UB, original);
 	rootNode->parobjVal = prob[0]->lb;
 	meanVal = prob[0]->lb;
+	cell->incumbEst = meanVal;
+	cell->candidEst = meanVal;
 
 	for (i = 0; i < rootNode->numVar; i++) {
 		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
@@ -138,6 +140,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		}
 #endif // defined(useINODE)
 	}
+
+	if(inodes > 0) cell->int_nodes = inodes;
+	if(dnodes > 0) cell->d_nodes = dnodes;
+	cell->tot_nodes = nodecnt;
 
 	if ( bestNode != NULL ) {
 		// Replace the best node to the incumbent for the out-of-sample testing
@@ -339,6 +345,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		left->poolID = cell->numPools++;
 		cell->cutsPool[left->poolID] = NULL;
 		copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
+		cell->depth++;
 
 		if ( node->key == 0 ) {
 			node->nextnode = right;
@@ -463,6 +470,9 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 			errMsg("BnB", "solveNode", "failed to clean the node after SD solve", 0);
 			return 1;
 		}
+
+		if (cell->ki >= config.MAX_ITER_CLBK) cell->maxiter_nodes++;
+
 	}
 	else {
 		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);

@@ -260,6 +260,11 @@ typedef struct {
 	int 		rownum;
 	sampleType	*sample;
 	char        **cur_rowname;		/* row names in BnB */
+	int         depth;
+	int         tot_nodes;
+	int         d_nodes;
+	int         int_nodes;
+	int         maxiter_nodes;
 
 }cellType;
 
