@@ -23,6 +23,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	int maxcut = config.CUT_MULT * cell->master->mac + 3;
 	cell->basis->incumPicnt = maxcut;
 	cell->basis->basisEval = config.Pi_EVAL_FLAG;
+	cell->maxiter_nodes = 0;
 
 #if defined(useDNODE)
 	if (!(nodearr = (struct BnCnodeType **)arr_alloc(maxdnodes, struct BnCnodeType *)))
@@ -61,6 +62,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	meanVal = prob[0]->lb;
 	cell->incumbEst = meanVal;
 	cell->candidEst = meanVal;
+	cell->tot_nodes = 1;
+	cell->depth = 0;
+	cell->maxiter_nodes = 0;
 
 	for (i = 0; i < rootNode->numVar; i++) {
 		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
@@ -143,7 +147,6 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	if(inodes > 0) cell->int_nodes = inodes;
 	if(dnodes > 0) cell->d_nodes = dnodes;
-	cell->tot_nodes = nodecnt;
 
 	if ( bestNode != NULL ) {
 		// Replace the best node to the incumbent for the out-of-sample testing
@@ -345,7 +348,9 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		left->poolID = cell->numPools++;
 		cell->cutsPool[left->poolID] = NULL;
 		copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
-		cell->depth++;
+		if (left->depth > cell->depth) cell->depth = left->depth;
+		cell->tot_nodes += 2;
+		printf("cell depth: %d  -   node depth: %d\n", cell->depth, node->depth);
 
 		if ( node->key == 0 ) {
 			node->nextnode = right;
