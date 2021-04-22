@@ -11,6 +11,8 @@
 
 #include "writer.hpp"
 
+void printHelpMenu();
+
 int main (int argc, char *argv[]) {
 	string probName, inputDir, outputDir;
 
@@ -39,39 +41,31 @@ int main (int argc, char *argv[]) {
 
 void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, string *outputDir) {
 
-	switch (argc) {
-	case 4:
-		*inputDir  = argv[1];
-		*probName = argv[2];
-		*outputDir = argv[3];
-		break;
-	case 3:
-		*inputDir  = argv[1];
-		*probName = argv[2];
-		cout << "Enter an output directory to write SMPS files: ";
-		cin >> *outputDir;
-		break;
-	case 2:
-		*inputDir = argv[1];
-		cout << "Enter problem name : ";
-		cin >> *probName;
-		cout << "Enter an output directory to write SMPS files: ";
-		cin >> *outputDir;
-		break;
-	case 1:
-		cout << "Enter input directory for data files : ";
-		cin >> *probName;
-		cout << "Enter problem name : ";
-		cin >> *probName;
-		cout << "Enter an output directory to write SMPS files: ";
-		cin >> *outputDir;
-		break;
-	default:
-		break;
+	for(int i=1; (i < argc); i++) {
+		if ( argv[i][0] == '-' ) {
+			switch ((argv[i])[1]) {
+			case '?': printHelpMenu(); exit(0);
+			case 'p': (*probName).assign(argv[++i]); break;
+			case 'o': (*outputDir).assign(argv[++i]); break;
+			case 'i': (*inputDir).assign(argv[++i]); break;
+			}
+		}
+		else {
+			printf("Input options (%s) must begin with a '-'. Use '-?' for help.\n", argv[i]); exit(0);
+		}
 	}
 
-	return;
+return;
 }//END parseCmdLine()
+
+void printHelpMenu() {
+
+	cout << "Command prompt inputs." << endl;
+	cout << "-i string :: Input directory" << endl;
+	cout << "-o string :: Output directory" << endl;
+	cout << "-p string :: Problem name" << endl;
+
+}//END printHelpMenu()
 
 SMPSmodel::SMPSmodel() {
 

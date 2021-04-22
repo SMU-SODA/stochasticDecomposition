@@ -66,11 +66,11 @@ int createTransshipCor(SMPSmodel &trans, TransshipData &data) {
 		IloModel model(env, elemName);
 
 		/**************** Decision variables *****************/
-		trans.timCols.push_back("orderUp(0)");
+		trans.timeCols.push_back("orderUp(0)");
 		IloNumVarArray orderUp(env, data.numRetailers, 0, IloInfinity);
 		orderUp.setNames("orderUp"); model.add(orderUp);
 
-		trans.timCols.push_back("begEnd(0)");
+		trans.timeCols.push_back("begEnd(0)");
 		IloNumVarArray begEnd(env, data.numRetailers, 0, IloInfinity);
 		begEnd.setNames("begEnd"); model.add(begEnd);
 
@@ -107,7 +107,7 @@ int createTransshipCor(SMPSmodel &trans, TransshipData &data) {
 			}
 		}
 		obj.setExpr(totalCost); model.add(obj); totalCost.end(); trans.objName = "obj";
-		trans.timRows.push_back("obj");
+		trans.timeRows.push_back("obj");
 
 		/**************** Constraints *****************/
 		/* Initial inventory at retailer */
@@ -115,7 +115,7 @@ int createTransshipCor(SMPSmodel &trans, TransshipData &data) {
 			IloExpr expr (env);
 			sprintf(elemName, "initInv(%d)", n);
 			if ( n == 0) {
-				trans.timRows.push_back(elemName);
+				trans.timeRows.push_back(elemName);
 			}
 
 			expr = - orderUp[n] + begDem[n][n] + begEnd[n];
@@ -195,7 +195,7 @@ int createTransshipTim(SMPSmodel trans) {
 
 	tFile << "PERIODS" << endl;
 	for (int t = 0; t < trans.numStages; t++ ) {
-		sprintf(line, "    %18s%18s\tStage%2d\n", trans.timCols[t].c_str(), trans.timRows[t].c_str(), t); tFile << line;
+		sprintf(line, "    %18s%18s\tStage%2d\n", trans.timeCols[t].c_str(), trans.timeRows[t].c_str(), t); tFile << line;
 	}
 	tFile << "ENDATA" << endl;
 	tFile.close();
