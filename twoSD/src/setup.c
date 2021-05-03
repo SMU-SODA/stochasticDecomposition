@@ -213,7 +213,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->lb = prob[0]->lb;
 
 	/* candidate solution and estimates */
-	cell->candidX 			= duplicVector(xk, prob[0]->num->cols);
+	cell->candidX 			= duplicVector(xk, prob[0]->num->cols+1);
 	cell->candidEst 		= prob[0]->lb + vXvSparse(cell->candidX, prob[0]->dBar);
 
 	/* incumbent solution and estimates */
@@ -324,11 +324,11 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 		}
 	}
 
-	copyVector(xk, cell->candidX, prob->num->cols, true);
+	copyVector(xk, cell->candidX, prob->num->cols+1);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
 	if (config.MASTER_TYPE == PROB_QP) {
-		copyVector(xk, cell->incumbX, prob->num->cols, true);
+		copyVector(xk, cell->incumbX, prob->num->cols+1);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;

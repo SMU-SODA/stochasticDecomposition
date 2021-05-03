@@ -335,7 +335,8 @@ int calcOmega(dVector observ, int begin, int end, omegaType *omega, bool *newOme
 		}
 
 	/* Add the realization dVector to the list */
-	omega->vals[omega->cnt] = duplicVector(observ, end-begin);
+	omega->vals[omega->cnt] = duplicVector(observ, end-begin+1);
+	omega->vals[omega->cnt][0] = oneNorm(omega->vals[omega->cnt]+1, end-begin);
 	omega->weights[omega->cnt] = 1;
 	(*newOmegaFlag) = true;
 

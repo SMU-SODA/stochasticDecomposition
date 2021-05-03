@@ -60,7 +60,7 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 
 	/* replace the incumbent solution with the candidate solution */
-	copyVector(cell->candidX, cell->incumbX, prob->num->cols, 1);
+	copyVector(cell->candidX, cell->incumbX, prob->num->cols+1);
 	cell->incumbEst = candidEst;
 
 	/* update the proximal parameter based on estimated improvement */

@@ -144,14 +144,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->sampleSize += config.SAMPLE_INCREMENT;
 		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 			/* (a) Use the stoc file to generate observations */
-			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+			generateOmega(stoc, observ+1, config.TOLERANCE, &config.RUN_SEED[0], NULL);
 
 			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 			for ( m = 0; m < stoc->numOmega; m++ )
-				observ[m] -= stoc->mean[m];
+				observ[m+1] -= stoc->mean[m];
 
 			/* (c) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-			cell->sample->omegaIdx[obs] = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs],
+			cell->sample->omegaIdx[obs] = calcOmega(observ, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs],
 					config.TOLERANCE);
 		}
 
