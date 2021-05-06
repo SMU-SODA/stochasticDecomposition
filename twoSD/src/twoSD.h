@@ -27,7 +27,7 @@
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	int		NUM_SEEDS;			/* Number of seeds read */
+	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
 	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
@@ -38,6 +38,7 @@ typedef struct{
 	double	EPSILON;			/* Optimality gap */
 
 	int		EVAL_FLAG;
+	int		NUM_EVALS;
 	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
@@ -55,7 +56,7 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
-	int 	MULTIPLE_REP;		/* Number of replications to be used. */
+	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
 	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
@@ -162,6 +163,7 @@ typedef struct {
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -185,13 +187,13 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
-void printCut(oneCut *cut, int betaLen);
+void printCut(cutsType *cuts, numType *num, int idx);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts, bool partial);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
@@ -222,11 +224,6 @@ void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
-
-/* inout.c */
-void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
-void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
-void printOptimizationSummary(cellType *cell);
-void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */

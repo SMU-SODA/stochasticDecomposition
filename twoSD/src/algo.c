@@ -19,7 +19,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	probType **prob = NULL;
 	cellType *cell = NULL;
 	batchSummary *batch = NULL;
-	FILE 	*sFile = NULL, *iFile = NULL, *bFile = NULL;
+	FILE 	*sFile = NULL, *iFile = NULL;
 
 	/* open solver environment */
 	openSolver();
@@ -28,17 +28,15 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
 
-	printf("Starting two-stage stochastic decomposition :: increment = %d\n", config.SAMPLE_INCREMENT);
-	sFile = openFile(outputDir, "detailedResults.csv", "w");
+	printf("Starting two-stage stochastic decomposition.\n");
+	sFile = openFile(outputDir, "results.dat", "w");
 	iFile = openFile(outputDir, "incumb.dat", "w");
-	bFile = openFile(outputDir, "summary.dat", "w");
-
-	printDecomposeSummary(bFile, probName, tim, prob);
+	printDecomposeSummary(sFile, probName, tim, prob);
 	printDecomposeSummary(stdout, probName, tim, prob);
 
-	for ( int rep = 0; rep < config.MULTIPLE_REP; rep++ ) {
-		fprintf(bFile, "\n====================================================================================================================================\n");
-		fprintf(bFile, "Replication-%d\n", rep+1);
+	for ( int rep = 0; rep < config.NUM_REPS; rep++ ) {
+		fprintf(sFile, "\n====================================================================================================================================\n");
+		fprintf(sFile, "Replication-%d\n", rep+1);
 		fprintf(stdout, "\n====================================================================================================================================\n");
 		fprintf(stdout, "Replication-%d\n", rep+1);
 
@@ -63,14 +61,18 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		cell->time.repTime = ((double) clock() - tic)/CLOCKS_PER_SEC;
 
 		/* Write solution statistics for optimization process */
-		printOptimizationSummary(cell);
-		writeOptimizationStatistics(sFile, iFile, prob, cell, rep);
+		if (rep == 0 ) {
+			writeOptimizationSummary(sFile, iFile, prob, cell, true);
+			writeOptimizationSummary(stdout, NULL, prob, cell, true);
+		}
+		else {
+			writeOptimizationSummary(sFile, iFile, prob, cell, false);
+			writeOptimizationSummary(stdout, NULL, prob, cell, false);
+		}
 
 		/* evaluate the optimal solution*/
 		if (config.EVAL_FLAG == 1)
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
-		else
-			fprintf(sFile,"\n");
 
 		/* Save the batch details and build the compromise problem. */
 		if ( config.COMPROMISE_PROB) {
@@ -144,7 +146,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		cell->sampleSize += config.SAMPLE_INCREMENT;
 		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 			/* (a) Use the stoc file to generate observations */
-			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+			generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0]);
 
 			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 			for ( m = 0; m < stoc->numOmega; m++ )
@@ -193,6 +195,32 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(observ);
 	return 1;
 }//END solveCell()
+
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header) {
+
+	if ( header ) {
+		fprintf(soln, "\n--------------------------------------- Problem Information ----------------------------------------\n\n");
+		fprintf(soln, "Problem                                : %s\n", prob[0]->name);
+		fprintf(soln, "First Stage Rows                       : %d\n", prob[0]->num->rows);
+		fprintf(soln, "First Stage Columns                    : %d\n", prob[0]->num->cols);
+	}
+
+	fprintf(soln, "\n------------------------------------------- Optimization -------------------------------------------\n\n");
+
+	fprintf(soln, "Algorithm                              : Two-stage Stochastic Decomposition\n");
+	fprintf(soln, "Number of iterations                   : %d\n", cell->k);
+	fprintf(soln, "Lower bound estimate                   : %f\n", cell->incumbEst);
+	fprintf(soln, "Total time                             : %f\n", cell->time.repTime);
+	fprintf(soln, "Total time to solve master             : %f\n", cell->time.masterAccumTime);
+	fprintf(soln, "Total time to solve subproblems        : %f\n", cell->time.subprobAccumTime);
+	fprintf(soln, "Total time in argmax procedure         : %f\n", cell->time.argmaxAccumTime);
+	fprintf(soln, "Total time in verifying optimality     : %f\n", cell->time.optTestAccumTime);
+
+	if ( incumb != NULL ) {
+		printVector(cell->incumbX, prob[0]->num->cols, incumb);
+	}
+
+}//END WriteStat
 
 
 

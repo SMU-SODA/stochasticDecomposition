@@ -26,9 +26,9 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	/* A subproblem is solved for every new observation */
 	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
-				config.MAX_ITER, cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE,
-				&cell->spFeasFlag, &cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE, &cell->spFeasFlag,
+				&cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
@@ -56,7 +56,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	/* (b) create an affine lower bound */
 	clock_t tic = clock();
 	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
-			Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
+			Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
 	if ( cut == NULL ) {
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
@@ -91,7 +91,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 }//END formCut()
 
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb) {
 	oneCut *cut;
 	dVector 	piCbarX, beta;
 	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
@@ -171,7 +171,7 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 	}
 
 	if (pi_eval_flag == true) {
-		pi_ratio[numIter % config.SCAN_LEN] = cummOld / cummAll;
+		pi_ratio[numSamples % config.SCAN_LEN] = cummOld / cummAll;
 		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
 			variance = calcVariance(pi_ratio, NULL, NULL, 0);
 		else
@@ -196,12 +196,12 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 }//END SDCut
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currSampleSize, dVector xk, int betaLen, double lb) {
+double maxCutHeight(cutsType *cuts, int sampleSize, dVector xk, int betaLen, double lb) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		ht = cutHeight(cuts->vals[cnt], currSampleSize, xk, betaLen, lb);
+		ht = cutHeight(cuts->vals[cnt], sampleSize, xk, betaLen, lb);
 		if (Sm < ht) {
 			Sm = ht;
 		}
@@ -569,15 +569,18 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 }//END checkFeasCutPool()
 
 /* This function prints the relevant information in a cut. It is meant to be used for debugging. */
-void printCut(oneCut *cut, int betaLen) {
+void printCut(cutsType *cuts, numType *num, int idx) {
+	int cnt;
 
-	printf("Sample size = %d; Obs = %d; Alpha = %.3lf; Beta = ", cut->numSamples, cut->omegaCnt, cut->alpha);
-	printVector(cut->beta, betaLen, stdout);
-	printf("Istar: ");
-	printIntvec(cut->iStar, cut->omegaCnt, stdout);
-
+	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->numSamples,
+			cuts->vals[idx]->omegaCnt, cuts->vals[idx]->alpha);
+	for (cnt = 0; cnt <= num->cols; cnt++)
+		printf("%f ", cuts->vals[idx]->beta[cnt]);
+	printf("\nistar: ");
+	for (cnt = 0; cnt < cuts->vals[idx]->omegaCnt; cnt++)
+		printf("%d ", cuts->vals[idx]->iStar[cnt]);
+	printf("\n");
 }//END printCut()
-
 
 void freeOneCut(oneCut *cut) {
 
