@@ -148,7 +148,7 @@ void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal,
 }//END generateLinTran()
 
 void generateScenario(stocType *stoc, dVector observ, long long *seed) {
-	int n, m, val; /* select which block */
+	int n, val; /* select which block */
 
 	val = randInteger(seed, stoc->numVals[0]); /* read block realizations */
 	for (n = 0; n < stoc->numOmega; n++)

@@ -360,59 +360,35 @@ bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance
 }//END isInteger()
 
 
-dVector duplicVector(dVector a, int len, bool isOneNorm) {
+dVector duplicVector(dVector a, int len) {
 	int		i;
 	dVector	b;
 
-	if ( isOneNorm ) {
-		if ((b = (dVector) arr_alloc(len+1, double))) {
-			for (i = 1; i <= len; i++)
-				b[i] = a[i];
-			b[0] = oneNorm(b+1, len);
-		}
+	if ((b = (dVector) arr_alloc(len, double))) {
+		for (i = 0; i < len; i++)
+			b[i] = a[i];
 	}
-	else {
-		if ((b = (dVector) arr_alloc(len, double))) {
-			for (i = 0; i < len; i++)
-				b[i] = a[i];
-		}
-	}
-
 
 	return b;
 }//END duplicArray()
 
-iVector duplicIntvec(iVector a, int len, bool isOneNorm) {
+iVector duplicIntvec(iVector a, int len) {
 	int		i;
 	iVector	b;
 
-	if ( isOneNorm ) {
-		if ((b = (iVector) arr_alloc(len+1, int))) {
-			for (i = 1; i <= len; i++)
-				b[i] = a[i];
-		}
-	}
-	else {
-		if ((b = (iVector) arr_alloc(len, int))) {
-			for (i = 0; i < len; i++)
-				b[i] = a[i];
-		}
+	if ((b = (iVector) arr_alloc(len, int))) {
+		for (i = 0; i < len; i++)
+			b[i] = a[i];
 	}
 
 	return b;
 }//END duplicArray()
 
-void copyVector(dVector a, dVector b, int len, bool isOneNorm){
+void copyVector(dVector a, dVector b, int len){
 	int n;
 
-	if (isOneNorm)
-		for ( n = 0; n <= len; n++ )
-			b[n] = a[n];
-	else {
-		for ( n = 1; n <= len; n++ )
-			b[n] = a[n-1];
-		b[0] = oneNorm(b+1, len);
-	}
+	for ( n = 0; n < len; n++ )
+		b[n] = a[n];
 
 }//END copyVector()
 

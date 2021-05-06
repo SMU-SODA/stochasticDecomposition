@@ -1,0 +1,12 @@
+STOCH         Raop3t3           
+INDEP          NORMAL
+ RHS      DemandBalance[0][0]               109.000000                20.000000
+ RHS      DemandBalance[0][1]               126.000000                23.000000
+ RHS      DemandBalance[0][2]               103.000000                31.000000
+ RHS      DemandBalance[1][0]               132.000000                27.000000
+ RHS      DemandBalance[1][1]               122.000000                36.000000
+ RHS      DemandBalance[1][2]               130.000000                23.000000
+ RHS      DemandBalance[2][0]               105.000000                34.000000
+ RHS      DemandBalance[2][1]                71.000000                26.000000
+ RHS      DemandBalance[2][2]                95.000000                21.000000
+ENDATA

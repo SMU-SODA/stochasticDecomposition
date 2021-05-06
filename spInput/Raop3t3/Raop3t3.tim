@@ -1,0 +1,5 @@
+TIME   Raop3t3
+PERIODS
+           prodQuantity[0][0]                      obj	TIME00
+        substitution[0][0][0]      SupplyBalance[0][0]	TIME01
+ENDATA

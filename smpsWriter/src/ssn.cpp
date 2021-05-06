@@ -97,7 +97,7 @@ int createSSNcor(SMPSmodel &ssn, SSNdata &data) {
 			sprintf(elemName, "capAdd[%d]", j);
 			capAdd[j].setName(elemName); model.add(capAdd[j]);
 			if ( j == 0 ) {
-				ssn.timCols.push_back(elemName);
+				ssn.timeCols.push_back(elemName);
 			}
 		}
 
@@ -108,7 +108,7 @@ int createSSNcor(SMPSmodel &ssn, SSNdata &data) {
 				sprintf(elemName, "flow[%d][%d]", i, r);
 				flow[i][r].setName(elemName); model.add(flow[i][r]);
 				if ( i == 0 && r == 0 ) {
-					ssn.timCols.push_back(elemName);
+					ssn.timeCols.push_back(elemName);
 				}
 			}
 		}
@@ -134,7 +134,7 @@ int createSSNcor(SMPSmodel &ssn, SSNdata &data) {
 			expr += capAdd[i];
 		}
 		IloConstraint c(expr <= data.budget); c.setName(elemName); model.add(c);
-		ssn.timRows.push_back(elemName);
+		ssn.timeRows.push_back(elemName);
 
 		/* Flow balance for each source-destination pair */
 		for ( int i = 0; i < data.numSDpairs; i++ ) {
@@ -149,7 +149,7 @@ int createSSNcor(SMPSmodel &ssn, SSNdata &data) {
 
 			ssn.stocRows[0].push_back(elemName);
 			if ( i == 0 )
-				ssn.timRows.push_back(elemName);
+				ssn.timeRows.push_back(elemName);
 		}
 
 		/* Capacity limits (existing and added) */
@@ -219,7 +219,7 @@ int createSSNtim(SMPSmodel ssn, SSNdata data) {
 
 	tFile << "PERIODS" << endl;
 	for (int t = 0; t < ssn.numStages; t++ ) {
-		sprintf(line, "    %18s%18s\tStage%02d\n", ssn.timCols[t].c_str(), ssn.timRows[t].c_str(), t); tFile << line;
+		sprintf(line, "    %18s%18s\tStage%02d\n", ssn.timeCols[t].c_str(), ssn.timeRows[t].c_str(), t); tFile << line;
 	}
 	tFile << "ENDATA" << endl;
 	tFile.close();

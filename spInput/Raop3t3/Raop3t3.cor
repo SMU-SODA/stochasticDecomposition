@@ -1,0 +1,164 @@
+* ENCODING=ISO-8859-1
+NAME          Raop3t3
+ROWS
+ N  obj                  
+ E  SupplyBalance[0][0]  
+ E  SupplyBalance[0][1]  
+ E  SupplyBalance[0][2]  
+ E  DemandBalance[0][0]  
+ E  DemandBalance[0][1]  
+ E  DemandBalance[0][2]  
+ E  SupplyBalance[1][0]  
+ E  SupplyBalance[1][1]  
+ E  SupplyBalance[1][2]  
+ E  DemandBalance[1][0]  
+ E  DemandBalance[1][1]  
+ E  DemandBalance[1][2]  
+ E  SupplyBalance[2][0]  
+ E  SupplyBalance[2][1]  
+ E  SupplyBalance[2][2]  
+ E  DemandBalance[2][0]  
+ E  DemandBalance[2][1]  
+ E  DemandBalance[2][2]  
+COLUMNS
+    prodQuantity[0][0]     obj                                        1.4
+    prodQuantity[0][0]     SupplyBalance[0][0]                         -1
+    prodQuantity[0][1]     obj                                        1.2
+    prodQuantity[0][1]     SupplyBalance[0][1]                         -1
+    prodQuantity[0][2]     obj                                          1
+    prodQuantity[0][2]     SupplyBalance[0][2]                         -1
+    prodQuantity[1][0]     obj                                        1.4
+    prodQuantity[1][0]     SupplyBalance[1][0]                         -1
+    prodQuantity[1][1]     obj                                        1.2
+    prodQuantity[1][1]     SupplyBalance[1][1]                         -1
+    prodQuantity[1][2]     obj                                          1
+    prodQuantity[1][2]     SupplyBalance[1][2]                         -1
+    prodQuantity[2][0]     obj                                        1.4
+    prodQuantity[2][0]     SupplyBalance[2][0]                         -1
+    prodQuantity[2][1]     obj                                        1.2
+    prodQuantity[2][1]     SupplyBalance[2][1]                         -1
+    prodQuantity[2][2]     obj                                          1
+    prodQuantity[2][2]     SupplyBalance[2][2]                         -1
+    substitution[0][0][0]  SupplyBalance[0][0]                          1
+    substitution[0][0][0]  DemandBalance[0][0]                          1
+    substitution[0][0][1]  obj                                        0.1
+    substitution[0][0][1]  SupplyBalance[0][0]                          1
+    substitution[0][0][1]  DemandBalance[0][1]                          1
+    substitution[0][0][2]  obj                                        0.2
+    substitution[0][0][2]  SupplyBalance[0][0]                          1
+    substitution[0][0][2]  DemandBalance[0][2]                          1
+    substitution[0][1][1]  SupplyBalance[0][1]                          1
+    substitution[0][1][1]  DemandBalance[0][1]                          1
+    substitution[0][1][2]  obj                                        0.1
+    substitution[0][1][2]  SupplyBalance[0][1]                          1
+    substitution[0][1][2]  DemandBalance[0][2]                          1
+    substitution[0][2][2]  SupplyBalance[0][2]                          1
+    substitution[0][2][2]  DemandBalance[0][2]                          1
+    excess[0][0]           obj                                       0.28
+    excess[0][0]           SupplyBalance[0][0]                          1
+    excess[0][0]           SupplyBalance[1][0]                         -1
+    excess[0][1]           obj                                       0.24
+    excess[0][1]           SupplyBalance[0][1]                          1
+    excess[0][1]           SupplyBalance[1][1]                         -1
+    excess[0][2]           obj                                        0.2
+    excess[0][2]           SupplyBalance[0][2]                          1
+    excess[0][2]           SupplyBalance[1][2]                         -1
+    shortage[0][0]         obj                           9.33333333333333
+    shortage[0][0]         DemandBalance[0][0]                          1
+    shortage[0][0]         DemandBalance[1][0]                         -1
+    shortage[0][1]         obj                                          8
+    shortage[0][1]         DemandBalance[0][1]                          1
+    shortage[0][1]         DemandBalance[1][1]                         -1
+    shortage[0][2]         obj                           6.66666666666667
+    shortage[0][2]         DemandBalance[0][2]                          1
+    shortage[0][2]         DemandBalance[1][2]                         -1
+    substitution[1][0][0]  SupplyBalance[1][0]                          1
+    substitution[1][0][0]  DemandBalance[1][0]                          1
+    substitution[1][0][1]  obj                                        0.1
+    substitution[1][0][1]  SupplyBalance[1][0]                          1
+    substitution[1][0][1]  DemandBalance[1][1]                          1
+    substitution[1][0][2]  obj                                        0.2
+    substitution[1][0][2]  SupplyBalance[1][0]                          1
+    substitution[1][0][2]  DemandBalance[1][2]                          1
+    substitution[1][1][1]  SupplyBalance[1][1]                          1
+    substitution[1][1][1]  DemandBalance[1][1]                          1
+    substitution[1][1][2]  obj                                        0.1
+    substitution[1][1][2]  SupplyBalance[1][1]                          1
+    substitution[1][1][2]  DemandBalance[1][2]                          1
+    substitution[1][2][2]  SupplyBalance[1][2]                          1
+    substitution[1][2][2]  DemandBalance[1][2]                          1
+    excess[1][0]           obj                                       0.28
+    excess[1][0]           SupplyBalance[1][0]                          1
+    excess[1][0]           SupplyBalance[2][0]                         -1
+    excess[1][1]           obj                                       0.24
+    excess[1][1]           SupplyBalance[1][1]                          1
+    excess[1][1]           SupplyBalance[2][1]                         -1
+    excess[1][2]           obj                                        0.2
+    excess[1][2]           SupplyBalance[1][2]                          1
+    excess[1][2]           SupplyBalance[2][2]                         -1
+    shortage[1][0]         obj                           9.33333333333333
+    shortage[1][0]         DemandBalance[1][0]                          1
+    shortage[1][0]         DemandBalance[2][0]                         -1
+    shortage[1][1]         obj                                          8
+    shortage[1][1]         DemandBalance[1][1]                          1
+    shortage[1][1]         DemandBalance[2][1]                         -1
+    shortage[1][2]         obj                           6.66666666666667
+    shortage[1][2]         DemandBalance[1][2]                          1
+    shortage[1][2]         DemandBalance[2][2]                         -1
+    substitution[2][0][0]  SupplyBalance[2][0]                          1
+    substitution[2][0][0]  DemandBalance[2][0]                          1
+    substitution[2][0][1]  obj                                        0.1
+    substitution[2][0][1]  SupplyBalance[2][0]                          1
+    substitution[2][0][1]  DemandBalance[2][1]                          1
+    substitution[2][0][2]  obj                                        0.2
+    substitution[2][0][2]  SupplyBalance[2][0]                          1
+    substitution[2][0][2]  DemandBalance[2][2]                          1
+    substitution[2][1][1]  SupplyBalance[2][1]                          1
+    substitution[2][1][1]  DemandBalance[2][1]                          1
+    substitution[2][1][2]  obj                                        0.1
+    substitution[2][1][2]  SupplyBalance[2][1]                          1
+    substitution[2][1][2]  DemandBalance[2][2]                          1
+    substitution[2][2][2]  SupplyBalance[2][2]                          1
+    substitution[2][2][2]  DemandBalance[2][2]                          1
+    excess[2][0]           obj                                      -0.91
+    excess[2][0]           SupplyBalance[2][0]                          1
+    excess[2][1]           obj                                      -0.78
+    excess[2][1]           SupplyBalance[2][1]                          1
+    excess[2][2]           obj                                      -0.65
+    excess[2][2]           SupplyBalance[2][2]                          1
+    shortage[2][0]         obj                           4.17666666666667
+    shortage[2][0]         DemandBalance[2][0]                          1
+    shortage[2][1]         obj                                       3.58
+    shortage[2][1]         DemandBalance[2][1]                          1
+    shortage[2][2]         obj                           2.98333333333333
+    shortage[2][2]         DemandBalance[2][2]                          1
+RHS
+    rhs                    SupplyBalance[0][0]                      0.00
+    rhs                    SupplyBalance[0][1]                      0.00
+    rhs                    SupplyBalance[0][2]                      0.00
+    rhs                    DemandBalance[0][0]                        109
+    rhs                    DemandBalance[0][1]                        126
+    rhs                    DemandBalance[0][2]                        103
+    rhs                    SupplyBalance[1][0]                      0.00
+    rhs                    SupplyBalance[1][1]                      0.00
+    rhs                    SupplyBalance[1][2]                      0.00
+    rhs                    DemandBalance[1][0]                        132
+    rhs                    DemandBalance[1][1]                        122
+    rhs                    DemandBalance[1][2]                        130
+    rhs                    SupplyBalance[2][0]                      0.00
+    rhs                    SupplyBalance[2][1]                      0.00
+    rhs                    SupplyBalance[2][2]                      0.00
+    rhs                    DemandBalance[2][0]                        105
+    rhs                    DemandBalance[2][1]                         71
+    rhs                    DemandBalance[2][2]                         95
+BOUNDS
+    UP BND prodQuantity[0][0]     2700
+    UP BND prodQuantity[0][1]     2700
+    UP BND prodQuantity[0][2]     2700
+    UP BND prodQuantity[1][0]     2700
+    UP BND prodQuantity[1][1]     2700
+    UP BND prodQuantity[1][2]     2700
+    UP BND prodQuantity[2][0]     2700
+    UP BND prodQuantity[2][1]     2700
+    UP BND prodQuantity[2][2]     2700
+ENDATA

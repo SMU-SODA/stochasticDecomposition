@@ -72,15 +72,3 @@ void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, st
 
 	return;
 }//END parseCmdLine()
-
-SMPSmodel::SMPSmodel() {
-
-	/* Default parameters */
-	numPeriods = 2;
-	numStages = 2;
-
-}//END constructor()
-
-SMPSmodel::~SMPSmodel() {
-
-}//END destructor()

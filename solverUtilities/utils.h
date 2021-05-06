@@ -88,9 +88,9 @@ bool equalIntvec(iVector a, iVector b, int len);
 bool equalLongIntvec(unsigned long *a, unsigned long *b, int len);
 bool isZeroVector(dVector a, int len, double tolerance);
 bool isInteger(dVector x, int length, int startIdx, int endIdx, double tolerance);
-dVector duplicVector(double *a, int len, bool isOneNorm);
-iVector duplicIntvec(iVector a, int len, bool isOneNorm);
-void copyVector(dVector a, dVector b, int len, bool isOneNorm);
+dVector duplicVector(double *a, int len);
+iVector duplicIntvec(iVector a, int len);
+void copyVector(dVector a, dVector b, int len);
 void copyIntvec (iVector a, iVector b, int len);
 void addVectors(dVector a, dVector b, iVector indices, int len);
 

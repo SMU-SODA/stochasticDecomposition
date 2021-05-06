@@ -114,6 +114,7 @@ void generateOmega(stocType *stoc, dVector observ, double minVal, long long *see
 void generateBlocks(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed);
 void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal, long long *seed);
+void generateScenario(stocType *stoc, dVector observ, long long *seed);
 int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *seed);
 int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, long long *seed);
 float scalit(float lower, float upper, long long *RUN_SEED);
