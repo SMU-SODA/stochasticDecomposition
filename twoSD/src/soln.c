@@ -25,10 +25,8 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	double  candidEst;
 
 	/* Calculate height at new candidate x with newest cut included */
-	candidEst = vXvSparse(cell->candidX, prob->dBar) +
-			maxCutHeight(cell->cuts, cell->omega->sampleSize, cell->candidX, prob->num->cols, cell->lb);;
-	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) +
-			maxCutHeight(cell->cuts, cell->omega->sampleSize, cell->incumbX, prob->num->cols, cell->lb);
+	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob->num->cols, cell->lb);;
+	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob->num->cols, cell->lb);
 
 #ifdef ALGO_CHECK
 	printf("\nCandidate estimate = %lf, Incumbent estimate = %lf",candidEst, cell->incumbEst);

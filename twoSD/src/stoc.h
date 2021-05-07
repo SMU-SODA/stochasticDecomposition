@@ -21,19 +21,21 @@
  * pixbCType represents a single calculation of pi X b (which is a scalar) and pi X C (which is a dVector).*/
 typedef struct{
 	double 	pib;					/* scalar pi x b */
-	dVector piC;					/* dVector pi x C */
+	dVector 	piC;					/* dVector pi x C */
 } pixbCType;
 
-/* The OmegaType data structure stores the set of observations which have been made so far. A random variable occurs in right-hand side dVector and
- * the T matrix which (along with the candidate first-stage solution) make up the rhs of the subproblem. The random variable can also occur in the
- * objective coefficient. */
+/* The OmegaType data structure stores the set of observations which have been made so far. Each observation consists of a dVector
+ * of realizations _vals_ of random variables. Each rv occurs in right-hand side dVector, cost coefficient dVector or the T matrix
+ * which (along with the candidate first-stage solution) make up the rhs of the subproblem. The _weight_ field specifies the
+ * number of times a particular outcome has been observed (it starts at 1 when the outcome is first generated, and increments
+ * every time the same outcome is observed again).  _cnt_ just specifies the number of distinct outcomes which have been observed
+ ** and stored in the omegaType structure. */
 typedef struct {
-	int 	sampleSize;		/* total number of observations currently being used, that is the sample size. */
-	int		numRV;			/* Number of random variables */
-	int 	cnt;			/* Number of unique/distinct observations encountered. */
-	iVector	weights;        /* Number of times that an observations has been encountered. It is initialized to 1 when the outcome is first
-							   generated, and increments every time the same outcome is observed. */
-	dVector	*vals;			/* The observation values, vector of size _numRV_ */
+	int		numRV;
+	int 	cnt;
+	iVector	weights;                 /* number of times that an omega is observed */
+	dVector	probs;
+	dVector	*vals;
 } omegaType;
 
 /* The lambda structure stores some of the dual variable values from every distinct dual dVector obtained during the program.  Each dVector contains
@@ -42,7 +44,7 @@ typedef struct {
  * the number of dual dVectors currently stored in lambda. */
 typedef struct {
 	int 	cnt;
-	dVector *vals;
+	dVector 	*vals;
 } lambdaType;
 
 /* The sigma matrix contains the values of Pi x bBar and Pi x Cbar  for all values of pi obtained so far (note it does not depend on
@@ -74,6 +76,7 @@ typedef struct {
 	int		cnt;
 	iVector	omegaIdx;				/* Observation index in omegaType */
 	bool 	*newOmegaFlag;  		/* Flag indicates if the observation is encountered for the first time. */
+	iVector basisIdx;	    		/* Basis index in basisType */
 	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
 }sampleType;
 
@@ -118,8 +121,8 @@ oneProblem *newSubprob(oneProblem *sp);
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
-int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, dVector piCbarX, dVector Xvect,
-		dVector observ, int obs, int basisStart, int basisEnd);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
+		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,

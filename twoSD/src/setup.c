@@ -98,10 +98,6 @@ int readConfig(cString path2config, cString inputDir) {
 
 		else if (!(strcmp(line, "SAMPLE_INCREMENT")))
 			fscanf(fptr, "%d", &config.SAMPLE_INCREMENT);
-		else if (!(strcmp(line, "SP_SAMPLING")))
-			fscanf(fptr, "%d", &config.SP_SAMPLING);
-		else if (!(strcmp(line, "SP_FRACTION")))
-			fscanf(fptr, "%lf", &config.SP_FRACTION);
 
 		else if (!strcmp(line, "//"))
 			fgets(comment, 2*BLOCKSIZE, fptr);
@@ -205,6 +201,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* -+-+-+-+-+-+-+-+-+-+-+ Allocating memory to other variables that belongs to master mcell +-+-+-+-+-+-+-+-+-+- */
 	cell->k 	= 0;
+	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	if (prob[0]->lb == 0)
 		cell->lbType = TRIVIAL;
@@ -315,6 +312,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* constants and arrays */
 	cell->k = 0;
+	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
 	cell->spFeasFlag 	 = true;

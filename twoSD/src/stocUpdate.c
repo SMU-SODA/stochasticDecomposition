@@ -153,7 +153,7 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	else {
 		basisUp = INT_MAX; basisLow = numSamples;
 	}
-	}
+
 	/* Check to see if the subproblem corresponding to the observation _obs_ was solved in the current iteration. If so, the argmax operation is not
 	 * necessary. */
 	cnt = 0;
@@ -186,35 +186,33 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	}
 
 	*argmax = -DBL_MAX; maxCnt = 0;
-
+	/* Run through the list of basis to choose the one which provides the best lower bound */
 	for ( cnt = 0; cnt < basis->cnt; cnt++ ) {
 		if ( basis->vals[cnt]->feasFlag && basis->vals[cnt]->ck > basisLow && basis->vals[cnt]->ck <= basisUp ) {
-	for ( int cnt = 0; cnt < basis->cnt; cnt++ ) {
+			if ( basis->obsFeasible[cnt][obs] ) {
 				arg = 0.0;
 				for ( c = 0; c <= basis->vals[cnt]->phiLength; c++ ) {
 					sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
 					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
-					int sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
-					int lambdaIdx = sigma->lambdaIdx[sigmaIdx];
 					if ( c == 0 )
 						multiplier = 1.0;
 					else
 						multiplier = observ[coord->rvOffset[2] + basis->vals[cnt]->omegaIdx[c]];
-					arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
+
 					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					arg += multiplier*(piCbarX[sigmaIdx] - delta->vals[lambdaIdx][obs].pib);
+					arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
 					arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+				}
+
 				if (arg > (*argmax)) {
 					*argmax = arg;
-				if (arg > argmax) {
-					argmax = arg;
 					maxCnt = cnt;
 				}
 			}
 		}
-	if ( (*argmax == -DBL_MAX ) )
+	}
 
-	if ( argmax == -DBL_MAX )
+	if ( (*argmax == -DBL_MAX ) )
 		return -1;
 	else
 		return maxCnt;
@@ -355,8 +353,8 @@ int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *
  * and returns the index of that realization. Note that the simulated observation does not have contain one-norm, while the values stored in
  * omegaType do */
 int calcOmega(dVector observ, int begin, int end, omegaType *omega, bool *newOmegaFlag, double TOLERANCE) {
+	int cnt;
 
-	omega->sampleSize++;
 	/* Compare dVector with all the previous observations */
 	for (cnt = 0; cnt < omega->cnt; cnt++)
 		if (equalVector(observ, omega->vals[cnt], end-begin, TOLERANCE)) {
@@ -495,8 +493,8 @@ omegaType *newOmega(int numOmega, int numIter) {
 		errMsg("allocation", "newOmega", "omega->weights", 0);
 	if ( !(omega->vals = (dVector *) arr_alloc(numIter, dVector)) )
 		errMsg("allocation", "newOmega", "omega->vals", 0);
+	omega->numRV = numOmega;
 	omega->cnt = 0;
-	omega->sampleSize = 0;
 
 	return omega;
 }//END newOmega()
@@ -508,10 +506,10 @@ sampleType *newSample(int sampleSize) {
 		errMsg("allocation", "newSample", "sample", 0);
 	if ( !(sample->omegaIdx = (iVector) arr_alloc(sampleSize, int)) )
 		errMsg("allocation", "newSample", "sample->omegaIdx", 0);
-	if ( !(sample->basisIdx = (iVector) arr_alloc(sampleSize, int)) )
-		errMsg("allocation", "newSample", "sample->basisIdx", 0);
 	if ( !(sample->newOmegaFlag = (bool *) arr_alloc(sampleSize, bool)) )
 		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
+	if ( !(sample->basisIdx = (iVector) arr_alloc(sampleSize, int)) )
+		errMsg("allocation", "newSample", "sample->basisIdx", 0);
 	if ( !(sample->newBasisFlag = (bool *) arr_alloc(sampleSize, bool)) )
 		errMsg("allocation", "newSample", "sample->newOmegaFlag", 0);
 	sample->cnt = sampleSize;
@@ -525,8 +523,8 @@ void freeOmegaType(omegaType *omega, bool partial) {
 	if ( omega->vals ) {
 		for ( n = 0; n < omega->cnt; n++ )
 			if ( omega->vals[n] ) mem_free(omega->vals[n]);
+		if ( partial ) {
 			omega->cnt = 0;
-			omega->sampleSize = 0;
 			return;
 		}
 		mem_free(omega->vals);
@@ -596,9 +594,9 @@ void freeDeltaType (deltaType *delta, int numDeltaRows, int omegaCnt, bool parti
 
 void freeSampleType(sampleType *sample) {
 
-		if ( sample->basisIdx ) mem_free(sample->basisIdx);
 	if ( sample ) {
 		if ( sample->omegaIdx ) mem_free(sample->omegaIdx);
+		if ( sample->basisIdx ) mem_free(sample->basisIdx);
 		if ( sample->newOmegaFlag) mem_free(sample->newOmegaFlag);
 		if ( sample->newBasisFlag) mem_free(sample->newBasisFlag);
 		mem_free(sample);
