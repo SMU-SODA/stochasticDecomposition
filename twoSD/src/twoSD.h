@@ -13,7 +13,7 @@
 #define TWOSD_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
@@ -27,7 +27,7 @@
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	int		NUM_REPS;			/* Maximum number of replications that can be carried out. */
+	int		NUM_SEEDS;			/* Maximum number of replications that can be carried out. */
 	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
@@ -38,7 +38,6 @@ typedef struct{
 	double	EPSILON;			/* Optimality gap */
 
 	int		EVAL_FLAG;
-	int		NUM_EVALS;
 	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
@@ -56,7 +55,7 @@ typedef struct{
 	int		SCAN_LEN;			/* window size over which the stability of dual vertex set is measured.*/
 	double  PRE_EPSILON;		/* gap used for preliminary optimality test */
 
-	int 	MULTIPLE_REP;		/* When multiple replications are needed, set this to (M), else (0) */
+	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
 	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */

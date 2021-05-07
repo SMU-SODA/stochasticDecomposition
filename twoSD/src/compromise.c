@@ -17,14 +17,14 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	dVector	coef, qsepvec;
 	iVector	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
-	char 	*q, tempName[NAMESIZE], batchNameSuffix[NAMESIZE];
+	char 	*q, tempName[2*NAMESIZE], batchNameSuffix[NAMESIZE];
 
 	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
 
 	batch->ck[batch->cnt] 	 = cell->sampleSize;
 	batch->objLB[batch->cnt] = cell->incumbEst;
 
-	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols);
+	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols+1);
 	batch->cnt++;
 
 	/* a. Setup or update the batch problem */
@@ -257,7 +257,7 @@ int solveCompromise(probType *prob, batchSummary *batch) {
 
 	/* solve the compromise problem */
 	changeQPSolverType(ALG_CONCURRENT);
-	if ( solveProblem(batch->sp->lp, batch->sp->name, config.MASTER_TYPE, batch->sp->mar, batch->sp->mac, &status) ) {
+	if ( solveProblem(batch->sp->lp, batch->sp->name, config.MASTER_TYPE, &status) ) {
 		writeProblem(batch->sp->lp, "error.lp");
 		errMsg("algorithm", "solveCompromise", "failed to solve the compromise problem", 0);
 		return 1;

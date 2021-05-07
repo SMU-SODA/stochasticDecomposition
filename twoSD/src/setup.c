@@ -25,7 +25,7 @@ int readConfig(cString path2config, cString inputDir) {
 		return 1;
 	}
 
-	config.RUN_SEED  = (long long *) arr_alloc(maxReps+1, long long);
+	config.RUN_SEED = (long long *) arr_alloc(maxReps+1, long long);
 	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
 	config.NUM_SEEDS = 0;
 	config.SAMPLE_INCREMENT = 1;
@@ -34,9 +34,9 @@ int readConfig(cString path2config, cString inputDir) {
 		if (!(strcmp(line, "RUN_SEED"))) {
 			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_SEEDS+1]);
 			config.NUM_SEEDS++;
-			if ( config.NUM_SEEDS > maxReps + 1 ) {
+			if ( config.NUM_SEEDS > maxReps ) {
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
 				maxReps *= 2;
-				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (maxReps+1)*sizeof(long long));
 			}
 		}
 		else if (!(strcmp(line, "TOLERANCE")))
@@ -110,6 +110,7 @@ int readConfig(cString path2config, cString inputDir) {
 	fclose(fptr);
 
 	config.NUM_SEEDS = minimum(config.NUM_SEEDS, r2);
+
 	if ( config.MULTIPLE_REP > config.NUM_SEEDS ) {
 		printf("Requesting to perform more replications than the number of seeds provided.\n");
 		return 1;
@@ -166,8 +167,8 @@ int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob,
 		return 1;
 	}
 
-	if ( config.MULTIPLE_REP > 1 )
-		(*batch)  = newBatchSummary((*prob)[0], config.MULTIPLE_REP);
+	if ( config.NUM_SEEDS > 1 )
+		(*batch)  = newBatchSummary((*prob)[0], config.NUM_SEEDS);
 
 	mem_free(lb);
 	return 0;
@@ -209,12 +210,14 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 	cell->lb = prob[0]->lb;
 
 	/* candidate solution and estimates */
-	cell->candidX 			= duplicVector(xk, prob[0]->num->cols);
-	cell->candidEst 		= prob[0]->lb + vXvSparse(cell->candidX, prob[0]->dBar);
+	cell->candidX 	 = duplicVector(xk, prob[0]->num->cols+1);
+	cell->candidX[0] = oneNorm(cell->candidX+1, prob[0]->num->cols);
+	cell->candidEst  = prob[0]->lb + vXvSparse(cell->candidX, prob[0]->dBar);
 
 	/* incumbent solution and estimates */
 	if (config.MASTER_TYPE == PROB_QP) {
-		cell->incumbX   = duplicVector(xk, prob[0]->num->cols);
+		cell->incumbX   = duplicVector(xk, prob[0]->num->cols+1);
+		cell->incumbX[0] = oneNorm(cell->incumbX+1, prob[0]->num->cols);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;
@@ -316,11 +319,11 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	if ( config.DUAL_STABILITY )
 		cell->dualStableFlag 	= false;
 
-	copyVector(xk, cell->candidX, prob->num->cols, true);
+	copyVector(xk, cell->candidX, prob->num->cols+1);
 	cell->candidEst	= prob->lb + vXvSparse(cell->candidX, prob->dBar);
 
 	if (config.MASTER_TYPE == PROB_QP) {
-		copyVector(xk, cell->incumbX, prob->num->cols, true);
+		copyVector(xk, cell->incumbX, prob->num->cols+1);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;
 		cell->iCutIdx   = 0;

@@ -48,10 +48,10 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0]);
+		generateOmega(stoc, observ+1, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
+			observ[m+1] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
 		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
@@ -68,7 +68,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 		}
 
 		changeLPSolverType(ALG_AUTOMATIC);
-		if ( solveProblem(subprob->lp, subprob->name, subprob->type, subprob->mar, subprob->mac, &status) ) {
+		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
 				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
