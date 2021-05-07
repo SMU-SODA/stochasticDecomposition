@@ -21,109 +21,63 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
 
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 	oneCut 	*cut;
-	dVector piCbarX;
-	iVector istar;
-	int    	cutIdx;
-	bool 	solveSP;
+	int    	cutIdx, obs;
 
-	istar = (iVector) arr_alloc(cell->omega->cnt, int);
-	/* Pre-compute pi x bBar - pi x Cbar x x as it is independent of observations */
-	piCbarX= arr_alloc(cell->sigma->cnt, double);
-	for (int cnt = 0; cnt < cell->sigma->cnt; cnt++)
-		piCbarX[cnt] = cell->sigma->vals[cnt].pib - vXv(cell->sigma->vals[cnt].piC, Xvect, prob[1]->coord->CCols, prob[1]->num->cntCcols);
-
-	for ( int obs = 0; obs < cell->omega->cnt; obs++ ) {
-		solveSP = false;
-
-		/* Check to see if the observation belongs to the current branch. */
-		int cnt = 0;
-		while ( cnt < cell->sample->cnt ) {
-			if ( obs == cell->sample->omegaIdx[cnt] )
-				break;
-			cnt++;
+	/* A subproblem is solved for every new observation */
+	for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
+		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
+		if ( (cell->sample->basisIdx[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
+				cell->omega, cell->sample->omegaIdx[obs], &cell->sample->newOmegaFlag[obs], cell->k, config.TOLERANCE, &cell->spFeasFlag,
+				&cell->sample->newBasisFlag[obs], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
+			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
+			return -1;
 		}
 
-		/* A. Determine whether a subproblem will be solved for the observation or the argmax procedure used. */
-		switch ( config.SP_SAMPLING ) {
-		case Full:
-		{
-			solveSP = true; break;
-		}
-		case Binomial:
-		{
-			double prob;
-			prob = scalit(0,1, &config.RUN_SEED[0]);
-			if ( prob <= config.SP_FRACTION ) {
-				solveSP = true;
-			}
-			break;
-		}
-		default:
-		{
-			if ( cnt < cell->sample->cnt ) {
-				solveSP = true;
-			}
-		}
-		}
+		/* increment the number of subproblems solved during algorithm */
+		cell->LPcnt++;
 
-		if ( solveSP ) {
-			/* Option 1: Solve a subproblem */
-			/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
-			if ( (istar[obs] = solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta,
-					config.MAX_ITER, cell->omega, obs, &cell->sample->newOmegaFlag[cnt], cell->k, config.TOLERANCE,
-					&cell->spFeasFlag, &cell->sample->newBasisFlag[cnt], &cell->time.subprobIter, &cell->time.argmaxIter) < 0) ){
-				errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
+		if ( ! cell->spFeasFlag ) {
+			/* Subproblem is infeasible, resolve infeasibility */
+			if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
+				errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
 				return -1;
 			}
-
-			/* (b) Increment the number of subproblems solved during algorithm */
-			cell->LPcnt++;
-
-			if ( ! cell->spFeasFlag ) {
-				/* (c1) Subproblem is infeasible, resolve infeasibility */
-				if ( resolveInfeasibility(prob, cell, &cell->sample->newOmegaFlag[obs], cell->sample->omegaIdx[obs]) ) {
-					errMsg("algorithm", "formSDCut", "failed to resolve infeasibility", 0);
-					return -1;
-				}
-			}
-			else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
-				/* (c2) Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut
-				 * pool and check to see if new feasibility cuts need to be added. */
-				if ( formFeasCut(prob[1], cell) ) {
-					errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
-					return -1;
-				}
-			}
 		}
-		else {
-			/* Option 2: Use the argmax procedure */
-			istar[obs] = computeIstar(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, piCbarX, Xvect,
-					cell->omega->vals[obs], obs, 0, cell->basis->cnt);
+		else if ( cell->fcutsPool->cnt > 0 && cell->sample->newOmegaFlag[obs] ) {
+			/* Subproblem is feasible, however a new observation or sigma has been encountered. Therefore, update the feasibility cut pool and check
+			 * to see if new feasibility cuts need to be added. */
+			if ( formFeasCut(prob[1], cell) ) {
+				errMsg("algorithm", "formSDCut", "failed to add new feasibility cuts", 0);
+				return -1;
+			}
 		}
 	}
 
-	/* B. Create an affine lower bound */
+	/* (b) create an affine lower bound */
 	clock_t tic = clock();
-	cut = SDCut(prob[1]->num, prob[1]->coord, cell->omega, cell->basis, cell->sigma, cell->delta, istar);
+	cut = SDCut(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+			Xvect, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->lb);
+	if ( cut == NULL ) {
+		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
+		return -1;
+	}
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #if defined(STOCH_CHECK)
-	bool newOmegaFlag = false;
-	printf("------\n");
 	/* Solve the subproblem to verify if the argmax operation yields a lower bound */
 	for ( int cnt = 0; cnt < cell->omega->cnt; cnt++ ) {
 		/* (a) Construct the subproblem with input observation and master solution, solve the subproblem, and complete stochastic updates */
 		if ( solveSubprob(prob[1], cell->subprob, Xvect, cell->basis, cell->lambda, cell->sigma, cell->delta, config.MAX_ITER,
-				cell->omega, cnt, &newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
+				cell->omega, cnt, newOmegaFlag, cell->k, config.TOLERANCE, &cell->spFeasFlag, NULL,
 				&cell->time.subprobIter, &cell->time.argmaxIter) < 0 ) {
 			errMsg("algorithm", "formSDCut", "failed to solve the subproblem", 0);
 			return -1;
 		}
+		printf("Subproblem solve for omega-%d = %lf\n", cnt, getObjective(cell->subprob->lp, PROB_LP));
 	}
-	printf("------\n");
 #endif
 
-	/* C. Add cut to the structure and master problem  */
+	/* (c) add cut to the structure and master problem  */
 	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
@@ -133,72 +87,121 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 		return -1;
 	}
 
-	mem_free(istar);
 	return cutIdx;
 }//END formCut()
 
-oneCut *SDCut(numType *num, coordType *coord, omegaType *omega, basisType *basis, sigmaType *sigma, deltaType *delta, iVector istar) {
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb) {
 	oneCut *cut;
-	double alpha, multiplier;
-	dVector beta;
+	dVector 	piCbarX, beta;
+	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, alpha = 0.0, variance = 1.0, multiplier;
+	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	bool    pi_eval_flag = false;
 
 	/* allocate memory to hold a new cut */
-	cut = newCut(num->prevCols, omega->cnt, omega->sampleSize);
+	cut = newCut(num->prevCols, omega->cnt, numSamples);
 
-	/* Temporary variables used to update the coefficients */
-	alpha = 0.0;
-	beta  = (dVector) arr_alloc(num->prevCols + 1, double);
+	/* Pre-compute pi x Cbar x x as it is independent of observations */
+	if (!(piCbarX= arr_alloc(sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x",0);
+	for (c = 0; c < sigma->cnt; c++)
+		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
-	for (int obs = 0; obs < omega->cnt; obs++) {
-		cut->iStar[obs] = istar[obs];
+	if ( !(beta = (dVector) arr_alloc(num->prevCols + 1, double)) )
+		errMsg("Allocation", "SDCut", "beta", 0);
+
+	/* Calculate pi_eval_flag to determine the way of computing argmax */
+	if (config.DUAL_STABILITY && numSamples > config.PI_EVAL_START && !(numSamples % config.PI_CYCLE))
+		pi_eval_flag = true;
+
+	/* Test for omega issues */
+	for (obs = 0; obs < omega->cnt; obs++) {
+		/* For each observation, find the Pi/basis that generates the Pi which maximizes height at X. */
+		if (pi_eval_flag == true) {
+			istarOld = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmaxOld, false);
+			istarNew = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, true, &argmaxNew, true);
+
+			argmax = maximum(argmaxOld, argmaxNew);
+			istar  = (argmaxNew > argmaxOld) ? istarNew : istarOld;
+
+			cummOld += maximum(argmaxOld-lb, 0)*omega->weights[obs];
+			cummAll += maximum(argmax-lb, 0)*omega->weights[obs];
+		}
+		else {
+			/* identify the maximal Pi/basis that generates the maximal Pi for each observation */
+			istar = computeIstar(num, coord, basis, sigma, delta, sample,
+					piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
+		}
+
+		if (istar < 0) {
+			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
+			return NULL;
+		}
+		cut->iStar[obs] = istar;
 
 		if ( num->rvdOmCnt > 0 ) {
-			for ( int idx = 0; idx <= basis->vals[istar[obs]]->phiLength; idx++ ) {
-				int sigmaIdx = basis->vals[istar[obs]]->sigmaIdx[idx];
-				int lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+			for ( idx = 0; idx <= basis->vals[istar]->phiLength; idx++ ) {
+				sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+				lambdaIdx = sigma->lambdaIdx[sigmaIdx];
 				if ( idx == 0 )
 					multiplier = 1.0;
 				else
-					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar[obs]]->omegaIdx[idx]];
+					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
 				/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
 				alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
 
-				for (int c = 1; c <= num->cntCcols; c++)
+				for (c = 1; c <= num->cntCcols; c++)
 					beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
-				for (int c = 1; c <= num->rvCOmCnt; c++)
+				for (c = 1; c <= num->rvCOmCnt; c++)
 					beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
 			}
 		}
 		else {
-			alpha += sigma->vals[istar[obs]].pib * omega->weights[obs];
-			alpha += delta->vals[sigma->lambdaIdx[istar[obs]]][obs].pib * omega->weights[obs];
+			alpha += sigma->vals[istar].pib * omega->weights[obs];
+			alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
-			for (int c = 1; c <= num->cntCcols; c++)
-				beta[coord->CCols[c]] += sigma->vals[istar[obs]].piC[c] * omega->weights[obs];
-			for (int c = 1; c <= num->rvCOmCnt; c++)
-				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar[obs]]][obs].piC[c] * omega->weights[obs];
+			for (c = 1; c <= num->cntCcols; c++)
+				beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
 		}
 	}
 
-	/* Scale the coefficients based on the number of observations */
-	cut->alpha = alpha / omega->sampleSize;
-	for (int c = 1; c <= num->prevCols; c++)
-		cut->beta[c] = beta[c] / omega->sampleSize;
-	cut->beta[0] = 1.0;								/* coefficient of eta coloumn */
+	if (pi_eval_flag == true) {
+		pi_ratio[numSamples % config.SCAN_LEN] = cummOld / cummAll;
+		if (numSamples - config.PI_EVAL_START > config.SCAN_LEN)
+			variance = calcVariance(pi_ratio, NULL, NULL, 0);
+		else
+			variance = 1.0;
 
+		if (DBL_ABS(variance) >= .000002 || pi_ratio[numSamples % config.SCAN_LEN] < 0.95 )
+			*dualStableFlag = false;
+		else
+			*dualStableFlag = true;
+	}
+
+	cut->alpha = alpha / numSamples;
+
+	for (c = 1; c <= num->prevCols; c++)
+		cut->beta[c] = beta[c] / numSamples;
+	cut->beta[0] = 1.0;			/* coefficient of eta coloumn */
+
+	mem_free(piCbarX);
 	mem_free(beta);
 
 	return cut;
 }//END SDCut
 
 /* This function loops through a set of cuts and find the highest cut height at the specified position x */
-double maxCutHeight(cutsType *cuts, int currSampleSize, dVector xk, int betaLen, double lb) {
+double maxCutHeight(cutsType *cuts, int sampleSize, dVector xk, int betaLen, double lb) {
 	double Sm = -INF, ht = 0.0;
 	int cnt;
 
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
-		ht = cutHeight(cuts->vals[cnt], currSampleSize, xk, betaLen, lb);
+		ht = cutHeight(cuts->vals[cnt], sampleSize, xk, betaLen, lb);
 		if (Sm < ht) {
 			Sm = ht;
 		}
@@ -277,7 +280,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
-	minObs 	  = cell->omega->sampleSize;
+	minObs 	  = cell->sampleSize;
 	oldestCut = cell->cuts->cnt;
 
 	/* identify the oldest loose cut */
@@ -294,14 +297,14 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 
 	/* if the oldest loose cut is the most recently added cut, then the cut with minimium cut height will be dropped */
 	if ( oldestCut == cell->cuts->cnt ) {
-		minHeight = cutHeight(cell->cuts->vals[0], cell->omega->sampleSize, candidX, betaLen, lb);
+		minHeight = cutHeight(cell->cuts->vals[0], cell->sampleSize, candidX, betaLen, lb);
 		oldestCut = 0;
 
 		for (idx = 1; idx < cell->cuts->cnt; idx++) {
 			if (idx == cell->iCutIdx)
 				continue;
 
-			height = cutHeight(cell->cuts->vals[idx], cell->omega->sampleSize, candidX, betaLen, lb);
+			height = cutHeight(cell->cuts->vals[idx], cell->sampleSize, candidX, betaLen, lb);
 			if (height < minHeight) {
 				minHeight = height;
 				oldestCut = idx;
@@ -566,15 +569,18 @@ int checkFeasCutPool(cellType *cell, int lenX) {
 }//END checkFeasCutPool()
 
 /* This function prints the relevant information in a cut. It is meant to be used for debugging. */
-void printCut(oneCut *cut, int betaLen) {
+void printCut(cutsType *cuts, numType *num, int idx) {
+	int cnt;
 
-	printf("Sample size = %d; Obs = %d; Alpha = %.3lf; Beta = ", cut->numSamples, cut->omegaCnt, cut->alpha);
-	printVector(cut->beta, betaLen, stdout);
-	printf("Istar: ");
-	printIntvec(cut->iStar, cut->omegaCnt, stdout);
-
+	printf("\nCut #%d:: c:%d o:%d\n  a:%f B:", idx, cuts->vals[idx]->numSamples,
+			cuts->vals[idx]->omegaCnt, cuts->vals[idx]->alpha);
+	for (cnt = 0; cnt <= num->cols; cnt++)
+		printf("%f ", cuts->vals[idx]->beta[cnt]);
+	printf("\nistar: ");
+	for (cnt = 0; cnt < cuts->vals[idx]->omegaCnt; cnt++)
+		printf("%d ", cuts->vals[idx]->iStar[cnt]);
+	printf("\n");
 }//END printCut()
-
 
 void freeOneCut(oneCut *cut) {
 

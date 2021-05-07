@@ -13,7 +13,7 @@
 #define TWOSD_H_
 
 #include "utils.h"
-#include "solver.h"
+#include "solver_cplex.h"
 #include "smps.h"
 #include "prob.h"
 #include "stoc.h"
@@ -24,16 +24,10 @@
 #undef ALGO_CHECK
 #undef BATCH_CHECK
 
-enum spSamplingType {
-	Full,
-	New,
-	Binomial
-};
-
 /* A data structure which holds on the configuration information about the algorithm. Most of these configuration parameters are read from a
 -configuration file. These elements, once set during initialization, are not modified during the course of the algorithm. */
 typedef struct{
-	int		NUM_SEEDS;			/* Number of seeds read */
+	int		NUM_SEEDS;			/* Maximum number of replications that can be carried out. */
 	long long *RUN_SEED;		/* seed used during optimization */
 	double 	TOLERANCE; 			/* for zero identity test */
 	int		MIN_ITER;			/* minimum number of iterations */
@@ -64,9 +58,7 @@ typedef struct{
 	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 
-	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample in each iteration */
-	int		SP_SAMPLING; 		/* Subproblem sampling: 0-Off, 1-New observations only, and 2-fraction */
-	double	SP_FRACTION;		/* Probability for selecting subproblem for solving, applicable only when SP_SAMPLING = 2 */
+	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
 }configType;
 
 typedef struct {
@@ -103,6 +95,7 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
+	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
@@ -169,6 +162,7 @@ typedef struct {
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
+void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -191,13 +185,14 @@ oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
 int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
-oneCut *SDCut(numType *num, coordType *coord, omegaType *omega, basisType *basis, sigmaType *sigma, deltaType *delta, iVector istar);
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
 int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
-void printCut(oneCut *cut, int betaLen);
+void printCut(cutsType *cuts, numType *num, int idx);
 void freeOneCut(oneCut *cut);
 void freeCutsType(cutsType *cuts, bool partial);
 double calc_var(double *x, double *mean_value, double *stdev_value, int batch_size);
@@ -228,11 +223,6 @@ void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
-
-/* inout.c */
-void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
-void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
-void printOptimizationSummary(cellType *cell);
-void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */

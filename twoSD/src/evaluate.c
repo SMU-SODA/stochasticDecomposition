@@ -48,10 +48,10 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
+		generateOmega(stoc, observ+1, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
+			observ[m+1] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
 		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
@@ -103,9 +103,22 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 	}//END while loop
 	mean += vXvSparse(Xvect, prob[0]->dBar);
 
-	printEvaluationSummary(stdout, mean, stdev, cnt);
-	writeEvaluationStatistics(soln, mean, stdev, cnt);
+	writeEvaluationSummary(soln, mean, stdev, cnt);
+	writeEvaluationSummary(stdout, mean, stdev, cnt);
 
 	mem_free(observ); mem_free(rhs);  mem_free(objxIdx); mem_free(cost);
 	return 0;
+}//END evaluate()
+
+
+void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt) {
+
+	/* Write the evaluation results to the summary file */
+	fprintf(soln, "\n-------------------------------------------- Evaluation --------------------------------------------\n\n");
+	fprintf(soln, "Upper bound estimate                   : %lf\n", mean);
+	fprintf(soln, "Error in estimation                    : %lf\n", 3.29 * stdev / mean);
+	fprintf(soln, "Confidence interval at 95%%             : [%lf, %lf]\n", mean - 1.645 * stdev, mean + 1.645 * stdev);
+	fprintf(soln, "Number of observations                 : %d\n", cnt);
+
+
 }//END evaluate()

@@ -9,19 +9,6 @@
  *
  */
 
-/* Input options:
- *          -p string  -> problem name.
- *          -i string  -> input directory where the problem SMPS files are saved.
- *          -o string  -> output directory where the result files will be written.
- *          -e {0,1}   -> evaluation flag which determines if the final solution will be evaluated through out of sample evalauation.
- *          -d {0,1}   -> use the dual stability test.
- *          -t {l,n,t} -> tolerance level to be employed.
- *                         Suggested tolerance(EPSILON, SCAN_LEN) = 'l'oose (0.01, 128), 'n'omimal (0.001, 256) and 't'ight (0.0001, 512)
- *			-m {0,1}   -> number of replications.
- *			-c {0,1}   -> build and solve compromise problem.
- *			-s {0,1}   -> sample increment size.
-*/
-
 #include <twoSD.h>
 void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
 void printHelpMenu();
@@ -39,7 +26,7 @@ int main (int argc, char *argv[]) {
 
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
-	if (readConfig("./", inputDir) ) {
+	if (readConfig("./src/", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
@@ -158,9 +145,8 @@ void printHelpMenu() {
 	printf("         -t {l,n,t} -> tolerance level to be employed.\n");
 	printf("                        Suggested tolerance(EPSILON, SCAN_LEN) = 'l'oose (0.01, 128), 'n'omimal (0.001, 256) and 't'ight (0.0001, 512)\n");
 	/* MULTIPLE_REP */
-	printf("         -m {0,1}   -> number of replications.\n");
+	printf("         -m {0,1}   -> use multiple replication.\n");
 	/* COMPROMISE_PROB */
 	printf("         -c {0,1}   -> build and solve compromise problem.\n");
-	printf("         -s {0,1}   -> sample increment size.\n");
 
 }//END helpMenu()
