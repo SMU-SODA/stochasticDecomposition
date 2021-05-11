@@ -225,4 +225,10 @@ void freeBatchType(batchSummary *batch);
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
 void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
+/* inout.c */
+void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
+void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
+void printOptimizationSummary(cellType *cell);
+void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+
 #endif /* TWOSD_H_ */
