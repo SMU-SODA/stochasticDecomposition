@@ -84,6 +84,7 @@ int changeProbType(LPptr lp, int type);
 int addRow(LPptr lp, int nzcnt, double inputRHS, char inputSense, int matbeg, iVector rmatind, dVector rmatval, cString rowname);
 int addCol(LPptr lp, int nzcnt, double objx, int cmatbeg, iVector cmatind, dVector cmatval, double bdu, double bdl, cString colname);
 int removeRow(LPptr lp, int begin, int end);
+int removeColumns(LPptr lp, int begin, int end);
 
 int createProblem(char *probname, LPptr *lp);
 int readProblem(char *probpath, LPptr lp);

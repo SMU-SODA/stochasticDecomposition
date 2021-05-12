@@ -746,6 +746,17 @@ int addCol(LPptr lp, int nzcnt, double objx, int matbeg, iVector cmatind, dVecto
 	return status;
 }//END addCol()
 
+int removeColumns(LPptr lp, int begin, int end) {
+	int status;
+
+	status = CPXdelcols(env, lp, begin, end);
+	if ( status )
+		solverErrmsg(status);
+
+	return status;
+}//END removeRow
+
+
 int removeRow(LPptr lp, int begin, int end){
 	int status;
 
@@ -754,7 +765,7 @@ int removeRow(LPptr lp, int begin, int end){
 		solverErrmsg(status);
 
 	return status;
-}//END removeRow
+}//END removeRow()
 
 int freeProblem(LPptr lp) {
 	int status;

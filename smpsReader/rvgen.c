@@ -299,10 +299,9 @@ int randInteger(long long *SEED, int iMax) {
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
  * a simulated observation. */
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs,
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs, iVector weights,
 		int *numObs, int desiredSampleSize, double TOLERANCE) {
 	dVector observ;
-	iVector weights;
 
 	if ( desiredSampleSize == 0 ) {
 		/* number of samples in SAA */
@@ -312,8 +311,6 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 
 	printf("Generating SAA with %d samples.\n", desiredSampleSize);
 	(*numObs) = 0;
-
-	weights = (iVector) arr_alloc(desiredSampleSize, int);
 
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
 		/* Using the internal simulator to generate samples */
@@ -378,7 +375,6 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 		probs[cnt] = weights[cnt]/(double) desiredSampleSize;
 	}
 
-	mem_free(weights);
 	return 0;
 }//END setupSAA()
 
