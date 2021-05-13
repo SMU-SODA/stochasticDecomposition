@@ -7,7 +7,6 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <dirent.h>
 #include <string.h>
 #include <map>
 #include <random>

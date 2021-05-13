@@ -52,6 +52,7 @@ void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, st
 			case 'p': (*probName).assign(argv[++i]); break;
 			case 'o': (*outputDir).assign(argv[++i]); break;
 			case 'i': (*inputDir).assign(argv[++i]); break;
+			default: ++i; continue;
 			}
 		}
 		else {

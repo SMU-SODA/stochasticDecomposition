@@ -272,63 +272,63 @@ istream& safeGetline(istream& is, string& t)
     }
 }
 
-/* The subroutines lists all the sub-directories of a directory */
-int getDirs (string dir, vector<string> &subdirs) {
-    DIR *dp;
-    struct dirent *dirp;
-    
-    if((dp  = opendir(dir.c_str())) == NULL) {
-        cout << "Error opening directory : " << dir << endl;
-        return 1;
-    }
-    
-    while ((dirp = readdir(dp)) != NULL) {
-        if ( dirp->d_type == DT_DIR && strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
-            subdirs.push_back(string(dirp->d_name));
-    }
-    
-    closedir(dp);
-    return 0;
-}//END getDirs()
-
-/* The subroutines lists all the files in a directory */
-int getFiles (string dir, vector<string> &files) {
-    DIR *dp;
-    struct dirent *dirp;
-    
-    if((dp  = opendir(dir.c_str())) == NULL) {
-        cout << "Error opening directory : " << dir << endl;
-        return 1;
-    }
-    
-    while ((dirp = readdir(dp)) != NULL) {
-        if ( dirp->d_type != DT_DIR && dirp->d_name[0] != '.')
-            files.push_back(string(dirp->d_name));
-    }
-    
-    closedir(dp);
-    
-    return 0;
-}//genFiles()
-
-/* The subroutines lists all the contents of a directory */
-int getContents (string dir, vector<string> &contents) {
-    DIR *dp;
-    struct dirent *dirp;
-    
-    if((dp  = opendir(dir.c_str())) == NULL) {
-        cout << "Error opening directory : " << dir << endl;
-        return 1;
-    }
-    
-    while ((dirp = readdir(dp)) != NULL) {
-        if ( strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
-            contents.push_back(string(dirp->d_name));
-    }
-    
-    closedir(dp);
-    return 0;
-}//END getDirs()
+///* The subroutines lists all the sub-directories of a directory */
+//int getDirs (string dir, vector<string> &subdirs) {
+//    DIR *dp;
+//    struct dirent *dirp;
+//
+//    if((dp  = opendir(dir.c_str())) == NULL) {
+//        cout << "Error opening directory : " << dir << endl;
+//        return 1;
+//    }
+//
+//    while ((dirp = readdir(dp)) != NULL) {
+//        if ( dirp->d_type == DT_DIR && strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
+//            subdirs.push_back(string(dirp->d_name));
+//    }
+//
+//    closedir(dp);
+//    return 0;
+//}//END getDirs()
+//
+///* The subroutines lists all the files in a directory */
+//int getFiles (string dir, vector<string> &files) {
+//    DIR *dp;
+//    struct dirent *dirp;
+//
+//    if((dp  = opendir(dir.c_str())) == NULL) {
+//        cout << "Error opening directory : " << dir << endl;
+//        return 1;
+//    }
+//
+//    while ((dirp = readdir(dp)) != NULL) {
+//        if ( dirp->d_type != DT_DIR && dirp->d_name[0] != '.')
+//            files.push_back(string(dirp->d_name));
+//    }
+//
+//    closedir(dp);
+//
+//    return 0;
+//}//genFiles()
+//
+///* The subroutines lists all the contents of a directory */
+//int getContents (string dir, vector<string> &contents) {
+//    DIR *dp;
+//    struct dirent *dirp;
+//
+//    if((dp  = opendir(dir.c_str())) == NULL) {
+//        cout << "Error opening directory : " << dir << endl;
+//        return 1;
+//    }
+//
+//    while ((dirp = readdir(dp)) != NULL) {
+//        if ( strcmp(dirp->d_name, ".") && strcmp(dirp->d_name, "..") )
+//            contents.push_back(string(dirp->d_name));
+//    }
+//
+//    closedir(dp);
+//    return 0;
+//}//END getDirs()
 
 
 
