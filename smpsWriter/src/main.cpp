@@ -32,6 +32,10 @@ int main (int argc, char *argv[]) {
 		if ( createTransshipInstance(inputDir, outputDir) )
 			perror("Failed to create the transshipment instance.\n");
 	}
+	else if ( probName == "rao") {
+		if ( createRaoInstance(inputDir, outputDir, argc, argv) )
+			perror("Failed to create the transshipment instance.\n");
+	}
 	else {
 		perror("No subroutine to support this problem.\n");
 	}

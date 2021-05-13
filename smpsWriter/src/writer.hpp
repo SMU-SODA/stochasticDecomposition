@@ -60,5 +60,6 @@ void parseCmdLine(int argc, char *argv[], string *inputDir, string *probName, st
 int createSGPFInstance(string inputDir, string outputDir);
 int createSSNInstance(string inputDir, string outputDir);
 int createTransshipInstance(string inputDir, string outputDir);
+int createRaoInstance(string inputDir, string outputDir, int argc, char* argv[]);
 
 #endif /* WRITER_HPP_ */
