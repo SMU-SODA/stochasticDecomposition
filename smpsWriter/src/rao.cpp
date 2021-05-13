@@ -57,7 +57,11 @@ int createRaoInstance(string inputDir, string outputDir, int argc, char* argv[])
 	system(destnFile);
 
 	sprintf(destnFile, "%s%s\\", outputDir.c_str(), probName);
+#ifdef _WIN64
+	sprintf(srcFile, "move %s.* %s", probName, destnFile);
+#else
 	sprintf(srcFile, "mv %s.* %s", probName, destnFile);
+#endif
 	system(srcFile);
 
 	printf("Successfully wrote the SMPS files for %s to the output directory '%s'.\n", probName, outputDir.c_str());
@@ -70,8 +74,7 @@ int createRaoCor(SMPSmodel& Rao, RaoData& data, char probName[128]) {
 
 	try {
 		IloEnv   env;
-		sprintf(elemName, "Rao");
-		IloModel model(env, elemName);
+		IloModel model(env, probName);
 
 		/**************** Decision variables *****************/
 		IloArray<IloNumVarArray> prodQuantity(env, data.numPeriods);

@@ -70,7 +70,11 @@ int createSSNInstance(string inputDir, string outputDir) {
 	system(destnFile);
 
 	sprintf(destnFile, "%sssn_rc%d/", outputDir.c_str(), data.numGroups);
+#ifdef _WIN64
+	sprintf(srcFile, "move ssn_rc%d.* %s", data.numGroups, destnFile);
+#else
 	sprintf(srcFile, "mv ssn_rc%d.* %s", data.numGroups, destnFile);
+#endif
 	system(srcFile);
 
 	printf("Successfully wrote the SMPS files for %s%d to the output directory '%s'.\n", "ssn_rc", data.numGroups, outputDir.c_str());

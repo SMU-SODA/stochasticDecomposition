@@ -62,7 +62,11 @@ int createSGPFInstance(string inputDir, string outputDir) {
 	system(destnFile);
 
 	sprintf(destnFile, "%ssgpf%dy%d/", outputDir.c_str(), sgpf.numPeriods, sgpf.numStages);
+#ifdef _WIN64
+	sprintf(srcFile, "move sgpf%dy%d.* %s", sgpf.numPeriods, sgpf.numStages, destnFile);
+#else
 	sprintf(srcFile, "mv sgpf%dy%d.* %s", sgpf.numPeriods, sgpf.numStages, destnFile);
+#endif
 	system(srcFile);
 
 	return 0;

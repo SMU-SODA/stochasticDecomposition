@@ -48,7 +48,12 @@ int createTransshipInstance(string inputDir, string outputDir) {
 	system(destnFile);
 
 	sprintf(destnFile, "%stransship/", outputDir.c_str());
+#ifdef _WIN64
+	sprintf(srcFile, "move transship.* %s", destnFile);
+#else
 	sprintf(srcFile, "mv transship.* %s", destnFile);
+#endif
+
 	system(srcFile);
 
 	printf("Successfully wrote the SMPS files for %s to the output directory '%s'.\n", "transshipment",
