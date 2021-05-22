@@ -54,14 +54,14 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 			observ[m+1] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
+		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
 			return 1;
 		}
 
 		/* Change cost coefficients with random observations */
 		if ( prob[1]->num->rvdOmCnt > 0 ) {
-			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
+			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ) ) {
 				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
 				return 1;
 			}
@@ -71,7 +71,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
 				/* subproblem is infeasible */
-				printf("Warning:: Subproblem is infeasible: need to create feasibility cut.\n");
+				printf("Warning:: Subproblem is infeasible.\n");
 				return 1;
 			}
 			else {
