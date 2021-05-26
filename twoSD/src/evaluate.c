@@ -48,24 +48,26 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
+		generateOmega(stoc, observ+1, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];          /* store the mean rv in observ */
+			observ[m+1] -= stoc->mean[m];          /* store the mean rv in observ */
 
 		/* Change right-hand side with random observation */
-		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ-1, rhs, Xvect) ) {
+		if ( chgRHSwObserv(subprob->lp, prob[1]->num, prob[1]->coord, observ, rhs, Xvect) ) {
 			errMsg("algorithm", "evaluate", "failed to change right-hand side with random observations",0);
 			return 1;
 		}
 
 		/* Change cost coefficients with random observations */
 		if ( prob[1]->num->rvdOmCnt > 0 ) {
-			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ-1) ) {
+			if ( chgObjxwObserv(subprob->lp, prob[1]->num, prob[1]->coord, cost, objxIdx, observ) ) {
 				errMsg("algorithm", "evaluate","failed to change cost coefficients with random observations", 0);
 				return 1;
 			}
 		}
+
+		writeProblem(subprob->lp, "evaluate.lp");
 
 		changeLPSolverType(ALG_AUTOMATIC);
 		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {

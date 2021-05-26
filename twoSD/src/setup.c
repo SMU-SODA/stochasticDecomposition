@@ -218,7 +218,7 @@ cellType *newCell(stocType *stoc, probType **prob, dVector xk) {
 
 	/* incumbent solution and estimates */
 	if (config.MASTER_TYPE == PROB_QP) {
-		cell->incumbX   = duplicVector(xk, prob[0]->num->cols);
+		cell->incumbX   = duplicVector(xk, prob[0]->num->cols+1);
 		cell->incumbEst = cell->candidEst;
 		cell->quadScalar= config.MIN_QUAD_SCALAR;     						/* The quadratic scalar, 'sigma'*/
 		cell->iCutIdx   = 0;

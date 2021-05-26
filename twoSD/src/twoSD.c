@@ -104,7 +104,7 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 			case 't': {
 				switch (argv[++i][0]) {
 				case 'l': config.EPSILON = 0.01; config.SCAN_LEN = 128; break;
-				case 'n': config.EPSILON = 0.001; config.SCAN_LEN = 64; break;
+				case 'n': config.EPSILON = 0.001; config.SCAN_LEN = 256; break;
 				case 't': config.EPSILON = 0.0001; config.SCAN_LEN = 512; break;
 				default: {
 					goto TERMINATE;
