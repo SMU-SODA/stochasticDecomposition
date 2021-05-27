@@ -67,8 +67,6 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 			}
 		}
 
-		writeProblem(subprob->lp, "evaluate.lp");
-
 		changeLPSolverType(ALG_AUTOMATIC);
 		if ( solveProblem(subprob->lp, subprob->name, subprob->type, &status) ) {
 			if ( status == STAT_INFEASIBLE ) {
