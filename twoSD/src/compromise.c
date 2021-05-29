@@ -17,14 +17,14 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	dVector	coef, qsepvec;
 	iVector	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
-	char 	*q, tempName[NAMESIZE], batchNameSuffix[NAMESIZE];
+	char 	*q, tempName[NAMESIZE], batchNameSuffix[2*NAMESIZE];
 
 	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
 
 	batch->ck[batch->cnt] 	 = cell->k;
 	batch->objLB[batch->cnt] = cell->incumbEst;
 
-	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols);
+	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols+1);
 	batch->cnt++;
 
 	/* a. Setup or update the batch problem */

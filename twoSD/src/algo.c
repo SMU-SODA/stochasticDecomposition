@@ -75,7 +75,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			evaluate(sFile, stoc, prob, cell->subprob, cell->incumbX);
 
 		/* Save the batch details and build the compromise problem. */
-		if ( config.MULTIPLE_REP ) {
+		if ( config.COMPROMISE_PROB ) {
 			buildCompromise(prob[0], cell, batch);
 		}
 	}
@@ -146,14 +146,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
 		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+		generateOmega(stoc, observ+1, config.TOLERANCE, &config.RUN_SEED[0], NULL);
 
 		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 		for ( m = 0; m < stoc->numOmega; m++ )
-			observ[m] -= stoc->mean[m];
+			observ[m+1] -= stoc->mean[m];
 
 		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-		omegaIdx = calcOmega(observ - 1, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
+		omegaIdx = calcOmega(observ, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
 		if ( (candidCut = formSDCut(prob, cell, cell->candidX, omegaIdx, &newOmegaFlag, prob[0]->lb)) < 0 ) {

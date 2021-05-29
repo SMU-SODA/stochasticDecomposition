@@ -23,14 +23,14 @@ int main (int argc, char *argv[]) {
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 
-	/* read problem information */
-	parseCmdLine(argc, argv, &probName, &inputDir);
-
 	/* read algorithm configuration files */
 	if (readConfig("./", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
+
+	/* read problem information */
+	parseCmdLine(argc, argv, &probName, &inputDir);
 
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
@@ -54,6 +54,8 @@ int main (int argc, char *argv[]) {
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	mem_free(probName);
+	mem_free(inputDir);
 	closeSolver();
 
 	return 0;

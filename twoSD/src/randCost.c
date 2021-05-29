@@ -232,7 +232,7 @@ bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int n
 		if ( !(reducedCost = (dVector) arr_alloc(numCols+1, double)) )
 			errMsg("allocation", "calcDelta", "costVector", 0);
 
-		copyVector(B->gBar, reducedCost, numCols, true);
+		copyVector(B->gBar, reducedCost, numCols+1);
 		addVectors(reducedCost, dOmega.val, dOmega.col, dOmega.cnt);
 		if ( B->phiLength > 0 ) {
 			MSparsexvSub(B->psi, dOmega.val, reducedCost);
