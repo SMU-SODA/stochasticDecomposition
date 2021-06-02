@@ -32,7 +32,7 @@ bool optimal(probType **prob, cellType *cell) {
 				return true;
 			}
 			else {
-				printf(">"); fflush(stdout);
+				printf("."); fflush(stdout);
 			}
 
 		}
@@ -98,12 +98,13 @@ bool fullTest(probType **prob, cellType *cell) {
 				gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
-		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
-		for (j = 1; j < gCuts->cnt; j++) {
-			ht = gCuts->vals[j]->alpha - vXv(gCuts->vals[j]->beta, cell->incumbX, NULL, prob[0]->num->cols);
-			if ( est < ht)
-				est = ht;
-		}
+		est = maxCutHeight(gCuts, cell->k, cell->incumbX, prob[0]->num->cols, cell->lb);
+//		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
+//		for (j = 1; j < gCuts->cnt; j++) {
+//			ht = gCuts->vals[j]->alpha - vXv(gCuts->vals[j]->beta, cell->incumbX, NULL, prob[0]->num->cols);
+//			if ( est < ht)
+//				est = ht;
+//		}
 
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach,
 		 * we don't include the incumb_x * c in estimate */
@@ -218,15 +219,12 @@ void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType 
 						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
 					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					gCuts->vals[cnt]->alpha += omega->weights[observ[obs]] * multiplier *
-							(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
+					gCuts->vals[cnt]->alpha += multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
 
 					for (c = 1; c <= num->cntCcols; c++)
-						gCuts->vals[cnt]->beta[coord->CCols[c]] += omega->weights[observ[obs]] *
-						multiplier * sigma->vals[sigmaIdx].piC[c];
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += multiplier * sigma->vals[sigmaIdx].piC[c];
 					for (c = 1; c <= num->rvCOmCnt; c++)
-						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += omega->weights[observ[obs]] *
-						multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
 				}
 				count++;
 			}

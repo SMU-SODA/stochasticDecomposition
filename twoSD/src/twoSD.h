@@ -163,7 +163,6 @@ int readConfig(cString path2config, cString inputDir);
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
-void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
@@ -223,6 +222,11 @@ void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
-void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
+
+/* inout.c */
+void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);
+void writeEvaluationStatistics(FILE *soln, double mean, double stdev, int cnt);
+void printOptimizationSummary(cellType *cell);
+void printEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 #endif /* TWOSD_H_ */
