@@ -165,7 +165,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 	float endval;
 
 	for (i = 0; i < numOmega; i++) {
-		p = scalit(0, 1, seed);
+		p = scalit(pow(10,-35), 1-pow(10,-5), seed);
 
 		zero = 0.0;
 		one = 1.0;
