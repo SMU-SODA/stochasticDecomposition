@@ -608,7 +608,10 @@ void freeCutsType(cutsType *cuts, bool partial) {
 
 /* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
  * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
- * duplicate of existing cut before it is added to the pool. */
+ * duplicate of existing cut before it is added to the pool.
+ * In the original implementation, an old incumbent cut is REPLACED by the new incumbent cut. In this implementation, a loose cut (irrespective of
+ * whether it is an incumbent or a candidate solution) is removed to make room for the new cut.
+ * */
 int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) {
 	int	cnt;
 

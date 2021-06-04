@@ -150,10 +150,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m+1] -= stoc->mean[m];
 
-		observ[1] = 0;
-		observ[2] = -1.5000249999999999;
-		observ[3] = 1.498675;
-
 		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
 		omegaIdx = calcOmega(observ, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
 
