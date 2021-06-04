@@ -17,9 +17,9 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut, bool isIncumb);
 
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb) {
 	oneCut 	*cut;
 	int    	cutIdx, obs;
 
@@ -78,7 +78,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb) {
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
+	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false, isIncumb)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
@@ -276,7 +276,7 @@ cutsType *newCuts(int maxCuts) {
 }//END newCuts
 
 /* This function will remove the oldest cut whose corresponding dual variable is zero (thus, a cut which was slack in last solution). */
-int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb) {
+int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb, bool isIncumb) {
 	double height, minHeight;
 	int minObs, oldestCut,idx;
 
@@ -285,7 +285,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 
 	/* identify the oldest loose cut */
 	for (idx = 0; idx < cell->cuts->cnt; idx++) {
-		if ( idx == cell->iCutIdx || cell->cuts->vals[idx]->rowNum < 0)
+		if ( (idx == cell->iCutIdx && !isIncumb) || cell->cuts->vals[idx]->rowNum < 0)
 			/* avoid dropping incumbent cut and newly added cuts */
 			continue;
 
@@ -301,7 +301,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 		oldestCut = 0;
 
 		for (idx = 1; idx < cell->cuts->cnt; idx++) {
-			if (idx == cell->iCutIdx)
+			if (idx == cell->iCutIdx && !isIncumb)
 				continue;
 
 			height = cutHeight(cell->cuts->vals[idx], cell->sampleSize, candidX, betaLen, lb);
@@ -487,7 +487,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, true, false);
 			}
 		}
 	cell->fUpdt[1] = cell->omega->cnt;
@@ -510,7 +510,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, true, false);
 			}
 		}
 	cell->fUpdt[0] = cell->basis->cnt;
@@ -612,7 +612,7 @@ void freeCutsType(cutsType *cuts, bool partial) {
 /* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
  * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
  * duplicate of existing cut before it is added to the pool. */
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) {
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut, bool isIncumb) {
 	int	cnt;
 
 	if ( feasCut ) {
@@ -629,11 +629,19 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) 
 		cell->fcutsPool->vals[cell->fcutsPool->cnt] = cut;
 		return cell->fcutsPool->cnt++;
 	}
+	else if ( isIncumb ) {
+		if ( dropCut(cell, cell->iCutIdx) ){
+			errMsg("algorithm", "reduceCuts", "failed to drop a cut", 0);
+			return -1;
+		}
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		return cell->cuts->cnt++;
+	}
 	else {
 		if (cell->cuts->cnt >= cell->maxCuts) {
 			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
 			 * then make room by reducing the cuts from the structure. */
-			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
+			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb, isIncumb) < 0 ) {
 				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
 				return -1;
 			}
@@ -642,4 +650,4 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) 
 		return cell->cuts->cnt++;
 	}
 
-}//END addCut()
+}//END addCut2Pool()

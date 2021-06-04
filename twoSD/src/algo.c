@@ -155,14 +155,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		}
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb)) < 0 ) {
+		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, false)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb) ) < 0 ) {
+			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, true) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				goto TERMINATE;
 			}

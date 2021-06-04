@@ -106,7 +106,7 @@ typedef struct {
 	dVector      candidX;           /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
 
-	dVector      incumbX;			/* incumbent master solution */
+	dVector     incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
@@ -184,12 +184,12 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
-int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
+int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb, bool isIncumb);
 int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
 void printCut(cutsType *cuts, numType *num, int idx);
