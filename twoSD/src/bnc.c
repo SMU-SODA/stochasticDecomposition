@@ -961,21 +961,18 @@ struct BnCnodeType *nextNode(struct BnCnodeType *node)
 {
 	struct BnCnodeType *temp = NULL;
 	temp = node;
-	bool contin = true;
 
-	while (contin)
+	while (true)
 	{
 		temp = temp->prevnode;
 
 		if (temp->key == 0)
 		{
-			contin = false;
 			break;
 		}
 
 		if (temp->isActive == true)
 		{
-			contin = false;
 			break;
 		}
 
@@ -991,22 +988,18 @@ struct BnCnodeType *prevNode(struct BnCnodeType *node)
 
 	struct BnCnodeType *temp = rootNode;
 	struct BnCnodeType *prevtemp = rootNode;
-	temp = node;
-	bool contin = true;
 
-	while (contin)
+	while (true)
 	{
 
 		if (temp->nextnode == NULL || node->key == 0)
 		{
-			contin = false;
 			return NULL;
 		}
 		temp = temp->nextnode;
 
 		if (temp == node)
 		{
-			contin = false;
 			return prevtemp;
 		}
 		prevtemp = prevtemp->nextnode;
