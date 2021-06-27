@@ -81,7 +81,7 @@ bool fullTest(probType **prob, cellType *cell) {
 	}
 
 	/* (b) calculate empirical distribution of omegas */
-	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt+1, int)) )
+	if ( !(cdf = (iVector) arr_alloc(cell->omega->cnt, int)) )
 		errMsg("allocation", "fullTest", "failed to allocate memory to cdf",0);
 	if ( !(observ = (iVector) arr_alloc(cell->k, int)))
 		errMsg("allocation", "fullTest", "resampled observations", 0);
@@ -90,11 +90,11 @@ bool fullTest(probType **prob, cellType *cell) {
 
 	for (rep = 0; rep < config.BOOTSTRAP_REP; rep++) {
 		/* (c) resample from the set of observations */
-		resampleOmega(cdf, observ, cell->k-1);
+		resampleOmega(cdf, observ, cell->k);
 
 		/* (d) reform the good cuts by plugging in the omegas */
 		reformCuts(cell->basis, cell->sigma, cell->delta, cell->omega, prob[1]->num, prob[1]->coord,
-				gCuts, observ, cell->k-1, cell->lbType, prob[0]->lb, prob[0]->num->cols);
+				gCuts, observ, cell->k, cell->lbType, prob[0]->lb, prob[0]->num->cols);
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = maxCutHeight(gCuts, cell->k, cell->incumbX, prob[0]->num->cols, cell->lb);
@@ -305,7 +305,7 @@ double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM,
 	Vk_theta = 0.0;
 	for (cnt = 0; cnt < cuts->cnt; cnt++) {
 		/* 3a. Obtain theta from c->pi */
-		theta = ((double) (currIter - 1) / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
+		theta = ((double) currIter / (double) cuts->vals[cnt]->numSamples) * piM[cuts->vals[cnt]->rowNum + 1];
 
 		/* 3a. Obtain theta from c->pi */
 		Vk_theta += theta*(cuts->vals[cnt]->alpha - vXv(cuts->vals[cnt]->beta, incumbX, NULL, prob->num->cols));

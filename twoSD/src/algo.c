@@ -128,6 +128,11 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
+
+		/******* 1. Optimality tests *******/
+		if (optimal(prob, cell))
+			break;
+
 		cell->k++;
 		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -137,10 +142,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 			printf("\nIteration-%4d: ", cell->k);
 		}
 #endif
-
-		/******* 1. Optimality tests *******/
-		if (optimal(prob, cell))
-			break;
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
 		/* (a) Use the stoc file to generate observations */
