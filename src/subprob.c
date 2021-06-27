@@ -23,14 +23,14 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 	/* (a) compute and change the right-hand side using current observation and first-stage solution */
 	if ( computeRHS(subproblem->lp, prob->num, prob->coord, prob->bBar, prob->Cbar, Xvect, omega->vals[omegaIdx]) ) {
 		errMsg("algorithm", "solveSubprob", "failed to compute subproblem right-hand side", 0);
-		return -1;
+		return 1;
 	}
 
 	if ( prob->num->rvdOmCnt > 0 ) {
 		/* (b) Compute and change the cost coefficients using current observation */
 		if ( computeCostCoeff(subproblem->lp, prob->num, prob->coord, prob->dBar, omega->vals[omegaIdx]) ) {
 			errMsg("algorithm", "solveSubprob", "failed to compute subproblem cost coefficients", 0);
-			return -1;
+			return 1;
 		}
 	}
 
@@ -52,7 +52,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);
-			return -1;
+			return 1;
 		}
 	}
 	setIntParam(PARAM_PREIND, ON);
@@ -80,7 +80,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 #endif
 	}
 
-	return status;
+	return 0;
 }// END solveSubprob()
 
 /* This function computes the right hand side of the subproblem, based on a given X dVector and a given observation of omega.

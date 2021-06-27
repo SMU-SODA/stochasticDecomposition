@@ -9,12 +9,11 @@
  *
  */
 
-#include <twoSD.h>
-void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
-void printHelpMenu();
 
-long long	MEM_USED = 0;	/* amount of memory allocated each iteration */
-cString	outputDir;			/* output directory */
+#include <twoSD.h>
+
+long long	MEM_USED = 0;	/* Amount of memory allocated each iteration */
+cString   	outputDir;		/* output directory */
 configType	config;			/* algorithm tuning parameters */
 
 int main (int argc, char *argv[]) {
@@ -24,9 +23,8 @@ int main (int argc, char *argv[]) {
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 
-	outputDir = NULL;
-	/* read the default algorithm configuration parameters */
-	if (readConfig("./src/", inputDir) ) {
+	/* read algorithm configuration files */
+	if (readConfig("../", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}
@@ -56,8 +54,9 @@ int main (int argc, char *argv[]) {
 	freeOneProblem(orig);
 	freeTimeType(tim);
 	freeStocType(stoc);
+	mem_free(probName);
+	mem_free(inputDir);
 	closeSolver();
-	mem_free(probName); mem_free(inputDir);
 
 	return 0;
 }//END main()
@@ -107,10 +106,6 @@ void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir) 
 				config.COMPROMISE_PROB = atoi(argv[++i]);
 				break;
 			}
-			case 's':{
-				config.SAMPLE_INCREMENT = atoi(argv[++i]);
-				break;
-			}
 			}
 		}
 		else {
@@ -145,8 +140,112 @@ void printHelpMenu() {
 	printf("         -t {l,n,t} -> tolerance level to be employed.\n");
 	printf("                        Suggested tolerance(EPSILON, SCAN_LEN) = 'l'oose (0.01, 128), 'n'omimal (0.001, 256) and 't'ight (0.0001, 512)\n");
 	/* MULTIPLE_REP */
-	printf("         -m {0,1}   -> use multiple replication.\n");
+	printf("         -m {0,1}   -> number of replications.\n");
 	/* COMPROMISE_PROB */
 	printf("         -c {0,1}   -> build and solve compromise problem.\n");
 
 }//END helpMenu()
+
+int readConfig(cString path2config, cString inputDir) {
+	FILE 	*fptr;
+	char	line[2*BLOCKSIZE], comment[2*BLOCKSIZE];
+	int 	status, r2 = 1, maxReps = 30;
+
+	strcpy(line, path2config);	strcat(line, "config.sd");
+	fptr = fopen(line, "r");
+	if ( fptr == NULL ) {
+		errMsg("read", "readConfig", "failed to open configuration file", 0);
+		return 1;
+	}
+
+	config.RUN_SEED = (long long *) arr_alloc(maxReps+1, long long);
+	config.EVAL_SEED = (long long *) arr_alloc(maxReps+1, long long);
+	config.NUM_SEEDS = 0;
+
+	while ((status = (fscanf(fptr, "%s", line) != EOF))) {
+		if (!(strcmp(line, "RUN_SEED"))) {
+			fscanf(fptr, "%lld", &config.RUN_SEED[config.NUM_SEEDS+1]);
+			config.NUM_SEEDS++;
+			if ( config.NUM_SEEDS > maxReps + 1 ) {
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (maxReps+1)*sizeof(long long));
+				maxReps *= 2;
+			}
+		}
+		else if (!(strcmp(line, "TOLERANCE")))
+			fscanf(fptr, "%lf", &config.TOLERANCE);
+		else if (!(strcmp(line, "MIN_ITER")))
+			fscanf(fptr, "%d", &config.MIN_ITER);
+		else if (!(strcmp(line, "MAX_ITER")))
+			fscanf(fptr, "%d", &config.MAX_ITER);
+		else if (!(strcmp(line, "MASTER_TYPE")))
+			fscanf(fptr, "%d", &config.MASTER_TYPE);
+		else if (!(strcmp(line, "CUT_MULT")))
+			fscanf(fptr, "%d", &config.CUT_MULT);
+		else if (!(strcmp(line, "TAU")))
+			fscanf(fptr, "%d", &config.TAU);
+		else if (!(strcmp(line, "MIN_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MIN_QUAD_SCALAR);
+		else if (!(strcmp(line, "MAX_QUAD_SCALAR")))
+			fscanf(fptr, "%lf", &config.MAX_QUAD_SCALAR);
+		else if (!(strcmp(line, "R1")))
+			fscanf(fptr, "%lf", &config.R1);
+		else if (!(strcmp(line, "R2")))
+			fscanf(fptr, "%lf", &config.R2);
+		else if (!(strcmp(line, "R3")))
+			fscanf(fptr, "%lf", &config.R3);
+		else if (!(strcmp(line, "DUAL_STABILITY")))
+			fscanf(fptr, "%d", &config.DUAL_STABILITY);
+		else if (!(strcmp(line, "PI_EVAL_START")))
+			fscanf(fptr, "%d", &config.PI_EVAL_START);
+		else if (!(strcmp(line, "PI_CYCLE")))
+			fscanf(fptr, "%d", &config.PI_CYCLE);
+		else if (!(strcmp(line, "PERCENT_PASS")))
+			fscanf(fptr, "%lf", &config.PERCENT_PASS);
+		else if (!(strcmp(line, "SCAN_LEN")))
+			fscanf(fptr, "%d", &config.SCAN_LEN);
+		else if (!(strcmp(line, "EVAL_FLAG")))
+			fscanf(fptr, "%d", &config.EVAL_FLAG);
+		else if (!(strcmp(line, "EVAL_SEED"))) {
+			fscanf(fptr, "%lld", &config.EVAL_SEED[r2++]);
+			if ( r2 > maxReps ) {
+				config.RUN_SEED = (long long *) mem_realloc(config.RUN_SEED, (2*maxReps+1)*sizeof(long long));
+				maxReps *= 2;
+			}
+		}
+		else if (!(strcmp(line, "EVAL_MIN_ITER")))
+			fscanf(fptr, "%d", &config.EVAL_MIN_ITER);
+		else if (!(strcmp(line, "EVAL_ERROR")))
+			fscanf(fptr, "%lf", &config.EVAL_ERROR);
+		else if (!(strcmp(line, "PRE_EPSILON")))
+			fscanf(fptr, "%lf", &config.PRE_EPSILON);
+		else if (!(strcmp(line, "EPSILON")))
+			fscanf(fptr, "%lf", &config.EPSILON);
+		else if (!(strcmp(line, "BOOTSTRAP_REP")))
+			fscanf(fptr, "%d", &config.BOOTSTRAP_REP);
+		else if (!(strcmp(line, "MULTIPLE_REP")))
+			fscanf(fptr, "%d", &config.MULTIPLE_REP);
+		else if (!(strcmp(line, "COMPROMISE_PROB")))
+			fscanf(fptr, "%d", &config.COMPROMISE_PROB);
+		else if (!strcmp(line, "//"))
+			fgets(comment, 2*BLOCKSIZE, fptr);
+		else {
+			printf ("%s\n", line);
+			errMsg("read", "readConfig", "unrecognized parameter in configuration file", 1);
+		}
+	}
+
+	fclose(fptr);
+
+	config.NUM_SEEDS = minimum(config.NUM_SEEDS, r2);
+	if ( config.MULTIPLE_REP > config.NUM_SEEDS ) {
+		printf("Requesting to perform more replications than the number of seeds provided.\n");
+		return 1;
+	}
+
+	if ( config.MULTIPLE_REP == 1 ) {
+		config.COMPROMISE_PROB = 0;
+	}
+
+
+	return 0;
+}//END readConfig()

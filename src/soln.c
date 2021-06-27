@@ -19,14 +19,14 @@ extern configType config;
  ** between the candidate and incumbent x than the previous approximation
  ** gave, then the incumbent x is updated to the candidate x, and the
  ** reference to the incumbent cut is updated as well.  The function returns
- ** TRUE if the incumbent was updated; FALSE otherwise.
+ ** true if the incumbent was updated; false otherwise.
  \***********************************************************************/
 int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	double  candidEst;
 
 	/* Calculate height at new candidate x with newest cut included */
-	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->candidX, prob->num->cols, cell->lb);;
-	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->sampleSize, cell->incumbX, prob->num->cols, cell->lb);
+	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->cuts, cell->k, cell->candidX, prob->num->cols, cell->lb);;
+	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->cuts, cell->k, cell->incumbX, prob->num->cols, cell->lb);
 
 #ifdef ALGO_CHECK
 	printf("\nCandidate estimate = %lf, Incumbent estimate = %lf",candidEst, cell->incumbEst);
@@ -39,13 +39,15 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
 			return 1;
 		}
+		cell->cuts->vals[cell->iCutIdx]->type = CANDIDATE;
+		cell->cuts->vals[candidCut]->type = INCUMBENT;
 		cell->iCutIdx = candidCut;
 		cell->incumbChg = false;
 		printf("+"); fflush(stdout);
 	}
 	else {
 		/* Update quad_scalar when no incumbent is found. */
-		cell->quadScalar = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
+		cell->quadScalar = fmin(config.MAX_QUAD_SCALAR, cell->quadScalar / config.R2);
 		cell->normDk_1 = cell->normDk;
 	}
 
@@ -67,8 +69,8 @@ int replaceIncumbent(probType *prob, cellType *cell, double candidEst) {
 	if ( cell->normDk > config.TOLERANCE )
 		if ( cell->normDk >= config.R3 * cell->normDk_1 ) {
 			cell->quadScalar *= config.R2 * config.R3 * cell->normDk_1/ cell->normDk;
-			cell->quadScalar  = minimum(config.MAX_QUAD_SCALAR, cell->quadScalar);
-			cell->quadScalar = maximum(config.MIN_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar  = fmin(config.MAX_QUAD_SCALAR, cell->quadScalar);
+			cell->quadScalar = fmax(config.MIN_QUAD_SCALAR, cell->quadScalar);
 		}
 
 	/* update the right-hand side and the bounds with new incumbent solution */

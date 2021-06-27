@@ -73,7 +73,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			fprintf(sFile,"\n");
 
 		/* Save the batch details and build the compromise problem. */
-		if ( config.COMPROMISE_PROB) {
+		if ( config.COMPROMISE_PROB ) {
 			buildCompromise(prob[0], cell, batch);
 		}
 	}
@@ -85,21 +85,21 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			goto TERMINATE;
 		}
 
-		fprintf(sFile, "\n====================================================================================================================================\n");
-		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
-		fprintf(sFile, "\n====================================================================================================================================\n");
-		fprintf(sFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(bFile, "\n====================================================================================================================================\n");
+		fprintf(bFile, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
+		fprintf(stdout, "\n====================================================================================================================================\n");
+		fprintf(stdout, "\n----------------------------------------- Compromise solution --------------------------------------\n\n");
 		/* Evaluate the compromise solution */
 		evaluate(sFile, stoc, prob, cell->subprob, batch->compromiseX);
 
-		fprintf(sFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
+		fprintf(bFile, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		fprintf(stdout, "\n------------------------------------------- Average solution ---------------------------------------\n\n");
 		/* Evaluate the average solution */
 		evaluate(sFile, stoc, prob, cell->subprob, batch->avgX);
 	}
 
 	fclose(sFile); fclose(iFile); fclose(bFile);
- 	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
+	printf("\nSuccessfully completed two-stage stochastic decomposition algorithm.\n");
 
 	/* free up memory before leaving */
 	if (meanSol) mem_free(meanSol);
@@ -117,15 +117,22 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 }//END algo()
 
 int solveCell(stocType *stoc, probType **prob, cellType *cell) {
-	dVector 	observ;
-	int			m, candidCut, obs;
-	clock_t		tic;
+	dVector observ;
+	int		m, omegaIdx, candidCut;
+	bool	newOmegaFlag;
+	clock_t	tic;
 
 	/* -+-+-+-+-+-+-+-+-+-+-+-+-+-+- Main Algorithm -+-+-+-+-+-+-+-+-+-+-+-+-+-+- */
-	observ = (dVector) arr_alloc(stoc->numOmega + 1, double);
+	if ( !(observ = (dVector) arr_alloc(stoc->numOmega + 1, double)) )
+		errMsg("allocation", "solveCell", "observ", 0);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
+
+		/******* 1. Optimality tests *******/
+		if (optimal(prob, cell))
+			break;
+
 		cell->k++;
 		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -136,37 +143,29 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		}
 #endif
 
-		/******* 1. Optimality tests *******/
-		if (optimal(prob, cell))
-			break;
+		/******* 2. Generate new observation, and add it to the set of observations *******/
+		/* (a) Use the stoc file to generate observations */
+		generateOmega(stoc, observ+1, config.TOLERANCE, &config.RUN_SEED[0], NULL);
 
-		/******* 2. Generate new observations, and add it to the set of observations *******/
-		cell->sampleSize += config.SAMPLE_INCREMENT;
-		for ( obs = 0; obs < config.SAMPLE_INCREMENT; obs++ ) {
-			/* (a) Use the stoc file to generate observations */
-			generateOmega(stoc, observ+1, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
+		for ( m = 0; m < stoc->numOmega; m++ )
+			observ[m+1] -= stoc->mean[m];
 
-			/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
-			for ( m = 0; m < stoc->numOmega; m++ )
-				observ[m+1] -= stoc->mean[m];
-
-			/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
-			cell->sample->omegaIdx[obs] = calcOmega(observ, 0, prob[1]->num->numRV, cell->omega, &cell->sample->newOmegaFlag[obs], config.TOLERANCE);
-		}
+		/* (d) update omegaType with the latest observation. If solving with incumbent then this update has already been processed. */
+		omegaIdx = calcOmega(observ, 0, prob[1]->num->numRV, cell->omega, &newOmegaFlag, config.TOLERANCE);
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, false)) < 0 ) {
+		if ( (candidCut = formSDCut(prob, cell, cell->candidX, omegaIdx, &newOmegaFlag, prob[0]->lb, CANDIDATE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, true) ) < 0 ) {
+			if ( (formSDCut(prob, cell, cell->incumbX, omegaIdx, &newOmegaFlag, prob[0]->lb, INCUMBENT) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				goto TERMINATE;
 			}
-			cell->iCutUpdt = cell->k;
 		}
 
 		/******* 5. Check improvement in predicted values at candidate solution *******/
@@ -193,3 +192,5 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(observ);
 	return 1;
 }//END solveCell()
+
+

@@ -38,6 +38,7 @@ typedef struct{
 	double	EPSILON;			/* Optimality gap */
 
 	int		EVAL_FLAG;
+	int		NUM_EVALS;
 	long long *EVAL_SEED;
 	int		EVAL_MIN_ITER;
 	double	EVAL_ERROR;
@@ -57,9 +58,13 @@ typedef struct{
 
 	int 	MULTIPLE_REP;		/* Number of replications to be used. */
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
-
-	int 	SAMPLE_INCREMENT;	/* Number of new observations added to the sample */
 }configType;
+
+typedef enum{
+	CANDIDATE,
+	INCUMBENT,
+	FEASIBILITY
+}typeOfCut;
 
 typedef struct {
 	double  alpha;                  /* scalar value for the righ-hand side */
@@ -67,7 +72,7 @@ typedef struct {
 	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	iVector	iStar;					/* indices of maximal pi for each distint observation */
-	bool	isIncumb;				/* indicates if the cut is an incumbent cut */
+	typeOfCut	type;				/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
 	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
 	int 	rowNum;					/* row number for master problem in solver */
@@ -76,7 +81,7 @@ typedef struct {
 
 typedef struct {
 	int     cnt;                    /* number of cuts */
-	oneCut  **vals;					/* A vector of oneCut type, each element has information about a particular cut. */
+	oneCut  **vals;
 }cutsType;
 
 typedef struct {
@@ -95,7 +100,6 @@ typedef struct {
 
 typedef struct {
 	int         k;                  /* number of iterations */
-	int 		sampleSize;			/* total number of observations currently being used, that is the sample size. */
 	int 		LPcnt; 				/* the number of LPs solved. */
     double		lb;					/* lower bound on cell objective function */
     int			lbType;				/* type of lower bound being used TRIVIAL if 0, else NONTRIVIAL */
@@ -103,10 +107,10 @@ typedef struct {
     oneProblem  *master;            /* store master information */
 	oneProblem 	*subprob;			/* store subproblem information */
 
-	dVector      candidX;           /* primal solution of the master problem */
+	dVector      candidX;            /* primal solution of the master problem */
 	double      candidEst;          /* objective value master problem */
 
-	dVector     incumbX;			/* incumbent master solution */
+	dVector      incumbX;			/* incumbent master solution */
 	double      incumbEst;			/* estimate at incumbent solution */
 	double 		quadScalar; 		/* the proximal parameter/quadratic scalar 'sigma' */
 	bool        incumbChg;			/* set to be true if the incumbent solution has changed in an iteration */
@@ -116,8 +120,8 @@ typedef struct {
 	double      normDk_1;			/* (\Delta x^{k-1})^2 */
 	double      normDk;				/* (\Delta x^k)^2 */
 
-	dVector 	piM;				/* master dual information */
-	dVector     djM;                /* master reduced cost dVector */
+	dVector 		piM;				/* master dual information */
+	dVector      djM;                /* master reduced cost dVector */
 
     int      	maxCuts;            /* maximum number of cuts to be used*/
 	cutsType    *cuts;              /* optimality cuts */
@@ -131,8 +135,8 @@ typedef struct {
 	omegaType 	*omega;				/* all realizations observed during the algorithm */
 	basisType	*basis;				/* hold unique basis identified */
 
-    bool        optFlag;			/* Optimality flag */
-	dVector     pi_ratio;			/* Pi ratios over a window of selected size (determined by tolerance level) */
+    bool        optFlag;
+	dVector      pi_ratio;
     bool        dualStableFlag; 	/* indicates if dual variables are stable */
 
     bool 		optMode;			/* When false, the algorithm tries to resolve infeasibility */
@@ -141,15 +145,13 @@ typedef struct {
 	int			feasCnt;			/* keeps track of the number of times infeasible candidate solution was encountered */
 	bool		infeasIncumb;		/* indicates if the incumbent solution is infeasible */
 
-	sampleType	*sample;
-
 	runTime		time;				/* Run time structure */
 }cellType;
 
 typedef struct {
 	oneProblem	*sp;				/* compromise problem */
 	int 		cnt;				/* number of replications */
-	iVector 	ck;					/* number of iterations for each replication */
+	iVector 		ck;					/* number of iterations for each replication */
 	dVector		objLB;				/* replication lower bound */
 	dVector		objUB;				/* replication upper bound, if batch solution is evaluated */
 	double		objComp;			/* optimal value of compromise problem */
@@ -159,14 +161,17 @@ typedef struct {
 	dVector		avgX;				/* average solution across batches */
 }batchSummary;
 
+/* twoSD.c */
+void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
+void printHelpMenu();
+int readConfig(cString path2config, cString inputDir);
+
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
 int solveCell(stocType *stoc, probType **prob, cellType *cell);
-void writeOptimizationSummary(FILE *soln, FILE *incumb, probType **prob, cellType *cell, bool header);
 void cleanupAlgo(probType **prob, cellType *cell, int T);
 
 /* setup.c */
-int readConfig(cString path2config, cString inputDir);
 int setupAlgo(oneProblem *orig, stocType *stoc, timeType *tim, probType ***prob, cellType **cell, batchSummary **batch, dVector *meanSol);
 cellType *newCell(stocType *stoc, probType **prob, dVector xk);
 int cleanCellType(cellType *cell, probType *prob, dVector xk);
@@ -184,12 +189,12 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb);
-oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
-		dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb, typeOfCut type);
+oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
+		bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);
 cutsType *newCuts(int maxCuts);
-int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb, bool isIncumb);
+int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double lb);
 int dropCut(cellType *cell, int cutIdx);
 double calcVariance(double *x, double *mean_value, double *stdev_value, int batch_size);
 void printCut(cutsType *cuts, numType *num, int idx);
@@ -209,7 +214,7 @@ bool preTest(cellType *cell);
 bool fullTest(probType **prob, cellType *cell);
 cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
-		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
+		cutsType *gCuts, int *observ, int k, int lbType, int lb, int lenX);
 double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts);
 void empiricalDistribution(omegaType *omega, int *cdf);
 void resampleOmega(iVector cdf, iVector observ, int numSamples);
@@ -223,7 +228,6 @@ void freeBatchType(batchSummary *batch);
 
 /* evaluate.c */
 int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, dVector Xvect);
-void writeEvaluationSummary(FILE *soln, double mean, double stdev, int cnt);
 
 /* inout.c */
 void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cellType *cell, int rep);

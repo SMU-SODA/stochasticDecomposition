@@ -17,11 +17,11 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	dVector	coef, qsepvec;
 	iVector	indices;
 	int 	i, idx, cnt, cOffset, rOffset1, rOffset2;
-	char 	*q, tempName[2*NAMESIZE], batchNameSuffix[NAMESIZE];
+	char 	*q, tempName[NAMESIZE], batchNameSuffix[2*NAMESIZE];
 
 	sprintf(batchNameSuffix, "_B%02d", batch->cnt);
 
-	batch->ck[batch->cnt] 	 = cell->sampleSize;
+	batch->ck[batch->cnt] 	 = cell->k;
 	batch->objLB[batch->cnt] = cell->incumbEst;
 
 	batch->incumbX[batch->cnt] = duplicVector(cell->incumbX, prob->num->cols+1);
@@ -163,7 +163,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* b. Change the right-hand side with the incumbent solution of the current batch */
-	indices = (iVector) arr_alloc(maximum(prob->num->cols,prob->num->rows)+1, int);
+	indices = (iVector) arr_alloc(fmax(prob->num->cols,prob->num->rows)+1, int);
 	coef = (dVector) arr_alloc(prob->num->rows+1, double);
 	for (i = 0; i < prob->num->rows; i++) {
 		coef[i+1]  = prob->sp->rhsx[i];
@@ -180,7 +180,7 @@ int buildCompromise(probType *prob, cellType *cell, batchSummary *batch) {
 	}
 
 	/* c. Add the cuts in the problem */
-	for ( i = 0; i < maximum(prob->num->cols,prob->num->rows); i++ )
+	for ( i = 0; i < fmax(prob->num->cols,prob->num->rows); i++ )
 		indices[i+1] = i+cOffset;
 	indices[0] = idx;
 

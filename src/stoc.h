@@ -69,17 +69,6 @@ typedef struct {
 	pixbCType 	**vals;
 } deltaType;
 
-/* This structure is used to hold information about the sample used in the current iteration. Subproblems corresponding to the observations
- * in this sample are solved to optimality, and the solutions are used to conduct the stochastic updates.
- */
-typedef struct {
-	int		cnt;
-	iVector	omegaIdx;				/* Observation index in omegaType */
-	bool 	*newOmegaFlag;  		/* Flag indicates if the observation is encountered for the first time. */
-	iVector basisIdx;	    		/* Basis index in basisType */
-	bool	*newBasisFlag;  		/* Flag indicates if the basis is encountered for the first time. */
-}sampleType;
-
 typedef struct {
 	int				ck;			/* The first time the basis was encountered. */
 	int				weight;		/* Frequency of observation for each unique basis */
@@ -121,8 +110,8 @@ oneProblem *newSubprob(oneProblem *sp);
 /* stocUpdate.c */
 int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *lambda, sigmaType *sigma, deltaType *delta, int deltaRowLength,
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
-int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
-		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
+int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, dVector piCbarX, dVector Xvect, dVector observ,
+		int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,
@@ -146,7 +135,5 @@ bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int n
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength);
 void freeOneBasis(oneBasis *B);
 void freeBasisType(basisType *basis, bool partial);
-sampleType *newSample(int sampleSize);
-void freeSampleType(sampleType *sample);
 
 #endif /* STOC_H_ */
