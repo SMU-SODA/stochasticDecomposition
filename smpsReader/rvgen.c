@@ -282,19 +282,9 @@ float randUniform_new(long long *SEED) {
 	return (rand()/RAND_MAX+1);
 }
 
-int randInteger(long long *SEED, int iMax) {
-	static int lo_bits, hi_bits;
-	int val;
-
-	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
-	hi_bits = (int) (((*SEED) >> 16) * 16807) + (lo_bits >> 16);
-	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
-
-	srand((unsigned) (*SEED));
-	val = rand() % iMax;
-
-	return val;
-}//END randInteger()
+int randInteger(long long *seed, int iMax) {
+	return (int) (randUniform(seed) * iMax);
+}
 
 /* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
  * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to

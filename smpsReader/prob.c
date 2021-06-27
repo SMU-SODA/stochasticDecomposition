@@ -516,7 +516,7 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 
 	/* solve the mean value problem */
 	changeLPSolverType(ALG_AUTOMATIC);
-	status = solveProblem(orig->lp, orig->name, PROB_QP, &status);
+	status = solveProblem(orig->lp, orig->name, -1, &status);
 	if ( status ) {
 		errMsg("setup", "meanProblem", "failed to solve mean value problem", 0);
 		return NULL;

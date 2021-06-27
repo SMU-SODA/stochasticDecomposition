@@ -17,6 +17,7 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
+		changeLPSolverType(ALG_AUTOMATIC);
 		setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
 		setIntParam(PARAM_PREIND, ON);
@@ -25,6 +26,7 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 		(*status) = CPXqpopt(env, lp);
 		break;
 	default:
+		(*status) = CPXbaropt(env, lp);
 		break;
 	}
 
