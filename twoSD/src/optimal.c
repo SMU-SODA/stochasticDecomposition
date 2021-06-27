@@ -41,7 +41,6 @@ bool optimal(probType **prob, cellType *cell) {
 	return false;
 }//optimal()
 
-
 /* Because checking optimality is an arduous task, we first do a pre-check to determine if the full test is worthwhile. This function
  * determines whether the height at the candidate is close enough to the height at the incumbent to warrant an optimality test. */
 bool preTest(cellType *cell) {
@@ -70,8 +69,8 @@ bool preTest(cellType *cell) {
 bool fullTest(probType **prob, cellType *cell) {
 	cutsType *gCuts;
 	iVector  cdf, observ;
-	double  est, ht, LB = prob[0]->lb;
-	int 	numPass = 0, rep, j;
+	double  est, LB = prob[0]->lb;
+	int 	numPass = 0, rep;
 
 	clock_t tic = clock();
 	/* (a) choose good cuts */
@@ -99,12 +98,6 @@ bool fullTest(probType **prob, cellType *cell) {
 
 		/* (e) find out the best reformed cut estimate at the incumbent solution */
 		est = maxCutHeight(gCuts, cell->k, cell->incumbX, prob[0]->num->cols, cell->lb);
-//		est = gCuts->vals[0]->alpha - vXv(gCuts->vals[0]->beta, cell->incumbX, NULL, prob[0]->num->cols);
-//		for (j = 1; j < gCuts->cnt; j++) {
-//			ht = gCuts->vals[j]->alpha - vXv(gCuts->vals[j]->beta, cell->incumbX, NULL, prob[0]->num->cols);
-//			if ( est < ht)
-//				est = ht;
-//		}
 
 		/* (f) Solve the master with reformed "good cuts" (all previous cuts are dropped) to obtain a lowe bound. In QP approach,
 		 * we don't include the incumb_x * c in estimate */

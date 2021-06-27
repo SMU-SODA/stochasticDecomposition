@@ -60,13 +60,19 @@ typedef struct{
 	int		COMPROMISE_PROB;	/* Compromise solution created and solved for compromise solution. */
 }configType;
 
+typedef enum{
+	CANDIDATE,
+	INCUMBENT,
+	FEASIBILITY
+}typeOfCut;
+
 typedef struct {
 	double  alpha;                  /* scalar value for the righ-hand side */
 	dVector  beta;                   /* coefficients of the master problems's primal variables */
 	int 	numSamples;				/* number of samples on which the given cut was based */
 	int 	omegaCnt;				/* number of *distinct* observations on which the cut is based (this is also the length of istar) */
 	iVector	iStar;					/* indices of maximal pi for each distint observation */
-	bool	isIncumb;				/* indicates if the cut is an incumbent cut */
+	typeOfCut	type;				/* indicates if the cut is an incumbent cut */
 	double 	alphaIncumb;			/* right-hand side when using QP master, this is useful for quick updates */
 	int 	slackCnt;				/* number of times a cut has been slack, used in deciding when the cut needs to be dropped */
 	int 	rowNum;					/* row number for master problem in solver */
@@ -183,7 +189,7 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb, typeOfCut type);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
 		bool *dualStableFlag, dVector pi_ratio, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);

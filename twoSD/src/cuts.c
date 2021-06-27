@@ -17,9 +17,9 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, typeOfCut type);
 
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb) {
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool *newOmegaFlag, double lb, typeOfCut type) {
 	oneCut 	*cut;
 	int    	cutIdx;
 	bool	newBasisFlag;
@@ -58,6 +58,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
 	}
+	cut->type = type;
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 #if defined(STOCH_CHECK)
@@ -75,7 +76,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
+	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, type)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
@@ -85,7 +86,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, int omegaIdx, bool
 	}
 
 	return cutIdx;
-}//END formCut()
+}//END formSDCut()
 
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, dVector Xvect, int numSamples,
 		bool *dualStableFlag, dVector pi_ratio, double lb) {
@@ -234,7 +235,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut = (oneCut *) mem_malloc (sizeof(oneCut));
 	cut->numSamples = numSamples;
 	cut->omegaCnt = numIstar;
-	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
+	cut->type = CANDIDATE; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 
@@ -282,7 +283,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 
 	/* identify the oldest loose cut */
 	for (idx = 0; idx < cell->cuts->cnt; idx++) {
-		if ( idx == cell->iCutIdx || cell->cuts->vals[idx]->rowNum < 0)
+		if ( cell->cuts->vals[idx]->type == INCUMBENT )
 			/* avoid dropping incumbent cut and newly added cuts */
 			continue;
 
@@ -298,7 +299,7 @@ int reduceCuts(cellType *cell, dVector candidX, dVector pi, int betaLen, double 
 		oldestCut = 0;
 
 		for (idx = 1; idx < cell->cuts->cnt; idx++) {
-			if (idx == cell->iCutIdx)
+			if (cell->cuts->vals[idx]->type == INCUMBENT)
 				continue;
 
 			height = cutHeight(cell->cuts->vals[idx], cell->k, candidX, betaLen, lb);
@@ -484,7 +485,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, FEASIBILITY);
 			}
 		}
 	cell->fUpdt[1] = cell->omega->cnt;
@@ -507,7 +508,7 @@ int updtFeasCutPool(numType *num, coordType *coord, cellType *cell) {
 				for (c = 1; c <= num->rvCOmCnt; c++)
 					cut->beta[coord->rvCols[c]] += cell->delta->vals[lambdaIdx][obs].piC[c];
 
-				addCut2Pool(cell, cut, num->prevCols, 0.0, true);
+				addCut2Pool(cell, cut, num->prevCols, 0.0, FEASIBILITY);
 			}
 		}
 	cell->fUpdt[0] = cell->basis->cnt;
@@ -612,10 +613,34 @@ void freeCutsType(cutsType *cuts, bool partial) {
  * In the original implementation, an old incumbent cut is REPLACED by the new incumbent cut. In this implementation, a loose cut (irrespective of
  * whether it is an incumbent or a candidate solution) is removed to make room for the new cut.
  * */
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) {
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, typeOfCut type) {
 	int	cnt;
 
-	if ( feasCut ) {
+	switch ( type ) {
+	case CANDIDATE:
+		if (cell->cuts->cnt >= cell->maxCuts) {
+			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
+			 * then make room by reducing the cuts from the structure. */
+			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
+				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
+				return -1;
+			}
+		}
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		return cell->cuts->cnt++;
+	case INCUMBENT:
+		if (cell->cuts->cnt >= cell->maxCuts) {
+			if ( dropCut(cell, cell->iCutIdx) ){
+				errMsg("algorithm", "reduceCuts", "failed to drop a cut", 0);
+				return -1;
+			}
+		}
+		cell->cuts->vals[cell->iCutIdx]->type = CANDIDATE;
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		cell->iCutIdx = cell->cuts->cnt;
+		cell->iCutUpdt = cell->k;
+		return cell->cuts->cnt++;
+	case FEASIBILITY:
 		/* If we are adding a feasibility cut, make sure there are no duplicates */
 		for (cnt = 0; cnt < cell->fcutsPool->cnt; cnt++) {
 			if (DBL_ABS(cut->alpha - cell->fcutsPool->vals[cnt]->alpha) < config.TOLERANCE) {
@@ -628,18 +653,9 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) 
 		}
 		cell->fcutsPool->vals[cell->fcutsPool->cnt] = cut;
 		return cell->fcutsPool->cnt++;
-	}
-	else {
-		if (cell->cuts->cnt >= cell->maxCuts) {
-			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
-			 * then make room by reducing the cuts from the structure. */
-			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
-				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
-				return -1;
-			}
-		}
-		cell->cuts->vals[cell->cuts->cnt] = cut;
-		return cell->cuts->cnt++;
+	default:
+		errMsg("algorithm", "addCut2Pool", "Unknown cut type", 0);
 	}
 
+	return -1;
 }//END addCut()

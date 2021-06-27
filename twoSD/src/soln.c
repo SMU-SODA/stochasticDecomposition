@@ -39,6 +39,8 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 			errMsg("algorithm", "checkImprovement", "failed to replace incumbent solution with candidate", 0);
 			return 1;
 		}
+		cell->cuts->vals[cell->iCutIdx]->type = CANDIDATE;
+		cell->cuts->vals[candidCut]->type = INCUMBENT;
 		cell->iCutIdx = candidCut;
 		cell->incumbChg = false;
 		printf("+"); fflush(stdout);

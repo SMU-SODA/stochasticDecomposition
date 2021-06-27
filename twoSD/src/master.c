@@ -38,7 +38,8 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 
 	/* solve the master problem */
 	clock_t tic = clock();
-	changeQPSolverType(ALG_CONCURRENT);
+//	changeQPSolverType(ALG_CONCURRENT);
+	setIntParam(CPX_PARAM_BARCROSSALG,0);
 	if ( solveProblem(cell->master->lp, cell->master->name, config.MASTER_TYPE, &status) ) {
 		if ( status == STAT_INFEASIBLE ) {
 			errMsg("algorithm", "solveQPMaster", "Master problem is infeasible. Check the problem formulation!",0);
@@ -51,6 +52,8 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 		return 1;
 	}
 	cell->time.masterIter = ((double) (clock() - tic))/CLOCKS_PER_SEC;
+
+	double val = getObjective(cell->master->lp, PROB_QP);
 
 	/* Get the most recent optimal solution to master program */
 	if ( getPrimal(cell->master->lp, cell->candidX, num->cols) ) {
@@ -432,8 +435,8 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	master->cname[orig->mac] = master->cstore + colOffset;
 	master->objx[orig->mac] = 1.0;			// orig->mac is the last column in the original master
 	master->ctype[orig->mac] = 'C';
+	master->bdl[orig->mac] = -INFBOUND;
 	master->bdu[orig->mac] = INFBOUND;
-	master->bdl[orig->mac] = lb;
 	master->matbeg[orig->mac] = orig->numnz;	// Beginning point in matval/matind in eta columns. every eta column begins at the same address
 	master->matcnt[orig->mac] = 0;               // Only optimality cuts has eta
 
