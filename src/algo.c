@@ -126,6 +126,11 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
 	while (cell->optFlag == false && cell->k < config.MAX_ITER) {
+
+		/******* 1. Optimality tests *******/
+		if (optimal(prob, cell))
+			break;
+
 		cell->k++;
 		tic = clock();
 #if defined(STOCH_CHECK) || defined(ALGO_CHECK)
@@ -135,10 +140,6 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 			printf("\nIteration-%4d: ", cell->k);
 		}
 #endif
-
-		/******* 1. Optimality tests *******/
-		if (optimal(prob, cell))
-			break;
 
 		/******* 2. Generate new observations, and add it to the set of observations *******/
 		cell->sampleSize += config.SAMPLE_INCREMENT;
@@ -156,14 +157,14 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 		}
 
 		/******* 3. Solve the subproblem with candidate solution, form and update the candidate cut *******/
-		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, false)) < 0 ) {
+		if ( (candidCut = formSDCut(prob, cell, cell->candidX, prob[0]->lb, CANDIDATE)) < 0 ) {
 			errMsg("algorithm", "solveCell", "failed to add candidate cut", 0);
 			goto TERMINATE;
 		}
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0 ) ) {
-			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, true) ) < 0 ) {
+			if ( (cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, INCUMBENT) ) < 0 ) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				goto TERMINATE;
 			}
