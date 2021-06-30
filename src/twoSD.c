@@ -39,7 +39,7 @@ int main (int argc, char *argv[]) {
 
 	outputDir = NULL;
 	/* read the default algorithm configuration parameters */
-	if (readConfig("./", inputDir) ) {
+	if (readConfig("../", inputDir) ) {
 		errMsg("read", "main", "failed to read algorithm configuration file", 0);
 		goto TERMINATE;
 	}

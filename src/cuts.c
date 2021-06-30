@@ -82,7 +82,9 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 #if 1
 	FILE *piFile;
 	piFile = openFile(outputDir, "piRatio.csv", "a");
-	fprintf(piFile, "%lf\n", cell->pi_ratio[cell->k % config.SCAN_LEN]);
+	if ( cell->k == 1 )
+		fprintf(piFile, "\n");
+	fprintf(piFile, "%lf\t", cell->pi_ratio[cell->k % config.SCAN_LEN]);
 	fclose(piFile);
 #endif
 
