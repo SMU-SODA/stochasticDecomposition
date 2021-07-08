@@ -3,7 +3,7 @@
 #------------------------------------------------------------
 # TODO: Replace with appropriate folder names and system descriptions
 # Location of CPLEX installations and system descriptions
-CPLEXDIR = /opt/ilog/cplex128/cplex
+CPLEXDIR = /home/install/ilog/cplex1210/cplex
 CPLEXLIBDIR   = $(CPLEXDIR)/lib/$(SYSTEM)/$(LIBFORMAT)
 CPLEXINCDIR   = $(CPLEXDIR)/include
 SYSTEM     = x86-64_linux
@@ -13,8 +13,8 @@ SUBDIRS := ./src
 
 # These utilities are from the spAlgorithms repository. You may have to
 # replace the path to this repository. 
-SODA_UTILS := ../../spAlgorithms/solverUtilities
-SMPS_SRC := ../../spAlgorithms/smpsReader
+SODA_UTILS := ../spAlgorithms/solverUtilities
+SMPS_SRC := ../spAlgorithms/smpsReader
 
 #------------------------------------------------------------
 # Compiler, Linker Selections and Definitions (CC is for c)
@@ -33,13 +33,13 @@ INCLUDES := -I$(CPLEXINCDIR) -I$(SUBDIRS) -I$(SODA_UTILS) -I$(SMPS_SRC)
 
 #------------------------------------------------------------
 # All Target
-all: twoSD
+all: twoSD_run
 
 # Tool invocations
-twoSD: $(OBJS) $(USER_OBJS)
+twoSD_run: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross GCC Linker'
-	gcc -L$(CPLEXLIBDIR) -o "twoSD" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L$(CPLEXLIBDIR) -o "twoSD_run" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -53,6 +53,6 @@ twoSD: $(OBJS) $(USER_OBJS)
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) twoSD
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) twoSD_run
 	-@echo ' '
 
