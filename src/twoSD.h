@@ -193,7 +193,7 @@ int changeQPbds(LPptr lp, int numCols, dVector bdl, dVector bdu, dVector xk, int
 oneProblem *newMaster(oneProblem *orig, double lb);
 
 /* cuts.c */
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb);
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, typeOfCut type);
 oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 		dVector Xvect, int numSamples, bool calcPiRatio, int numIter, double lb);
 oneCut *newCut(int numX, int numIstar, int numSamples);

@@ -18,9 +18,9 @@ int resolveInfeasibility(probType **prob, cellType *cell, bool *newOmegaFlag, in
 int formFeasCut(probType *prob, cellType *cell);
 int updtFeasCutPool(numType *num, coordType *coord, cellType *cell);
 int checkFeasCutPool(cellType *cell, int lenX);
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut);
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, typeOfCut type);
 
-int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool isIncumb) {
+int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, typeOfCut type) {
 	oneCut 	*cut;
 	int    	cutIdx, obs;
 
@@ -63,6 +63,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 		errMsg("algorithm", "formSDCut", "failed to create the affine minorant", 0);
 		return -1;
 	}
+	cut->type = type;
 	cell->time.argmaxIter += ((double) (clock()-tic))/CLOCKS_PER_SEC;
 
 	if ( cell->k >= config.DUAL_EVAL_START ) {
@@ -114,7 +115,7 @@ int formSDCut(probType **prob, cellType *cell, dVector Xvect, double lb, bool is
 #endif
 
 	/* (c) add cut to the structure and master problem  */
-	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, false)) < 0) {
+	if ( (cutIdx = addCut2Pool(cell, cut, prob[0]->num->cols, lb, type)) < 0) {
 		errMsg("algorithm", "formSDCut", "failed to add the new cut to cutsType structure", 0);
 		return -1;
 	}
@@ -647,10 +648,34 @@ void freeCutsType(cutsType *cuts, bool partial) {
 /* The subroutine adds the newly formed cut to the cutsType structure. For the optimality cuts, if there is no room in the cutsType structure
  * then the reduceCuts() subroutine is invoked to remove the 'loose' and 'old' cuts. For the feasibility cuts, we check if the new cut is a
  * duplicate of existing cut before it is added to the pool. */
-int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) {
+int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, typeOfCut type) {
 	int	cnt;
 
-	if ( feasCut ) {
+	switch ( type ) {
+	case CANDIDATE:
+		if (cell->cuts->cnt >= cell->maxCuts) {
+			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
+			 * then make room by reducing the cuts from the structure. */
+			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
+				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
+				return -1;
+			}
+		}
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		return cell->cuts->cnt++;
+	case INCUMBENT:
+		if (cell->cuts->cnt >= cell->maxCuts) {
+			if ( dropCut(cell, cell->iCutIdx) ){
+				errMsg("algorithm", "reduceCuts", "failed to drop a cut", 0);
+				return -1;
+			}
+		}
+		cell->cuts->vals[cell->iCutIdx]->type = CANDIDATE;
+		cell->cuts->vals[cell->cuts->cnt] = cut;
+		cell->iCutIdx = cell->cuts->cnt;
+		cell->iCutUpdt = cell->k;
+		return cell->cuts->cnt++;
+	case FEASIBILITY:
 		/* If we are adding a feasibility cut, make sure there are no duplicates */
 		for (cnt = 0; cnt < cell->fcutsPool->cnt; cnt++) {
 			if (DBL_ABS(cut->alpha - cell->fcutsPool->vals[cnt]->alpha) < config.TOLERANCE) {
@@ -663,18 +688,9 @@ int addCut2Pool(cellType *cell, oneCut *cut, int lenX, double lb, bool feasCut) 
 		}
 		cell->fcutsPool->vals[cell->fcutsPool->cnt] = cut;
 		return cell->fcutsPool->cnt++;
-	}
-	else {
-		if (cell->cuts->cnt >= cell->maxCuts) {
-			/* If we are adding optimality cuts, check to see if there is room for the latest cut. If there is not,
-			 * then make room by reducing the cuts from the structure. */
-			if( reduceCuts(cell, cell->candidX, cell->piM, lenX, lb) < 0 ) {
-				errMsg("algorithm", "addCut2Master", "failed to add reduce cuts to make room for candidate cut", 0);
-				return -1;
-			}
-		}
-		cell->cuts->vals[cell->cuts->cnt] = cut;
-		return cell->cuts->cnt++;
+	default:
+		errMsg("algorithm", "addCut2Pool", "Unknown cut type", 0);
 	}
 
-}//END addCut()
+	return -1;
+}//END addCut2Pool()

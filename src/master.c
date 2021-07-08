@@ -432,7 +432,7 @@ oneProblem *newMaster(oneProblem *orig, double lb) {
 	master->objx[orig->mac] = 1.0;			// orig->mac is the last column in the original master
 	master->ctype[orig->mac] = 'C';
 	master->bdu[orig->mac] = INFBOUND;
-	master->bdl[orig->mac] = lb;
+	master->bdl[orig->mac] = -INFBOUND;
 	master->matbeg[orig->mac] = orig->numnz;	// Beginning point in matval/matind in eta columns. every eta column begins at the same address
 	master->matcnt[orig->mac] = 0;               // Only optimality cuts has eta
 
