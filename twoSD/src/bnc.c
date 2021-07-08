@@ -12,6 +12,7 @@
  */
 
 #include "bnc.h"
+#define writeMaster
 
 
 extern configType config;
@@ -108,10 +109,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
 		if (activeNode == NULL) break;
-		if (activeNode->prevnode == NULL && nodecnt > 1) break;
+		//if (activeNode->prevnode == NULL && nodecnt > 1) break;
 
-		if (cell->k == config.MAX_ITER) break;
-		if (nodecnt > config.MAX_NODES) break;
+		//if (cell->k == config.MAX_ITER) break;
+		//if (nodecnt > config.MAX_NODES) break;
 
 		currentNode = activeNode;
 		nodecnt++;
@@ -470,6 +471,10 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 			return 1;
 		}
 
+#if defined(writeMaster)
+		writeProblem(cell->master->lp, "Master.lp");
+#endif
+
 		/* 2b. Clean the node before exit. */
 		if ( cleanNode(prob[0], cell, node) ) {
 			errMsg("BnB", "solveNode", "failed to clean the node after SD solve", 0);
@@ -515,7 +520,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 		/* 2. Retrieve the incumbent from the parent node and perform updates. */
 		/* 2a. Add the B&B conditions */
-		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node)) {
+		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node,prob[0].sp->bdl,prob[0].sp->bdu)) {
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 			return 1;
 		}
@@ -879,7 +884,7 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 
 /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
-int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node)
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node, dVector bdl, dVector bdu)
 {
 	int 	cnt;
 	dVector	lbounds, ubounds;
@@ -892,9 +897,9 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 
 	/* Change the Bounds */
 	for (cnt = 0; cnt < numCols; cnt++) {
-		lbounds[cnt] = disjncsVal[cnt][0] - config.TOLERANCE;
+		lbounds[cnt] = max(bdl[cnt], disjncsVal[cnt][0] - config.TOLERANCE);
 		cell->master->bdl[cnt] = lbounds[cnt];
-		ubounds[cnt] = disjncsVal[cnt][1] + config.TOLERANCE;
+		ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.TOLERANCE);
 		cell->master->bdu[cnt] = ubounds[cnt];
 	}
 
@@ -981,6 +986,60 @@ struct BnCnodeType *nextNode(struct BnCnodeType *node)
 
 	return temp;
 }
+
+/* This function will reform the bnc cuts based on the most recent observations of omega passed in as _observ_, and the istar's
+* which have already been stored in the _istar_ field of each cut. If an istar field does not exist for a given observation,
+* it would be calculated using computeIstar(). */
+void reformBnCCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
+	cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX) {
+	double multiplier;
+	int cnt, obs, idx, count, c, istar, sigmaIdx, lambdaIdx;
+	
+	/* Loop through all the cuts and reform them */
+	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
+		/* Begin with cut coefficients of zero */
+		for (idx = 0; idx <= lenX; idx++)
+			gCuts->vals[cnt]->beta[idx] = 0.0;
+		gCuts->vals[cnt]->alpha = 0.0;
+
+		count = 0;
+		/* Reform this cut based on resampled observations */
+		for (obs = 0; obs < sampleSize; obs++) {
+			/* Only sum values if the cut has an istar for this observation */
+			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
+				istar = gCuts->vals[cnt]->iStar[observ[obs]];
+
+				for (idx = 0; idx <= basis->vals[istar]->phiLength; idx++) {
+					sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+					if (idx == 0)
+						multiplier = 1.0;
+					else
+						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
+
+					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+					gCuts->vals[cnt]->alpha += multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
+
+					for (c = 1; c <= num->cntCcols; c++)
+						gCuts->vals[cnt]->beta[coord->CCols[c]] += multiplier * sigma->vals[sigmaIdx].piC[c];
+					for (c = 1; c <= num->rvCOmCnt; c++)
+						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
+				}
+				count++;
+			}
+		}
+
+		/* Take the average of the alpha and beta values */
+		for (idx = 0; idx <= lenX; idx++)
+			gCuts->vals[cnt]->beta[idx] /= (double)sampleSize;
+
+		gCuts->vals[cnt]->alpha /= (double)sampleSize;
+
+		if (lbType == NONTRIVIAL)
+			gCuts->vals[cnt]->alpha += (1 - (double)count / (double)sampleSize) * lb;
+	}
+
+}//END reform_cuts
 
 /* Return the previous node of the input node */
 struct BnCnodeType *prevNode(struct BnCnodeType *node)

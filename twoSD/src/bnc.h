@@ -93,7 +93,7 @@ int sumintVec(iVector a, int len);
 bool isInVec(iVector vec, int len, int val);
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
-int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node);
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node, dVector bdl, dVector bdu);
 int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
@@ -109,5 +109,7 @@ int getfirstLeaf(int depth);
 int getnodeIdx(int depth, int key, int isleft);
 void fracLamda(cellType *cell, struct BnCnodeType *node);
 void truncate(dVector var, dVector lb, dVector ub, int cnt);
+void reformBnCCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
+	cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
 
 #endif /* BNC_H_ */
