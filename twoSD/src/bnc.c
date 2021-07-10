@@ -12,7 +12,6 @@
  */
 
 #include "bnc.h"
-#define writeMaster
 
 
 extern configType config;
@@ -37,7 +36,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	inodes = -1;
 
 	/* set of LB and UB */
-	GlobeUB = UB;
+	GlobeUB = INFINITY;
+	GlobeLB = LB;
 
 	original = prob[0]->sp;
 	rootNode = NULL;  // root node
@@ -109,10 +109,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
 		if (activeNode == NULL) break;
-		//if (activeNode->prevnode == NULL && nodecnt > 1) break;
+		if (activeNode->prevnode == NULL && nodecnt > 1) break;
 
-		//if (cell->k == config.MAX_ITER) break;
-		//if (nodecnt > config.MAX_NODES) break;
+		if (cell->k == config.MAX_ITER) break;
+		if (nodecnt > config.MAX_NODES) break;
 
 		currentNode = activeNode;
 		nodecnt++;
@@ -170,7 +170,12 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBest)
 
-	freeNodes(rootNode);
+	if (rootNode->nextnode->key > 0) {
+		freeNodes(rootNode);
+	}
+	else {
+		freeNode(rootNode);
+	}
 	mem_free(nodearr);
 	mem_free(inodearr);
 
@@ -198,6 +203,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	// Solve the node problem and obtain the solutions
 	int status = solveNode(stoc, prob, cell, node, original->name);
+
 
 	if ( !cell->masterFeasFlag ) {
 #if defined(printBranch)
@@ -463,17 +469,16 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 #endif // defined(BNC_CHECK)
 
 	/* 2. Invoke the SD solver to solve the node */
-	if (node->ishrstic || (cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-			(node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE))))) {
+	if ( (node->prevnode == NULL || !equalVector(node->prevnode->vars,node->vars,node->edInt,0.001))
+		&& ( node->ishrstic || 
+		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
+			(node->objval < GlobeUB && !isInteger(node->vars, node->edInt, 0, node->edInt + 1, config.TOLERANCE)))))) {
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if ( solveCell(stoc, prob, cell) ) {
 			errMsg("BnB", "solveNode", "failed to solve the node using SD", 0);
 			return 1;
 		}
 
-#if defined(writeMaster)
-		writeProblem(cell->master->lp, "Master.lp");
-#endif
 
 		/* 2b. Clean the node before exit. */
 		if ( cleanNode(prob[0], cell, node) ) {
@@ -561,7 +566,9 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	/* 1. Copy the incumbent solution and estimate to the ndde structure */
 	copyVector(cell->incumbX, node->vars, node->numVar, true);
 	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
-	if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal) {
+	if ((cell->incumbEst <= 0.9*node->parobjVal && cell->incumbEst>=0) || 
+		(cell->incumbEst >= 1.1*node->parobjVal && cell->incumbEst <= 0) || 
+		cell->incumbEst <= meanVal) {
 		node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
 		node->isSPopt = false;
 	}

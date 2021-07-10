@@ -30,6 +30,7 @@
 int currKey;
 int currDepth;
 double GlobeUB;               // Global upper bound
+double GlobeLB;               // Global lower bound
 oneProblem      *original;    // Info of the original problem 
 struct BnCnodeType *bestNode; // best node that is found so far
 struct BnCnodeType *rootNode; // root node 
