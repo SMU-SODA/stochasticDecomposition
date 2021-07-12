@@ -120,6 +120,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useDNODE)
 		/* Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better */
 		for (int cnt = 0; cnt < dnodes; cnt++) {
+			for (int cnt2 = 0; cnt2 < cell->cutsPool[nodearr[cnt]->poolID]->cnt; cnt2++)
+				revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+					nodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[nodearr[cnt]->poolID]->vals[cnt2]);
 			double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) +
 					maxCutHeight(cell->cutsPool[nodearr[cnt]->poolID], cell->sampleSize, nodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
 			if (est < cell->incumbEst && est > meanVal) {
@@ -997,54 +1000,77 @@ struct BnCnodeType *nextNode(struct BnCnodeType *node)
 /* This function will reform the bnc cuts based on the most recent observations of omega passed in as _observ_, and the istar's
 * which have already been stored in the _istar_ field of each cut. If an istar field does not exist for a given observation,
 * it would be calculated using computeIstar(). */
-void reformBnCCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
-	cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX) {
-	double multiplier;
-	int cnt, obs, idx, count, c, istar, sigmaIdx, lambdaIdx;
-	
-	/* Loop through all the cuts and reform them */
-	for (cnt = 0; cnt < gCuts->cnt; cnt++) {
-		/* Begin with cut coefficients of zero */
-		for (idx = 0; idx <= lenX; idx++)
-			gCuts->vals[cnt]->beta[idx] = 0.0;
-		gCuts->vals[cnt]->alpha = 0.0;
+void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb, oneCut *cut) {
 
-		count = 0;
-		/* Reform this cut based on resampled observations */
-		for (obs = 0; obs < sampleSize; obs++) {
-			/* Only sum values if the cut has an istar for this observation */
-			if (observ[obs] < gCuts->vals[cnt]->omegaCnt) {
-				istar = gCuts->vals[cnt]->iStar[observ[obs]];
+	dVector 	piCbarX;
+	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, multiplier;
+	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	bool    pi_eval_flag = false;
 
-				for (idx = 0; idx <= basis->vals[istar]->phiLength; idx++) {
-					sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
-					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
-					if (idx == 0)
-						multiplier = 1.0;
-					else
-						multiplier = omega->vals[observ[obs]][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
 
-					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
-					gCuts->vals[cnt]->alpha += multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][observ[obs]].pib);
+	/* Pre-compute pi x Cbar x x as it is independent of observations */
+	if (!(piCbarX = arr_alloc(sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x", 0);
+	for (c = 0; c < sigma->cnt; c++)
+		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
 
-					for (c = 1; c <= num->cntCcols; c++)
-						gCuts->vals[cnt]->beta[coord->CCols[c]] += multiplier * sigma->vals[sigmaIdx].piC[c];
-					for (c = 1; c <= num->rvCOmCnt; c++)
-						gCuts->vals[cnt]->beta[coord->rvCOmCols[c]] += multiplier * delta->vals[lambdaIdx][observ[obs]].piC[c];
-				}
-				count++;
+	/* Adjust the alpha and beta of the input cut according to the most recent number of observations */
+	cut->alpha *= cut->numSamples;
+
+	for (c = 1; c <= num->prevCols; c++)
+		cut->beta[c] *= cut->numSamples;
+
+	/* Test for omega issues */
+	for (obs = cut->omegaCnt; obs < omega->cnt; obs++) {
+		/* identify the maximal Pi/basis that generates the maximal Pi for each observation */
+		istar = computeIstar(num, coord, basis, sigma, delta, sample,
+			piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
+
+		if (istar < 0) {
+			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
+			return NULL;
+		}
+		cut->iStar[obs] = istar;
+
+		if (num->rvdOmCnt > 0) {
+			for (idx = 0; idx <= basis->vals[istar]->phiLength; idx++) {
+				sigmaIdx = basis->vals[istar]->sigmaIdx[idx];
+				lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+				if (idx == 0)
+					multiplier = 1.0;
+				else
+					multiplier = omega->vals[obs][coord->rvOffset[2] + basis->vals[istar]->omegaIdx[idx]];
+
+				/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+				cut->alpha += omega->weights[obs] * multiplier * (sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib);
+
+				for (c = 1; c <= num->cntCcols; c++)
+					cut->beta[coord->CCols[c]] += omega->weights[obs] * multiplier * sigma->vals[sigmaIdx].piC[c];
+				for (c = 1; c <= num->rvCOmCnt; c++)
+					cut->beta[coord->rvCOmCols[c]] += omega->weights[obs] * multiplier * delta->vals[lambdaIdx][obs].piC[c];
 			}
 		}
+		else {
+			cut->alpha += sigma->vals[istar].pib * omega->weights[obs];
+			cut->alpha += delta->vals[sigma->lambdaIdx[istar]][obs].pib * omega->weights[obs];
 
-		/* Take the average of the alpha and beta values */
-		for (idx = 0; idx <= lenX; idx++)
-			gCuts->vals[cnt]->beta[idx] /= (double)sampleSize;
-
-		gCuts->vals[cnt]->alpha /= (double)sampleSize;
-
-		if (lbType == NONTRIVIAL)
-			gCuts->vals[cnt]->alpha += (1 - (double)count / (double)sampleSize) * lb;
+			for (c = 1; c <= num->cntCcols; c++)
+				cut->beta[coord->CCols[c]] += sigma->vals[istar].piC[c] * omega->weights[obs];
+			for (c = 1; c <= num->rvCOmCnt; c++)
+				cut->beta[coord->rvCols[c]] += delta->vals[sigma->lambdaIdx[istar]][obs].piC[c] * omega->weights[obs];
+		}
 	}
+
+
+	cut->alpha = cut->alpha / numSamples;
+
+	for (c = 1; c <= num->prevCols; c++)
+		cut->beta[c] = cut->beta[c] / numSamples;
+	cut->beta[0] = 1.0;			/* coefficient of eta coloumn */
+
+	mem_free(piCbarX);
+
 
 }//END reform_cuts
 
