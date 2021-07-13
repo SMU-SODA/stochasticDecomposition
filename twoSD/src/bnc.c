@@ -108,15 +108,10 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode, &prevcurrNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
-		if (activeNode == NULL) break;
-		if (activeNode->prevnode == NULL && nodecnt > 1) break;
-
-		if (cell->k == config.MAX_ITER) break;
-		if (nodecnt > config.MAX_NODES) break;
-
 		currentNode = activeNode;
 		nodecnt++;
 
+		//Revising the paused nodes
 #if defined(useDNODE)
 		/* Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better */
 		for (int cnt = 0; cnt < dnodes; cnt++) {
@@ -139,6 +134,9 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useINODE)
 		/* Loop for revisiting the integer feasible nodes to update the current best */
 		for (int cnt = 0; cnt < inodes; cnt++) {
+			for (int cnt2 = 0; cnt2 < cell->cutsPool[inodearr[cnt]->poolID]->cnt; cnt2++)
+				revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+					inodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[inodearr[cnt]->poolID]->vals[cnt2]);
 			double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
 								+ maxCutHeight(cell->cutsPool[inodearr[cnt]->poolID], cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
 			if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal) {
@@ -147,6 +145,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			}
 		}
 #endif // defined(useINODE)
+
+		//Checking the termination criteria
+		if (activeNode == NULL) break;
+		if (activeNode->prevnode == NULL && nodecnt > 1) break;
+		if (activeNode->prevnode->depth == 0 && nodecnt > 1) break;
+		if (cell->k == config.MAX_ITER) break;
+		if (nodecnt > config.MAX_NODES) break;
+
 	}
 
 	if(inodes > 0) cell->int_nodes = inodes;
@@ -279,7 +285,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 		node->UB = node->objval;
 		if (node->prevnode->depth == 0) {
-			*activeNode = NULL;
+			return 0;
 		}
 		else {
 			*activeNode = nextNode(node);
@@ -395,10 +401,13 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
  for branching  */
 int branchVar(struct BnCnodeType *node, int strategy) {
 
+	int idx, maxidx, minidx;
+	double larger, smaller, avg;
+	
 	if (strategy == 1)// strategy based on the larger fractional value
 	{
-		double larger = -1;  /* maximum fractional value */
-		int maxidx = node->depth;
+		larger = -1;  /* maximum fractional value */
+		maxidx = node->depth;
 
 		for (int i = 0; i < node->edInt; i++)
 		{
@@ -413,8 +422,8 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 	}
 	else if (strategy == 2)// strategy based on the smaller fractional value
 	{
-		double smaller = INFINITY;  /* minimum fractional value */
-		int minidx = node->depth;
+		smaller = INFINITY;  /* minimum fractional value */
+		minidx = node->depth;
 
 		for (int i = 0; i < node->edInt; i++)
 		{
@@ -429,8 +438,8 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 	}
 	else if (strategy == 3)// strategy based on the value closer to 0.5
 	{
-		double avg = INFINITY;  /* avg fractional value */
-		int idx = node->depth;
+		avg = INFINITY;  /* avg fractional value */
+		idx = node->depth;
 
 		for (int i = 0; i < node->edInt; i++)
 		{
@@ -444,7 +453,18 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 		return idx;
 	}
 
-	return node->depth;
+	idx = node->depth;
+
+	for (int i = 0; i < node->numVar; i++)
+	{
+		if (node->disjncsVal[i][0] != node->disjncsVal[i][1] && node->vars[i+1] - abs(node->vars[i+1]) > config.INT_TOLERANCE)
+		{
+			idx = i;
+			return idx;
+		}
+	}
+
+	return idx;
 }//END branchVar()
 
 // Subroutine for Solving the node problem given the lp pointer and node information
