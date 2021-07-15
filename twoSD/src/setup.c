@@ -432,6 +432,12 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 	if (cell->GMIcuts) freeCutsType(cell->GMIcuts, true);
 	if (cell->fcuts) freeCutsType(cell->fcuts, true);
 	if (cell->fcutsPool) freeCutsType(cell->fcutsPool, true);
+	if (cell->cutsPool) {
+		for (int n = 0; n < (*cell->cutsPool)->cnt; n++)
+			if (cell->cutsPool[n]) freeCutsType(cell->cutsPool[n], true);
+	}
+	cell->cutsPool[0] = newCuts(cell->maxCuts);
+	cell->numPools = 1;
 	cell->feasCnt 		= 0;
 	cell->infeasIncumb 	= false;
 	cell->fUpdt[0] = cell->fUpdt[1] = 0;
@@ -486,7 +492,7 @@ void freeCellType(cellType *cell) {
 		if (cell->sample) freeSampleType(cell->sample);
 		if (cell->pi_ratio) mem_free(cell->pi_ratio);
 		if (cell->cutsPool) {
-			for ( int n = 0; n < cell->numPools; n++ )
+			for ( int n = 0; n < (*cell->cutsPool)->cnt; n++ )
 				if ( cell->cutsPool[n] ) freeCutsType(cell->cutsPool[n], false);
 			mem_free(cell->cutsPool);
 		}

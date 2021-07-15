@@ -108,7 +108,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
 		currentNode = activeNode;
-		nodecnt++;
+		nodecnt = cell->tot_nodes;
 
 		//Revising the paused nodes
 #if defined(useDNODE)
@@ -148,7 +148,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		//Checking the termination criteria
 		if (activeNode == NULL) break;
 		if (activeNode->prevnode == NULL && nodecnt > 1) break;
-		if (activeNode->prevnode->key == 0 && nodecnt > 2) break;
+		if (activeNode->key == 0 && nodecnt > 2) break;
+		if(activeNode->prevnode) if (activeNode->prevnode->key == 0 && nodecnt > 2) break;
 		if (cell->k == config.MAX_ITER) break;
 		if (nodecnt > config.MAX_NODES) break;
 
@@ -178,7 +179,8 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBest)
 
-	if (rootNode->nextnode->key > 0) {
+	// Free node queue
+	if (rootNode->nextnode && rootNode->nextnode->key > 0) {
 		freeNodes(rootNode);
 	}
 	else {
@@ -305,7 +307,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	// Condition 2. The obtained solution is below the global lower bound, add the node to a pool.
 	// Compare the obj val with the Global LB
-	if (node->objval > GlobeUB || node->isSPopt == false) {
+	if ((node->objval > GlobeUB && node->key > 2) || node->isSPopt == false) {
 		if (node->prevnode) {
 			node->isActive = false;
 #if defined(useDNODE)
@@ -359,7 +361,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
 	if (left->depth > cell->depth) cell->depth = left->depth;
 	cell->tot_nodes += 2;
-	printf("cell depth: %d  -   node depth: %d\n", cell->depth, node->depth);
+
 
 	if ( node->key == 0 ) {
 		node->nextnode = right;
@@ -370,8 +372,10 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	}
 	else {
 
-		node->nextnode->prevnode = left;
-		left->nextnode = node->nextnode;
+		if (node->nextnode) {
+			node->nextnode->prevnode = left;
+			left->nextnode = node->nextnode;
+		}
 
 		node->nextnode = right;
 		right->prevnode = node;
@@ -483,16 +487,21 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 #endif // defined(BNC_CHECK)
 
 	/* 2. Invoke the SD solver to solve the node */
-	if ( (node->prevnode == NULL || !equalVector(node->prevnode->vars,node->vars,node->edInt,0.001))
-		&& ( node->ishrstic || 
+	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-			(node->objval < GlobeUB && !isInteger(node->vars, node->numVar, 0, node->numVar + 1, config.INT_TOLERANCE)))))) {
+		(node->objval < GlobeUB && !isInteger(node->vars, node->numVar, 0, node->numVar + 1, config.INT_TOLERANCE))))) {
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if ( solveCell(stoc, prob, cell) ) {
 			errMsg("BnB", "solveNode", "failed to solve the node using SD", 0);
+#if defined(BNC_INF_CHECK)
+			char fname[NAMESIZE];
+			sprintf(fname, "%s_n%d_k%d.lp", "master",node->key, cell->k);
+			writeProblem(cell->master->lp, fname);
+#endif // defined(BNC_INF_CHECK)
+
 			return 1;
 		}
-
+		node->isSPopt = true;
 
 		/* 2b. Clean the node before exit. */
 		if ( cleanNode(prob[0], cell, node) ) {
@@ -500,7 +509,10 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 			return 1;
 		}
 
-		if (cell->ki >= config.MAX_ITER_CLBK) cell->maxiter_nodes++;
+		if (cell->ki >= config.MAX_ITER_CLBK) {
+			node->isSPopt = false;
+			cell->maxiter_nodes++;
+		}
 
 	}
 	else {
@@ -580,8 +592,8 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	/* 1. Copy the incumbent solution and estimate to the ndde structure */
 	copyVector(cell->incumbX, node->vars, node->numVar, true);
 	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
-	if ((cell->incumbEst <= 0.9*node->parobjVal && cell->incumbEst>=0) || 
-		(cell->incumbEst >= 1.1*node->parobjVal && cell->incumbEst <= 0) || 
+	if ((cell->incumbEst <= 0.4*node->parobjVal && cell->incumbEst>=0) || 
+		(abs(cell->incumbEst) >= abs(node->parobjVal) && cell->incumbEst <= 0) || 
 		cell->incumbEst <= meanVal) {
 		node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
 		node->isSPopt = false;
@@ -609,7 +621,7 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
 			if (removeRow(cell->master->lp, cnt, cnt)) {
 				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
-				errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
+				errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
 				return 1;
 			}
 		cell->master->mar -= cell->activeCuts->cnt;
@@ -1191,6 +1203,10 @@ void fracLamda(cellType *cell, struct BnCnodeType *node) {
 	node->fracPi = ((double)totLambda) / ((double)node->Lambdasize);
 }//END fracLamda()
 
+/* Print the node information summary */
+void printNodesummary(struct BnCnodeType *node) {
+	printf("numvars: %d", node->numVar);
+}
 
 /* Free the queue by passing the root node and using next nodes */
 void freeNodes(struct BnCnodeType *root) {

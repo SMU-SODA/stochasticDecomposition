@@ -30,6 +30,7 @@
 
 #undef ALGO_CHECK
 #undef BNC_CHECK
+#define BNC_INF_CHECK
 #undef BATCH_CHECK
 #define clean_master /* clean the master problem at the begining of each node */
 

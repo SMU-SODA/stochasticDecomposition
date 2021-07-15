@@ -107,6 +107,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 int branchVar(struct BnCnodeType *node, int strategy);
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode);
 int getfirstLeaf(int depth);
+void printNodesummary(struct BnCnodeType *node);
 int getnodeIdx(int depth, int key, int isleft);
 void fracLamda(cellType *cell, struct BnCnodeType *node);
 void truncate(dVector var, dVector lb, dVector ub, int cnt);
