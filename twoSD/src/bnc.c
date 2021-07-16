@@ -20,6 +20,8 @@ extern configType config;
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB) {
 	int i;
 	int nodecnt = 0;
+	int repeat  = 0;
+	int check_node_num = 0;
 	int maxcut = config.CUT_MULT * cell->master->mac + 3;
 	cell->basis->incumPicnt = maxcut;
 	cell->basis->basisEval = config.Pi_EVAL_FLAG;
@@ -107,8 +109,6 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		if (branchNode(stoc, prob, cell, currentNode, &activeNode))
 			errMsg("BnC", "branchbound", "branching failed", 0);
 
-		currentNode = activeNode;
-		nodecnt = cell->tot_nodes;
 
 		//Revising the paused nodes
 #if defined(useDNODE)
@@ -147,11 +147,22 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 		//Checking the termination criteria
 		if (activeNode == NULL) break;
-		if (activeNode->prevnode == NULL && nodecnt > 1) break;
-		if (activeNode->key == 0 && nodecnt > 2) break;
-		if(activeNode->prevnode) if (activeNode->prevnode->key == 0 && nodecnt > 2) break;
+		if (activeNode->prevnode == NULL && nodecnt > 3) break;
+		if (activeNode->key == 0 && nodecnt > 3) break;
+		if(activeNode->prevnode) if (activeNode->prevnode->key == 0 && nodecnt > 3) break;
 		if (cell->k == config.MAX_ITER) break;
 		if (nodecnt > config.MAX_NODES) break;
+		if (repeat > 2) break;
+
+		currentNode = activeNode;
+		nodecnt = cell->tot_nodes;
+
+		if (nodecnt > check_node_num) {
+			check_node_num = nodecnt;
+		}
+		else {
+			repeat++;
+		}
 
 	}
 

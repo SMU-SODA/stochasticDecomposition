@@ -66,9 +66,12 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 4. Solve subproblem with incumbent solution, and form an incumbent cut *******/
 		if (((cell->k - cell->iCutUpdt) % config.TAU == 0)) {
-			if ((cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 0)) < 0) {
+			if (formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 0) < 0) {
 				errMsg("algorithm", "solveCell", "failed to create the incumbent cut", 0);
 				goto TERMINATE;
+			}
+			else {
+				cell->iCutIdx = formSDCut(prob, cell, cell->incumbX, prob[0]->lb, 0);
 			}
 			cell->iCutUpdt = cell->k;
 		}
@@ -117,6 +120,8 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 	mem_free(observ);
 	return 0;
+
+
 	TERMINATE:
 	mem_free(observ);
 	return 1;
