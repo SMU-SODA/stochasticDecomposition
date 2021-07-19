@@ -25,7 +25,7 @@
 #undef printBest
 #define printBranch
 #undef depthtest
-#undef writemaster
+#define writemaster
 
 int currKey;
 int currDepth;

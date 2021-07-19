@@ -59,7 +59,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	printLine();
 #endif // defined(printBranch)
 
-	rootNode = newrootNode(original->mac, LB, UB, original);
+	rootNode = newrootNode(prob[0]->num->cols+1, LB, UB, original);
 	rootNode->parobjVal = prob[0]->lb;
 	meanVal = prob[0]->lb;
 	cell->incumbEst = meanVal;
@@ -171,7 +171,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	if ( bestNode != NULL ) {
 		// Replace the best node to the incumbent for the out-of-sample testing
-		copyVector(bestNode->vars, cell->incumbX, bestNode->edInt, true);
+		copyVector(bestNode->vars, cell->incumbX, bestNode->numVar, true);
 		cell->incumbEst = bestNode->objval;
 
 		// Remove the tolerance from the best solution
@@ -501,18 +501,59 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
 		(node->objval < GlobeUB && !isInteger(node->vars, node->numVar, 0, node->numVar + 1, config.INT_TOLERANCE))))) {
+
+		/* solve the current master problem */
+		int status;
+		changeQPSolverType(ALG_CONCURRENT);
+		if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
+			node->isSPopt = false;
+			node->isActive = false;
+			/* Clean the master by removing all the inactive cuts */
+			if (prob[0]->num->rows < cell->master->mar) {
+				for (int cnt = cell->master->mar - 1; cnt >= prob[0]->num->rows; cnt--)
+					if (removeRow(cell->master->lp, cnt, cnt)) {
+						printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob[0]->num->rows);
+						errMsg("solver", "solveNode-inf", "failed to remove a row from master problem", 0);
+						return 1;
+					}
+				cell->master->mar -= cell->activeCuts->cnt;
+			}
+#if defined(BNC_INF_CHECK)
+			char fname[NAMESIZE];
+			sprintf(fname, "%s_n%d_k%d.lp", "master", node->key, cell->k);
+			writeProblem(cell->master->lp, fname);
+#endif // defined(BNC_INF_CHECK)
+			return 1;
+		}
+
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		if ( solveCell(stoc, prob, cell) ) {
 			errMsg("BnB", "solveNode", "failed to solve the node using SD", 0);
+			/* Clean the master by removing all the inactive cuts */
+			if (prob[0]->num->rows < cell->master->mar) {
+				for (int cnt = cell->master->mar - 1; cnt >= prob[0]->num->rows; cnt--)
+					if (removeRow(cell->master->lp, cnt, cnt)) {
+						printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob[0]->num->rows);
+						errMsg("solver", "solveNode-inf", "failed to remove a row from master problem", 0);
+						return 1;
+					}
+				cell->master->mar -= cell->activeCuts->cnt;
+			}
 #if defined(BNC_INF_CHECK)
 			char fname[NAMESIZE];
 			sprintf(fname, "%s_n%d_k%d.lp", "master",node->key, cell->k);
 			writeProblem(cell->master->lp, fname);
 #endif // defined(BNC_INF_CHECK)
-
+			node->isActive = false;
 			return 1;
 		}
 		node->isSPopt = true;
+
+#if defined(writemaster)
+		char mname[NAMESIZE];
+		sprintf(mname, "%s_k%d_n%d.lp", "masteraftersolve", cell->k, node->key);
+		writeProblem(cell->master->lp, mname);
+#endif // defined(writemaster)
 
 		/* 2b. Clean the node before exit. */
 		if ( cleanNode(prob[0], cell, node) ) {
@@ -555,9 +596,10 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 		/* 1b. Add the active cuts to the master problem */
 		for ( int n = 0; n < cell->activeCuts->cnt; n++ ) {
 			if ( addCut2Master(cell->master, cell->activeCuts->vals[n], cell->incumbX, prob->num->cols, false) ) {
-				errMsg("algorithm", "formSDCut", "failed to add the new cut to master problem", 0);
+				errMsg("algoIntSD", "setupNode", "failed to add the new cut to master problem", 0);
 				return -1;
 			}
+			cell->activeCuts->vals[n]->rowNum = prob->num->rows + n;
 		}
 
 		/* 2. Retrieve the incumbent from the parent node and perform updates. */
@@ -577,22 +619,31 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 									+ maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob->num->cols, prob->lb);
 		cell->incumbEst = cell->candidEst;
 		node->objval = cell->incumbEst;
+		cell->spFeasFlag = true;
 	}
 
 	/* 2b. Setup the quadratic master using the new incumbent */
-	if (changeQPrhs(prob, cell, node->vars)) {
-		errMsg("algorithm", "algoIntSD", "failed to change the right-hand side to convert the problem into QP", 0);
+	if (changeQPrhs(prob, cell, cell->incumbX)) {
+		errMsg("algoIntSD", "setupNode", "failed to change the right-hand side to convert the problem into QP", 0);
 		return 1;
 	}
 
 	/* 2c. Update the proximal parameter */
-	if (changeQPproximal(cell->master->lp, node->edInt, cell->quadScalar)) {
-		errMsg("algorithm", "algoIntSD", "failed to change the proximal term", 0);
+	if (changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
+		errMsg("algoIntSD", "setupNode", "failed to change the proximal term", 0);
+		return 1;
+	}
+
+	/* 3. nodify the eta column based on the most recent number of observations */
+	if (changeEtaCol(cell->master->lp, prob->num->rows, prob->num->cols, 1.0, cell->activeCuts)) {
+		errMsg("algoIntSD", "setupNode", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
 
 #if defined(writemaster)
-	writeProblem(cell->master->lp, "master_test_afterclean.lp");
+	char mname[NAMESIZE];
+	sprintf(mname, "%s_k%d_n%d.lp", "masteraftersetup", cell->k, node->key);
+	writeProblem(cell->master->lp, mname);
 #endif // defined(writemaster)
 
 	return 0;
@@ -618,10 +669,8 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	fracLamda(cell, node);
 
 #if defined(BNC_CHECK)
-	cString nullString = NULL;
 	printf("\nafter SD var:\n");
 	printVector(node->vars, node->numVar, NULL);
-	scanf("%s", (*nullString));*/
 #endif // defined(BNC_CHECK)
 
 	/* 2. Copy the active cuts to the cutsPool */
@@ -642,7 +691,9 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	freeCutsType(cell->activeCuts, true);
 
 #if defined(writemaster)
-	writeProblem(cell->master->lp, "master_test_afterclean.lp");
+	char mname[NAMESIZE];
+	sprintf(mname, "%s_k%d_n%d.lp", "masterafterclean", cell->k, node->key);
+	writeProblem(cell->master->lp, mname);
 #endif // defined(writemaster)
 	return 0;
 }//END cleanNode()
@@ -945,6 +996,9 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 		cell->master->bdl[cnt] = lbounds[cnt];
 		ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.TOLERANCE);
 		cell->master->bdu[cnt] = ubounds[cnt];
+		if (node->disjncs[cnt] == 1) {
+			cell->incumbX[cnt + 1] = disjncsVal[cnt][1];
+		}
 	}
 
 	/* Adjust the initial incumbent of the node based on the disjunctions */

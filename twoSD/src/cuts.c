@@ -454,7 +454,7 @@ int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi)
 			cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
 			cut->slackCnt = orig->vals[cnt]->slackCnt;
 
-			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols, true);
+			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols+1, false);
 			if (orig->vals[cnt]->iStar == NULL) {
 				cut->iStar = NULL;
 			}
