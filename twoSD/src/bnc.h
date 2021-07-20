@@ -71,6 +71,7 @@ struct BnCnodeType {
 	iVector	IncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts */
 	iVector	ParIncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts of the parent */
 	int numVar;                          /* number of variables */
+	int numIntVar;                          /* number of integer variables */
 	int numRows;
 	double LB;                           /* lower bounds and upper bounds at this node */
 	double UB;                           /* lower bounds and upper bounds at this node */
@@ -93,7 +94,7 @@ struct BnCnodeType {
 bool isInVec(iVector vec, int len, int val);
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig);
 struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal, int varId, bool isleft);
-int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node, dVector bdl, dVector bdu);
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * node, dVector bdl, dVector bdu);
 int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);

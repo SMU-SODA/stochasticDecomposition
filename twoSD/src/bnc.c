@@ -68,14 +68,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	cell->depth = 0;
 	cell->maxiter_nodes = 0;
 
-	for (i = 0; i < rootNode->numVar; i++) {
+	for (i = 0; i < prob[0]->num->cols; i++) {
 		if (original->ctype[i] == 'B' || original->ctype[i] == 'I') {
 			rootNode->stInt = i;
 			break;
 		}
 	}
 	rootNode->edInt = 1;
-	for (i = rootNode->stInt + 1; i < rootNode->numVar; i++) {
+	for (i = rootNode->stInt + 1; i < prob[0]->num->cols; i++) {
 		if (original->ctype[i] != 'B' && original->ctype[i] != 'I') {
 			rootNode->edInt = i;
 			break;
@@ -84,10 +84,11 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 			rootNode->edInt++;
 		}
 	}
+	rootNode->numIntVar = rootNode->edInt - rootNode->stInt;
 
 	/* Copy the incumbent solution (currently stores the mean value problem solution) to node->vars. */
-	for (i = 0; i < prob[0]->num->cols; i++)
-		rootNode->vars[i] = cell->incumbX[i+1];
+	for (i = 0; i < prob[0]->num->cols+1; i++)
+		rootNode->vars[i] = cell->incumbX[i];
 	activeNode = rootNode;
 	currentNode = rootNode;
 	currDepth = -1;
@@ -251,6 +252,10 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		return 0;
 	}
 	else if (status == 1) {
+		if (cell->ki == config.MAX_ITER_CLBK) {
+			if (node->depth == node->edInt || isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE))
+				goto INTEGER;
+		}
 		if (node->prevnode != NULL) {
 			*activeNode = nextNode(node);
 			freepartialNode(node);
@@ -267,7 +272,8 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	node->numSamp = cell->k;
 
 	// Condition 1. Check if the obtained solution from the solveNode is integer
-	if (node->depth == node->numVar || isInteger(node->vars, node->numVar, 0, node->numVar+1, config.INT_TOLERANCE)) {
+	if (node->depth == node->edInt || isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE)) {
+		INTEGER:
 #if defined(printBranch)
 		if (node->key > 0) {
 			printf("%-10d%-10d%-10d%-10d%-10.1f%-14.2f%-14.2f%-12s%-12s%-10.2f\n",
@@ -408,14 +414,14 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 int branchVar(struct BnCnodeType *node, int strategy) {
 
 	int idx, maxidx, minidx;
-	double larger, smaller, avg;
+	double larger, smaller, avg, frac;
 	
 	if (strategy == 1)// strategy based on the larger fractional value
 	{
 		larger = -1;  /* maximum fractional value */
 		maxidx = node->depth;
 
-		for (int i = 0; i < node->numVar; i++)
+		for (int i = 0; i < node->numIntVar; i++)
 		{
 			if (node->disjncs[i] != 1 && larger < node->vars[i+1])
 			{
@@ -431,7 +437,7 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 		smaller = INFINITY;  /* minimum fractional value */
 		minidx = node->depth;
 
-		for (int i = 0; i < node->numVar; i++)
+		for (int i = 0; i < node->numIntVar; i++)
 		{
 			if (node->disjncs[i] != 1 && smaller > node->vars[i+1])
 			{
@@ -447,7 +453,7 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 		avg = INFINITY;  /* avg fractional value */
 		idx = node->depth;
 
-		for (int i = 0; i < node->numVar; i++)
+		for (int i = 0; i < node->numIntVar; i++)
 		{
 			if (node->disjncs[i] != 1 && abs(0.5 - node->vars[i+1]) < avg)
 			{
@@ -461,12 +467,15 @@ int branchVar(struct BnCnodeType *node, int strategy) {
 
 	idx = node->depth;
 
-	for (int i = 0; i < node->numVar; i++)
+	for (int i = 0; i < node->numIntVar; i++)
 	{
-		if (node->disjncs[i] != 1 && node->vars[i+1] - abs(node->vars[i+1]) > config.INT_TOLERANCE)
+		
+		frac = fabs(node->vars[i + 1] - round(node->vars[i + 1]));
+
+		if (node->disjncs[i] != 1 && frac > config.INT_TOLERANCE)
 		{
 			idx = i;
-			return idx;
+			return i;
 		}
 	}
 
@@ -500,7 +509,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	/* 2. Invoke the SD solver to solve the node */
 	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-		(node->objval < GlobeUB && !isInteger(node->vars, node->numVar, 0, node->numVar + 1, config.INT_TOLERANCE))))) {
+		(node->objval < GlobeUB && !isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE))))) {
 
 		/* solve the current master problem */
 		int status;
@@ -604,7 +613,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 		/* 2. Retrieve the incumbent from the parent node and perform updates. */
 		/* 2a. Add the B&B conditions */
-		if (addBnCDisjnct(cell, node->disjncsVal, node->edInt, node,prob[0].sp->bdl,prob[0].sp->bdu)) {
+		if (addBnCDisjnct(cell, node->disjncsVal, node,prob[0].sp->bdl,prob[0].sp->bdu)) {
 			errMsg("addDisjnct", "solveNode", "adding disjunctions are failed", 0);
 			return 1;
 		}
@@ -653,7 +662,7 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 	/* 1. Copy the incumbent solution and estimate to the ndde structure */
 	copyVector(cell->incumbX, node->vars, node->numVar, true);
-	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
+	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numIntVar);
 	if ((cell->incumbEst <= 0.4*node->parobjVal && cell->incumbEst>=0) || 
 		(abs(cell->incumbEst) >= abs(node->parobjVal) && cell->incumbEst <= 0) || 
 		cell->incumbEst <= meanVal) {
@@ -711,6 +720,7 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->ishrstic = false;
 	temp->nextnode = temp->prevnode = NULL;
 	temp->numVar = numVar;
+	temp->numIntVar = numVar - 1;
 	temp->LB = LB;
 	temp->UB = UB;
 	temp->parentnumSamp = 0;
@@ -728,16 +738,16 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->parentPoolID = -1;
 	temp->poolID = 0;
 
-	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
+	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar-1, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
-	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
+	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar-1, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
-	for (i = 0; i < numVar; i++)
+	for (i = 0; i < numVar-1; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
 			errMsg("allocation", "newNode", "temp->disjncs", 0);
 	}
-	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
+	if (!(temp->vars = (dVector)arr_alloc(temp->numVar, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	if (config.Pi_EVAL_FLAG == 1)
 	{
@@ -756,9 +766,9 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 		temp->IncumbiStar = NULL;
 		temp->ParIncumbiStar = NULL;
 	}
-	for (int v = 0; v < temp->numVar + 1; v++)
+	for (int v = 0; v < temp->numVar; v++)
 		temp->vars[v] = 0.0;
-	for (i = 0; i < temp->numVar; i++)
+	for (i = 0; i < temp->numVar-1; i++)
 	{
 		temp->disjncsVal[i][0] = orig->bdl[i];
 		temp->disjncsVal[i][1] = orig->bdu[i];
@@ -791,7 +801,9 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->varId = varId;
 	temp->ishrstic = false;
 	temp->nextnode = temp->prevnode = NULL;
-	temp->numVar = parent->numVar;
+	temp->numVar = parent->numVar;       /* numVar has oneNorm in the first element - sometimes it can be also seen as the 
+										    total number of columns including eta */
+	temp->numIntVar = parent->numIntVar;
 	temp->stInt = parent->stInt;
 	temp->edInt = parent->edInt;
 	temp->LB = parent->LB;
@@ -810,9 +822,9 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->isSPopt = true;
 	temp->parentPoolID = parent->poolID;
 
-	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar, int)))
+	if (!(temp->disjncs = (iVector)arr_alloc(temp->numIntVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
-	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numVar, dVector)))
+	if (!(temp->disjncsVal = (dVector *)arr_alloc(temp->numIntVar, dVector)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
 	if (config.Pi_EVAL_FLAG == 1)
 	{
@@ -836,7 +848,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	printf("\nfrac val: %0.4f\n",fracVal);
 #endif // defined(BNC_CHECK)
 
-	for (i = 0; i < parent->numVar; i++)
+	for (i = 0; i < parent->numIntVar; i++)
 	{
 		if (!(temp->disjncsVal[i] = (dVector)arr_alloc(2, double)))
 			errMsg("allocation", "newNode", "temp->disjncs", 0);
@@ -904,10 +916,10 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 			temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
 		}
 	}
-	if (!(temp->vars = (dVector)arr_alloc(temp->numVar + 1, double)))
+	if (!(temp->vars = (dVector)arr_alloc(temp->numVar, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 
-	for (int v = 0; v < temp->numVar + 1; v++)
+	for (int v = 0; v < temp->numVar; v++)
 		temp->vars[v] = parent->vars[v];
 
 	return temp;
@@ -979,10 +991,11 @@ struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh)
 
 /* after creating the node problem (lp) we can impose the disjunctions as new bounds on
  variables */
-int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCnodeType * node, dVector bdl, dVector bdu)
+int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * node, dVector bdl, dVector bdu)
 {
 	int 	cnt;
 	dVector	lbounds, ubounds;
+	int numCols = node->numVar - 1; /* eta column excluded */
 
 	if (!(lbounds = arr_alloc(numCols, double)))
 		errMsg("Allocation", "addDisjnct", "lbounds", 0);
@@ -992,13 +1005,22 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, int numCols, struct BnCn
 
 	/* Change the Bounds */
 	for (cnt = 0; cnt < numCols; cnt++) {
-		lbounds[cnt] = max(bdl[cnt], disjncsVal[cnt][0] - config.TOLERANCE);
-		cell->master->bdl[cnt] = lbounds[cnt];
-		ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.TOLERANCE);
-		cell->master->bdu[cnt] = ubounds[cnt];
-		if (node->disjncs[cnt] == 1) {
-			cell->incumbX[cnt + 1] = disjncsVal[cnt][1];
+		if (cnt >= node->stInt && cnt <= node->edInt) {
+			lbounds[cnt] = max(bdl[cnt], disjncsVal[cnt][0] - config.TOLERANCE);
+			cell->master->bdl[cnt] = lbounds[cnt];
+			ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.TOLERANCE);
+			cell->master->bdu[cnt] = ubounds[cnt];
+			if (node->disjncs[cnt] == 1) {
+				cell->incumbX[cnt + 1] = disjncsVal[cnt][1];
+			}
 		}
+		else {
+			lbounds[cnt] = bdl[cnt];
+			cell->master->bdl[cnt] = lbounds[cnt];
+			ubounds[cnt] = bdu[cnt];
+			cell->master->bdu[cnt] = ubounds[cnt];
+		}
+
 	}
 
 	/* Adjust the initial incumbent of the node based on the disjunctions */
@@ -1292,7 +1314,7 @@ void freeNode(struct BnCnodeType *node) {
 	if (node == NULL) return;
 	if (node->disjncs) mem_free(node->disjncs);
 	if (node->disjncsVal) {
-		for (int i = 0; i < node->numVar; i++)
+		for (int i = 0; i < node->numIntVar; i++)
 			if (node->disjncsVal[i])  mem_free(node->disjncsVal[i]);
 		mem_free(node->disjncsVal);
 	}
@@ -1316,7 +1338,7 @@ void freepartialNode(struct BnCnodeType *node) {
 		node->disjncs = NULL;
 	}
 	if (node->disjncsVal) {
-		for (int i = 0; i < node->numVar; i++)
+		for (int i = 0; i < node->numIntVar; i++)
 			if (node->disjncsVal[i]) {
 				mem_free(node->disjncsVal[i]);
 				node->disjncsVal[i] = NULL;

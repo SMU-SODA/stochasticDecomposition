@@ -219,7 +219,8 @@ oneCut *SDCut(numType *num, coordType *coord, basisType *basis, sigmaType *sigma
 
 	for (c = 1; c <= num->prevCols; c++)
 		cut->beta[c] = beta[c] / numSamples;
-	cut->beta[0] = 1.0;			/* coefficient of eta coloumn */
+	cut->beta[0] = 1.0;			/* coefficient of eta coloumn - it is the last column in the master problem but the first element 
+								in beta vector, should look at add2Master subroutine */
 
 	mem_free(piCbarX);
 	mem_free(beta);
