@@ -619,7 +619,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 		}
 
 		/* Update incumbent information for the cell*/
-		truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numVar);
+		truncate(cell->incumbX, prob->sp->bdl, prob->sp->bdu, node->numVar);
 
 		copyVector(node->vars, cell->incumbX, node->numVar, true);
 		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
@@ -661,8 +661,8 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 	/* 1. Copy the incumbent solution and estimate to the ndde structure */
+	truncate(cell->incumbX, prob->sp->bdl, prob->sp->bdu, node->numIntVar);
 	copyVector(cell->incumbX, node->vars, node->numVar, true);
-	truncate(node->vars, prob->sp->bdl, prob->sp->bdu, node->numIntVar);
 	if ((cell->incumbEst <= 0.4*node->parobjVal && cell->incumbEst>=0) || 
 		(abs(cell->incumbEst) >= abs(node->parobjVal) && cell->incumbEst <= 0) || 
 		cell->incumbEst <= meanVal) {
@@ -1075,8 +1075,8 @@ void truncate(dVector var, dVector lb, dVector ub, int cnt)
 {
 	for (int v = 0; v < cnt; v++)
 	{
-		if (var[v+1] < lb[v]) var[v+1] = lb[v];
-		if (var[v+1] > ub[v]) var[v+1] = ub[v];
+		if (var[v+1] - config.INT_TOLERANCE <= lb[v]) var[v+1] = lb[v];
+		if (var[v+1] + config.INT_TOLERANCE >= ub[v]) var[v+1] = ub[v];
 	}
 }
 
