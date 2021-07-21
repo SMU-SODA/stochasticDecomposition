@@ -39,7 +39,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	/* set of LB and UB */
 	GlobeUB = INFINITY;
-	GlobeLB = LB;
+	GlobeLB = INFINITY;
 
 	original = prob[0]->sp;
 	rootNode = NULL;  // root node
@@ -179,7 +179,15 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		for (int v = 0; v < bestNode->edInt; v++)
 			bestNode->vars[v] = round(bestNode->vars[v]);
 	}
+	else {
 
+		// Remove the tolerance from the best solution
+		for (int v = 0; v < prob[0]->num->cols+1; v++)
+			cell->incumbX[v] = LBround[v];
+
+		// Update the incumbent estimate 
+		cell->incumbEst = GlobeLB;
+	}
 #if defined(printBest)
 	printLine();
 	printLine();
@@ -198,6 +206,7 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	else {
 		if(rootNode->disjncs) freeNode(rootNode);
 	}
+	if (LBround)  mem_free(LBround);
 	mem_free(nodearr);
 	mem_free(inodearr);
 
@@ -226,6 +235,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	// Solve the node problem and obtain the solutions
 	int status = solveNode(stoc, prob, cell, node, original->name);
 	int key = node->key;
+	
 
 	if ( !cell->masterFeasFlag ) {
 #if defined(printBranch)
@@ -558,6 +568,19 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 		}
 		node->isSPopt = true;
 
+
+		// If the solution is fractional create a rounded solution and update the GlobalLB
+		if (!isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE)) {
+			for (int v = 0; v < node->numVar; v++) {
+				LBround[v] = round(cell->incumbX[v]);
+			}
+
+			double LBlocal = vXvSparse(LBround, prob[0]->dBar)
+				+ maxCutHeight(cell->activeCuts, cell->sampleSize, LBround, prob[0]->num->cols, prob[0]->lb);
+			
+			if (LBlocal < GlobeLB) GlobeLB = LBlocal;
+		}
+
 #if defined(writemaster)
 		char mname[NAMESIZE];
 		sprintf(mname, "%s_k%d_n%d.lp", "masteraftersolve", cell->k, node->key);
@@ -745,6 +768,8 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 			errMsg("allocation", "newNode", "temp->disjncs", 0);
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar, double)))
+		errMsg("allocation", "newNode", "temp->vars", 0);
+	if (!(LBround = (dVector)arr_alloc(temp->numVar, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
 	if (config.Pi_EVAL_FLAG == 1)
 	{
