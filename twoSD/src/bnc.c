@@ -171,15 +171,23 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 	if(dnodes > 0) cell->d_nodes = dnodes;
 
 	if ( bestNode != NULL ) {
-		// Replace the best node to the incumbent for the out-of-sample testing
-		copyVector(bestNode->vars, cell->incumbX, bestNode->numVar, true);
-		cell->incumbEst = bestNode->objval;
 
-		// Remove the tolerance from the best solution
-		for (int v = 0; v < bestNode->edInt; v++)
-			bestNode->vars[v] = round(bestNode->vars[v]);
+		if (bestNode->objval < GlobeLB) {
+			// Replace the best node to the incumbent for the out-of-sample testing
+			copyVector(bestNode->vars, cell->incumbX, bestNode->numVar, true);
+			cell->incumbEst = bestNode->objval;
+
+			// Remove the tolerance from the best solution
+			for (int v = 0; v < bestNode->edInt; v++)
+				bestNode->vars[v] = round(bestNode->vars[v]);
+		}
+		else {
+			goto USEGLOBALLB;
+		}
 	}
 	else {
+
+	USEGLOBALLB:
 
 		// Remove the tolerance from the best solution
 		for (int v = 0; v < prob[0]->num->cols+1; v++)
@@ -334,7 +342,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 	// Condition 2. The obtained solution is below the global lower bound, add the node to a pool.
 	// Compare the obj val with the Global LB
-	if ((node->objval > GlobeUB && node->key > 2) || node->isSPopt == false) {
+	if ((node->objval > GlobeUB && node->key > 2) || (node->isSPopt == false && bestNode != NULL)) {
 		if (node->prevnode) {
 			node->isActive = false;
 #if defined(useDNODE)
@@ -668,6 +676,8 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 		errMsg("algoIntSD", "setupNode", "failed to change the eta column coefficients", 0);
 		return 1;
 	}
+
+	node->isSPopt = true;
 
 #if defined(writemaster)
 	char mname[NAMESIZE];
