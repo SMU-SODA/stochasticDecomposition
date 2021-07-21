@@ -618,9 +618,6 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 			return 1;
 		}
 
-		/* Update incumbent information for the cell*/
-		truncate(cell->incumbX, prob->sp->bdl, prob->sp->bdu, node->numVar);
-
 		copyVector(node->vars, cell->incumbX, node->numVar, true);
 		copyVector(cell->incumbX, cell->candidX, node->numVar, true);
 
@@ -1006,13 +1003,10 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 	/* Change the Bounds */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		if (cnt >= node->stInt && cnt <= node->edInt) {
-			lbounds[cnt] = max(bdl[cnt], disjncsVal[cnt][0] - config.TOLERANCE);
+			lbounds[cnt] = max(bdl[cnt], disjncsVal[cnt][0] - config.INT_TOLERANCE);
 			cell->master->bdl[cnt] = lbounds[cnt];
-			ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.TOLERANCE);
+			ubounds[cnt] = min(bdu[cnt], disjncsVal[cnt][1] + config.INT_TOLERANCE);
 			cell->master->bdu[cnt] = ubounds[cnt];
-			if (node->disjncs[cnt] == 1) {
-				cell->incumbX[cnt + 1] = disjncsVal[cnt][1];
-			}
 		}
 		else {
 			lbounds[cnt] = bdl[cnt];
@@ -1029,6 +1023,12 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 		if (node->isleft)
 		{
 			node->vars[node->varId + 1] = disjncsVal[node->varId][1];
+			for (cnt = 0; cnt < numCols; cnt++) {
+				if (node->disjncs[cnt] == 0) {
+					node->vars[cnt] = 1;
+					break;
+				}
+			}
 		}
 		else {
 			node->vars[node->varId + 1] = disjncsVal[node->varId][0];
@@ -1292,7 +1292,23 @@ void fracLamda(cellType *cell, struct BnCnodeType *node) {
 
 /* Print the node information summary */
 void printNodesummary(struct BnCnodeType *node) {
-	printf("numvars: %d", node->numVar);
+	printf("\n\n-----------------------------------------\n");
+	printf("key: %d\n", node->key);
+	printf("depth: %d\n", node->depth);
+	printf("numVars: %d\n", node->numVar);
+	printf("numIntvars: %d\n", node->numIntVar);
+	printf("st int idx: %d\n", node->stInt);
+	printf("ed int idx: %d\n", node->edInt);
+	printf("disjunctions \n");
+	printVector(node->disjncs, node->numIntVar, NULL);
+	printf("imposed bounds: \n");
+	for (int v = 0; v < node->numIntVar; v++) {
+		printf("\nvar %d: ",v);
+		printVector(node->disjncsVal[v], 2, NULL);
+	}
+	printf("vars: \n");
+	printVector(node->vars, node->numVar, NULL);
+	printf("\n\n-----------------------------------------\n");
 }
 
 /* Free the queue by passing the root node and using next nodes */
