@@ -277,12 +277,9 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->isIncumb = false; 								/* new cut is by default not an incumbent */
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
-	if ( numIstar > 0 ) {
-		if (!(cut->iStar = arr_alloc(numIstar, int)))
-			errMsg("allocation", "new_cut", "iStar", 0);
-	}
-	else
-		cut->iStar = NULL;
+
+	if (!(cut->iStar = arr_alloc(numIstar, int)))
+		errMsg("allocation", "new_cut", "iStar", 0);
 
 	if (!(cut->beta = arr_alloc(numX + 1, double)))
 		errMsg("allocation", "new_cut", "beta", 0);
@@ -412,6 +409,8 @@ int copyCuts(numType *num, cutsType *orig, cutsType **copy) {
 		(*copy)->vals[(*copy)->cnt++] = cut;
 	}
 
+	(*copy)->cnt = orig->cnt;
+
 	return 0;
 }//END copyCuts()
 
@@ -423,12 +422,7 @@ void copyOneCut(oneCut *orig, oneCut *copy, int numCols) {
 	copy->slackCnt = orig->slackCnt;
 
 	copyVector(orig->beta, copy->beta, numCols, true);
-	if (orig->iStar == NULL) {
-		copy->iStar = NULL;
-	}
-	else {
-		copyIntvec(orig->iStar, copy->iStar, orig->omegaCnt);
-	}
+	copyIntvec(orig->iStar, copy->iStar, orig->omegaCnt);
 	strcpy(copy->name, orig->name);
 
 }//END copyOneCut()
@@ -439,6 +433,7 @@ int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi)
 	 * parent's pool. */
 	if ( copy->cnt > 0 ) {
 		freeCutsType(copy, true);
+		copy->cnt = 0;
 	}
 
 	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {

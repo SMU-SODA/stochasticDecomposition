@@ -39,6 +39,7 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
+	writeProblem(cell->master->lp, "infeasibleM.lp");
 	if ( solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status) ) {
 #if defined(printInfeas)
 		if (status == STAT_INFEASIBLE) {

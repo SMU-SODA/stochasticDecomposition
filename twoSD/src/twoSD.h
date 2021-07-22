@@ -357,7 +357,7 @@ bool optimal(probType **prob, cellType *cell);
 bool LPoptimal(probType **prob, cellType *cell);
 bool preTest(cellType *cell);
 bool fullTest(probType **prob, cellType *cell);
-cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX);
+cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX, int omgCnt);
 void reformCuts(basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, numType *num, coordType *coord,
 		cutsType *gCuts, int *observ, int sampleSize, int lbType, int lb, int lenX);
 double calcBootstrpLB(probType *prob, dVector incumbX, dVector piM, dVector djM, int currIter, double quadScalar, cutsType *cuts,

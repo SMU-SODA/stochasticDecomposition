@@ -131,7 +131,7 @@ bool fullTest(probType **prob, cellType *cell) {
 
 	clock_t tic = clock();
 	/* (a) choose good cuts */
-	gCuts = chooseCuts(cell->activeCuts, cell->piM, prob[0]->num->cols);
+	gCuts = chooseCuts(cell->activeCuts, cell->piM, prob[0]->num->cols, cell->omega->cnt);
 	if ( gCuts->cnt == 0 ) {
 		freeCutsType(gCuts, false);
 		return false;
@@ -240,7 +240,7 @@ bool fullTest(probType **prob, cellType *cell) {
  * are likely to provide good approximations of the recourse function at incumbent solution, when they are reformed with new observations.
  * The function returns a new cut structure which contains room for cuts to be reformed. Only the _istar_ and _cut_obs_ fields of
  * each cut have been initialized. */
-cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX) {
+cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX, int omgCnt) {
 	cutsType *gCuts;
 	int cnt;
 
@@ -248,7 +248,7 @@ cutsType *chooseCuts(cutsType *cuts, dVector pi, int lenX) {
 
 	for ( cnt = 0; cnt < cuts->cnt; cnt++ ) {
 		if (pi[cuts->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
-			gCuts->vals[gCuts->cnt] = newCut(lenX, cuts->vals[cnt]->omegaCnt, cuts->vals[cnt]->numSamples);
+			gCuts->vals[gCuts->cnt] = newCut(lenX, omgCnt, cuts->vals[cnt]->numSamples);
 			copyIntvec(cuts->vals[cnt]->iStar, gCuts->vals[gCuts->cnt]->iStar, cuts->vals[cnt]->omegaCnt);
 			gCuts->vals[gCuts->cnt]->rowNum = cuts->vals[cnt]->rowNum;
 			gCuts->cnt++;
