@@ -785,37 +785,12 @@ int cleanMaster(probType *prob, cellType *cell) {
 	int 	cnt;
 	int numCols = prob->num->cols; /* eta column excluded */
 
-	/* 1. Clean the master by removing all the inactive cuts */
-	if (prob->num->rows < cell->master->mar) {
-		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
-			if (removeRow(cell->master->lp, cnt, cnt)) {
-				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
-				errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
-				return 1;
-			}
-		cell->master->mar -= cell->activeCuts->cnt;
-	}
-
-	/* 2. Update and the bounds of variables */
+	/* Update and the bounds of variables */
 	for (cnt = 0; cnt < numCols; cnt++) {
 		cell->master->bdl[cnt] = prob->sp->bdl[cnt];
 		cell->master->bdu[cnt] = prob->sp->bdu[cnt];
 		//printf("\nv:%d  -  lb:%0.4f  -  ub:%0.4f", cnt, lbounds[cnt], ubounds[cnt]);
 	}
-
-#if defined(BNC_CHECK)
-	printf("\nafter SD var:\n");
-	printVector(node->vars, node->numVar, NULL);
-#endif // defined(BNC_CHECK)
-
-	/* 3. Remove the all the cuts from the activeCuts structure */
-	freeCutsType(cell->activeCuts, true);
-
-#if defined(writemaster)
-	char mname[NAMESIZE];
-	sprintf(mname, "%s_k%d_n%d.lp", "masterafterclean", cell->k, node->key);
-	writeProblem(cell->master->lp, mname);
-#endif // defined(writemaster)
 
 	return 0;
 }//END cleanMaster()
