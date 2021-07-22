@@ -57,7 +57,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		config.RUN_SEED[0] = config.RUN_SEED[rep+1];
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
-		writeProblem(cell->master->lp, "test21.lp");
 		if ( rep != 0 ) {
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
@@ -67,7 +66,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		}
 
 		clock_t tic = clock();
-		writeProblem(cell->master->lp, "test2.lp");
 		
 
 #if  defined(experiment)
