@@ -107,6 +107,7 @@ void freepartialNode(struct BnCnodeType *node);
 struct BnCnodeType *copyNode(struct BnCnodeType *node, double thresh);
 struct BnCnodeType *nextNode(struct BnCnodeType *node);
 struct BnCnodeType *prevNode(int key);
+int sumDisjncs(iVector disjncs, int numIntVar);
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB);
 int branchVar(struct BnCnodeType *node, int strategy);
 int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, struct BnCnodeType **activeNode);

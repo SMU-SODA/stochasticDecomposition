@@ -538,7 +538,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	/* 2. Invoke the SD solver to solve the node */
 	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-		(node->objval < GlobeUB && !isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE))))) {
+		(node->objval < GlobeUB && sumDisjncs(node->disjncs, node->numIntVar))))) {
 
 		/* solve the current master problem */
 		int status;
@@ -1382,6 +1382,17 @@ void fracLamda(cellType *cell, struct BnCnodeType *node) {
 
 	node->fracPi = ((double)totLambda) / ((double)node->Lambdasize);
 }//END fracLamda()
+
+/* sum the number of disjunctions if it is equal to the number of integer variables return one */
+int sumDisjncs(iVector disjncs, int numIntVar) {
+	for (int v = 0; v < numIntVar; v++) {
+		if (disjncs[v] == 0) {
+			return 1;
+		}
+	}
+
+	return 0;
+}// END sumDisjncs
 
 /* Print the node information summary */
 void printNodesummary(struct BnCnodeType *node) {
