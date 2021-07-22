@@ -13,7 +13,7 @@
 
 extern configType config;
 
-int solveCell(stocType *stoc, probType **prob, cellType *cell) {
+int solveCell(stocType *stoc, probType **prob, cellType *cell, bool isRoot) {
 	dVector 	observ;
 	clock_t		tic;
 	int 		candidCut;
@@ -22,7 +22,9 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	observ = (dVector) arr_alloc(stoc->numOmega + 1, double);
 
 	/******* 0. Initialization: The algorithm begins by solving the master problem as a QP *******/
-	while (cell->optFlag == false && cell->ki < config.MAX_ITER_CLBK && cell->k < config.MAX_ITER) {
+	while (cell->optFlag == false && 
+		((cell->ki < config.MAX_ITER_CLBK && !isRoot) || (cell->ki < config.MAX_ITER_ROOT && isRoot))
+		&& cell->k < config.MAX_ITER) {
 
 		tic = clock();
 

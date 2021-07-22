@@ -25,7 +25,7 @@
 #undef printBest
 #define printBranch
 #undef depthtest
-#define writemaster
+#undef writemaster
 
 int currKey;
 int currDepth;
@@ -99,6 +99,8 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeType *node, cString pname);
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
+int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node);
+int cleanMaster(probType *prob, cellType *cell);
 void freeNodes(struct BnCnodeType *root);
 void freeNode(struct BnCnodeType *node);
 void freepartialNode(struct BnCnodeType *node);

@@ -57,6 +57,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		config.RUN_SEED[0] = config.RUN_SEED[rep+1];
 		config.EVAL_SEED[0] = config.EVAL_SEED[rep+1];
 
+		writeProblem(cell->master->lp, "test21.lp");
 		if ( rep != 0 ) {
 			/* clean up the cell for the next replication */
 			if ( cleanCellType(cell, prob[0], meanSol) ) {
@@ -66,6 +67,8 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 		}
 
 		clock_t tic = clock();
+		writeProblem(cell->master->lp, "test2.lp");
+		
 
 #if  defined(experiment)
 		/* evaluating a test solution*/
@@ -83,7 +86,7 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 			}
 		}
 		else {
-			if ( solveCell(stoc, prob, cell) ) {
+			if ( solveCell(stoc, prob, cell, true) ) {
 				errMsg("algorithm", "algo", "failed to solve the cell using 2-SD algorithm", 0);
 				goto TERMINATE;
 			}

@@ -115,18 +115,20 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useDNODE)
 		/* Loop for revisiting the fractional nodes to put them back to the queue if the estimate gets better */
 		for (int cnt = 0; cnt < dnodes; cnt++) {
-			for (int cnt2 = 0; cnt2 < cell->cutsPool[nodearr[cnt]->poolID]->cnt; cnt2++)
-				revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
-					nodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[nodearr[cnt]->poolID]->vals[cnt2]);
-			double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) +
+			if (cell->cutsPool[nodearr[cnt]->poolID]) {
+				for (int cnt2 = 0; cnt2 < cell->cutsPool[nodearr[cnt]->poolID]->cnt; cnt2++)
+					revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+						nodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[nodearr[cnt]->poolID]->vals[cnt2]);
+				double est = vXvSparse(nodearr[cnt]->vars, prob[0]->dBar) +
 					maxCutHeight(cell->cutsPool[nodearr[cnt]->poolID], cell->sampleSize, nodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-			if (est < cell->incumbEst && est > meanVal) {
-				nodearr[cnt]->isActive = true;
-				for (int n = cnt; n < dnodes - 1; n++) {
-					nodearr[n] = nodearr[n + 1];
+				if (est < cell->incumbEst && est > meanVal) {
+					nodearr[cnt]->isActive = true;
+					for (int n = cnt; n < dnodes - 1; n++) {
+						nodearr[n] = nodearr[n + 1];
+					}
+					nodearr[dnodes] = NULL;
+					dnodes -= 1;
 				}
-				nodearr[dnodes] = NULL;
-				dnodes -= 1;
 			}
 		}
 #endif // defined(useDNODE)
@@ -134,14 +136,16 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #if defined(useINODE)
 		/* Loop for revisiting the integer feasible nodes to update the current best */
 		for (int cnt = 0; cnt < inodes; cnt++) {
-			for (int cnt2 = 0; cnt2 < cell->cutsPool[inodearr[cnt]->poolID]->cnt; cnt2++)
-				revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
-					inodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[inodearr[cnt]->poolID]->vals[cnt2]);
-			double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
-								+ maxCutHeight(cell->cutsPool[inodearr[cnt]->poolID], cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-			if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal) {
-				GlobeUB = est;
-				bestNode = inodearr[cnt];
+			if(cell->cutsPool[inodearr[cnt]->poolID]){
+				for (int cnt2 = 0; cnt2 < cell->cutsPool[inodearr[cnt]->poolID]->cnt; cnt2++)
+					revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+						inodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[inodearr[cnt]->poolID]->vals[cnt2]);
+				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
+					+ maxCutHeight(cell->cutsPool[inodearr[cnt]->poolID], cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
+				if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal) {
+					GlobeUB = est;
+					bestNode = inodearr[cnt];
+				}
 			}
 		}
 #endif // defined(useINODE)
@@ -196,6 +200,13 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 		// Update the incumbent estimate 
 		cell->incumbEst = GlobeLB;
 	}
+
+	/* cleaning the master problem after finishing bnc */
+	if (cleanMaster(prob[0], cell)) {
+		errMsg("BnC", "solveNode", "failed to clean the master problem after finishing bnc ", 0);
+		return 1;
+	}
+
 #if defined(printBest)
 	printLine();
 	printLine();
@@ -283,7 +294,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 			return 1;
 		}
 
-		return 1;
+		return 0;
 	}
 
 	node->LB = node->objval;
@@ -513,7 +524,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 
 	/* 1. Setup the node to be solved */
 	if ( setupNode(prob[0], cell, node) ) {
-		errMsg("BnB", "solveNode", "failed to setup node before solveNode", 0);
+		errMsg("BnC", "solveNode", "failed to setup node before solveNode", 0);
 		return 1;
 	}
 
@@ -533,17 +544,10 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 		int status;
 		changeQPSolverType(ALG_CONCURRENT);
 		if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
-			node->isSPopt = false;
-			node->isActive = false;
-			/* Clean the master by removing all the inactive cuts */
-			if (prob[0]->num->rows < cell->master->mar) {
-				for (int cnt = cell->master->mar - 1; cnt >= prob[0]->num->rows; cnt--)
-					if (removeRow(cell->master->lp, cnt, cnt)) {
-						printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob[0]->num->rows);
-						errMsg("solver", "solveNode-inf", "failed to remove a row from master problem", 0);
-						return 1;
-					}
-				cell->master->mar -= cell->activeCuts->cnt;
+			errMsg("BnC", "solveNode", "failed to solve the node using SD", 0);
+			if (cleanInfNode(prob[0], cell, node)) {
+				errMsg("BnC", "solveNode", "failed to clean the inf node after SD solve", 0);
+				return 1;
 			}
 #if defined(BNC_INF_CHECK)
 			char fname[NAMESIZE];
@@ -554,24 +558,19 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 		}
 
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
-		if ( solveCell(stoc, prob, cell) ) {
-			errMsg("BnB", "solveNode", "failed to solve the node using SD", 0);
-			/* Clean the master by removing all the inactive cuts */
-			if (prob[0]->num->rows < cell->master->mar) {
-				for (int cnt = cell->master->mar - 1; cnt >= prob[0]->num->rows; cnt--)
-					if (removeRow(cell->master->lp, cnt, cnt)) {
-						printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob[0]->num->rows);
-						errMsg("solver", "solveNode-inf", "failed to remove a row from master problem", 0);
-						return 1;
-					}
-				cell->master->mar -= cell->activeCuts->cnt;
+		bool isRoot = node->key == 0;
+		if ( solveCell(stoc, prob, cell, isRoot) ) {
+			errMsg("BnC", "solveNode", "failed to solve the node using SD", 0);
+			if (cleanInfNode(prob[0], cell, node)) {
+				errMsg("BnC", "solveNode", "failed to clean the inf node after SD solve", 0);
+				return 1;
 			}
 #if defined(BNC_INF_CHECK)
 			char fname[NAMESIZE];
 			sprintf(fname, "%s_n%d_k%d.lp", "master",node->key, cell->k);
 			writeProblem(cell->master->lp, fname);
 #endif // defined(BNC_INF_CHECK)
-			node->isActive = false;
+
 			return 1;
 		}
 		node->isSPopt = true;
@@ -597,7 +596,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 
 		/* 2b. Clean the node before exit. */
 		if ( cleanNode(prob[0], cell, node) ) {
-			errMsg("BnB", "solveNode", "failed to clean the node after SD solve", 0);
+			errMsg("BnC", "solveNode", "failed to clean the node after SD solve", 0);
 			return 1;
 		}
 
@@ -629,17 +628,20 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 /* The subroutine sets up the B&B node by updating the cell structure with information necessary to solve the node SP. */
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
-	if ( node->key != 0 ) {
-		/* 1a. Copy active cuts corresponding to the parent node from the cuts pool */
-		copyCuts(prob->num, cell->cutsPool[node->poolID], &cell->activeCuts);
+	if ( node->key != 0) {
 
-		/* 1b. Add the active cuts to the master problem */
-		for ( int n = 0; n < cell->activeCuts->cnt; n++ ) {
-			if ( addCut2Master(cell->master, cell->activeCuts->vals[n], cell->incumbX, prob->num->cols, false) ) {
-				errMsg("algoIntSD", "setupNode", "failed to add the new cut to master problem", 0);
-				return -1;
+		if (cell->cutsPool[node->poolID] != NULL) {
+			/* 1a. Copy active cuts corresponding to the parent node from the cuts pool */
+			copyCuts(prob->num, cell->cutsPool[node->poolID], &cell->activeCuts);
+
+			/* 1b. Add the active cuts to the master problem */
+			for (int n = 0; n < cell->activeCuts->cnt; n++) {
+				if (addCut2Master(cell->master, cell->activeCuts->vals[n], cell->incumbX, prob->num->cols, false)) {
+					errMsg("algoIntSD", "setupNode", "failed to add the new cut to master problem", 0);
+					return -1;
+				}
+				cell->activeCuts->vals[n]->rowNum = prob->num->rows + n;
 			}
-			cell->activeCuts->vals[n]->rowNum = prob->num->rows + n;
 		}
 
 		/* 2. Retrieve the incumbent from the parent node and perform updates. */
@@ -736,6 +738,87 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 #endif // defined(writemaster)
 	return 0;
 }//END cleanNode()
+
+int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
+
+	int 	cnt;
+	dVector	lbounds, ubounds;
+	int numCols = node->numVar - 1; /* eta column excluded */
+
+	/* 0. Update the flags */
+	node->isSPopt = false;
+	node->isActive = false;
+	node->isSPopt = false;
+	
+
+	/* 1. Clean the master by removing all the inactive cuts */
+	if (prob->num->rows < cell->master->mar) {
+		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
+			if (removeRow(cell->master->lp, cnt, cnt)) {
+				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
+				errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
+				return 1;
+			}
+		cell->master->mar -= cell->activeCuts->cnt;
+	}
+
+#if defined(BNC_CHECK)
+	printf("\nafter SD var:\n");
+	printVector(node->vars, node->numVar, NULL);
+#endif // defined(BNC_CHECK)
+
+	/* 3. Remove the all the cuts from the activeCuts structure */
+	freeCutsType(cell->activeCuts, true);
+
+#if defined(writemaster)
+	char mname[NAMESIZE];
+	sprintf(mname, "%s_k%d_n%d.lp", "masterafterclean", cell->k, node->key);
+	writeProblem(cell->master->lp, mname);
+#endif // defined(writemaster)
+
+	return 0;
+}//END cleanInfNode()
+
+/* Cleaning the master problem prob[0] after getting done with the branch and bound */
+int cleanMaster(probType *prob, cellType *cell) {
+
+	int 	cnt;
+	int numCols = prob->num->cols; /* eta column excluded */
+
+	/* 1. Clean the master by removing all the inactive cuts */
+	if (prob->num->rows < cell->master->mar) {
+		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
+			if (removeRow(cell->master->lp, cnt, cnt)) {
+				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
+				errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
+				return 1;
+			}
+		cell->master->mar -= cell->activeCuts->cnt;
+	}
+
+	/* 2. Update and the bounds of variables */
+	for (cnt = 0; cnt < numCols; cnt++) {
+		cell->master->bdl[cnt] = prob->sp->bdl[cnt];
+		cell->master->bdu[cnt] = prob->sp->bdu[cnt];
+		//printf("\nv:%d  -  lb:%0.4f  -  ub:%0.4f", cnt, lbounds[cnt], ubounds[cnt]);
+	}
+
+#if defined(BNC_CHECK)
+	printf("\nafter SD var:\n");
+	printVector(node->vars, node->numVar, NULL);
+#endif // defined(BNC_CHECK)
+
+	/* 3. Remove the all the cuts from the activeCuts structure */
+	freeCutsType(cell->activeCuts, true);
+
+#if defined(writemaster)
+	char mname[NAMESIZE];
+	sprintf(mname, "%s_k%d_n%d.lp", "masterafterclean", cell->k, node->key);
+	writeProblem(cell->master->lp, mname);
+#endif // defined(writemaster)
+
+	return 0;
+}//END cleanMaster()
 
 struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * orig) {
 	int i;

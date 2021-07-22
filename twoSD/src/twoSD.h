@@ -79,7 +79,8 @@ typedef struct{
 	int     MAX_NODES;          /* Maximum number of visited nodes */
 	int     VAR_STR;            /* variable selection strategy */
 	int     BRN_STR;            /* branching strategy */
-	int		MAX_ITER_CLBK;		/* maximum number of iterations inside the callback */
+	int		MAX_ITER_CLBK;		/* maximum number of iterations per node */
+	int		MAX_ITER_ROOT;		/* maximum number of iterations inside the callback for the root node */
 	int		MASTER_TYPE;		/* type of master problem */
 	int		TAU;				/* Frequency at which the incumbent is updated */
 	double	MIN_QUAD_SCALAR;	/* Minimum value for regularizing parameter */
@@ -288,7 +289,7 @@ typedef struct {
 ////// Subroutines
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
-int solveCell(stocType *stoc, probType **prob, cellType *cell);
+int solveCell(stocType *stoc, probType **prob, cellType *cell, bool isRoot);
 int QPtoLP(stocType *stoc, probType **prob, cellType *cell, int toMIP);
 int LPtoMILP(stocType *stoc, probType **prob, cellType *cell);
 int mainloopSDCell(stocType *stoc, probType **prob, cellType *cell, bool *breakLoop, dVector observ);

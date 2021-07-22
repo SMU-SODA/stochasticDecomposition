@@ -47,6 +47,8 @@ int readConfig(cString path2config, cString inputDir) {
 			fscanf(fptr, "%d", &config.MAX_ITER);
 		else if (!(strcmp(line, "MAX_ITER_CLBK")))
 			fscanf(fptr, "%d", &config.MAX_ITER_CLBK);
+		else if (!(strcmp(line, "MAX_ITER_ROOT")))
+			fscanf(fptr, "%d", &config.MAX_ITER_ROOT);
 		else if (!(strcmp(line, "MAX_NODES")))
 			fscanf(fptr, "%d", &config.MAX_NODES);
 		else if (!(strcmp(line, "MASTER_TYPE")))
@@ -384,6 +386,8 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* constants and arrays */
 	cell->k = 0;
+	cell->ki = 0;
+	cell->numPools = 0;
 	cell->sampleSize = 0;
 	cell->LPcnt = 0;
 	cell->optFlag 		 = false;
