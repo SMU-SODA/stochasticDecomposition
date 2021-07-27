@@ -404,7 +404,12 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	left  = newNode(getnodeIdx(node->depth + 1, node->key, 1), node, node->vars[vaIdx + 1], vaIdx, true);
 	left->poolID = cell->numPools++;
 	cell->cutsPool[left->poolID] = NULL;
-	copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
+	if (cell->cutsPool[left->parentPoolID] != NULL && cell->cutsPool[left->parentPoolID]->cnt > 0) {
+		copyCuts(prob[0]->num, cell->cutsPool[left->parentPoolID], &cell->cutsPool[left->poolID]);
+	}
+	else {
+		printf("parent node of %d cut pool is empty", left->key);
+	}
 	if (left->depth > cell->depth) cell->depth = left->depth;
 	cell->tot_nodes += 2;
 
@@ -630,7 +635,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 	if ( node->key != 0) {
 
-		if (cell->cutsPool[node->poolID] != NULL) {
+		if (cell->cutsPool[node->poolID] != NULL && cell->cutsPool[node->poolID]->cnt > 0) {
 			/* 1a. Copy active cuts corresponding to the parent node from the cuts pool */
 			copyCuts(prob->num, cell->cutsPool[node->poolID], &cell->activeCuts);
 
@@ -638,7 +643,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 			for (int n = 0; n < cell->activeCuts->cnt; n++) {
 				if (addCut2Master(cell->master, cell->activeCuts->vals[n], cell->incumbX, prob->num->cols, false)) {
 					errMsg("algoIntSD", "setupNode", "failed to add the new cut to master problem", 0);
-					return -1;
+					return 1;
 				}
 				cell->activeCuts->vals[n]->rowNum = prob->num->rows + n;
 			}
@@ -668,6 +673,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	}
 
 	/* 2c. Update the proximal parameter */
+	cell->quadScalar = config.MIN_QUAD_SCALAR;
 	if (changeQPproximal(cell->master->lp, prob->num->cols, cell->quadScalar)) {
 		errMsg("algoIntSD", "setupNode", "failed to change the proximal term", 0);
 		return 1;
@@ -767,8 +773,6 @@ int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	printVector(node->vars, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 
-	/* 3. Remove the all the cuts from the activeCuts structure */
-	freeCutsType(cell->activeCuts, true);
 
 #if defined(writemaster)
 	char mname[NAMESIZE];

@@ -396,6 +396,7 @@ int dropCut(cellType *cell, int cutIdx) {
 
 int copyCuts(numType *num, cutsType *orig, cutsType **copy) {
 
+
 	if ( (*copy) == NULL ) {
 		(*copy) = newCuts(orig->cnt);
 	}
@@ -433,36 +434,72 @@ int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi)
 	 * parent's pool. */
 	if ( copy->cnt > 0 ) {
 		freeCutsType(copy, true);
-		copy->cnt = 0;
 	}
 
-	for ( int cnt = 0; cnt < orig->cnt; cnt++ ) {
-		if (pi[orig->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
+	int count = 0;
+	if (orig != NULL && orig->cnt > 0) { /* if the parent cuts are not empty continue */
+		for (int cnt = 0; cnt < orig->cnt; cnt++) {
+			if (pi[orig->vals[cnt]->rowNum + 1] > config.TOLERANCE) {
+				oneCut *cut;
+
+				cut = (oneCut *)mem_malloc(sizeof(oneCut));
+				cut->numSamples = orig->vals[cnt]->numSamples;
+				cut->omegaCnt = orig->vals[cnt]->omegaCnt;
+
+				cut->rowNum = -1;
+				cut->isIncumb = orig->vals[cnt]->isIncumb;
+				cut->alpha = orig->vals[cnt]->alpha;
+				cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
+				cut->slackCnt = orig->vals[cnt]->slackCnt;
+
+				cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols + 1, false);
+				if (orig->vals[cnt]->iStar == NULL) {
+					cut->iStar = NULL;
+				}
+				else {
+					cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
+				}
+
+				cut->name = (cString)arr_alloc(NAMESIZE, char);
+				strcpy(cut->name, orig->vals[cnt]->name);
+
+				copy->vals[copy->cnt++] = cut;
+
+				count++;
+			}
+		}
+
+		if (count == 0) {
 			oneCut *cut;
 
-			cut = (oneCut *) mem_malloc(sizeof(oneCut));
-			cut->numSamples = orig->vals[cnt]->numSamples;
-			cut->omegaCnt = orig->vals[cnt]->omegaCnt;
+			cut = (oneCut *)mem_malloc(sizeof(oneCut));
+			cut->numSamples = orig->vals[0]->numSamples;
+			cut->omegaCnt = orig->vals[0]->omegaCnt;
 
 			cut->rowNum = -1;
-			cut->isIncumb = orig->vals[cnt]->isIncumb;
-			cut->alpha = orig->vals[cnt]->alpha;
-			cut->alphaIncumb = orig->vals[cnt]->alphaIncumb;
-			cut->slackCnt = orig->vals[cnt]->slackCnt;
+			cut->isIncumb = orig->vals[0]->isIncumb;
+			cut->alpha = orig->vals[0]->alpha;
+			cut->alphaIncumb = orig->vals[0]->alphaIncumb;
+			cut->slackCnt = orig->vals[0]->slackCnt;
 
-			cut->beta = duplicVector(orig->vals[cnt]->beta, num->cols+1, false);
-			if (orig->vals[cnt]->iStar == NULL) {
+			cut->beta = duplicVector(orig->vals[0]->beta, num->cols + 1, false);
+			if (orig->vals[0]->iStar == NULL) {
 				cut->iStar = NULL;
 			}
 			else {
-				cut->iStar = duplicIntvec(orig->vals[cnt]->iStar, orig->vals[cnt]->omegaCnt, false);
+				cut->iStar = duplicIntvec(orig->vals[0]->iStar, orig->vals[0]->omegaCnt, false);
 			}
 
-			cut->name = (cString) arr_alloc(NAMESIZE, char);
-			strcpy(cut->name, orig->vals[cnt]->name);
+			cut->name = (cString)arr_alloc(NAMESIZE, char);
+			strcpy(cut->name, orig->vals[0]->name);
 
 			copy->vals[copy->cnt++] = cut;
+
+			count++;
 		}
+	}
+	else {
+		errMsg("cleanNode", "copyCutstoNodePool", "orig cut pool is empty", 0);
 	}
 
 	return 0;
