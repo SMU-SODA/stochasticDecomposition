@@ -36,6 +36,13 @@
 
 #undef LPMIP_PRINT
 #undef PHASE1ANLYS
+#define MEM_LEAK_CHECK
+
+#if defined(MEM_LEAK_CHECK)
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#endif // defined(MEM_LEAK_CHECK)
+
 
 #undef CALLBACK_CHECK
 #define CALLBACK_WRITE_LP

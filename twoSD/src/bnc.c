@@ -747,8 +747,6 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
-	int 	cnt;
-	dVector	lbounds, ubounds;
 	int numCols = node->numVar - 1; /* eta column excluded */
 
 	/* 0. Update the flags */
@@ -1211,8 +1209,8 @@ void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb, oneCut *cut) {
 
 	dVector 	piCbarX;
-	double  argmaxOld, argmaxNew, cummOld = 0.0, cummAll = 0.0, argmax, multiplier;
-	int	 	istarOld, istarNew, istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	double  cummOld = 0.0, cummAll = 0.0, argmax, multiplier;
+	int	 	istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	bool    pi_eval_flag = false;
 
 
@@ -1236,7 +1234,7 @@ void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *si
 
 		if (istar < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
-			return NULL;
+			return;
 		}
 		cut->iStar[obs] = istar;
 
@@ -1408,7 +1406,7 @@ void printNodesummary(struct BnCnodeType *node) {
 	printf("st int idx: %d\n", node->stInt);
 	printf("ed int idx: %d\n", node->edInt);
 	printf("disjunctions \n");
-	printVector(node->disjncs, node->numIntVar, NULL);
+	printIntvec(node->disjncs, node->numIntVar, NULL);
 	printf("imposed bounds: \n");
 	for (int v = 0; v < node->numIntVar; v++) {
 		printf("\nvar %d: ",v);
