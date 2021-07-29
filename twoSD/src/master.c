@@ -39,7 +39,6 @@ int solveQPMaster(numType *num, sparseVector *dBar, cellType *cell, double lb) {
 	/* solve the master problem */
 	clock_t tic = clock();
 	changeQPSolverType(ALG_CONCURRENT);
-	writeProblem(cell->master->lp, "infeasibleM.lp");
 	if ( solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status) ) {
 #if defined(printInfeas)
 		if (status == STAT_INFEASIBLE) {
@@ -211,7 +210,7 @@ int addCut2Master(oneProblem *master, oneCut *cut, dVector vectX, int lenX, bool
 		cut->alphaIncumb = cut->alpha;
 
 	/* Set up the cut name */
-	sprintf(cut->name, "cut_%04d", cummCutNum++);
+	sprintf(cut->name, "cut_%d", cummCutNum++);
 
 	/* add the cut to the cell cuts structure as well as on the solver */
 	if ( addRow(master->lp, lenX + 1, cut->alphaIncumb, GE, 0, indices, cut->beta, cut->name) ) {

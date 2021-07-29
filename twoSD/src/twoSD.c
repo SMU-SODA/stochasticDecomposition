@@ -24,6 +24,10 @@ int main (int argc, char *argv[]) {
 	timeType *tim = NULL;
 	stocType *stoc = NULL;
 	outputDir = NULL;
+
+#if defined(MEM_LEAK_CHECK)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif // defined(MEM_LEAK_CHECK)
 	
 	/* read problem information */
 	parseCmdLine(argc, argv, &probName, &inputDir, &configFile);
@@ -58,7 +62,7 @@ int main (int argc, char *argv[]) {
 	freeTimeType(tim);
 	freeStocType(stoc);
 	closeSolver();
-	mem_free(probName); mem_free(inputDir); mem_free(configFile);
+	mem_free(probName); mem_free(inputDir); mem_free(configFile); mem_free(outputDir);
 
 	return 0;
 }//END main()

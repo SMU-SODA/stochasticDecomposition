@@ -286,7 +286,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 
 	cut->alpha = 0.0;
 
-	cut->name = (cString) arr_alloc(NAMESIZE, char);
+	cut->name = (cString) arr_alloc(3*NAMESIZE, char);
 
 	return cut;
 }//END newCut
@@ -495,7 +495,6 @@ int copyCutstoNodePool(numType *num, cutsType *orig, cutsType *copy, dVector pi)
 
 			copy->vals[copy->cnt++] = cut;
 
-			count++;
 		}
 	}
 	else {

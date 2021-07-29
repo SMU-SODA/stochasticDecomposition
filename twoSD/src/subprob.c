@@ -10,6 +10,7 @@
  */
 
 #include "stoc.h"
+#undef ALGO_CHECK
 
 /* This function will solve a new subproblem. This involves replacing the right-hand side of the subproblem with new values, based upon some
  * observation of omega, and some X dVector of primal variables from the master problem.  Generally, the latest observation is used.  When
@@ -49,6 +50,7 @@ int solveSubprob(probType *prob, oneProblem *subproblem, dVector Xvect, basisTyp
 			printf("Subproblem is infeasible for current first-stage decision and observation.\n");
 			writeProblem(subproblem->lp, "infeasibleSP.lp");
 			(*subFeasFlag) = false;
+			return -1;
 		}
 		else {
 			errMsg("algorithm", "solveSubprob", "failed to solve subproblem in solver", 0);

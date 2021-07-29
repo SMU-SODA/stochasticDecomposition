@@ -16,7 +16,6 @@
 extern cString outputDir;
 #endif
 
-extern configType config;
 
 void calcBasis(LPptr lp, numType *num, coordType *coord, sparseVector *dBar, oneBasis *B, int basisDim) {
 	dVector	basicCost, costVector, tempPsiRow;
@@ -264,15 +263,14 @@ bool checkBasisFeasibility(oneBasis *B, sparseVector dOmega, cString senx, int n
 basisType *newBasisType(int numIter, int numCols, int numRows, int wordLength) {
 	basisType *basis;
 	int numBits = 2; 		/* The column or row status in a basis is indicated by an integer 0,1,2, or 3. We need 2 bits to encode this information. */
-	int maxcut = config.CUT_MULT * numCols + 3;
 	if ( !(basis = (basisType *) mem_malloc(sizeof(basisType))))
 		errMsg("allocation", "newBasisType", "basis", 0);
-	if ( !(basis->vals = (oneBasis **) arr_alloc(maxcut*config.MAX_ITER, oneBasis *)))
+	if ( !(basis->vals = (oneBasis **) arr_alloc(numIter, oneBasis *)))
 		errMsg("allocation", "newBasisType", "basis->vals", 0);
-	if ( !(basis->obsFeasible = (bool **) arr_alloc(maxcut*config.MAX_ITER, bool *)))
+	if ( !(basis->obsFeasible = (bool **) arr_alloc(numIter, bool *)))
 		errMsg("allocation", "newBasisType", "basis->obsFeasible", 0);
-	if (!(basis->iStar = arr_alloc(maxcut*config.MAX_ITER, int)))
-		errMsg("allocation", "newBasisType", "iStar", 0);
+	if (!(basis->iStar = arr_alloc(numIter, int)))
+		errMsg("allocation", "newBasisType", "basis->iStar", 0);
 	basis->cnt = 0;
 	basis->init = 0;
 	basis->basisEval = 0;
@@ -318,9 +316,9 @@ void freeBasisType(basisType *basis, bool partial) {
 				return;
 			}
 			mem_free(basis->vals);
-			mem_free(basis->obsFeasible);
-			mem_free(basis->iStar);
 		}
+		if (basis->obsFeasible) mem_free(basis->obsFeasible);
+		if (basis->iStar) mem_free(basis->iStar);
 		mem_free(basis);
 	}
 
