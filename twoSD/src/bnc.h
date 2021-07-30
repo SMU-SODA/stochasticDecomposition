@@ -103,6 +103,7 @@ int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 int cleanMaster(probType *prob, cellType *cell);
+int isInfNode(probType *prob, cellType *cell, struct BnCnodeType *node);
 void freeNodes(struct BnCnodeType *root);
 void freeNode(struct BnCnodeType *node);
 void freepartialNode(struct BnCnodeType *node);
@@ -120,5 +121,7 @@ void fracLamda(cellType *cell, struct BnCnodeType *node);
 void truncate(dVector var, dVector lb, dVector ub, int cnt);
 void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
 	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb, oneCut *cut);
+double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb);
 
 #endif /* BNC_H_ */

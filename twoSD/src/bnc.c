@@ -135,18 +135,16 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 #endif // defined(useDNODE)
 
 #if defined(useINODE)
+		GlobeUB = INFINITY;
 		/* Loop for revisiting the integer feasible nodes to update the current best */
 		for (int cnt = 0; cnt < inodes; cnt++) {
-			if(cell->cutsPool[inodearr[cnt]->poolID]){
-				for (int cnt2 = 0; cnt2 < cell->cutsPool[inodearr[cnt]->poolID]->cnt; cnt2++)
-					revisitNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
-						inodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb, cell->cutsPool[inodearr[cnt]->poolID]->vals[cnt2]);
-				double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
-					+ maxCutHeight(cell->cutsPool[inodearr[cnt]->poolID], cell->sampleSize, inodearr[cnt]->vars, prob[0]->num->cols, prob[0]->lb);
-				if (est > inodearr[cnt]->parobjVal && est < GlobeUB && est > meanVal) {
-					GlobeUB = est;
-					bestNode = inodearr[cnt];
-				}
+			double est = vXvSparse(inodearr[cnt]->vars, prob[0]->dBar)
+				+ revisitIntegerNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+					inodearr[cnt]->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
+			inodearr[cnt]->objval = est;
+			if (est < GlobeUB && est > meanVal) {
+				GlobeUB = est;
+				bestNode = inodearr[cnt];
 			}
 		}
 #endif // defined(useINODE)
@@ -541,25 +539,14 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	/* 2. Invoke the SD solver to solve the node */
 	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-		(node->objval < GlobeUB && sumDisjncs(node->disjncs, node->numIntVar)))) &&
-		node->lbdsjncs < 1*node->numIntVar && node->ubdsjncs < 0.8*node->numIntVar) {
+		(node->objval < GlobeUB && sumDisjncs(node->disjncs, node->numIntVar))))) {
 
-		/* solve the current master problem */
-		int status;
-		changeQPSolverType(ALG_CONCURRENT);
-		if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
+		/* check the feasibility of the node */
+		if (isInfNode(prob[0], cell, node)) {
 			errMsg("BnC", "solveNode", "failed to solve the node using SD", 0);
-			if (cleanInfNode(prob[0], cell, node)) {
-				errMsg("BnC", "solveNode", "failed to clean the inf node after SD solve", 0);
-				return 1;
-			}
-#if defined(BNC_INF_CHECK)
-			char fname[NAMESIZE];
-			sprintf(fname, "%s_n%d_k%d.lp", "master", node->key, cell->k);
-			writeProblem(cell->master->lp, fname);
-#endif // defined(BNC_INF_CHECK)
 			return 1;
 		}
+
 
 		/* Use two-stage stochastic decomposition algorithm to solve the problem */
 		bool isRoot = node->key == 0;
@@ -578,6 +565,7 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 			return 1;
 		}
 		node->isSPopt = true;
+		if (node->key == 0) cell->root_iter = cell->k;
 
 
 		// If the solution is fractional create a rounded solution and update the GlobalLB
@@ -612,13 +600,27 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	}
 	else {
 		truncate(node->vars, prob[0]->sp->bdl, prob[0]->sp->bdu, node->numVar);
-		if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal || cell->ki >= config.MAX_ITER_CLBK) {
-			node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
-			node->isSPopt = false;
+		if (!sumDisjncs(node->disjncs, node->numIntVar)) {
+			node->objval = revisitIntegerNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
+				node->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
+			if (node->parobjVal < cell->incumbEst ) {
+				node->objval = cell->incumbEst;
+			}
+			else {
+				node->isSPopt = false;
+				cell->incumbEst = node->objval;
+			}
 		}
-		else {
-			node->objval = cell->incumbEst;
+		else{
+			if (cell->incumbEst <= node->parobjVal || cell->incumbEst <= meanVal || cell->ki >= config.MAX_ITER_CLBK) {
+				node->objval = meanVal - fabs(cell->incumbEst <= meanVal);
+				node->isSPopt = false;
+			}
+			else {
+				node->objval = cell->incumbEst;
+			}
 		}
+
 	}
 
 	if (cell->ki > 600) printf("\n");
@@ -628,6 +630,37 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 
 	return 0;
 }//END solveNode()
+
+/* Check to see the node is infeasible or not before the execution of SD */
+int isInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
+
+	if (node->lbdsjncs >= 1 * node->numIntVar && node->ubdsjncs >= 0.8*node->numIntVar) {
+		if (cleanInfNode(prob, cell, node)) {
+			errMsg("BnC", "solveNode", "failed to clean the inf node after SD solve", 0);
+			return 1;
+		}
+	}
+	else {
+		/* solve the current master problem */
+		int status;
+		changeQPSolverType(ALG_CONCURRENT);
+		if (solveProblem(cell->master->lp, cell->master->name, cell->master->type, &status)) {
+			errMsg("BnC", "solveNode", "failed to solve the node using SD", 0);
+			if (cleanInfNode(prob, cell, node)) {
+				errMsg("BnC", "solveNode", "failed to clean the inf node after SD solve", 0);
+				return 1;
+			}
+#if defined(BNC_INF_CHECK)
+			char fname[NAMESIZE];
+			sprintf(fname, "%s_n%d_k%d.lp", "master", node->key, cell->k);
+			writeProblem(cell->master->lp, fname);
+#endif // defined(BNC_INF_CHECK)
+			return 1;
+		}
+	}
+
+	return 0;
+}//END isInfNode()
 
 /* The subroutine sets up the B&B node by updating the cell structure with information necessary to solve the node SP. */
 int setupNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
@@ -746,7 +779,6 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
 int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 
-	int numCols = node->numVar - 1; /* eta column excluded */
 
 	/* 0. Update the flags */
 	node->isSPopt = false;
@@ -755,15 +787,15 @@ int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	
 
 	/* 1. Clean the master by removing all the inactive cuts */
-	if (prob->num->rows < cell->master->mar) {
-		for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
-			if (removeRow(cell->master->lp, cnt, cnt)) {
-				printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
-				errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
-				return 1;
-			}
-		cell->master->mar -= cell->activeCuts->cnt;
-	}
+	//if (prob->num->rows < cell->master->mar) {
+	//	for (int cnt = cell->master->mar - 1; cnt >= prob->num->rows; cnt--)
+	//		if (removeRow(cell->master->lp, cnt, cnt)) {
+	//			printf("row Num %d - tot rows %d - orig rows %d", cnt, cell->master->mar, prob->num->rows);
+	//			errMsg("solver", "cleanNode", "failed to remove a row from master problem", 0);
+	//			return 1;
+	//		}
+	//	cell->master->mar -= cell->activeCuts->cnt;
+	//}
 
 #if defined(BNC_CHECK)
 	printf("\nafter SD var: ");
@@ -1264,7 +1296,46 @@ void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *si
 	if(piCbarX) mem_free(piCbarX);
 
 
-}//END reform_cuts
+}//END revisitNode()
+
+ /* This function will reform the bnc cuts based on the most recent observations of omega passed in as _observ_, and the istar's
+ * which have already been stored in the _istar_ field of each cut. If an istar field does not exist for a given observation,
+ * it would be calculated using computeIstar(). */
+double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, omegaType *omega, sampleType *sample,
+	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
+
+	dVector 	piCbarX;
+	double  cummOld = 0.0, cummAll = 0.0, argmax, multiplier;
+	int	 	istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	bool    pi_eval_flag = false;
+
+
+	/* Pre-compute pi x Cbar x x as it is independent of observations */
+	if (!(piCbarX = arr_alloc(sigma->cnt, double)))
+		errMsg("Allocation", "SDCut", "pi_Tbar_x", 0);
+	for (c = 0; c < sigma->cnt; c++)
+		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
+
+	/* Test for omega issues */
+	for (obs = 0; obs < omega->cnt; obs++) {
+		/* identify the maximal Pi/basis that generates the maximal Pi for each observation */
+		istar = computeIstar(num, coord, basis, sigma, delta, sample,
+			piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
+
+		if (istar < 0) {
+			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
+			return INFINITY;
+		}
+
+	}
+
+
+	if (piCbarX) mem_free(piCbarX);
+
+	return argmax;
+
+
+}//END revisitIntegerNode
 
 /* Return the previous node of the input node */
 struct BnCnodeType *prevNode(int key)
@@ -1374,11 +1445,15 @@ void fracLamda(cellType *cell, struct BnCnodeType *node) {
 
 /* sum the number of disjunctions if it is equal to the number of integer variables return one */
 int sumDisjncs(iVector disjncs, int numIntVar) {
+	int count = 0;
+	
 	for (int v = 0; v < numIntVar; v++) {
 		if (disjncs[v] == 0) {
-			return 1;
+			count++;
 		}
 	}
+
+	if (count >= 0.3*numIntVar) return 1;
 
 	return 0;
 }// END sumDisjncs
