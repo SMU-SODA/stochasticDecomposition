@@ -278,7 +278,7 @@ oneCut *newCut(int numX, int numIstar, int numSamples) {
 	cut->alphaIncumb = 0.0;
 	cut->rowNum = -1;
 
-	if (!(cut->iStar = arr_alloc(numIstar, int)))
+	if (!(cut->iStar = arr_alloc(config.MAX_ITER, int)))
 		errMsg("allocation", "new_cut", "iStar", 0);
 
 	if (!(cut->beta = arr_alloc(numX + 1, double)))

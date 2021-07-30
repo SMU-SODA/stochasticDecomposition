@@ -16,6 +16,7 @@
 
 extern configType config;
 
+
 /* branch and bound algorithm */
 int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, double UB) {
 	int i;
@@ -391,11 +392,6 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 
 
 	// Branch on the node
-#if defined(BNC_CHECK)
-		printf("\nbefore branching - varIdx %d:\n",vaIdx+1);
-		printVector(node->vars, node->numVar, NULL);
-#endif // defined(BNC_CHECK)
-
 	struct BnCnodeType *right, *left;
 
 	right = newNode(getnodeIdx(node->depth + 1, node->key, 0), node, node->vars[vaIdx + 1], vaIdx, false);
@@ -521,10 +517,10 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	cell->ki = 0;
 
 #if defined(BNC_CHECK)
-	printf("\nbefore SD: %-10s%-5d%-10s%-5d%-5s%-5d%-10s%-5d%-10s%-5d","node id:",
-			node->key,"node depth:",node->depth,"numVar:",node->numVar,"node->edInt:",node->edInt,"master->mac:",cell->master->mac);
-	printf("\ndisjuction:\n");
-	printIntvec(node->disjncs, node->numVar-1, NULL);
+	printf("\ndisjuction: ");
+	for (int n = 0; n < node->numIntVar; n++)
+		printf("%d, ", node->disjncs[n]);
+	printf("\n");
 #endif // defined(BNC_CHECK)
 
 	/* 1. Setup the node to be solved */
@@ -534,16 +530,19 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 	}
 
 #if defined(BNC_CHECK)
-	printf("\ninit var:\n");
-	printVector(node->vars, node->numVar, NULL);
-	printf("\ninit incumbX:\n");
-	printVector(cell->incumbX, node->numVar, NULL);
+	printf("\ninit var: ");
+	printVector(node->vars, node->numVar-1, NULL);
+	printf("\ninit incumbX: ");
+	printVector(cell->incumbX, node->numVar-1, NULL);
+	printf("\ninit candidX: ");
+	printVector(cell->candidX, node->numVar-1, NULL);
 #endif // defined(BNC_CHECK)
 
 	/* 2. Invoke the SD solver to solve the node */
 	if (node->ishrstic ||
 		(cell->k < config.MAX_ITER && (node->prevnode == NULL ||
-		(node->objval < GlobeUB && sumDisjncs(node->disjncs, node->numIntVar))))) {
+		(node->objval < GlobeUB && sumDisjncs(node->disjncs, node->numIntVar)))) &&
+		node->lbdsjncs < 1*node->numIntVar && node->ubdsjncs < 0.8*node->numIntVar) {
 
 		/* solve the current master problem */
 		int status;
@@ -716,8 +715,8 @@ int cleanNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	fracLamda(cell, node);
 
 #if defined(BNC_CHECK)
-	printf("\nafter SD var:\n");
-	printVector(node->vars, node->numVar, NULL);
+	printf("\nafter SD var: ");
+	printVector(node->vars, node->numVar-1, NULL);
 #endif // defined(BNC_CHECK)
 
 	/* 2. Copy the active cuts to the cutsPool */
@@ -767,7 +766,7 @@ int cleanInfNode(probType *prob, cellType *cell, struct BnCnodeType *node) {
 	}
 
 #if defined(BNC_CHECK)
-	printf("\nafter SD var:\n");
+	printf("\nafter SD var: ");
 	printVector(node->vars, node->numVar, NULL);
 #endif // defined(BNC_CHECK)
 
@@ -827,6 +826,8 @@ struct BnCnodeType *newrootNode(int numVar, double LB, double UB, oneProblem * o
 	temp->isSPopt = true;
 	temp->parentPoolID = -1;
 	temp->poolID = 0;
+	temp->lbdsjncs = 0;
+	temp->ubdsjncs = 0;
 
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numVar-1, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
@@ -913,6 +914,8 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 	temp->parobjVal = parent->objval;
 	temp->isSPopt = true;
 	temp->parentPoolID = parent->poolID;
+	temp->lbdsjncs = parent->lbdsjncs;
+	temp->ubdsjncs = parent->ubdsjncs;
 
 	if (!(temp->disjncs = (iVector)arr_alloc(temp->numIntVar, int)))
 		errMsg("allocation", "newNode", "temp->disjncs", 0);
@@ -936,9 +939,6 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 		temp->ParIncumbiStar = NULL;
 	}
 
-#if defined(BNC_CHECK)
-	printf("\nfrac val: %0.4f\n",fracVal);
-#endif // defined(BNC_CHECK)
 
 	for (i = 0; i < parent->numIntVar; i++)
 	{
@@ -953,9 +953,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 					temp->disjncs[i] = 1;
 					temp->disjncsVal[i][0] = parent->disjncsVal[i][0];
 					temp->disjncsVal[i][1] = floor(fracVal);
-#if defined(BNC_CHECK)
-					printf("\nis left: %d - var id: %d - ub: %0.4f\n", temp->isleft, i, floor(fracVal));
-#endif // defined(BNC_CHECK)
+					temp->ubdsjncs++;
 				}
 				else if (config.BRN_STR == 1)
 				{
@@ -964,12 +962,14 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 						temp->disjncs[i] = 1;
 						temp->disjncsVal[i][0] = ceil(fracVal);
 						temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
+						temp->lbdsjncs++;
 					}
 					else
 					{
 						temp->disjncs[i] = 1;
 						temp->disjncsVal[i][0] = parent->disjncsVal[i][0];
 						temp->disjncsVal[i][1] = floor(fracVal);
+						temp->ubdsjncs++;
 					}
 				}
 			}
@@ -980,9 +980,7 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 					temp->disjncs[i] = 1;
 					temp->disjncsVal[i][0] = ceil(fracVal);
 					temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
-#if defined(BNC_CHECK)
-					printf("\nis left: %d - var id: %d - lb: %0.4f\n", temp->isleft, i, ceil(fracVal));
-#endif // defined(BNC_CHECK)
+					temp->lbdsjncs++;
 				}
 				else if (config.BRN_STR == 1)
 				{
@@ -991,12 +989,14 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 						temp->disjncs[i] = 1;
 						temp->disjncsVal[i][0] = ceil(fracVal);
 						temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
+						temp->lbdsjncs++;
 					}
 					else
 					{
 						temp->disjncs[i] = 1;
 						temp->disjncsVal[i][0] = parent->disjncsVal[i][0];
 						temp->disjncsVal[i][1] = floor(fracVal);
+						temp->ubdsjncs++;
 					}
 				}
 			}
@@ -1006,13 +1006,14 @@ struct BnCnodeType *newNode(int key, struct BnCnodeType * parent, double fracVal
 			temp->disjncs[i] = parent->disjncs[i];
 			temp->disjncsVal[i][0] = parent->disjncsVal[i][0];
 			temp->disjncsVal[i][1] = parent->disjncsVal[i][1];
+
 		}
 	}
 	if (!(temp->vars = (dVector)arr_alloc(temp->numVar, double)))
 		errMsg("allocation", "newNode", "temp->vars", 0);
-
+	
 	for (int v = 0; v < temp->numVar; v++)
-		temp->vars[v] = parent->vars[v];
+		temp->vars[v] = rootNode->vars[v];
 
 	return temp;
 
@@ -1120,7 +1121,7 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 			node->vars[node->varId + 1] = disjncsVal[node->varId][1];
 			for (cnt = 0; cnt < numCols; cnt++) {
 				if (node->disjncs[cnt] == 0) {
-					node->vars[cnt] = 1;
+					node->vars[cnt+1] = 1;
 					break;
 				}
 			}
@@ -1131,10 +1132,12 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 	}
 
 #if defined(BNC_CHECK)
-	printf("\nlower bounds:\n");
-	printVector(cell->master->bdl, numCols, NULL);
-	printf("\nupper bounds:\n");
-	printVector(cell->master->bdu, numCols, NULL);
+	printf("\nlower bounds");
+	for (int n = 0; n < node->numIntVar; n++)
+		printf("%0.4f, ", cell->master->bdl[n]);
+	printf("\nupper bounds");
+	for (int n = 0; n < node->numIntVar; n++)
+		printf("%0.4f, ", cell->master->bdu[n]);
 #endif // defined(BNC_CHECK)
 
 
@@ -1142,22 +1145,6 @@ int addBnCDisjnct(cellType *cell, dVector  *disjncsVal, struct BnCnodeType * nod
 		errMsg("algorithm", "algoIntSD", "failed to change the bounds to convert the problem into QP", 0);
 		return 1;
 	}
-
-#if defined(BNC_CHECK)
-	printf("\nafter changeQPbds");
-	if (getLb(cell->master->lp, 0, numCols, lbounds)) {
-		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
-		return 1;
-	}
-	if (getUb(cell->master->lp, 0, numCols, ubounds)) {
-		errMsg("bnc", "addBnCDisjnct", "failed to get lb", 0);
-		return 1;
-	}
-	printf("\nlower bounds:\n");
-	printVector(lbounds, numCols, NULL);
-	printf("\nupper bounds:\n");
-	printVector(ubounds, numCols, NULL);
-#endif // defined(BNC_CHECK)
 
 	mem_free(lbounds);
 	mem_free(ubounds);
@@ -1274,7 +1261,7 @@ void revisitNode(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		cut->beta[c] = cut->beta[c] / numSamples;
 	cut->beta[0] = 1.0;			/* coefficient of eta coloumn */
 
-	mem_free(piCbarX);
+	if(piCbarX) mem_free(piCbarX);
 
 
 }//END reform_cuts

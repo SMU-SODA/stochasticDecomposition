@@ -67,7 +67,9 @@ struct BnCnodeType {
 	double  parobjVal;                   /* objective value of the parent node */
 
 	iVector  disjncs;                    /* list of disjunctive cuts on variables 0: not added 1: disjnct is added */
-	dVector  * disjncsVal;               /* list of disjunctive cuts values on variables - it has upper and lower limits */
+	dVector  *disjncsVal;                /* list of disjunctive cuts values on variables - it has upper and lower limits */
+	int      lbdsjncs;                   /* number of lower bound disjuctions */
+	int      ubdsjncs;                   /* number of upper bound disjuctions */
 
 	iVector	IncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts */
 	iVector	ParIncumbiStar;				 /* indices of maximal pi for each distint observation for incumbent cuts of the parent */

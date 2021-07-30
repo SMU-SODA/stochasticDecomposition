@@ -27,9 +27,22 @@ int checkImprovement(probType *prob, cellType *cell, int candidCut) {
 	/* Calculate height at new candidate x with newest cut included */
 	candidEst = vXvSparse(cell->candidX, prob->dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->candidX, prob->num->cols, cell->lb);
 	cell->incumbEst = vXvSparse(cell->incumbX, prob->dBar) + maxCutHeight(cell->activeCuts, cell->sampleSize, cell->incumbX, prob->num->cols, cell->lb);
-
+	
 #ifdef ALGO_CHECK
+	printf("\n-----");
 	printf("\nCandidate estimate = %lf, Incumbent estimate = %lf",candidEst, cell->incumbEst);
+	printf("\n incumbX:");
+	printVector(cell->incumbX, prob->num->cols, NULL);
+	printf("\n candidX:");
+	printVector(cell->candidX, prob->num->cols, NULL);
+	printf("\n lbound:");
+	printVector(cell->master->bdl, prob->num->cols-1, NULL);
+	printf("\n ubound:");
+	printVector(cell->master->bdu, prob->num->cols-1, NULL);
+	printf("\n # of active cuts: %d", cell->activeCuts->cnt);
+	printf("\n # of bases: %d, # of omegas: %d", cell->basis->cnt, cell->omega->cnt);
+	printf("\n name of the first cut: %s", cell->activeCuts->vals[0]->name);
+	printf("\n-----");
 #endif
 
 	/* If we see considerable improvement, then change the incumbent */
