@@ -1,17 +1,20 @@
 // Tolerance level used to differentiate floating point numbers */
-TOLERANCE    0.0001
+TOLERANCE    0.001
 
 // Minimum iterations
-MIN_ITER 10
+MIN_ITER 9
 
 // Maximum number of iterations
 MAX_ITER   5000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   400
+MAX_ITER_CLBK   250
+
+// Maximum number of iterations in each node
+MAX_ITER_ROOT   1000
 
 // Maximum number of visited nodes 
-MAX_NODES   500
+MAX_NODES   200
 
 // Branching strategies
 // 0: index based - 1: maximimum fractional val
@@ -93,10 +96,10 @@ RUN_SEED    3735836402047426
 EVAL_FLAG 1
 
 // Solution tolerance for deciding the usage of mean solution.
-EVAL_MIN_ITER 100
+EVAL_MIN_ITER 250
 
 // Obj. eval. is accurate to within this much, w/95% confidence
-EVAL_ERROR 2.0
+EVAL_ERROR 0.01
 
 // Random number seed for resampling omegas during evaluation
 EVAL_SEED	4317459304174907
@@ -167,11 +170,11 @@ PRE_EPSILON 0.01
 // EPSILON: Stopping rule tolerance, ratio used in test for optimality: (Sm - Lm) / Fk  < EPSILON. The variance of the ratio indicates the stability of the dual vertex set.
 // SCAN LENGTH (a powers of 2): the window size over which the stability of dual vertex set is measured.
 // Suggested tolerance(EPSILON, SCAN_LEN) = loose (0.01, 128), nomimal (0.001, 256) and tight (0.0001, 512).
-EPSILON 0.05
-SCAN_LEN 128
+EPSILON 0.1
+SCAN_LEN 50
 
 // Number of replications
-MULTIPLE_REP 30
+MULTIPLE_REP  30
 
 // Create compromise problem
 COMPROMISE_PROB	0
@@ -180,4 +183,4 @@ COMPROMISE_PROB	0
 SAMPLE_INCREMENT	1
 
 // Integer tolerance 
-INT_TOLERANCE  0.000001
+INT_TOLERANCE  0.001
