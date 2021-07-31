@@ -603,8 +603,8 @@ int solveNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTyp
 		if (!sumDisjncs(node->disjncs, node->numIntVar)) {
 			node->objval = revisitIntegerNode(prob[1]->num, prob[1]->coord, cell->basis, cell->sigma, cell->delta, cell->omega, cell->sample,
 				node->vars, cell->sampleSize, &cell->dualStableFlag, cell->pi_ratio, cell->k, cell->lb);
-			if (node->parobjVal < cell->incumbEst ) {
-				node->objval = cell->incumbEst;
+			if (node->objval < node->parobjVal ) {
+				node->objval = node->parobjVal;
 			}
 			else {
 				node->isSPopt = false;
@@ -1305,7 +1305,7 @@ double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigm
 	dVector Xvect, int numSamples, bool *dualStableFlag, dVector pi_ratio, int numIter, double lb) {
 
 	dVector 	piCbarX;
-	double  cummOld = 0.0, cummAll = 0.0, argmax, multiplier;
+	double  cummOld = 0.0, cummAll = 0.0, estimate = 0.0, argmax, multiplier;
 	int	 	istar, idx, c, obs, sigmaIdx, lambdaIdx;
 	bool    pi_eval_flag = false;
 
@@ -1322,6 +1322,8 @@ double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigm
 		istar = computeIstar(num, coord, basis, sigma, delta, sample,
 			piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
 
+		estimate += argmax / numSamples;
+
 		if (istar < 0) {
 			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
 			return INFINITY;
@@ -1332,7 +1334,7 @@ double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigm
 
 	if (piCbarX) mem_free(piCbarX);
 
-	return argmax;
+	return estimate;
 
 
 }//END revisitIntegerNode
