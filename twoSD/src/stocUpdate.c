@@ -255,6 +255,54 @@ int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *si
 		return maxCnt;
 }//END computeIstar
 
+ /*This function loops through all the dual dVectors found so far and returns the index of the one which satisfies the expression:
+ * 				argmax { Pi x (R - T x X) | all Pi }
+ * where X, R, and T are given.  It is calculated in this form:
+ * 				Pi x bBar + Pi x bomega + (Pi x Cbar) x X + (Pi x Comega) x X.
+ * Since the Pi's are stored in two different structures (sigma and delta), the index to the maximizing Pi is actually a structure
+ * containing two indices.  (While both indices point to pieces of the dual dVectors, sigma and delta may not be in sync with one
+ * another due to elimination of non-distinct or redundant dVectors. */
+int computeIstarInteger(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
+	dVector piCbarX, dVector Xvect, dVector observ, int obs, double *argmax, bool isNew) {
+	double 	arg, multiplier = 1.0;
+	int 	cnt, maxCnt, c, sigmaIdx, lambdaIdx;
+
+
+	*argmax = -DBL_MAX; maxCnt = 0;
+	/* Run through the list of basis to choose the one which provides the best lower bound */
+	/* argmax procedure using the pi evaluation procedure */
+	for (cnt = 0; cnt < basis->cnt; cnt++) { //create  a subset for current node
+		if (basis->vals[cnt]->feasFlag) {
+			if (basis->obsFeasible[cnt][obs]) {
+				arg = 0.0;
+				for (c = 0; c <= basis->vals[cnt]->phiLength; c++) {
+					sigmaIdx = basis->vals[cnt]->sigmaIdx[c];
+					lambdaIdx = sigma->lambdaIdx[sigmaIdx];
+					if (c == 0)
+						multiplier = 1.0;
+					else
+						multiplier = observ[coord->rvOffset[2] + basis->vals[cnt]->omegaIdx[c]];
+
+					/* Start with (Pi x bBar) + (Pi x bomega) + (Pi x Cbar) x X */
+					arg += multiplier*(sigma->vals[sigmaIdx].pib + delta->vals[lambdaIdx][obs].pib - piCbarX[sigmaIdx]);
+					arg -= multiplier*vXv(delta->vals[lambdaIdx][obs].piC, Xvect, coord->rvCOmCols, num->rvCOmCnt);
+				}
+
+				if (arg > (*argmax)) {
+					*argmax = arg;
+					maxCnt = cnt;
+				}
+			}
+		}
+	}
+
+
+	if ((*argmax == -DBL_MAX))
+		return 0;
+	else
+		return 1;
+}//END computeIstarInteger()
+
 /* This function calculates a new column in the delta structure, based on a new observation of omega. Thus, lambda_pi X C and lambda_pi X b
  * are calculated for all values of lambda_pi, for the new C(omega) and b(omega).  Room in the array has already been allocated, so the function
  * only fills it, in the column specified by _obs_. It is assumed that this observation is distinct from all previous ones, and thus a new column

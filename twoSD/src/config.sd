@@ -8,7 +8,7 @@ MIN_ITER 9
 MAX_ITER   5000
 
 // Maximum number of iterations in each node
-MAX_ITER_CLBK   250
+MAX_ITER_CLBK   10
 
 // Maximum number of iterations in each node
 MAX_ITER_ROOT   1000

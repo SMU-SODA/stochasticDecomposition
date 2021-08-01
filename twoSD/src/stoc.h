@@ -127,6 +127,8 @@ int stochasticUpdates(probType *prob, LPptr spLP, basisType *basis, lambdaType *
 		omegaType *omega, int omegaIdx, bool newOmegaFlag, int currentIter, double TOLERANCE, bool *newBasisFlag, bool subFeasFlag);
 int computeIstar(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
 		dVector piCbarX, dVector Xvect, dVector observ, int obs, int numSamples, bool pi_eval, double *argmax, bool isNew);
+int computeIstarInteger(numType *num, coordType *coord, basisType *basis, sigmaType *sigma, deltaType *delta, sampleType *sample,
+	dVector piCbarX, dVector Xvect, dVector observ, int obs, double *argmax, bool isNew);
 int calcDelta(numType *num, coordType *coord, lambdaType *lambda, deltaType *delta, int deltaRowLength, omegaType *omega, bool newOmegaFlag, int elemIdx);
 int calcLambda(numType *num, coordType *coord, dVector Pi, lambdaType *lambda, bool *newLambdaFlag, double TOLERANCE);
 int calcSigma(numType *num, coordType *coord, sparseVector *bBar, sparseMatrix *CBar, dVector pi, double mubBar,

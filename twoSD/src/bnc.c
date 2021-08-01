@@ -175,18 +175,14 @@ int branchbound(stocType *stoc, probType **prob, cellType *cell, double LB, doub
 
 	if ( bestNode != NULL ) {
 
-		if (bestNode->objval < GlobeLB) {
-			// Replace the best node to the incumbent for the out-of-sample testing
-			copyVector(bestNode->vars, cell->incumbX, bestNode->numVar, true);
-			cell->incumbEst = bestNode->objval;
+		// Replace the best node to the incumbent for the out-of-sample testing
+		copyVector(bestNode->vars, cell->incumbX, bestNode->numVar, true);
+		cell->incumbEst = bestNode->objval;
 
-			// Remove the tolerance from the best solution
-			for (int v = 0; v < bestNode->edInt; v++)
-				bestNode->vars[v] = round(bestNode->vars[v]);
-		}
-		else {
-			goto USEGLOBALLB;
-		}
+		// Remove the tolerance from the best solution
+		for (int v = 0; v < bestNode->edInt; v++)
+			bestNode->vars[v] = round(bestNode->vars[v]);
+
 	}
 	else {
 
@@ -300,7 +296,7 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 	node->numSamp = cell->k;
 
 	// Condition 1. Check if the obtained solution from the solveNode is integer
-	if (node->depth == node->edInt || isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE)) {
+	if (node->depth == node->numIntVar || isInteger(node->vars, node->numIntVar, node->stInt, node->edInt, config.INT_TOLERANCE)) {
 		INTEGER:
 #if defined(printBranch)
 		if (node->key > 0) {
@@ -313,21 +309,16 @@ int branchNode(stocType *stoc, probType **prob, cellType *cell, struct BnCnodeTy
 		}
 #endif // defined(printBranch)
 
-		if (node->prevnode == NULL)
-			return 0;
 		node->isActive = false;
 
-		if (node->isSPopt == true && node->objval < GlobeUB ) {
-			GlobeUB = node->objval;
-			bestNode = node;
-		}
-		else {
 #if defined(useINODE)
-			if (inodes < maxdnodes)
-				inodearr[++inodes] = node;
+		if (inodes < maxdnodes)
+			inodearr[++inodes] = node;
 #endif // defined(useINODE)
-		}
+
 		node->UB = node->objval;
+		if (node->prevnode == NULL)
+			return 0;
 		if (node->prevnode->depth == 0) {
 			return 0;
 		}
@@ -1306,7 +1297,7 @@ double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigm
 
 	dVector 	piCbarX;
 	double  cummOld = 0.0, cummAll = 0.0, estimate = 0.0, argmax, multiplier;
-	int	 	istar, idx, c, obs, sigmaIdx, lambdaIdx;
+	int	 	istar, idx, c, obs, sigmaIdx, lambdaIdx, tot_sample;
 	bool    pi_eval_flag = false;
 
 
@@ -1315,22 +1306,21 @@ double revisitIntegerNode(numType *num, coordType *coord, basisType *basis, sigm
 		errMsg("Allocation", "SDCut", "pi_Tbar_x", 0);
 	for (c = 0; c < sigma->cnt; c++)
 		piCbarX[c] = vXv(sigma->vals[c].piC, Xvect, coord->CCols, num->cntCcols);
+	tot_sample = numSamples;
 
 	/* Test for omega issues */
 	for (obs = 0; obs < omega->cnt; obs++) {
 		/* identify the maximal Pi/basis that generates the maximal Pi for each observation */
-		istar = computeIstar(num, coord, basis, sigma, delta, sample,
-			piCbarX, Xvect, omega->vals[obs], obs, numSamples, pi_eval_flag, &argmax, false);
-
-		estimate += argmax / numSamples;
-
-		if (istar < 0) {
-			errMsg("algorithm", "SDCut", "failed to identify maximal Pi for an observation", 0);
-			return INFINITY;
+		if (computeIstarInteger(num, coord, basis, sigma, delta, sample,
+			piCbarX, Xvect, omega->vals[obs], obs, &argmax, false)) {
+			estimate += argmax * omega->weights[obs];
+		}
+		else {
+			tot_sample -= omega->weights[obs];
 		}
 
 	}
-
+	estimate = estimate / tot_sample;
 
 	if (piCbarX) mem_free(piCbarX);
 

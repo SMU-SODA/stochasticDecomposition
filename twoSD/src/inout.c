@@ -20,7 +20,7 @@ void writeOptimizationStatistics(FILE *soln, FILE *incumb, probType **prob, cell
 		fprintf(soln, "Replication,Iterations,LB estimate,Total time,Master time,Subproblem time,Optimality time,Argmax time,Reduce time,"
 			"depth,tot nodes,d nodes, i nodes, maxiter,root iter,UB Estimate,Error,CI-L,CI-U,outcome\n");
 
-	fprintf(soln, "%d,%d,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%d,%d,%d,%d,%d", rep+1, cell->k, cell->incumbEst,cell->time.repTime, cell->time.masterAccumTime,
+	fprintf(soln, "%d,%d,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%.4lf,%d,%d,%d,%d,%d,%d", rep+1, cell->k, cell->incumbEst,cell->time.repTime, cell->time.masterAccumTime,
 			cell->time.subprobAccumTime, cell->time.optTestAccumTime, cell->time.argmaxAccumTime, 0.0, cell->depth,cell->tot_nodes,cell->d_nodes,cell->int_nodes,cell->maxiter_nodes,cell->root_iter);
 
 	printVector(cell->incumbX, prob[0]->num->cols, incumb);
