@@ -758,7 +758,6 @@ int removeColumns(LPptr lp, int begin, int end) {
 	return status;
 }//END removeRow
 
-
 int removeRow(LPptr lp, int begin, int end){
 	int status;
 

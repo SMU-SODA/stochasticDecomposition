@@ -72,6 +72,8 @@ int str2int(char *cString);
 int getNumBits(int num);
 double oneNorm(dVector a, int len);
 double twoNorm(dVector a, dVector b, int len);
+double pNorm(dVector a, dVector b, int len, int p);
+double infNorm(dVector a, dVector b, int len);
 void calcMeanVariance(dVector x, int lenX, double *mean, double *variance);
 double vXv(dVector a, dVector b, iVector idxCol, int len);
 double vXvSparse(dVector v, sparseVector *vSparse);

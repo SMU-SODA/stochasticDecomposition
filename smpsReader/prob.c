@@ -479,8 +479,7 @@ dVector meanProblem(oneProblem *orig, stocType *stoc) {
 	int 	n, status;
 
 	/* setup problem in the solver */
-	orig->lp = setupProblem(orig->
-			name, orig->type, orig->mac, orig->mar, orig->objsen, orig->objx, orig->rhsx, orig->senx, orig->matbeg, orig->matcnt,
+	orig->lp = setupProblem(orig->name, orig->type, orig->mac, orig->mar, orig->objsen, orig->objx, orig->rhsx, orig->senx, orig->matbeg, orig->matcnt,
 			orig->matind, orig->matval, orig->bdl, orig->bdu, NULL, orig->cname, orig->rname, orig->ctype);
 	if ( orig->lp == NULL ) {
 		errMsg("setup", "meanProblem", "failed to setup the mean problem", 0);

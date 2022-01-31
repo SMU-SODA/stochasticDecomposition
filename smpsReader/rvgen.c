@@ -205,7 +205,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-															/ (((b3 * r + b2) * r + b1) * r + one);
+																			/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -223,13 +223,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-															/ ((d2 * r + d1) * r + one);
+																			/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-															/ ((f2 * r + f1) * r + one);
+																			/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -286,25 +286,21 @@ int randInteger(long long *seed, int iMax) {
 	return (int) (randUniform(seed) * iMax);
 }
 
-/* This function uses a sampling technique to set up a sample average approximation problem. The sampling procedure is conducted according to the continuous distribution and parameters provided in
- * stocType. The function takes number of samples as an input from the user. The function outputs the simulated observations as a matrix with each row corresponding to a random variable, and column corresponds to
- * a simulated observation. */
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservVals, dVector probs, iVector weights,
-		int *numObs, int desiredSampleSize, double TOLERANCE) {
+int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector probs, iVector weights,
+		int *desiredSampleSize, double TOLERANCE) {
 	dVector observ;
 
-	if ( desiredSampleSize == 0 ) {
+	if ( (*desiredSampleSize) == 0 ) {
 		/* number of samples in SAA */
 		printf("Enter the number of samples used for setting up the SAA : ");
-		scanf("%d", &desiredSampleSize);
+		scanf("%d", desiredSampleSize);
 	}
 
-	printf("Generating SAA with %d samples.\n", desiredSampleSize);
-	(*numObs) = 0;
+	printf("Generating SAA with %d samples.\n", (*desiredSampleSize));
 
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
 		/* Using the internal simulator to generate samples */
-		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
+		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
 			observ = (dVector) arr_alloc(stoc->numOmega+1, double);
 			if ( !strcmp(stoc->type, "BLOCKS_DISCRETE") ) {
 				generateBlocks(stoc, observ+1, 0, seed);
@@ -326,43 +322,27 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector *simObservV
 				return 1;
 			}
 
-			/* Check to see if the observation already exists. */
-			int cnt = 0;
-			while ( cnt < (*numObs) ) {
-				if ( equalVector(observ, simObservVals[cnt], stoc->numOmega, TOLERANCE) )
-					break;
-				cnt++;
-			}
-			if ( cnt < (*numObs) ) {
-				/* Repeated observation, increase the weight. */
-				weights[cnt]++;
-				mem_free(observ);
-			}
-			else {
-				/* New observation, set weight to one. */
-				simObservVals[cnt] = observ;
-				weights[cnt] = 1;
-				(*numObs)++;
-			}
+			/* Save the new observation and set weight to one. */
+			(*simObservVals)[obs] = observ;
+			weights[obs] = 1;
 		}
 	}
 	else {
 		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
 		/* Allocate memory to elements of omegaType in cell */
-		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
-			simObservVals[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			probs[(*numObs)] = 1/(double) desiredSampleSize;
-			weights[(*numObs)] = 1;
-			(*numObs)++;
+		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
+			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
+			probs[obs] = 1/(double) (*desiredSampleSize);
+			weights[obs] = 1;
 		}
-		if ( readSimData(fname, simObservVals, stoc->numOmega, (*numObs)) ) {
+		if ( readSimData(fname, (*simObservVals), stoc->numOmega, (*desiredSampleSize)) ) {
 			errMsg("read", "setupSAA", "failed to read simulated data", 0);
 			return 1;
 		}
 	}
 
-	for ( int cnt = 0; cnt < (*numObs); cnt++ ) {
-		probs[cnt] = weights[cnt]/(double) desiredSampleSize;
+	for ( int cnt = 0; cnt < (*desiredSampleSize); cnt++ ) {
+		probs[cnt] = weights[cnt]/(double) (*desiredSampleSize);
 	}
 
 	return 0;

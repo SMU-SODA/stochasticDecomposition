@@ -188,10 +188,41 @@ double twoNorm(dVector a, dVector b, int len) {
 		for (cnt = 1; cnt <= len; cnt++ )
 			norm += pow((a[cnt]-b[cnt]), 2);
 	else
+		for (cnt = 1; cnt <= len; cnt++ )
+			norm += pow(a[cnt], 2);
 
-		norm = sqrt(norm);
+	norm = sqrt(norm);
 	return norm;
 }//END twoNorm()
+
+double pNorm(dVector a, dVector b, int len, int p) {
+	int 	cnt;
+	double	norm = 0.0;
+
+	if (b != NULL)
+		for (cnt = 1; cnt <= len; cnt++ )
+			norm += pow(fabs(a[cnt]-b[cnt]), p);
+	else
+		for (cnt = 1; cnt <= len; cnt++ )
+			norm += abs(pow(a[cnt], p));
+
+	norm = fabs(pow(norm, 1/(double) p));
+
+	return norm;
+}//END twoNorm()
+
+double infNorm(dVector a, dVector b, int len) {
+	double norm = 0.0;
+
+	if (b != NULL)
+		for (int cnt = 1; cnt <= len; cnt++ )
+			norm = maximum(fabs(a[cnt]-b[cnt]), norm);
+	else
+		for (int cnt = 1; cnt <= len; cnt++ )
+			norm = maximum(fabs(a[cnt]), norm);
+
+	return norm;
+}//END infNorm()
 
 void calcMeanVariance(dVector x, int lenX, double *mean, double *variance) {
 	double 	temp;
