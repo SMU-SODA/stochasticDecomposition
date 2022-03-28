@@ -99,7 +99,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 			fflush(stdout);
 		}
 		if (!(cnt % 10000))
-			printf("\nObs:%d mean:%lf   error: %lf \n0.90 CI: [%lf , %lf]\n", cnt, mean, 3.29 * stdev / mean,  mean - 1.645 * stdev, mean + 1.645 * stdev);
+			printf("\nObs:%d mean:%lf   error: %lf \n0.90 CI: [%lf , %lf]\n", cnt, mean, 3.92 * stdev / mean,  mean - 1.96 * stdev, mean + 1.96 * stdev);
 	}//END while loop
 	mean += vXvSparse(Xvect, prob[0]->dBar);
 

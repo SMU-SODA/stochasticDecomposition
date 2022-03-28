@@ -192,5 +192,3 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 	mem_free(observ);
 	return 1;
 }//END solveCell()
-
-
