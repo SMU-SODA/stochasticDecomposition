@@ -33,7 +33,7 @@ int generateOmegaIdx(stocType *stoc, long long *seed) {
 /* This function does not assume that the _observ_ vector follows convention that the first element of the double vector holds
  * the one-norm of the vector. This is to avoid this insistence on this convention on external simulators.
  */
-void generateOmega(stocType *stoc, dVector observ, double minVal, long long *seed, FILE **fid) {
+void generateOmega(stocType *stoc, dVector observ, long long *seed, FILE **fid) {
 	int n, offset = 0;
 
 	for ( n = 0; n < stoc->numGroups; n++ ) {
@@ -59,7 +59,7 @@ void generateOmega(stocType *stoc, dVector observ, double minVal, long long *see
 			offset += stoc->numPerGroup[n];
 		}
 		else if ( strstr(stoc->type, "LINTRAN") != NULL) {
-			generateLinTran(stoc, observ+offset, n, minVal, seed);
+			generateLinTran(stoc, observ+offset, n, seed);
 			n++; 			/* Linear transformation is associated with a block of residual random variables. */
 		}
 		else if ( !strcmp(stoc->type, "SIMULATOR") ) {
@@ -109,7 +109,7 @@ void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed)
 }//END generateIndep()
 
 /* Supporting only Wiener process */
-void generateLinTran(stocType *stoc, dVector observ, int groupID, double minVal, long long *seed) {
+void generateLinTran(stocType *stoc, dVector observ, int groupID, long long *seed) {
 	dVector eps;
 	int n, offset, t;
 	int numPeriods, epsLen, omegaLen;
@@ -205,7 +205,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-																			/ (((b3 * r + b2) * r + b1) * r + one);
+																					/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -223,13 +223,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-																			/ ((d2 * r + d1) * r + one);
+																					/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-																			/ ((f2 * r + f1) * r + one);
+																					/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -286,21 +286,14 @@ int randInteger(long long *seed, int iMax) {
 	return (int) (randUniform(seed) * iMax);
 }
 
-int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, dVector probs, iVector weights,
-		int *desiredSampleSize, double TOLERANCE) {
+int generateSAAobservs(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, int desiredSampleSize) {
 	dVector observ;
 
-	if ( (*desiredSampleSize) == 0 ) {
-		/* number of samples in SAA */
-		printf("Enter the number of samples used for setting up the SAA : ");
-		scanf("%d", desiredSampleSize);
-	}
-
-	printf("Generating SAA with %d samples.\n", (*desiredSampleSize));
+	printf("Generating SAA with %d samples.\n", desiredSampleSize);
 
 	if ( strcmp(stoc->type, "SIMULATOR") ) {
 		/* Using the internal simulator to generate samples */
-		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
+		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
 			observ = (dVector) arr_alloc(stoc->numOmega+1, double);
 			if ( !strcmp(stoc->type, "BLOCKS_DISCRETE") ) {
 				generateBlocks(stoc, observ+1, 0, seed);
@@ -312,7 +305,7 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 				normal(stoc->mean, stoc->vals[0], stoc->numOmega, observ+1, seed);
 			}
 			else if ( !strcmp(stoc->type, "LINTRAN") ) {
-				generateLinTran(stoc, observ+1, 0, TOLERANCE, seed);
+				generateLinTran(stoc, observ+1, 0, seed);
 			}
 			else if ( !strcmp(stoc->type, "SCENARIOS_DISCRETE")) {
 				generateScenario(stoc, observ, seed);
@@ -324,31 +317,25 @@ int setupSAA(stocType *stoc, cString fname, long long *seed, dVector **simObserv
 
 			/* Save the new observation and set weight to one. */
 			(*simObservVals)[obs] = observ;
-			weights[obs] = 1;
 		}
 	}
 	else {
 		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
 		/* Allocate memory to elements of omegaType in cell */
-		for (int obs = 0; obs < (*desiredSampleSize); obs++ ) {
+		for (int obs = 0; obs < desiredSampleSize; obs++ ) {
 			(*simObservVals)[obs] = (dVector) arr_alloc(stoc->numOmega+1, double);
-			probs[obs] = 1/(double) (*desiredSampleSize);
-			weights[obs] = 1;
 		}
-		if ( readSimData(fname, (*simObservVals), stoc->numOmega, (*desiredSampleSize)) ) {
+		if ( readSimulatedData(fname, (*simObservVals), stoc->numOmega, desiredSampleSize) ) {
 			errMsg("read", "setupSAA", "failed to read simulated data", 0);
 			return 1;
 		}
 	}
 
-	for ( int cnt = 0; cnt < (*desiredSampleSize); cnt++ ) {
-		probs[cnt] = weights[cnt]/(double) (*desiredSampleSize);
-	}
-
 	return 0;
 }//END setupSAA()
 
-int readSimData(cString fname, dVector *simObservVals, int numRV, int numSamples) {
+/* This subroutine reads data that is simulated using an external program and stored in a text file */
+int readSimulatedData(cString fname, dVector *simObservVals, int numRV, int numSamples) {
 	FILE *fid;
 	int cnt = 0, bufferSize = numRV*NAMESIZE;
 	char buffer[bufferSize];
