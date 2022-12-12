@@ -21,7 +21,6 @@ FILE *openFile(cString outputDir, cString fname, char *mode) {
 		fprintf(stderr, "failed to open file %s", fname);
 		return NULL;
 	}
-
 	return fptr;
 }//END openFile()
 
@@ -33,17 +32,17 @@ void createOutputDir(cString outputDir, cString algoName, cString probName) {
 	strcat(outputDir,"/");
 	if ( stat(outputDir, &st) ) {
 		sprintf(buffer, "mkdir %s", outputDir);
-		system(buffer);
+		system(buffer); 	fflush(stdout);
 	}
 	strcat(outputDir, probName);
 	strcat(outputDir, "/");
 	if ( stat(outputDir, &st) ) {
 		sprintf(buffer, "mkdir %s", outputDir);
-		system(buffer);
+		system(buffer); 	fflush(stdout);
 	}
 	else {
 		sprintf(buffer, "rm -r %s*", outputDir);
-		system(buffer);
+		system(buffer); 	fflush(stdout);
 	}
 
 }//END createOutputDir()

@@ -12,6 +12,7 @@ extern cString 	outputDir;
 ENVptr	env;
 
 int solveProblem(LPptr lp, cString pname, int type, int *status) {
+	bool isOptimal = false;
 	int		aggres = 0, res = 0;
 
 	solveagain:
@@ -25,6 +26,9 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 	case PROB_QP:
 		(*status) = CPXqpopt(env, lp);
 		break;
+	case PROB_MILP:
+		(*status) = CPXmipopt(env, lp);
+		break;
 	default:
 		(*status) = CPXbaropt(env, lp);
 		break;
@@ -32,7 +36,11 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 
 	RESOLVE:
 	(*status) = CPXgetstat(env, lp);
-	if ((*status) != STAT_OPTIMAL ) {
+
+	isOptimal = ((type == PROB_LP || PROB_QP) && ((*status) == STAT_OPTIMAL)) ||
+			((type == PROB_MILP) && ((*status) == MIP_OPTIMAL || (*status) == MIP_OPTIMAL_TOL) );
+
+	if ( !isOptimal ) {
 		writeProblem(lp, "error.lp");
 		if ((*status) == STAT_INFEASIBLE ) {
 			fprintf(stderr, "\nWarning: Problem is infeasible. ");
@@ -45,11 +53,13 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 				goto solveagain;
 			else
 				goto skip;
-		} else if ( (type == PROB_QP) && (*status) == 2 ) {
+		}
+		else if ( (type == PROB_QP) && (*status) == 2 ) {
 			changeLPSolverType(ALG_PRIMAL);
 			(*status) = CPXlpopt(env, lp);
 			goto RESOLVE;
-		} else if ( (type == PROB_LP) && ((*status) == 12 || (*status) == 0 || (*status) == 25)) {
+		}
+		else if ( (type == PROB_LP) && ((*status) == 12 || (*status) == 0 || (*status) == 25)) {
 			switch (res) {
 			case 0: changeLPSolverType(ALG_PRIMAL); res++; break;
 			case 1: changeLPSolverType(ALG_DUAL); res++; break;

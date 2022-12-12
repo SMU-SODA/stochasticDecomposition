@@ -26,12 +26,6 @@ int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **
 	}
 
 	(*stoc) = readStoc(inputDir, probName, (*orig), (*tim));
-	if ( (*stoc) == NULL ) {
-		errMsg("read", "readFiles", "failed to read problem stoc file", 0);
-		return 1;
-	}
-
-	printf("Successfully read all the files for problem: %s.\n\n", probName);
 
 #ifdef INPUT_CHECK
 	writeStocType((*stoc));

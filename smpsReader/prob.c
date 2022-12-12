@@ -324,136 +324,141 @@ probType **newProb(oneProblem *orig, stocType *stoc, timeType *tim, dVector lb, 
 			prob[t]->mean = NULL;
 			prob[t]->coord = NULL;
 			prob[t]->num->prevCols = prob[t]->num->prevRows = prob[t]->num->cntCcols = prob[t]->num->cntCrows = 0;
+			prob[t]->mean = NULL;
 		}
 		else {
-			if ( !(prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType))) )
-				errMsg("allocation", "newProb", "prob[t]->coord",0);
+			prob[t]->coord = (coordType *) mem_malloc(sizeof(coordType));
 			prob[t]->num->prevCols = prob[t-1]->num->cols;
 			prob[t]->num->prevRows = prob[t-1]->num->rows;
 			prob[t]->coord->CCols = findElements(prob[t]->Cbar->col, prob[t]->Cbar->cnt, &prob[t]->num->cntCcols);
 			prob[t]->coord->CRows = findElements(prob[t]->Cbar->row, prob[t]->Cbar->cnt, &prob[t]->num->cntCrows);
 			prob[t]->coord->allRVCols = prob[t]->coord->allRVRows = prob[t]->coord->rvCols = prob[t]->coord->rvRows = NULL;
 			prob[t]->coord->rvCOmCols = prob[t]->coord->rvCOmRows = prob[t]->coord->rvbOmRows = prob[t]->coord->rvdOmCols = NULL;
+			prob[t]->coord->rvOffset = NULL;
+			prob[t]->mean = NULL;
 		}
 	}
 
-	/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to
-	 * appropriate parts (right-hand side and objective coefficients). */
-	for ( m = 0; m < stoc->numOmega; m++ ) {
-		if ( stoc->col[m] == -1 ) {
-			/* randomness in right-hand side */
-			t = 0;
-			while ( t < tim->numStages ) {
-				if ( stoc->row[m] < tim->row[t] )
-					break;
-				t++;
+	if ( stoc ) {
+		/* decompose the stochastic elements of the problem. Go through the list of random variable and assign them to
+		 * appropriate parts (right-hand side and objective coefficients). */
+		for ( m = 0; m < stoc->numOmega; m++ ) {
+			if ( stoc->col[m] == -1 ) {
+				/* randomness in right-hand side */
+				t = 0;
+				while ( t < tim->numStages ) {
+					if ( stoc->row[m] < tim->row[t] )
+						break;
+					t++;
+				}
+				t--;
 			}
-			t--;
-		}
-		else {
-			/* randomness in either objective function coefficients or the transfer matrix */
-			t = 0;
-			while ( t < tim->numStages ) {
-				if ( stoc->col[m] < tim->col[t] )
-					break;
-				t++;
+			else {
+				/* randomness in either objective function coefficients or the transfer matrix */
+				t = 0;
+				while ( t < tim->numStages ) {
+					if ( stoc->col[m] < tim->col[t] )
+						break;
+					t++;
+				}
+				t--;
 			}
-			t--;
+
+			if ( t == 0 ) {
+				errMsg("setup", "newProb", "encountered randomness in root-stage", 0);
+				return NULL;
+			}
+
+			if ( prob[t]->num->numRV == 0) {
+				if ( !(prob[t]->coord->allRVCols = (iVector) arr_alloc(stoc->numOmega+1, int)) )
+					errMsg("allocation", "newProb", "prob->coord->allRVCols", 0);
+				if ( !(prob[t]->coord->allRVRows= (iVector) arr_alloc(stoc->numOmega+1, int)) )
+					errMsg("allocation", "newProb", "prob->coord->allRVRows", 0);
+				if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(3, int)))
+					errMsg("allocation", "newProb", "prob->coord->rOffset", 0);
+				if ( !(prob[t]->mean = (dVector) arr_alloc(stoc->numOmega+1, double)) )
+					errMsg("allocation", "newProb", "prob->mean", 0);
+				prob[t]->omBeg = m;
+			}
+
+			prob[t]->num->numRV++;
+			prob[t]->mean[prob[t]->num->numRV] = stoc->mean[m];
+
+			if ( stoc->col[m] == -1 && stoc->row[m] != -1 ) {
+				/* Right-hand side */
+				if ( prob[t]->num->rvbOmCnt == 0 ) {
+					prob[t]->coord->rvbOmRows = (iVector) arr_alloc(stoc->numOmega+1, int);
+					prob[t]->coord->rvOffset[0] = m;
+				}
+				prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
+				prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
+				prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
+			}
+			else if ( stoc->col[m] != -1 && stoc->row[m] != -1 ) {
+				/* Transfer matrix */
+				if ( prob[t]->num->rvCOmCnt == 0 ) {
+					prob[t]->coord->rvCOmCols = (iVector) arr_alloc(stoc->numOmega, int);
+					prob[t]->coord->rvCOmRows = (iVector) arr_alloc(stoc->numOmega, int);
+					prob[t]->coord->rvOffset[1] = m;
+				}
+				prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
+				prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
+				prob[t]->num->rvCOmCnt++;
+				prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
+				prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
+			}
+			else {
+				/* Cost coefficients */
+				if ( prob[t]->num->rvdOmCnt == 0 ) {
+					prob[t]->coord->rvdOmCols = (iVector) arr_alloc(stoc->numOmega+1,int);
+					prob[t]->coord->rvOffset[2] = m;
+				}
+				prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
+				prob[t]->coord->allRVRows[prob[t]->num->numRV] = -1;
+				prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
+			}
 		}
 
-		if ( t == 0 ) {
-			errMsg("setup", "newProb", "encountered randomness in root-stage", 0);
-			return NULL;
+
+		for ( t = 1; t < tim->numStages; t++ ) {
+			prob[t]->coord->rvCols = findElements(prob[t]->coord->allRVCols, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
+			prob[t]->coord->rvRows = findElements(prob[t]->coord->allRVRows, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
 		}
 
-		if ( prob[t]->num->numRV == 0) {
-			if ( !(prob[t]->coord->allRVCols = (iVector) arr_alloc(stoc->numOmega+1, int)) )
-				errMsg("allocation", "newProb", "prob->coord->allRVCols", 0);
-			if ( !(prob[t]->coord->allRVRows= (iVector) arr_alloc(stoc->numOmega+1, int)) )
-				errMsg("allocation", "newProb", "prob->coord->allRVRows", 0);
-			if ( !(prob[t]->coord->rvOffset = (iVector) arr_alloc(3, int)))
-				errMsg("allocation", "newProb", "prob->coord->rOffset", 0);
-			if ( !(prob[t]->mean = (dVector) arr_alloc(stoc->numOmega+1, double)) )
-				errMsg("allocation", "newProb", "prob->mean", 0);
-			prob[t]->omBeg = m;
-		}
-
-		prob[t]->num->numRV++;
-		prob[t]->mean[prob[t]->num->numRV] = stoc->mean[m];
-
-		if ( stoc->col[m] == -1 && stoc->row[m] != -1 ) {
+		/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
+		for ( t = 1; t < tim->numStages; t++ ) {
 			/* Right-hand side */
-			if ( prob[t]->num->rvbOmCnt == 0 ) {
-				prob[t]->coord->rvbOmRows = (iVector) arr_alloc(stoc->numOmega+1, int);
-				prob[t]->coord->rvOffset[0] = m;
+			for ( m = 1; m <= prob[t]->num->rvbOmCnt; m++ ) {
+				i = 1;
+				while ( i <= prob[t]->bBar->cnt ) {
+					if ( prob[t]->bBar->col[i] == prob[t]->coord->rvbOmRows[m])
+						break;
+					i++;
+				}
+				prob[t]->bBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[0]+m-1];
 			}
-			prob[t]->coord->allRVCols[prob[t]->num->numRV] = -1;
-			prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
-			prob[t]->coord->rvbOmRows[++prob[t]->num->rvbOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
-		}
-		else if ( stoc->col[m] != -1 && stoc->row[m] != -1 ) {
+
 			/* Transfer matrix */
-			if ( prob[t]->num->rvCOmCnt == 0 ) {
-				prob[t]->coord->rvCOmCols = (iVector) arr_alloc(stoc->numOmega, int);
-				prob[t]->coord->rvCOmRows = (iVector) arr_alloc(stoc->numOmega, int);
-				prob[t]->coord->rvOffset[1] = m;
+			for ( m = 1; m <= prob[t]->num->rvCOmCnt; m++ ) {
+				i = 1;
+				while ( i <= prob[t]->num->rvCOmCnt ) {
+					if ( prob[t]->Cbar->col[i] == prob[t]->coord->rvCOmCols[m] && prob[t]->Cbar->row[i] == prob[t]->coord->rvCOmRows[m] )
+						break;
+					i++;
+				}
+				prob[t]->Cbar->val[i] = stoc->mean[prob[t]->coord->rvOffset[1]+m-1];
 			}
-			prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
-			prob[t]->coord->allRVRows[prob[t]->num->numRV] = stoc->row[m]-tim->row[t]+1;
-			prob[t]->num->rvCOmCnt++;
-			prob[t]->coord->rvCOmCols[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
-			prob[t]->coord->rvCOmRows[prob[t]->num->rvCOmCnt] = prob[t]->coord->allRVRows[prob[t]->num->numRV];
-		}
-		else {
+
 			/* Cost coefficients */
-			if ( prob[t]->num->rvdOmCnt == 0 ) {
-				prob[t]->coord->rvdOmCols = (iVector) arr_alloc(stoc->numOmega+1,int);
-				prob[t]->coord->rvOffset[2] = m;
+			for ( m = 1; m <= prob[t]->num->rvdOmCnt; m++ ) {
+				i = 1;
+				while ( i <= prob[t]->dBar->cnt ) {
+					if ( prob[t]->dBar->col[i] == prob[t]->coord->rvdOmCols[m])
+						break;
+					i++;
+				}
+				prob[t]->dBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[2]+m-1];
 			}
-			prob[t]->coord->allRVCols[prob[t]->num->numRV] = stoc->col[m]-tim->col[t]+1;
-			prob[t]->coord->allRVRows[prob[t]->num->numRV] = -1;
-			prob[t]->coord->rvdOmCols[++prob[t]->num->rvdOmCnt] = prob[t]->coord->allRVCols[prob[t]->num->numRV];
-		}
-	}
-
-	for ( t = 1; t < tim->numStages; t++ ) {
-		prob[t]->coord->rvCols = findElements(prob[t]->coord->allRVCols, prob[t]->num->numRV, &prob[t]->num->rvColCnt);
-		prob[t]->coord->rvRows = findElements(prob[t]->coord->allRVRows, prob[t]->num->numRV, &prob[t]->num->rvRowCnt);
-	}
-
-	/* Modify the dBar, bBar and Cbar with mean values computed from stoch file */
-	for ( t = 1; t < tim->numStages; t++ ) {
-		/* Right-hand side */
-		for ( m = 1; m <= prob[t]->num->rvbOmCnt; m++ ) {
-			i = 1;
-			while ( i <= prob[t]->bBar->cnt ) {
-				if ( prob[t]->bBar->col[i] == prob[t]->coord->rvbOmRows[m])
-					break;
-				i++;
-			}
-			prob[t]->bBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[0]+m-1];
-		}
-
-		/* Transfer matrix */
-		for ( m = 1; m <= prob[t]->num->rvCOmCnt; m++ ) {
-			i = 1;
-			while ( i <= prob[t]->num->rvCOmCnt ) {
-				if ( prob[t]->Cbar->col[i] == prob[t]->coord->rvCOmCols[m] && prob[t]->Cbar->row[i] == prob[t]->coord->rvCOmRows[m] )
-					break;
-				i++;
-			}
-			prob[t]->Cbar->val[i] = stoc->mean[prob[t]->coord->rvOffset[1]+m-1];
-		}
-
-		/* Cost coefficients */
-		for ( m = 1; m <= prob[t]->num->rvdOmCnt; m++ ) {
-			i = 1;
-			while ( i <= prob[t]->dBar->cnt ) {
-				if ( prob[t]->dBar->col[i] == prob[t]->coord->rvdOmCols[m])
-					break;
-				i++;
-			}
-			prob[t]->dBar->val[i] = stoc->mean[prob[t]->coord->rvOffset[2]+m-1];
 		}
 	}
 
