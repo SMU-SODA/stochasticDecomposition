@@ -18,10 +18,9 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 	solveagain:
 	switch  ( type ) {
 	case PROB_LP:
-		changeLPSolverType(ALG_AUTOMATIC);
-		setIntParam(PARAM_PREIND, OFF);
+//		setIntParam(PARAM_PREIND, OFF);
 		(*status) = CPXlpopt(env, lp);
-		setIntParam(PARAM_PREIND, ON);
+	//	setIntParam(PARAM_PREIND, ON);
 		break;
 	case PROB_QP:
 		(*status) = CPXqpopt(env, lp);
@@ -41,12 +40,26 @@ int solveProblem(LPptr lp, cString pname, int type, int *status) {
 			((type == PROB_MILP) && ((*status) == MIP_OPTIMAL || (*status) == MIP_OPTIMAL_TOL) );
 
 	if ( !isOptimal ) {
-		writeProblem(lp, "error.lp");
+
+		/* If the problem is infeasible, prepare to add a feasibility cut for decomposition algorithms */
 		if ((*status) == STAT_INFEASIBLE ) {
+			/* Need to change to primal Simplex to be able to extract the dual rays. Presolve must be turned off too. */
+			changeLPSolverType(ALG_PRIMAL);
+			setIntParam(PARAM_PREIND, OFF);
+			CPXlpopt(env, lp);
+			setIntParam(PARAM_PREIND, ON);
+			changeLPSolverType(ALG_AUTOMATIC);
+
+			(*status) = CPXgetstat(env, lp);
+#if defined(VERBOSE)
 			fprintf(stderr, "\nWarning: Problem is infeasible. ");
+#endif
 			return (*status);
 		}
-		else if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
+
+		/* If the problem has some other issues, the try to resolve them. */
+		writeProblem(lp, "error.lp");
+		if ( (type == PROB_LP || type == PROB_QP) && (*status) == 6 ){
 			setIntParam(PARAM_SCAIND, 1);
 			aggres++;
 			if(aggres == 1)
@@ -208,6 +221,9 @@ void openSolver(){
 		errMsg("solver", "open_solver", "screen output", 0);
 		goto TERMINATE;
 	}
+
+	/* Assigning the default LP solver */
+	changeLPSolverType(ALG_AUTOMATIC);
 
 	TERMINATE:
 	if ( status )
