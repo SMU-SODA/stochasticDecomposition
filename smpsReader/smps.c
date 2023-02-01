@@ -9,31 +9,6 @@
 #include <smps.h>
 #include <solver_cplex.h>
 
-int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
-
-	/* read problem core file */
-	(*orig) = readCore(inputDir, probName);
-	if ( (*orig) == NULL ) {
-		errMsg("read", "readFiles", "failed to read problem core file", 0);
-		return 1;
-	}
-
-	/* read problem time file */
-	(*tim) = readTime(inputDir, probName, (*orig));
-	if ( (*tim) == NULL ) {
-		errMsg("read", "readFiles", "failed to read problem time file", 0);
-		return 1;
-	}
-
-	(*stoc) = readStoc(inputDir, probName, (*orig), (*tim));
-
-#ifdef INPUT_CHECK
-	writeStocType((*stoc));
-#endif
-
-	return 0;
-}//END readFiles()
-
 oneProblem *readCore(cString inputDir, cString probName) {
 	LPptr 			lp = NULL;
 	char 			probpath[BLOCKSIZE], line[BLOCKSIZE], field1[NAMESIZE], field2[NAMESIZE];
@@ -71,7 +46,6 @@ oneProblem *readCore(cString inputDir, cString probName) {
 		}
 	fclose (fptr);
 
-	openSolver();
 	/* Create LP pointer */
 	if ((createProblem(probName, &lp))) {
 		errMsg("solver", "readCore", "failed to create problem in solver.\n", 0);
