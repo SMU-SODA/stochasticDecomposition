@@ -194,7 +194,6 @@ oneProblem *readCore(cString inputDir, cString probName) {
 	orig->marsz = nzcnt;
 	orig->numnz = nzcnt;
 
-	closeSolver();
 	return orig;
 }//END readCore()
 
