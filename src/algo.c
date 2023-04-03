@@ -21,9 +21,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL, *bFile = NULL;
 
-	/* open solver environment */
-	openSolver();
-
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
@@ -145,7 +142,7 @@ int solveCell(stocType *stoc, probType **prob, cellType *cell) {
 
 		/******* 2. Generate new observation, and add it to the set of observations *******/
 		/* (a) Use the stoc file to generate observations */
-		generateOmega(stoc, observ+1, config.TOLERANCE, &config.RUN_SEED[0], NULL);
+		generateOmega(stoc, observ+1, &config.RUN_SEED[0], NULL);
 
 		/* (b) Since the problem already has the mean values on the right-hand side, remove it from the original observation */
 		for ( m = 0; m < stoc->numOmega; m++ )

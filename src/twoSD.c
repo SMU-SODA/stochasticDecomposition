@@ -32,6 +32,9 @@ int main (int argc, char *argv[]) {
 	/* read problem information */
 	parseCmdLine(argc, argv, &probName, &inputDir);
 
+	/* open solver environment */
+	openSolver();
+
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
 	if ( status ) {
@@ -249,3 +252,28 @@ int readConfig(cString path2config, cString inputDir) {
 
 	return 0;
 }//END readConfig()
+
+int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
+
+	/* read problem core file */
+	(*orig) = readCore(inputDir, probName);
+	if ( (*orig) == NULL ) {
+		errMsg("read", "readFiles", "failed to read problem core file", 0);
+		return 1;
+	}
+
+	/* read problem time file */
+	(*tim) = readTime(inputDir, probName, (*orig));
+	if ( (*tim) == NULL ) {
+		errMsg("read", "readFiles", "failed to read problem time file", 0);
+		return 1;
+	}
+
+	(*stoc) = readStoc(inputDir, probName, (*orig), (*tim));
+
+#ifdef INPUT_CHECK
+	writeStocType((*stoc));
+#endif
+
+	return 0;
+}//END readFiles()

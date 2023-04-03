@@ -48,7 +48,7 @@ int evaluate(FILE *soln, stocType *stoc, probType **prob, oneProblem *subprob, d
 
 	while (3.92 * stdev > config.EVAL_ERROR * DBL_ABS(mean) || cnt < config.EVAL_MIN_ITER ) {
 		/* use the stoc file to generate observations */
-		generateOmega(stoc, observ+1, config.TOLERANCE, &config.EVAL_SEED[0], NULL);
+		generateOmega(stoc, observ+1, &config.EVAL_SEED[0], NULL);
 
 		for ( m = 0; m < stoc->numOmega; m++ )
 			observ[m+1] -= stoc->mean[m];          /* store the mean rv in observ */

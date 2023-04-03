@@ -165,6 +165,7 @@ typedef struct {
 void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
 void printHelpMenu();
 int readConfig(cString path2config, cString inputDir);
+int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc);
 
 /* algo.c */
 int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cString probName);
