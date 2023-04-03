@@ -25,6 +25,7 @@
 #include <twoSD.h>
 void parseCmdLine(int argc, char *argv[], cString *probName, cString *inputDir);
 void printHelpMenu();
+int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc);
 
 long long	MEM_USED = 0;	/* amount of memory allocated each iteration */
 cString	outputDir;			/* output directory */
@@ -164,3 +165,28 @@ void printHelpMenu() {
 	printf("         -s {0,1}   -> sample increment size.\n");
 
 }//END helpMenu()
+
+int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc) {
+
+	/* read problem core file */
+	(*orig) = readCore(inputDir, probName);
+	if ( (*orig) == NULL ) {
+		errMsg("read", "readFiles", "failed to read problem core file", 0);
+		return 1;
+	}
+
+	/* read problem time file */
+	(*tim) = readTime(inputDir, probName, (*orig));
+	if ( (*tim) == NULL ) {
+		errMsg("read", "readFiles", "failed to read problem time file", 0);
+		return 1;
+	}
+
+	(*stoc) = readStoc(inputDir, probName, (*orig), (*tim));
+
+#ifdef INPUT_CHECK
+	writeStocType((*stoc));
+#endif
+
+	return 0;
+}//END readFiles()
