@@ -48,6 +48,9 @@ int main (int argc, char *argv[]) {
 	/* read problem information */
 	parseCmdLine(argc, argv, &probName, &inputDir);
 
+	/* open solver environment */
+	openSolver();
+
 	/* read problem SMPS input files */
 	status = readFiles(inputDir, probName, &orig, &tim, &stoc);
 	if ( status ) {

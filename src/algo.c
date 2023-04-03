@@ -21,9 +21,6 @@ int algo(oneProblem *orig, timeType *tim, stocType *stoc, cString inputDir, cStr
 	batchSummary *batch = NULL;
 	FILE 	*sFile = NULL, *iFile = NULL, *bFile = NULL;
 
-	/* open solver environment */
-	openSolver();
-
 	/* complete necessary initialization for the algorithm */
 	if ( setupAlgo(orig, stoc, tim, &prob, &cell, &batch, &meanSol) )
 		goto TERMINATE;
