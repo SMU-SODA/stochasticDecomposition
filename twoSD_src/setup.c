@@ -341,7 +341,7 @@ int cleanCellType(cellType *cell, probType *prob, dVector xk) {
 
 	/* oneProblem structures and solver elements */
 	for ( int cnt = prob->num->rows+cell->cuts->cnt+cell->fcuts->cnt-1; cnt >= prob->num->rows; cnt-- )
-		if (  removeRow(cell->master->lp, cnt, cnt) ) {
+		if (  removeRows(cell->master->lp, cnt, cnt) ) {
 			errMsg("solver", "cleanCellType", "failed to remove a row from master problem", 0);
 			return 1;
 		}
