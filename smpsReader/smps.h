@@ -90,7 +90,6 @@ typedef struct {
 }stocType;
 
 /* subroutines in smps.c */
-int readFiles(cString inputDir, cString probName, oneProblem **orig, timeType **tim, stocType **stoc);
 oneProblem *readCore(cString inputDir, cString probName);
 timeType *readTime(cString inputDir, cString probName, oneProblem *orig);
 stocType *readStoc(cString inputDir, cString probName, oneProblem *orig, timeType *tim);
