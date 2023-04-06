@@ -11,14 +11,15 @@
 #         -s {0,1}   -> sample increment size.
 
 # Default values
-outputDir=~/Documents/experiments/internalSampling/
-inputDir=~/Documents/workspace/spAlgorithms/spInput/
+outputDir=../../experiments/incSampling/
+inputDir=../spAlgorithms/spInput/
 evalFlag=1
 dualTest=1
-replicate=30
+replicate=1
 compromise=0
 
-prob_set=("pgp2" "cep" "4node" "baa99" "lands3" "storm" "fleet1" "fleet2" "ssn" "20" "baa99-20")
+# prob_set=("pgp2" "cep" "4node" "baa99" "lands3" "storm" "fleet1" "fleet2" "ssn" "20" "baa99-20")
+prob_set=("pgp2")
 incSize=("1" "5" "10" "25" "50" "100")
 toleranceLevel=("l" "n" "t")
 
@@ -26,7 +27,7 @@ toleranceLevel=("l" "n" "t")
 for probName in "${prob_set[@]}"; do
     for sampleInc in "${incSize[@]}"; do
 	for tol in "${toleranceLevel[@]}"; do
-	    ./Debug/twoSD -i $inputDir -o $outputDir -p $probName -e $evalFlag -d $dualTest -t $tol -m $replicate -c $compromise
+	    ./Debug/twoSD -i $inputDir -o $outputDir -p $probName -e $evalFlag -d $dualTest -t $tol -m $replicate -c $compromise -s $sampleInc
 	    mv ${outputDir}twoSD/${probName} ${outputDir}twoSD/${probName}_${sampleInc}_${tol}
 	done
     done
