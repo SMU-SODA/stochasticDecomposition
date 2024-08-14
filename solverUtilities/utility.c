@@ -509,9 +509,16 @@ void printSparseMatrix(sparseMatrix *V, char *cString) {
 
 void printLine() {
 
-	printf("-------------------------------------------------------------------------- \n");
+	printf("-------------------------------------------------------------------------------------------------------------------- \n");
 
 }//END printLine
+
+void printDoubleLine() {
+
+	printf("==================================================================================================================== \n");
+
+}//END printLine
+
 
 /* Create a vector on non-zero elements in the input integer vector */
 iVector findElements(iVector allElem, int totalElem, int *numUniq){

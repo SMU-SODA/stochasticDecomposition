@@ -205,7 +205,7 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (fabs(q) <= split1) {
 			r = const1 - q * q;
 			endval = q * (((a3 * r + a2) * r + a1) * r + a0)
-																					/ (((b3 * r + b2) * r + b1) * r + one);
+																									/ (((b3 * r + b2) * r + b1) * r + one);
 			observ[i] = mu[i] + stdev[i] * endval;
 			continue;
 		}
@@ -223,13 +223,13 @@ int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *s
 		if (r <= split2) {
 			r = r - const2;
 			endval = (((c3 * r + c2) * r + c1) * r + c0)
-																					/ ((d2 * r + d1) * r + one);
+																									/ ((d2 * r + d1) * r + one);
 			observ[i] = endval;
 		}
 		else {
 			r = r - split2;
 			endval = (((e3 * r + e2) * r + e1) * r + e0)
-																					/ ((f2 * r + f1) * r + one);
+																									/ ((f2 * r + f1) * r + one);
 			observ[i] = endval;
 		}
 		if (q < 0)
@@ -424,3 +424,36 @@ void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSiz
 
 	return;
 }//END computeSampleMean()
+
+void generateAntitheticOmegas(stocType *stoc, dVector observ1, dVector observ2, long long *seed) {
+	int offset, q;
+
+	for ( int n = 0; n < stoc->numGroups; n++ ) {
+		/* Using an internal simulator */
+		if ( strstr(stoc->type, "INDEP") != NULL ) {
+			if ( strstr(stoc->type, "DISCRETE") != NULL ) {
+				double val, cumm;
+				for ( int p = 0; p < stoc->numPerGroup[n]; p++) {
+					val = scalit(0, 1, seed);
+
+					cumm = 0;
+					for ( q = 0; val > cumm && q < stoc->numVals[stoc->groupBeg[n]+p]; ++q )
+						cumm += stoc->probs[stoc->groupBeg[n] + p][q];
+					observ1[stoc->groupBeg[n]+p] = stoc->vals[stoc->groupBeg[n]+p][q-1];
+
+					cumm = 0;
+					for ( q = 0; (1-val) > cumm && q < stoc->numVals[stoc->groupBeg[n]+p]; ++q )
+						cumm += stoc->probs[stoc->groupBeg[n] + p][q];
+					observ2[stoc->groupBeg[n]+p] = stoc->vals[stoc->groupBeg[n]+p][q-1];
+				}
+			}
+			else
+				errMsg("rvGeneration", "generateOmega", "random number generation for input type is missing",0);
+			offset += stoc->numPerGroup[n];
+		}
+		else {
+			errMsg("rvgen", "generateOmega", "other random variables types are not supported for generating antithetic observations", 0);
+		}
+	}
+
+}//END generateAntitheticOmegas()

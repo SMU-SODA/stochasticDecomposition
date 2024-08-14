@@ -102,6 +102,7 @@ void printIntvec(iVector vec, int len, FILE *fptr);
 void printSparseVector(dVector vec, iVector indices, int len);
 void printSparseMatrix(sparseMatrix *V, char *cString);
 void printLine();
+void printDoubleLine();
 
 iVector findElements(iVector allElem, int totalElem, int *numUniq);
 bool isInVec(iVector vec, int len, int val);
