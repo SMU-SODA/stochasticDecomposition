@@ -123,6 +123,6 @@ int generateSAAobservs(stocType *stoc, cString fname, long long *seed, dVector *
 int readSimulatedData(cString fname, dVector *simObservVals, int numRV, int numSamples);
 int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate);
 void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats);
-
+void generateAntitheticOmegas(stocType *stoc, dVector observ1, dVector observ2, long long *seed);
 
 #endif /* SMPS_H_ */
