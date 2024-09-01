@@ -1,0 +1,5 @@
+Problem Name,Iteration,Loose Tolerance (t = l),Nominal Tolerance (t = n),Tight Tolerance (t = t)
+pgp2,1st,439.973109,440.752143,446.418502
+,2nd,444.865942,442.951870,447.263851
+baa99,1st,-242.924694,-229.961069,-247.412032
+,2nd,-264.203769,-244.457578,-247.541460

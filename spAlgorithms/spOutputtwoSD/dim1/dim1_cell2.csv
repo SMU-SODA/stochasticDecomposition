@@ -1,0 +1,2 @@
+Replication	Iterations	LB estimate	Total time	Master time	 Subproblem time	 Optimality time	Argmax time	UB Estimate	Error	CI-L	CI-U	Outcomes
+1	129	0.4083	0.0000	0.8711	0.0092	0.0000	0.0006

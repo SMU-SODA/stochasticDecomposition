@@ -1,0 +1,522 @@
+/*
+ * rvgen.c
+ *
+ *  Created on: Oct 5, 2015
+ *      Author: Harsha Gangammanavar
+ */
+
+#include <utils.h>
+#include <smps.h>
+
+/* Currently works only for BLOCKS-DISCRETE. This subroutine generates the index of block according to the distribution provided in the stoch file. */
+int generateOmegaIdx(stocType *stoc, long long *seed)
+{
+	double val, cumm;
+	int m, groupID = 0;
+
+	if (strstr(stoc->type, "BLOCKS") != NULL)
+	{
+		if (strstr(stoc->type, "DISCRETE") != NULL)
+		{
+			val = scalit(0, 1, seed);
+			cumm = 0;
+			for (m = 0; val > cumm; m++)
+				cumm += stoc->probs[groupID][m];
+			return (m - 1);
+		}
+		else
+			printf("Not yet\n");
+	}
+	else
+		printf("Not yet\n");
+
+	return 0;
+} // END generateOmegaIdx()
+
+/* This function does not assume that the _observ_ vector follows convention that the first element of the double vector holds
+ * the one-norm of the vector. This is to avoid this insistence on this convention on external simulators.
+ */
+void generateOmega(stocType *stoc, dVector observ, long long *seed, FILE **fid)
+{
+	int n, offset = 0;
+
+	for (n = 0; n < stoc->numGroups; n++)
+	{
+		/* Using an internal simulator */
+		if (strstr(stoc->type, "INDEP") != NULL)
+		{
+			if (strstr(stoc->type, "DISCRETE") != NULL)
+				generateIndep(stoc, observ + offset, n, seed);
+			else if (strstr(stoc->type, "NORMAL") != NULL)
+				normal(stoc->mean + offset, stoc->vals[0] + offset, stoc->numPerGroup[n], observ + offset, seed);
+			else
+				errMsg("rvGeneration", "generateOmega", "random number generation for input type is missing", 0);
+			offset += stoc->numPerGroup[n];
+		}
+		else if (strstr(stoc->type, "BLOCKS") != NULL)
+		{
+			if (strstr(stoc->type, "DISCRETE") != NULL)
+				generateBlocks(stoc, observ + offset, n, seed);
+			else
+				printf("Not yet\n");
+			offset += stoc->numPerGroup[n];
+		}
+		else if (strstr(stoc->type, "DISTRIB") != NULL)
+		{
+			//	generateDistrib(observ+offset, n, seed);
+			offset += stoc->numPerGroup[n];
+		}
+		else if (strstr(stoc->type, "LINTRAN") != NULL)
+		{
+			generateLinTran(stoc, observ + offset, n, seed);
+			n++; /* Linear transformation is associated with a block of residual random variables. */
+		}
+		else if (!strcmp(stoc->type, "SIMULATOR"))
+		{
+			/* Using an external simulator */
+			if (readSimLine(fid, observ, stoc->numOmega, true))
+			{
+				errMsg("algorithm", "generateOmega", "failed to obtain scenario from the simulator", 0);
+			}
+		}
+		else if (!strcmp(stoc->type, "SCENARIOS_DISCRETE"))
+		{
+			generateScenario(stoc, observ, seed);
+		}
+		else
+		{
+			errMsg("rvgen", "generateOmega", "unknown section type in omegastuff", 0);
+		}
+	}
+
+} // END generateOmega()
+
+void generateBlocks(stocType *stoc, dVector observ, int groupID, long long *seed)
+{
+	int n, m;
+	double val, cumm;
+
+	/* select which block */
+	val = scalit(0, 1, seed);
+	cumm = 0;
+	for (m = 0; val > cumm; m++)
+		cumm += stoc->probs[groupID][m];
+
+	/* read block realizations */
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++)
+		observ[n] = stoc->vals[stoc->groupBeg[groupID] + n][m - 1];
+
+} // END generateBlocks()
+
+void generateIndep(stocType *stoc, dVector observ, int groupID, long long *seed)
+{
+	double val, cumm;
+	int n, m;
+
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++)
+	{
+		val = scalit(0, 1, seed);
+		cumm = 0;
+		for (m = 0; val > cumm && m < stoc->numVals[stoc->groupBeg[groupID] + n]; ++m)
+			cumm += stoc->probs[stoc->groupBeg[groupID] + n][m];
+		observ[stoc->groupBeg[groupID] + n] = stoc->vals[stoc->groupBeg[groupID] + n][m - 1];
+	}
+
+} // END generateIndep()
+
+/* Supporting only Wiener process */
+void generateLinTran(stocType *stoc, dVector observ, int groupID, long long *seed)
+{
+	dVector eps;
+	int n, offset, t;
+	int numPeriods, epsLen, omegaLen;
+
+	numPeriods = (int)stoc->numPerGroup[groupID] / stoc->mod->N; /* Number of periods being simulated */
+	epsLen = stoc->mod->M;										 /* Number of residual random variables */
+	omegaLen = stoc->mod->N;									 /* Number of random variables per period */
+
+	/* residual dVector */
+	eps = (dVector)arr_alloc(numPeriods * epsLen, double);
+
+	/* constant terms */
+	offset = stoc->groupBeg[groupID];
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++)
+		observ[n] = stoc->vals[0][offset + n];
+
+	for (t = 0; t < numPeriods; t++)
+	{
+		normal(stoc->mod->muEps, stoc->mod->cvEps->val, epsLen, eps + epsLen * t, seed);
+		if (t == 0)
+		{
+			for (n = 0; n < stoc->mod->MA[0]->cnt; n++)
+				observ[stoc->mod->MA[0]->row[n]] += stoc->mod->MA[0]->val[n] * eps[stoc->mod->MA[0]->col[n]];
+		}
+		else
+		{
+			for (n = 0; n < stoc->mod->MA[0]->cnt; n++)
+				observ[omegaLen * t + stoc->mod->MA[0]->row[n]] += stoc->mod->MA[0]->val[n] * eps[epsLen * t + stoc->mod->MA[0]->col[n]];
+			for (n = 0; n < stoc->mod->AR[0]->cnt; n++)
+				observ[omegaLen * t + stoc->mod->AR[0]->row[n]] += stoc->mod->AR[0]->val[n] * observ[omegaLen * (t - 1) + stoc->mod->AR[0]->col[n]];
+		}
+	}
+
+	for (n = 0; n < stoc->numPerGroup[groupID]; n++)
+		observ[n] = maximum(observ[n], 0.01);
+
+	mem_free(eps);
+	return;
+} // END generateLinTran()
+
+void generateScenario(stocType *stoc, dVector observ, long long *seed)
+{
+	int n, val; /* select which block */
+
+	val = randInteger(seed, stoc->numVals[0]); /* read block realizations */
+	for (n = 0; n < stoc->numOmega; n++)
+		observ[n] = stoc->vals[n][val];
+
+} // END generateScenario()
+
+/* The following inverse normal variate generator was published by Micheal J. Wichura, University of Chicago in Applied Statistics, as Algorithm AS 241.  The C function normal() was converted from the
+ * Fortran function PPND7 and produces normal random variates for the lower tail of a normal distribution accurate to approx. 7 significant figures. */
+int normal(dVector mu, dVector stdev, int numOmega, dVector observ, long long *seed)
+{
+	int i;
+	float zero, one, half, split1, split2, const1, const2, a0, a1, a2, a3, b1;
+	float b2, b3, c0, c1, c2, c3, d1, d2, e0, e1, e2, e3, f1, f2, p, q, r;
+	float endval;
+
+	for (i = 0; i < numOmega; i++)
+	{
+		p = scalit(pow(10, -35), 1 - pow(10, -5), seed);
+
+		zero = 0.0;
+		one = 1.0;
+		half = one / 2.0;
+		split1 = 0.425;
+		split2 = 5.0;
+		const1 = 0.180625;
+		const2 = 1.6;
+
+		/* coefficients for p close to 1/2 */
+		a0 = 3.3871327179;
+		a1 = 50.434271938;
+		a2 = 159.29113202;
+		a3 = 59.109374720;
+		b1 = 17.895169469;
+		b2 = 78.775757664;
+		b3 = 67.18756360;
+
+		/* coefficients for p neither close to 1/2 nor 0 or 1 */
+		c0 = 1.4234372777;
+		c1 = 2.7568153900;
+		c2 = 1.3067284816;
+		c3 = .17023821103;
+		d1 = .73700164250;
+		d2 = .12021132975;
+
+		/* coefficients for p near 0 or 1 */
+		e0 = 6.6579051150;
+		e1 = 3.0812263860;
+		e2 = .42868294337;
+		e3 = .017337203997;
+		f1 = .24197894225;
+		f2 = .012258202635;
+
+		q = p - half;
+
+		if (fabs(q) <= split1)
+		{
+			r = const1 - q * q;
+			endval = q * (((a3 * r + a2) * r + a1) * r + a0) / (((b3 * r + b2) * r + b1) * r + one);
+			observ[i] = mu[i] + stdev[i] * endval;
+			continue;
+		}
+
+		if (q < 0.0)
+			r = p;
+		else
+			r = one - p;
+
+		if (r <= zero)
+			return 0;
+
+		r = sqrt(-log(r));
+
+		if (r <= split2)
+		{
+			r = r - const2;
+			endval = (((c3 * r + c2) * r + c1) * r + c0) / ((d2 * r + d1) * r + one);
+			observ[i] = endval;
+		}
+		else
+		{
+			r = r - split2;
+			endval = (((e3 * r + e2) * r + e1) * r + e0) / ((f2 * r + f1) * r + one);
+			observ[i] = endval;
+		}
+		if (q < 0)
+			observ[i] = -1 * observ[i];
+		observ[i] = mu[i] + stdev[i] * observ[i];
+	}
+
+	return (1);
+} // normal()
+
+int weibull(double scaleParam, double shapeParam, int numOmega, dVector observ, long long *seed)
+{
+	int n;
+	double u;
+
+	for (n = 0; n < numOmega; n++)
+	{
+		u = randUniform(seed);
+		observ[n] = scaleParam * pow(log(u), 1 / shapeParam);
+	}
+
+	return 0;
+} // END weibull()
+
+float scalit(float lower, float upper, long long *seed)
+{
+	float val, wide;
+
+	wide = upper - lower;
+	val = randUniform(seed);
+
+	return ((wide * val) + lower);
+} // END scalit()
+
+float randUniform(long long *SEED)
+{
+	static int lo_bits, hi_bits;
+
+	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
+	hi_bits = (int)(((*SEED) >> 16) * 16807) + (lo_bits >> 16);
+	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
+
+	return ((*SEED) < 0 ? ((*SEED) += 0x7FFFFFFFL) : (*SEED)) * 4.656612875E-10;
+} // END randUniform()
+
+float randUniform_new(long long *SEED)
+{
+	static int lo_bits, hi_bits;
+
+	lo_bits = ((*SEED) & 0xFFFFL) * 16807;
+	hi_bits = (int)(((*SEED) >> 16) * 16807) + (lo_bits >> 16);
+	*SEED = ((lo_bits & 0xFFFFL) - 0x7FFFFFFFL) + ((hi_bits & 0x7FFFL) << 16) + (hi_bits >> 15);
+
+	srand((unsigned)(*SEED));
+	return (rand() / RAND_MAX + 1);
+}
+
+int randInteger(long long *seed, int iMax)
+{
+	return (int)(randUniform(seed) * iMax);
+}
+
+int generateSAAobservs(stocType *stoc, cString fname, long long *seed, dVector **simObservVals, int desiredSampleSize)
+{
+	dVector observ;
+
+	printf("Generating SAA with %d samples.\n", desiredSampleSize);
+
+	if (strcmp(stoc->type, "SIMULATOR"))
+	{
+		/* Using the internal simulator to generate samples */
+		for (int obs = 0; obs < desiredSampleSize; obs++)
+		{
+			observ = (dVector)arr_alloc(stoc->numOmega + 1, double);
+			if (!strcmp(stoc->type, "BLOCKS_DISCRETE"))
+			{
+				generateBlocks(stoc, observ + 1, 0, seed);
+			}
+			else if (!strcmp(stoc->type, "INDEP_DISCRETE"))
+			{
+				generateIndep(stoc, observ + 1, 0, seed);
+			}
+			else if (!strcmp(stoc->type, "INDEP_NORMAL"))
+			{
+				normal(stoc->mean, stoc->vals[0], stoc->numOmega, observ + 1, seed);
+			}
+			else if (!strcmp(stoc->type, "LINTRAN"))
+			{
+				generateLinTran(stoc, observ + 1, 0, seed);
+			}
+			else if (!strcmp(stoc->type, "SCENARIOS_DISCRETE"))
+			{
+				generateScenario(stoc, observ, seed);
+			}
+			else
+			{
+				errMsg("simulate", "setupSAA", "no procedure for simulating distribution type", 0);
+				return 1;
+			}
+
+			/* Save the new observation and set weight to one. */
+			(*simObservVals)[obs] = observ;
+		}
+	}
+	else
+	{
+		/* Using the external simulator generated sample that is stored in a file with name _fname_ */
+		/* Allocate memory to elements of omegaType in cell */
+		for (int obs = 0; obs < desiredSampleSize; obs++)
+		{
+			(*simObservVals)[obs] = (dVector)arr_alloc(stoc->numOmega + 1, double);
+		}
+		if (readSimulatedData(fname, (*simObservVals), stoc->numOmega, desiredSampleSize))
+		{
+			errMsg("read", "setupSAA", "failed to read simulated data", 0);
+			return 1;
+		}
+	}
+
+	return 0;
+} // END setupSAA()
+
+/* This subroutine reads data that is simulated using an external program and stored in a text file */
+int readSimulatedData(cString fname, dVector *simObservVals, int numRV, int numSamples)
+{
+	FILE *fid;
+	int cnt = 0, bufferSize = numRV * NAMESIZE;
+	char buffer[bufferSize];
+
+	fid = fopen(fname, "r");
+	if (fid == NULL)
+	{
+		errMsg("read", "readSimData", "failed to open the simulated data file", 0);
+		return 1;
+	}
+
+	/* Count the column headers to get the number of random variables */
+	fgets(buffer, bufferSize, fid);
+	char *field = strtok(buffer, ",");
+	while (field)
+	{
+		cnt++;
+		field = strtok(NULL, ",");
+	}
+	if (cnt != numRV + 1)
+	{
+		errMsg("read", "readSimData", "number of random variables do not match", 0);
+		return 1;
+	}
+
+	/* Read the rest of the file for data */
+	cnt = 0;
+	while (fgets(buffer, bufferSize, fid) && cnt < numSamples)
+	{
+		field = strtok(buffer, ","); /* The first column has the row name */
+		field = strtok(NULL, ",");
+		int n = 1;
+		while (field)
+		{
+			sscanf(field, "%lf", &simObservVals[cnt][n++]);
+			field = strtok(NULL, ",");
+		}
+		cnt++;
+	}
+	if (cnt < numSamples)
+	{
+		printf("Warning:: Simulated file has less number of scenarios than desired.\n");
+	}
+
+	return 0;
+} // End readSimData()
+
+int readSimLine(FILE **fid, dVector observ, int numRV, bool simulate)
+{
+	int bufferSize = numRV * NAMESIZE, cnt = 0;
+	char buffer[bufferSize], *field;
+
+	if (!simulate)
+	{
+		/* Count the column headers to get the number of random variables */
+		char buffer[numRV * NAMESIZE];
+		fgets(buffer, numRV * NAMESIZE, (*fid));
+		char *field = strtok(buffer, ",");
+		while (field)
+		{
+			cnt++;
+			field = strtok(NULL, ",");
+		}
+		if (cnt != numRV + 1)
+		{
+			errMsg("read", "readSimData", "number of random variables do not match", 0);
+			return 1;
+		}
+		return 0;
+	}
+
+	/* Read the rest of the file for data */
+	fgets(buffer, bufferSize, (*fid));
+	field = strtok(buffer, ","); /* The first column has the row name */
+	field = strtok(NULL, ",");
+	int n = 0;
+	while (field)
+	{
+		sscanf(field, "%lf", &observ[n++]);
+		field = strtok(NULL, ",");
+	}
+
+	return 0;
+} // End readSimLine()
+
+void computeSampleStats(dVector *vals, iVector weights, int numRV, int sampleSize, int numObs, dVector *sampleStats, int numStats)
+{
+
+	for (int n = 1; n <= numRV; n++)
+	{
+		for (int m = 0; m < numStats; m++)
+		{
+			sampleStats[m][n] = 0.0;
+			for (int obs = 0; obs < sampleSize; obs++)
+			{
+				sampleStats[m][n] += pow(vals[obs][n], m + 1) * weights[obs];
+			}
+			sampleStats[m][n] /= numObs;
+		}
+	}
+
+	return;
+} // END computeSampleMean()
+
+void generateAntitheticOmegas(stocType *stoc, dVector observ1, dVector observ2, long long *seed)
+{
+	int offset, q;
+
+	for (int n = 0; n < stoc->numGroups; n++)
+	{
+		/* Using an internal simulator */
+		if (strstr(stoc->type, "INDEP") != NULL)
+		{
+			if (strstr(stoc->type, "DISCRETE") != NULL)
+			{
+				double val, cumm;
+				for (int p = 0; p < stoc->numPerGroup[n]; p++)
+				{
+					val = scalit(0, 1, seed);
+
+					cumm = 0;
+					for (q = 0; val > cumm && q < stoc->numVals[stoc->groupBeg[n] + p]; ++q)
+						cumm += stoc->probs[stoc->groupBeg[n] + p][q];
+					observ1[stoc->groupBeg[n] + p] = stoc->vals[stoc->groupBeg[n] + p][q - 1];
+
+					cumm = 0;
+					for (q = 0; (1 - val) > cumm && q < stoc->numVals[stoc->groupBeg[n] + p]; ++q)
+						cumm += stoc->probs[stoc->groupBeg[n] + p][q];
+					observ2[stoc->groupBeg[n] + p] = stoc->vals[stoc->groupBeg[n] + p][q - 1];
+				}
+			}
+			else
+				errMsg("rvGeneration", "generateOmega", "random number generation for input type is missing", 0);
+			offset += stoc->numPerGroup[n];
+		}
+		else
+		{
+			errMsg("rvgen", "generateOmega", "other random variables types are not supported for generating antithetic observations", 0);
+		}
+	}
+
+} // END generateAntitheticOmegas()

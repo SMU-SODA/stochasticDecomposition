@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/sultan/S2/stochasticDecomposition/twoSD_src",
+      "program": "/Users/sultan/S2/stochasticDecomposition/twoSD_src/build/Debug/outDebug"
+    }
+  ]
+}

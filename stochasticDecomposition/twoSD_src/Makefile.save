@@ -1,0 +1,40 @@
+# Define the compiler and the necessary flags
+CC = gcc
+CFLAGS = -I. -I/Applications/CPLEX_Studio2211/cplex/include -std=c11
+LDFLAGS = -L/Applications/CPLEX_Studio2211/cplex/lib -lcplex -lm -lpthread
+
+# Define the source and output directories
+SRC_DIR = .
+OBJ_DIR = obj
+BIN_DIR = bin
+
+# Define the target executable
+TARGET = $(BIN_DIR)/twoSD
+
+# List of source files
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+
+# List of object files
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+
+# Default target
+all: $(TARGET)
+
+# Link the target executable
+$(TARGET): $(OBJS) | $(BIN_DIR)
+    $(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+# Compile source files into object files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+    $(CC) $(CFLAGS) -c $< -o $@
+
+# Create the output directories if they don't exist
+$(BIN_DIR) $(OBJ_DIR):
+    mkdir -p $@
+
+# Clean up build artifacts
+clean:
+    rm -rf $(OBJ_DIR) $(BIN_DIR)
+
+.PHONY: all clean
+
