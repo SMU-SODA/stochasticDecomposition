@@ -21,5 +21,6 @@ subject to  D y (sense) r(omega) - C x,
 - All possible scenario vectors and corresponding probabilities are generated explicitly in both Lshaped and SD. Please make sure that the problem size fits the memory.
 
 **Ongoing Work**
-- Randomness in the coefficient matrix and cost vector
+- Add a quadratic regularization at the root stage.
+- Randomness in the coefficient matrix and cost vector.
 - Efficient sampled paths management in SD for large-scale instances, e.g., ``ssn`` (over 1e70 scenarios).
