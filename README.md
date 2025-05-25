@@ -4,7 +4,9 @@ In this branch, vallina Lshaped method and stochastic decomposition (SD) are imp
 minimize    c'x + E[h(x, omega)]
 subject to  A x (sense) b,
             x_lb <= x <= x_ub,
+
 where "Ax (sense) b" can be mixed constraints consisting of "Ax = b", "Ax \leq b" as well as "Ax \geq b", and h(x, omega) = 
+
 minimize    d‘y
 subject to  D y (sense) r(omega) - C x,
             y_lb <= y <= y_ub.
